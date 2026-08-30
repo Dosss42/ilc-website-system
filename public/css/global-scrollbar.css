@@ -1,0 +1,25 @@
+/* Global Custom Scrollbar Design - Applied to all pages */
+::-webkit-scrollbar {
+    width: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--ilc-blue);
+    border-radius: 10px;
+    border: 2px solid #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--ilc-gold);
+}
+
+/* CSS Variables for consistent theming */
+:root {
+    --ilc-blue: #1e3a8a;
+    --ilc-gold: #fbbf24;
+}

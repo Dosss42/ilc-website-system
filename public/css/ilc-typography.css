@@ -1,0 +1,77 @@
+/*
+ * ILC Public Typography — loaded last on all public pages
+ * Matches AIMS page visual style: Open Sans 800, #1a3a6c headings, clean body
+ */
+
+/* 1. Override Bootstrap font variables */
+:root {
+    --bs-font-sans-serif: 'Open Sans', sans-serif;
+    --bs-body-font-family: 'Open Sans', sans-serif;
+}
+
+/* 2. Body text */
+body {
+    font-family: 'Open Sans', sans-serif;
+    color: #374151;
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* 3. All headings — bold, navy, tight spacing, mixed case */
+h1, h2, h3, h4, h5, h6 {
+    font-family: 'Open Sans', sans-serif;
+    font-weight: 800;
+    color: #1a3a6c;
+    line-height: 1.25;
+    letter-spacing: 0.2px;
+}
+
+/* 4. Paragraphs */
+p {
+    font-family: 'Open Sans', sans-serif;
+    color: #374151;
+    line-height: 1.8;
+}
+
+/* 5. Section titles — most important override */
+.section-title,
+.section-header,
+.page-title,
+.card-title,
+.block-title,
+.news-title {
+    font-family: 'Open Sans', sans-serif !important;
+    font-weight: 800 !important;
+    color: #1a3a6c !important;
+    text-transform: none !important;
+    letter-spacing: 0.3px !important;
+    line-height: 1.3 !important;
+}
+/* .ann-title and .feat-title are intentionally excluded — they appear on dark
+   blue backgrounds and must inherit their parent's white color */
+
+/* 6. Section subtitles */
+.section-subtitle,
+.section-desc,
+.card-subtitle {
+    font-family: 'Open Sans', sans-serif;
+    color: #64748b;
+    font-size: 13.5px;
+    line-height: 1.7;
+    font-weight: 400;
+}
+
+/* 7. Protect white-text elements on dark backgrounds — exclude buttons & icons */
+.top-header *:not(.btn):not([class*="btn-"]):not(i):not(svg),
+.main-nav *:not(.btn):not([class*="btn-"]):not(i):not(svg),
+.site-footer *:not(.btn):not([class*="btn-"]):not(i):not(svg),
+.footer-bottom,
+.page-banner *:not(.btn):not([class*="btn-"]) {
+    color: inherit;
+}
+
+/* 8. Ensure icon fonts are NOT overridden */
+i.bi, span.bi, [class^="bi-"], [class*=" bi-"] {
+    font-family: 'bootstrap-icons' !important;
+}
