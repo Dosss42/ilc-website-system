@@ -1,0 +1,68 @@
+/* ── Contact Page Styles ── */
+* { box-sizing: border-box; }
+:root { --bs-font-sans-serif: "Open Sans", sans-serif; --bs-body-font-family: "Open Sans", sans-serif; }
+body { font-family: "Open Sans", sans-serif; font-size: 14px; color: #374151; margin: 0; padding: 0; }
+::-webkit-scrollbar { width: 10px; } ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 8px; } ::-webkit-scrollbar-thumb { background: #1a3a6c; border-radius: 8px; }
+.contact-main-section { padding: 56px 0; background: #f6f8fb; }
+.contact-section-title { font-size: 24px; font-weight: 800; color: #1a3a6c; margin-bottom: 6px; }
+.contact-section-subtitle { font-size: 13.5px; color: #64748b; margin-bottom: 24px; }
+.contact-form-box { background: #fff; border-radius: 16px; padding: 36px; box-shadow: 0 2px 14px rgba(26,58,108,.08); border: 1.5px solid #e8edf5; }
+.contact-form-box h3 { font-size: 18px; font-weight: 800; color: #1a3a6c; margin-bottom: 20px; }
+.form-label { font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+.contact-info-section { padding: 56px 0; background: #fff; }
+.contact-info-card { background: #f8faff; border-radius: 14px; padding: 28px 24px; height: 100%; border: 1.5px solid #e8edf5; transition: box-shadow .2s, transform .2s; text-align: center; }
+.contact-info-card:hover { box-shadow: 0 8px 24px rgba(26,58,108,.1); transform: translateY(-3px); }
+.contact-info-card i { font-size: 28px; color: #1a3a6c; margin-bottom: 14px; display: block; }
+.contact-info-card h5 { font-size: 14px; font-weight: 800; color: #1a3a6c; margin-bottom: 8px; }
+.contact-info-card p, .contact-info-card a { font-size: 13px; color: #64748b; text-decoration: none; line-height: 1.6; }
+.hours-social-section { padding: 56px 0; background: #f6f8fb; }
+.hours-box { background: #fff; border-radius: 14px; padding: 28px; border: 1.5px solid #e8edf5; height: 100%; }
+.hours-box h4, .hours-box h5 { font-size: 16px; font-weight: 800; color: #1a3a6c; margin-bottom: 16px; }
+/* Office hours row: day on left, time on right */
+.hours-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+.hours-row:last-child { border-bottom: none; }
+.day { font-size: 13px; color: #374151; font-weight: 500; }
+.time { font-size: 13px; color: #1a3a6c; font-weight: 600; }
+.time.closed { color: #e63946 !important; font-weight: 700; }
+.social-box { background: #fff; border-radius: 14px; padding: 28px; border: 1.5px solid #e8edf5; height: 100%; }
+.social-box h4, .social-box h5 { font-size: 16px; font-weight: 800; color: #1a3a6c; margin-bottom: 16px; }
+.social-link { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f1f5f9; text-decoration: none; transition: color .15s; }
+.social-link:last-child { border-bottom: none; }
+.social-link i { font-size: 20px; color: #1a3a6c; flex-shrink: 0; }
+.social-link:hover .social-link-title { color: #2471a3; }
+.social-link-title { font-size: 13px; font-weight: 600; color: #1a3a6c; display: block; }
+.social-link-sub { font-size: 11.5px; color: #94a3b8; display: block; }
+/* Send message button */
+.btn-send { background: #1a3a6c; color: #fff; border: none; border-radius: 10px; padding: 12px 32px; font-size: 14px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: background .2s, transform .15s; font-family: 'Open Sans', sans-serif; letter-spacing: 0.3px; }
+.btn-send:hover { background: #2471a3; transform: translateY(-2px); }
+.btn-send:active { transform: translateY(0); }
+/* Alert messages (success / error) */
+.alert-contact { padding: 12px 16px; border-radius: 10px; margin-bottom: 20px; display: flex; align-items: flex-start; gap: 10px; font-size: 13px; font-weight: 600; }
+.alert-contact.success { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+.alert-contact.error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.alert-contact i { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.map-box { background: #fff; border-radius: 14px; overflow: hidden; border: 1.5px solid #e8edf5; margin-top: 32px; }
+/* Map info: stacked rows not a single flex row */
+.map-info { padding: 16px 20px; background: #1a3a6c; color: #fff; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.map-info-row { display: flex; align-items: center; gap: 8px; color: rgba(255,255,255,.85); }
+.map-info i { color: #c5a059; font-size: 16px; flex-shrink: 0; }
+/* Social icon brand colors */
+.social-link i.fb { color: #1877f2; }
+.social-link i.msg { color: #0084ff; }
+.social-link i.yt { color: #ff0000; }
+.social-link i.em { color: #1a3a6c; }
+.site-footer { background: #1a3a6c; color: rgba(255,255,255,.8); padding: 48px 0 0; font-size: 13px; }
+.site-footer h6 { color: #fff; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid rgba(197,160,89,.4); }
+.site-footer a { color: rgba(255,255,255,.7); text-decoration: none; display: block; margin-bottom: 8px; font-size: 12.5px; transition: color .15s; }
+.site-footer a:hover { color: #c5a059; }
+.footer-contact p { display: flex; align-items: flex-start; gap: 10px; color: rgba(255,255,255,.75); font-size: 12.5px; margin-bottom: 10px; line-height: 1.5; }
+.footer-contact i { color: #c5a059; font-size: 14px; flex-shrink: 0; margin-top: 2px; }
+.footer-logos { display: flex; gap: 10px; align-items: center; }
+.footer-logo-img { width: 44px; height: 44px; border-radius: 50%; overflow: hidden; background: #fff; }
+.footer-logo-img img { width: 100%; height: 100%; object-fit: cover; }
+.footer-news-item { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 14px; }
+.footer-news-img { width: 52px; height: 42px; border-radius: 6px; overflow: hidden; flex-shrink: 0; background: rgba(255,255,255,.1); }
+.footer-news-img img { width: 100%; height: 100%; object-fit: cover; }
+.footer-news-text { font-size: 11.5px; color: rgba(255,255,255,.7); line-height: 1.4; }
+.office-hours-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 12px; }
+.footer-bottom { text-align: center; padding: 16px 0; margin-top: 32px; border-top: 1px solid rgba(255,255,255,.1); font-size: 12px; color: rgba(255,255,255,.5); }

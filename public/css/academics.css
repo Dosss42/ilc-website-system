@@ -1,0 +1,66 @@
+/* ── Academics Page Styles ── */
+* { box-sizing: border-box; }
+:root { --bs-font-sans-serif: "Open Sans", sans-serif; --bs-body-font-family: "Open Sans", sans-serif; }
+body { font-family: "Open Sans", sans-serif; font-size: 14px; color: #374151; margin: 0; padding: 0; }
+::-webkit-scrollbar { width: 10px; } ::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 8px; } ::-webkit-scrollbar-thumb { background: #1a3a6c; border-radius: 8px; }
+.acad-section-title { font-size: 24px; font-weight: 800; color: #1a3a6c; margin-bottom: 6px; letter-spacing: 0.3px; }
+.acad-section-title::after { content: ""; display: block; width: 48px; height: 3px; background: #c5a059; border-radius: 2px; margin-top: 10px; }
+.acad-section-subtitle { font-size: 13.5px; color: #64748b; margin-bottom: 28px; line-height: 1.6; }
+.acad-overview-section { padding: 64px 0; background: #fff; }
+.overview-img-box { border-radius: 16px; overflow: hidden; box-shadow: 0 8px 32px rgba(26,58,108,.12); border: 3px solid #c5a059; background: #e8f0fb; min-height: 260px; }
+.overview-img-box img { width: 100%; height: 100%; object-fit: cover; display: block; max-height: 340px; }
+.img-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; color: #94a3b8; font-size: 13px; gap: 8px; min-height: 200px; }
+.img-placeholder i { font-size: 40px; }
+.overview-text p { font-size: 14px; color: #374151; line-height: 1.85; margin-bottom: 14px; text-align: justify; }
+.acad-stat-badges { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.acad-stat-badge { background: #e8f0fb; color: #1a3a6c; padding: 8px 16px; border-radius: 20px; font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.acad-stat-badge i { color: #c5a059; }
+.grade-levels-section { padding: 64px 0; background: #f6f8fb; }
+.grade-card { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 2px 12px rgba(26,58,108,.07); border: 1.5px solid #e8edf5; height: 100%; transition: transform .2s, box-shadow .2s; }
+.grade-card:hover { transform: translateY(-4px); box-shadow: 0 10px 28px rgba(26,58,108,.13); }
+.grade-card-header { background: #1a3a6c; padding: 16px 20px; display: flex; align-items: center; gap: 12px; }
+.grade-num { font-size: 11px; font-weight: 700; color: rgba(255,255,255,.6); text-transform: uppercase; letter-spacing: 1px; }
+.grade-label { font-size: 15px; font-weight: 800; color: #fff; }
+.grade-pill { background: rgba(197,160,89,.25); color: #c5a059; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; margin-left: auto; }
+.grade-card-body { padding: 16px 20px; }
+.grade-card-body p { font-size: 13px; color: #64748b; line-height: 1.65; margin: 0; }
+.subjects-section { padding: 64px 0; background: #fff; }
+.subject-category-card { background: #fff; border-radius: 12px; padding: 20px; border: 1.5px solid #e8edf5; box-shadow: 0 2px 8px rgba(26,58,108,.06); height: 100%; }
+.subject-category-card h5 { font-size: 14px; font-weight: 800; color: #1a3a6c; margin-bottom: 12px; }
+.subject-list { list-style: none; padding: 0; margin: 0; }
+.subject-list li { font-size: 12.5px; color: #64748b; padding: 5px 0; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 8px; }
+.subject-list li:last-child { border-bottom: none; }
+.subject-list li::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #c5a059; flex-shrink: 0; }
+.grading-section { padding: 64px 0; background: #f6f8fb; }
+.grading-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(26,58,108,.07); }
+.grading-table th { background: #1a3a6c; color: #fff; font-size: 13px; font-weight: 700; padding: 14px 16px; text-align: left; }
+.grading-table td { font-size: 13px; color: #374151; padding: 12px 16px; border-bottom: 1px solid #f1f5f9; }
+.grading-table tr:last-child td { border-bottom: none; }
+.grading-table tr:hover td { background: #f8faff; }
+.grading-note { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; font-size: 13px; color: #92400e; margin-top: 16px; }
+.calendar-section { padding: 64px 0; background: #fff; }
+.calendar-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(26,58,108,.07); }
+.calendar-table th { background: #1a3a6c; color: #fff; font-size: 12px; font-weight: 700; padding: 12px 14px; text-align: left; }
+.calendar-table td { font-size: 12.5px; color: #374151; padding: 10px 14px; border-bottom: 1px solid #f1f5f9; }
+.calendar-table tr:hover td { background: #f8faff; }
+.event-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10.5px; font-weight: 600; }
+.event-badge.holiday { background: #fee2e2; color: #991b1b; }
+.event-badge.exam { background: #dbeafe; color: #1e40af; }
+.event-badge.activity { background: #dcfce7; color: #166534; }
+.event-badge.opening { background: #fef9c3; color: #a16207; }
+.site-footer { background: #1a3a6c; color: rgba(255,255,255,.8); padding: 48px 0 0; font-size: 13px; }
+.site-footer h6 { color: #fff; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid rgba(197,160,89,.4); }
+.site-footer a { color: rgba(255,255,255,.7); text-decoration: none; display: block; margin-bottom: 8px; font-size: 12.5px; transition: color .15s; }
+.site-footer a:hover { color: #c5a059; }
+.footer-contact p { display: flex; align-items: flex-start; gap: 10px; color: rgba(255,255,255,.75); font-size: 12.5px; margin-bottom: 10px; line-height: 1.5; }
+.footer-contact i { color: #c5a059; font-size: 14px; flex-shrink: 0; margin-top: 2px; }
+.footer-logos { display: flex; gap: 10px; align-items: center; }
+.footer-logo-img { width: 44px; height: 44px; border-radius: 50%; overflow: hidden; background: #fff; }
+.footer-logo-img img { width: 100%; height: 100%; object-fit: cover; }
+.footer-news-item { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 14px; }
+.footer-news-img { width: 52px; height: 42px; border-radius: 6px; overflow: hidden; flex-shrink: 0; background: rgba(255,255,255,.1); }
+.footer-news-img img { width: 100%; height: 100%; object-fit: cover; }
+.footer-news-text { font-size: 11.5px; color: rgba(255,255,255,.7); line-height: 1.4; }
+.office-hours-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,.08); font-size: 12px; }
+.footer-bottom { text-align: center; padding: 16px 0; margin-top: 32px; border-top: 1px solid rgba(255,255,255,.1); font-size: 12px; color: rgba(255,255,255,.5); }
+@media (max-width: 768px) { .acad-overview-section, .grade-levels-section, .subjects-section, .grading-section, .calendar-section { padding: 40px 0; } }
