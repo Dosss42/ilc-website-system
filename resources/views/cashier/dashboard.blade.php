@@ -191,7 +191,7 @@
             padding: 10px 18px 10px 15px;
             color: rgba(255,255,255,0.65);
             text-decoration: none;
-            font-size: 13px; font-weight: 500;
+            font-size: 13px; font-weight: 400;
             font-family: 'Poppins', sans-serif;
             transition: all 0.18s;
             border-left: 3px solid transparent;
@@ -200,6 +200,7 @@
             border-right: none; border-top: none; border-bottom: none;
             width: 100%; text-align: left;
             border-radius: 0;
+            -webkit-appearance: none; -moz-appearance: none; appearance: none;
         }
         .sidebar-link .link-icon {
             width: 30px; height: 30px; border-radius: 8px;
@@ -273,7 +274,7 @@
             display: flex; align-items: center; justify-content: space-between;
             margin-bottom: 24px;
         }
-        .page-title { font-size: 22px; font-weight: 800; color: #1e293b; }
+        .page-title { font-size: 22px; font-weight: 700; color: var(--blue); }
         .page-sub   { font-size: 13px; color: #64748b; margin-top: 2px; }
         .page-date  {
             font-size: 12px; font-weight: 600; color: #64748b;
@@ -317,7 +318,7 @@
         .stat-icon-wrap.green { background: #f0fdf4; color: #16a34a; }
         .stat-icon-wrap.gold  { background: #fffbeb; color: #b45309; }
         .stat-icon-wrap.red   { background: #fef2f2; color: #dc2626; }
-        .stat-value { font-size: 28px; font-weight: 800; color: #1e293b; line-height: 1; }
+        .stat-value { font-size: 28px; font-weight: 700; color: var(--blue); line-height: 1; }
         .stat-label { font-size: 12px; font-weight: 600; color: #64748b; margin-top: 4px; }
         .stat-change {
             font-size: 11px; font-weight: 600; margin-top: 8px;

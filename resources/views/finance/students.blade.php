@@ -2,6 +2,38 @@
 
 @section('title', 'All Students')
 
+@section('skeleton')
+<div class="skel skel-header-title"></div>
+<div class="skel skel-header-sub"></div>
+<div class="skel-row-gap">
+    <div class="skel skel-stat-card"></div>
+    <div class="skel skel-stat-card"></div>
+    <div class="skel skel-stat-card"></div>
+    <div class="skel skel-stat-card"></div>
+</div>
+<div class="skel-row-gap">
+    <div class="skel skel-stat-card" style="min-width:45%;height:76px;"></div>
+    <div class="skel skel-stat-card" style="min-width:45%;height:76px;"></div>
+</div>
+<div class="skel-card">
+    <div class="skel skel-card-header"></div>
+    <div style="display:flex;gap:12px;">
+        <div class="skel skel-form-fld" style="flex:1;"></div>
+        <div class="skel skel-form-fld" style="width:160px;"></div>
+        <div class="skel skel-form-fld" style="width:150px;"></div>
+    </div>
+</div>
+<div class="skel-card">
+    <div class="skel skel-card-header"></div>
+    <div class="skel skel-table-row"></div>
+    <div class="skel skel-table-row"></div>
+    <div class="skel skel-table-row"></div>
+    <div class="skel skel-table-row"></div>
+    <div class="skel skel-table-row"></div>
+    <div class="skel skel-table-row"></div>
+</div>
+@endsection
+
 @section('content')
 <div class="section-header">
     <div>

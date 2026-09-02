@@ -2,6 +2,35 @@
 
 @section('title', 'Finance Management')
 
+@section('skeleton')
+<div class="skel skel-header-title"></div>
+<div class="skel skel-header-sub"></div>
+<div class="skel-row-gap">
+    <div class="skel skel-stat-card"></div>
+    <div class="skel skel-stat-card"></div>
+    <div class="skel skel-stat-card"></div>
+    <div class="skel skel-stat-card"></div>
+</div>
+<div class="skel-row-gap">
+    <div class="skel-card" style="flex:2;min-width:320px;">
+        <div class="skel skel-card-header"></div>
+        <div class="skel skel-chart"></div>
+    </div>
+    <div class="skel-card" style="flex:1;min-width:220px;">
+        <div class="skel skel-card-header"></div>
+        <div class="skel skel-chart" style="height:180px;"></div>
+    </div>
+</div>
+<div class="skel-card">
+    <div class="skel skel-card-header"></div>
+    <div class="skel skel-table-row"></div>
+    <div class="skel skel-table-row"></div>
+    <div class="skel skel-table-row"></div>
+    <div class="skel skel-table-row"></div>
+    <div class="skel skel-table-row"></div>
+</div>
+@endsection
+
 @section('content')
 
 <div class="section-header">
@@ -118,7 +147,7 @@
 <script>
 (function(){
     const _FC={blue:'#1a3a6c',mid:'#2471a3',gold:'#c5a059',green:'#16a34a',red:'#dc2626'};
-    Chart.defaults.font.family="'Open Sans',sans-serif";
+    Chart.defaults.font.family="'Poppins',sans-serif";
     Chart.defaults.font.size=11;
 
     // Monthly collection line

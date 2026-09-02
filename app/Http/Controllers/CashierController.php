@@ -572,30 +572,44 @@ class CashierController extends Controller
             return response()->json(['message' => 'Ignored: ' . $status]);
         }
 
-        $transaction = PaymentTransaction::where('xendit_invoice_id', $data['id'])->first();
-        if (!$transaction) {
-            return response()->json(['message' => 'Not found'], 404);
-        }
+        return DB::transaction(function () use ($data) {
+            // Lock the row so a second, concurrently-delivered webhook for the same
+            // invoice can't read the pre-update status before this one commits.
+            $transaction = PaymentTransaction::where('xendit_invoice_id', $data['id'])
+                ->lockForUpdate()
+                ->first();
 
-        $transaction->update(['status' => 'completed', 'processed_at' => now()]);
-
-        $enrollment = $transaction->enrollment;
-        if ($enrollment) {
-            $enrollment->decrement('remaining_balance', $transaction->amount);
-            $enrollment->increment('payment_amount', $transaction->amount);
-            $fresh = $enrollment->fresh();
-
-            // Create installment schedule if this is an installment plan and none exist yet
-            if (in_array($fresh->payment_option, ['B', 'C', 'D']) || $fresh->payment_type === 'installment') {
-                \App\Services\PaymentService::createInstallments($fresh);
-                // Reconcile: mark the correct number of months as paid based on total paid
-                \App\Services\PaymentService::reconcileInstallmentStatuses($fresh);
+            if (!$transaction) {
+                return response()->json(['message' => 'Not found'], 404);
             }
 
-            $this->advanceEnrollmentAfterPayment($fresh->fresh());
-        }
+            // Idempotency guard — Xendit can and does redeliver the same "paid"
+            // webhook more than once (retries on timeout / non-2xx responses).
+            // Without this, a redelivery would double-credit the enrollment.
+            if ($transaction->status === 'completed') {
+                return response()->json(['message' => 'Already processed']);
+            }
 
-        return response()->json(['message' => 'OK']);
+            $transaction->update(['status' => 'completed', 'processed_at' => now()]);
+
+            $enrollment = $transaction->enrollment;
+            if ($enrollment) {
+                $enrollment->decrement('remaining_balance', $transaction->amount);
+                $enrollment->increment('payment_amount', $transaction->amount);
+                $fresh = $enrollment->fresh();
+
+                // Create installment schedule if this is an installment plan and none exist yet
+                if (in_array($fresh->payment_option, ['B', 'C', 'D']) || $fresh->payment_type === 'installment') {
+                    \App\Services\PaymentService::createInstallments($fresh);
+                    // Reconcile: mark the correct number of months as paid based on total paid
+                    \App\Services\PaymentService::reconcileInstallmentStatuses($fresh);
+                }
+
+                $this->advanceEnrollmentAfterPayment($fresh->fresh());
+            }
+
+            return response()->json(['message' => 'OK']);
+        });
     }
 
     private function xenditMethodsFor(string $method): array

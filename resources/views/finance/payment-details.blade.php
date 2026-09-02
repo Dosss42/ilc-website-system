@@ -418,12 +418,12 @@
                         @if($document->status !== 'pending')
                             <div class="info-row">
                                 <div class="info-label">Reviewed By</div>
-                                <div class="info-value">{{ $document->reviewedBy->name ?? 'System' }}</div>
+                                <div class="info-value">{{ $document->processedBy->name ?? 'System' }}</div>
                             </div>
-                            
+
                             <div class="info-row">
                                 <div class="info-label">Reviewed On</div>
-                                <div class="info-value">{{ $document->reviewed_at ? $document->reviewed_at->format('F d, Y h:i A') : $document->updated_at->format('F d, Y h:i A') }}</div>
+                                <div class="info-value">{{ $document->processed_at ? $document->processed_at->format('F d, Y h:i A') : $document->updated_at->format('F d, Y h:i A') }}</div>
                             </div>
                         @endif
                         
@@ -525,7 +525,7 @@
                         </div>
                         <div class="card-body">
                             <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                                <form method="POST" action="{{ route('finance.payments.approve', $document) }}" style="display: inline;">
+                                <form method="POST" action="{{ route('admin.payments.approve', $document) }}" style="display: inline;">
                                     @csrf
                                     <button type="submit" class="btn-approve" onclick="return confirm('Are you sure you want to APPROVE this payment?')">
                                         <i class="bi bi-check-lg"></i> Approve Payment
@@ -563,7 +563,7 @@
                                 <div class="timeline-item">
                                     <div class="timeline-dot" style="background: {{ $document->status === 'approved' ? '#28a745' : '#dc3545' }};"></div>
                                     <div class="timeline-content">
-                                        <div class="timeline-time">{{ $document->reviewed_at ? $document->reviewed_at->format('M d, Y h:i A') : $document->updated_at->format('M d, Y h:i A') }}</div>
+                                        <div class="timeline-time">{{ $document->processed_at ? $document->processed_at->format('M d, Y h:i A') : $document->updated_at->format('M d, Y h:i A') }}</div>
                                         <div class="timeline-title">
                                             @if($document->status === 'approved')
                                                 <span style="color: #28a745;"><i class="bi bi-check-circle"></i> Payment Approved</span>
@@ -572,7 +572,7 @@
                                             @endif
                                         </div>
                                         <div class="timeline-desc">
-                                            Reviewed by {{ $document->reviewedBy->name ?? 'System' }}
+                                            Reviewed by {{ $document->processedBy->name ?? 'System' }}
                                         </div>
                                     </div>
                                 </div>
@@ -595,7 +595,7 @@
                         </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
-                    <form method="POST" action="{{ route('finance.payments.reject', $document) }}">
+                    <form method="POST" action="{{ route('admin.payments.reject', $document) }}">
                         @csrf
                         <div class="modal-body">
                             <p style="color: #666; margin-bottom: 16px;">
