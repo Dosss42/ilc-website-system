@@ -2281,6 +2281,9 @@ function openWalkInEnrollmentModal() {
                         <button class="sm-assess-tab" id="sm-docs-tab-btn" onclick="smAssessTab('docs',this);loadSmDocuments();" style="flex:1;padding:12px;border:0;background:#f8f9fa;font-size:13px;font-weight:600;color:#888;cursor:pointer;">
                             <i class="bi bi-folder-check me-1"></i> Documents
                         </button>
+                        <button class="sm-assess-tab" id="sm-guidance-tab-btn" onclick="smAssessTab('guidance',this);loadSmGuidance();" style="flex:1;padding:12px;border:0;background:#f8f9fa;font-size:13px;font-weight:600;color:#888;cursor:pointer;">
+                            <i class="bi bi-flag me-1"></i> Guidance
+                        </button>
                         <button class="sm-assess-tab" onclick="smAssessTab('decision',this)" style="flex:1;padding:12px;border:0;background:#f8f9fa;font-size:13px;font-weight:600;color:#888;cursor:pointer;">
                             <i class="bi bi-check2-square me-1"></i> Decision
                         </button>
@@ -2309,6 +2312,14 @@ function openWalkInEnrollmentModal() {
                             <div class="spinner-border spinner-border-sm me-2"></div> Loading documents...
                         </div>
                         <div id="sm-docs-content" style="display:none;"></div>
+                    </div>
+
+                    {{-- Guidance Tab — informational only, does not block assessment --}}
+                    <div id="sm-tab-guidance" class="sm-assess-panel" style="display:none;padding:20px;">
+                        <div id="sm-guidance-loading" style="text-align:center;padding:30px;color:#999;">
+                            <div class="spinner-border spinner-border-sm me-2"></div> Loading guidance records...
+                        </div>
+                        <div id="sm-guidance-content" style="display:none;"></div>
                     </div>
 
                     {{-- Decision Tab --}}
@@ -6120,9 +6131,14 @@ function openWalkInEnrollmentModal() {
                 <h1>Schedule Management</h1>
                 <p>Manage class schedules by grade level and section.</p>
             </div>
-            <button class="btn-dash btn-primary" onclick="openScheduleModal()">
-                <i class="bi bi-plus-lg"></i> Add Schedule
-            </button>
+            <div style="display:flex;gap:10px;">
+                <button class="btn-dash btn-secondary" onclick="openCopyTermModal()">
+                    <i class="bi bi-copy"></i> Copy Term
+                </button>
+                <button class="btn-dash btn-primary" onclick="openScheduleModal()">
+                    <i class="bi bi-plus-lg"></i> Add Schedule
+                </button>
+            </div>
         </div>
 
         {{-- Schedule Filters --}}
@@ -6419,6 +6435,17 @@ function openWalkInEnrollmentModal() {
                                     <option value="Social">Social</option>
                                     <option value="Health">Health</option>
                                     <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-lbl">Counselor *</label>
+                                <select id="guidance-counselor" class="form-fld" required>
+                                    <option value="">Select Counselor</option>
+                                    @foreach($guidanceCounselors ?? [] as $gc)
+                                        <option value="{{ $gc->id }}" {{ auth()->id() === $gc->id ? 'selected' : '' }}>
+                                            {{ $gc->name }} ({{ ucfirst($gc->role) }})
+                                        </option>
+                                    @endforeach
                                 </select>
                             </div>
                             <div class="col-12">
@@ -9040,7 +9067,16 @@ function openWalkInEnrollmentModal() {
                         <tr data-grade="{{ $asGl }}" data-status="{{ $isDone ? 'done' : 'pending' }}" data-name="{{ strtolower($as->name) }}"
                             style="{{ $isDone ? 'background:#f6fef9;' : 'background:#fffbf0;' }}">
                             <td>
-                                <div style="font-weight:600;">{{ $as->name }}</div>
+                                <div style="display:flex;align-items:center;gap:6px;">
+                                    <span style="font-weight:600;">{{ $as->name }}</span>
+                                    @php $asGuidanceCount = $assessGuidanceCounts[$as->id] ?? 0; @endphp
+                                    @if($asGuidanceCount > 0)
+                                        <span title="{{ $asGuidanceCount }} open guidance concern(s) — informational only, does not block assessment"
+                                            style="display:inline-flex;align-items:center;gap:3px;background:#fff3e0;color:#e65100;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;">
+                                            <i class="bi bi-flag-fill"></i> {{ $asGuidanceCount }}
+                                        </span>
+                                    @endif
+                                </div>
                                 <div style="font-size:11px;color:var(--muted);">{{ $as->email }}</div>
                             </td>
                             <td><span class="grade-chip">{{ $asGlLbl }}</span></td>
@@ -16516,7 +16552,91 @@ function openWalkInEnrollmentModal() {
 
     }
 
-    // â”€â”€ Schedule Template Generator Functions â”€â”€
+    // ── Copy Term Schedule ──
+
+    function openCopyTermModal() {
+        document.getElementById('copyterm-source').value = '1';
+        document.getElementById('copyterm-target').value = '2';
+        document.getElementById('copyterm-replace').checked = false;
+        document.getElementById('copyterm-result').style.display = 'none';
+        document.getElementById('copyterm-result').innerHTML = '';
+        new bootstrap.Modal(document.getElementById('copyTermModal')).show();
+    }
+
+    function submitCopyTerm() {
+        const sourceTerm = document.getElementById('copyterm-source').value;
+        const targetTerm = document.getElementById('copyterm-target').value;
+        const replace    = document.getElementById('copyterm-replace').checked;
+        const resultEl   = document.getElementById('copyterm-result');
+        const btn        = document.getElementById('copyterm-submit-btn');
+
+        if (sourceTerm === targetTerm) {
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = '<div style="background:#fff3e0;color:#e65100;padding:10px 14px;border-radius:8px;font-size:12.5px;"><i class="bi bi-exclamation-triangle me-1"></i>Source and target term must be different.</div>';
+            return;
+        }
+
+        if (replace && !confirm('This will delete the existing schedule for the target term before copying. Continue?')) {
+            return;
+        }
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Copying…';
+        resultEl.style.display = 'none';
+
+        fetch('{{ route("admin.schedules.copy-term") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            },
+            body: JSON.stringify({
+                source_term: sourceTerm,
+                target_term: targetTerm,
+                replace_target: replace,
+            }),
+        })
+        .then(r => r.json().then(data => ({ ok: r.ok, data })))
+        .then(({ ok, data }) => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-copy me-1"></i>Copy Schedule';
+
+            if (!ok || !data.success) {
+                resultEl.style.display = 'block';
+                resultEl.innerHTML = `<div style="background:#ffebee;color:#c62828;padding:10px 14px;border-radius:8px;font-size:12.5px;"><i class="bi bi-x-circle me-1"></i>${data.message || 'Failed to copy schedule.'}</div>`;
+                return;
+            }
+
+            let html = `<div style="background:#e8f5e9;color:#1b5e20;padding:10px 14px;border-radius:8px;font-size:12.5px;margin-bottom:${data.skipped.length ? '10px' : '0'};">
+                <i class="bi bi-check-circle me-1"></i>Copied ${data.copied} of ${data.total} schedule block(s).
+            </div>`;
+
+            if (data.skipped.length) {
+                html += `<div style="background:#fff3e0;color:#e65100;padding:10px 14px;border-radius:8px;font-size:12px;">
+                    <div style="font-weight:700;margin-bottom:6px;"><i class="bi bi-exclamation-triangle me-1"></i>${data.skipped.length} skipped due to conflicts:</div>
+                    <ul style="margin:0;padding-left:18px;">` +
+                    data.skipped.map(s => `<li>${s.section} — ${s.subject} (${s.day} ${s.time}): ${s.reasons.join('; ')}</li>`).join('') +
+                    `</ul></div>`;
+            }
+
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = html;
+
+            // Refresh the visible grid if it's showing the target term
+            if (document.getElementById('scheduleTermFilter').value === targetTerm) {
+                loadScheduleGrid();
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-copy me-1"></i>Copy Schedule';
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = '<div style="background:#ffebee;color:#c62828;padding:10px 14px;border-radius:8px;font-size:12.5px;"><i class="bi bi-x-circle me-1"></i>Network error. Please try again.</div>';
+        });
+    }
+
+    // ── Schedule Template Generator Functions ──
 
     function openScheduleTemplateModal() {
 
@@ -19198,6 +19318,69 @@ function openWalkInEnrollmentModal() {
     function loadSmDocuments() { _fetchDocs(_smAssessStudentId, 'sm-docs-loading', 'sm-docs-content', 'reloadSmDocs'); }
     function loadSvDocuments(userId) { _fetchDocs(userId, 'sv-docs-loading', 'sv-docs-content', 'reloadSvDocs'); }
 
+    // ── Guidance tab (assessment modal) — informational only, does not block anything ──
+    function loadSmGuidance() {
+        var loadEl = document.getElementById('sm-guidance-loading');
+        var contEl = document.getElementById('sm-guidance-content');
+        loadEl.style.display = 'block';
+        contEl.style.display = 'none';
+        contEl.innerHTML = '';
+        fetch('/admin/student/' + _smAssessStudentId + '/guidance-for-assess', {
+            headers: { 'X-CSRF-TOKEN': csrfToken }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            loadEl.style.display = 'none';
+            contEl.innerHTML = buildGuidanceCards(data.records || []);
+            contEl.style.display = 'block';
+        })
+        .catch(function() {
+            loadEl.innerHTML = '<span style="color:#c0392b;font-size:12px;">Failed to load guidance records.</span>';
+        });
+    }
+
+    function buildGuidanceCards(records) {
+        var openCount = records.filter(function(r) { return r.status === 'open' || r.status === 'in_progress'; }).length;
+
+        var html = '<div style="background:#e8f4ff;border:1px solid #b8d4f0;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#1a3a6c;display:flex;gap:8px;align-items:flex-start;">' +
+            '<i class="bi bi-info-circle-fill" style="margin-top:1px;flex-shrink:0;"></i>' +
+            '<span>Guidance history is shown for context only — it does not block promotion or retention. The decision remains yours.</span></div>';
+
+        if (!records.length) {
+            html += '<div style="text-align:center;padding:30px;color:#999;">' +
+                '<i class="bi bi-flag" style="font-size:32px;display:block;margin-bottom:8px;opacity:0.3;"></i>No guidance records for this student.</div>';
+            return html;
+        }
+
+        html += '<div style="font-size:11px;font-weight:700;color:' + (openCount > 0 ? '#e65100' : '#2e7d32') + ';margin-bottom:10px;text-transform:uppercase;">' +
+            (openCount > 0 ? openCount + ' open/in-progress concern(s)' : 'No open concerns') + ' — ' + records.length + ' total record(s)</div>';
+
+        var statusStyle = {
+            open:        { bg: '#fff3e0', color: '#e65100', label: 'Open' },
+            in_progress: { bg: '#e3f2fd', color: '#1565c0', label: 'In Progress' },
+            resolved:    { bg: '#e8f5e9', color: '#2e7d32', label: 'Resolved' },
+            closed:      { bg: '#f5f5f5', color: '#666',    label: 'Closed' },
+        };
+
+        html += '<div style="display:flex;flex-direction:column;gap:10px;">';
+        records.forEach(function(r) {
+            var st = statusStyle[r.status] || statusStyle.closed;
+            html += '<div style="border:1px solid #e5e7eb;border-radius:8px;padding:12px 14px;">' +
+                '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:6px;">' +
+                '<div>' +
+                '<span style="font-weight:700;font-size:13px;">' + (r.concern_type || 'Concern') + '</span>' +
+                '<span style="font-size:11px;color:#999;margin-left:8px;">' + (r.date || '') + '</span>' +
+                '</div>' +
+                '<span style="font-size:10px;font-weight:700;background:' + st.bg + ';color:' + st.color + ';padding:2px 9px;border-radius:20px;white-space:nowrap;">' + st.label + '</span>' +
+                '</div>' +
+                '<div style="font-size:12px;color:#444;">' + (r.concern_description || '') + '</div>' +
+                (r.counselor ? '<div style="font-size:11px;color:#999;margin-top:6px;">Counselor: ' + r.counselor.name + '</div>' : '') +
+                '</div>';
+        });
+        html += '</div>';
+        return html;
+    }
+
     function smSelectDecision(val) {
         document.querySelectorAll('input[name="sm-decision"]').forEach(function(r) { r.checked = false; });
         document.querySelector('input[name="sm-decision"][value="' + val + '"]').checked = true;
@@ -19874,6 +20057,65 @@ function openWalkInEnrollmentModal() {
                         <i class="bi bi-check-lg me-1"></i>Save Schedule
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Copy Term Schedule Modal -->
+<div class="modal fade" id="copyTermModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content modal-content-styled" style="border-radius:16px; overflow:hidden; border:none;">
+            <div class="modal-header modal-header-styled" style="background:linear-gradient(135deg, #4a1d8a, #6f42c1); padding:18px 24px;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="width:38px; height:38px; background:rgba(255,255,255,0.15); border-radius:10px; display:flex; align-items:center; justify-content:center;">
+                        <i class="bi bi-copy" style="font-size:16px; color:#fff;"></i>
+                    </div>
+                    <h5 class="modal-title" style="color:#fff; font-weight:700; margin:0; font-size:16px;">Copy Term Schedule</h5>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body modal-body-styled" style="padding:24px;">
+                <div style="font-size:12.5px; color:var(--muted); background:#f8f9fa; border-radius:8px; padding:12px 14px; margin-bottom:18px;">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Duplicates every schedule block from the source term into the target term —
+                    same sections, subjects, teachers, and rooms. Blocks that would create a
+                    conflict in the target term are skipped and listed, not silently overwritten.
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="dash-form-label"><i class="bi bi-calendar-minus me-1" style="color:#6f42c1;"></i>Copy From <span class="text-danger">*</span></label>
+                        <select id="copyterm-source" class="dash-form-control">
+                            <option value="1">1st Term</option>
+                            <option value="2">2nd Term</option>
+                            <option value="3">3rd Term</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="dash-form-label"><i class="bi bi-calendar-plus me-1" style="color:#6f42c1;"></i>Copy To <span class="text-danger">*</span></label>
+                        <select id="copyterm-target" class="dash-form-control">
+                            <option value="1">1st Term</option>
+                            <option value="2" selected>2nd Term</option>
+                            <option value="3">3rd Term</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-check" style="margin-bottom:4px;">
+                    <input class="form-check-input" type="checkbox" id="copyterm-replace">
+                    <label class="form-check-label" for="copyterm-replace" style="font-size:13px;">
+                        Clear the target term's existing schedule first
+                        <div style="font-size:11px; color:var(--muted);">Leave unchecked to add alongside whatever's already in the target term.</div>
+                    </label>
+                </div>
+                <div id="copyterm-result" style="display:none; margin-top:16px;"></div>
+            </div>
+            <div class="modal-footer modal-footer-styled" style="padding:16px 24px; background:#f8fafc; border-top:1px solid #e2e8f0;">
+                <button type="button" class="btn-dash btn-secondary" data-bs-dismiss="modal" style="padding:9px 20px;">
+                    <i class="bi bi-x-lg me-1"></i>Cancel
+                </button>
+                <button type="button" id="copyterm-submit-btn" class="btn-dash btn-primary" onclick="submitCopyTerm()" style="padding:9px 24px; font-weight:700; background:linear-gradient(135deg,#4a1d8a,#6f42c1); border:none;">
+                    <i class="bi bi-copy me-1"></i>Copy Schedule
+                </button>
             </div>
         </div>
     </div>

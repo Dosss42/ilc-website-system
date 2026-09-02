@@ -275,6 +275,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/enrollment/{enrollment}/change-status', [EnrollmentController::class, 'changeEnrollmentStatus'])->name('enrollment.change-status');
     Route::get('/student/{user}/grades-for-assess',       [EnrollmentController::class, 'getStudentGradesForAssess'])->name('student.grades-for-assess');
     Route::get('/student/{user}/documents-for-assess',    [EnrollmentController::class, 'getStudentDocumentsForAssess'])->name('student.documents-for-assess');
+    Route::get('/student/{user}/guidance-for-assess',      [EnrollmentController::class, 'getStudentGuidanceForAssess'])->name('student.guidance-for-assess');
 
     // MASS PROMOTION (kept for legacy, hidden from UI)
     Route::post('/students/mass-promote', [EnrollmentController::class, 'massPromote'])->name('students.mass-promote');
@@ -284,6 +285,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::prefix('schedules')->name('schedules.')->group(function () {
         Route::get('/', [ScheduleController::class, 'index'])->name('index');
         Route::post('/', [ScheduleController::class, 'store'])->name('store');
+        Route::post('/copy-term', [ScheduleController::class, 'copyTerm'])->name('copy-term');
         Route::get('/{schedule}', [ScheduleController::class, 'show'])->name('show');
         Route::put('/{schedule}', [ScheduleController::class, 'update'])->name('update');
         Route::delete('/{schedule}', [ScheduleController::class, 'destroy'])->name('destroy');

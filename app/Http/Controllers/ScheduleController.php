@@ -143,6 +143,76 @@ class ScheduleController extends Controller
         return $conflicts;
     }
 
+    /**
+     * Duplicate an entire term's schedule into another term (same school year,
+     * same sections). Runs the same conflict checks as a normal create — any
+     * block that would conflict in the target term is skipped and reported
+     * rather than failing the whole batch.
+     */
+    public function copyTerm(Request $request)
+    {
+        $validated = $request->validate([
+            'source_term'     => 'required|integer|min:1|max:3',
+            'target_term'     => 'required|integer|min:1|max:3|different:source_term',
+            'replace_target'  => 'boolean',
+        ]);
+
+        $sourceSchedules = Schedule::where('term', $validated['source_term'])
+            ->orderBy('day_of_week')
+            ->orderBy('start_time')
+            ->get();
+
+        if ($sourceSchedules->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No schedule found for the source term — nothing to copy.',
+            ], 422);
+        }
+
+        if ($request->boolean('replace_target')) {
+            Schedule::where('term', $validated['target_term'])->delete();
+        }
+
+        $copied  = 0;
+        $skipped = [];
+
+        foreach ($sourceSchedules as $src) {
+            $data = [
+                'section_id'  => $src->section_id,
+                'subject_id'  => $src->subject_id,
+                'teacher_id'  => $src->teacher_id,
+                'day_of_week' => $src->day_of_week,
+                'start_time'  => $src->start_time,
+                'end_time'    => $src->end_time,
+                'room'        => $src->room,
+                'is_active'   => $src->is_active,
+                'term'        => $validated['target_term'],
+            ];
+
+            $conflicts = $this->detectConflicts($data);
+            if (!empty($conflicts)) {
+                $skipped[] = [
+                    'section' => $src->section->name ?? ('#' . $src->section_id),
+                    'subject' => $src->subject->name ?? ('#' . $src->subject_id),
+                    'day'     => $src->day_of_week,
+                    'time'    => $src->start_time . '–' . $src->end_time,
+                    'reasons' => $conflicts,
+                ];
+                continue;
+            }
+
+            Schedule::create($data);
+            $copied++;
+        }
+
+        return response()->json([
+            'success' => true,
+            'copied'  => $copied,
+            'skipped' => $skipped,
+            'total'   => $sourceSchedules->count(),
+        ]);
+    }
+
     public function destroy(Schedule $schedule)
     {
         $schedule->delete();
