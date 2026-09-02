@@ -100,6 +100,30 @@
 </style>
 @endsection
 
+@section('skeleton')
+<div class="skel skel-header-title"></div>
+<div class="skel-row-gap" style="align-items:stretch;">
+    <div class="skel-card" style="flex:1;min-width:260px;text-align:center;">
+        <div class="skel skel-avatar-lg"></div>
+        <div class="skel skel-line" style="width:60%;height:18px;margin:0 auto 10px;"></div>
+        <div class="skel skel-line" style="width:40%;margin:0 auto 16px;"></div>
+        <div class="skel skel-line" style="width:80%;margin:0 auto;"></div>
+        <div class="skel skel-line" style="width:70%;margin:0 auto;"></div>
+    </div>
+    <div class="skel-card" style="flex:2;min-width:320px;">
+        <div class="skel skel-card-header"></div>
+        <div class="skel-row-gap" style="margin-bottom:16px;">
+            <div style="flex:1;"><div class="skel skel-form-lbl"></div><div class="skel skel-form-fld"></div></div>
+            <div style="flex:1;"><div class="skel skel-form-lbl"></div><div class="skel skel-form-fld"></div></div>
+        </div>
+        <div class="skel-row-gap" style="margin-bottom:0;">
+            <div style="flex:1;"><div class="skel skel-form-lbl"></div><div class="skel skel-form-fld"></div></div>
+            <div style="flex:1;"><div class="skel skel-form-lbl"></div><div class="skel skel-form-fld"></div></div>
+        </div>
+    </div>
+</div>
+@endsection
+
 @section('content')
 <div class="page-header">
     <h1 class="page-title">My Profile</h1>

@@ -15,6 +15,7 @@ class PaymentTransaction extends Model
         'reference_number',
         'description',
         'status',
+        'reject_reason',
         'installment_month',
         'installment_id',
         'processed_by',

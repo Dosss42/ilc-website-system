@@ -7,7 +7,7 @@
     <title>@yield('title', 'Finance Portal') - IEMELIF Learning Center</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/global-scrollbar.css">
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -31,7 +31,7 @@
             --blue-pale: #e8f0fb;
         }
 
-        * { font-family: 'Open Sans', sans-serif; }
+        * { font-family: 'Poppins', sans-serif; }
 
         body {
             background: #f5f6fa;
@@ -136,7 +136,7 @@
             transition: all 0.2s;
             border-left: 3px solid transparent;
             font-size: 13px;
-            font-weight: 500;
+            font-weight: 400;
         }
 
         .menu-item:hover, .menu-item.active {
@@ -232,6 +232,28 @@
         .user-row-sub{font-size:11px;color:var(--muted);}
         .text-muted-alt{color:#aaa;font-size:13px;}
         .installment-progress-bar{height:100%;border-radius:4px;}
+
+        /* ── Skeleton loading ── */
+        .main-content{position:relative;}
+        .fin-skeleton-overlay{position:absolute;inset:0;background:#f5f6fa;z-index:50;padding:24px 32px;overflow:hidden;transition:opacity .35s ease;}
+        .fin-skeleton-overlay.fin-skel-hide{opacity:0;pointer-events:none;}
+        .skel{position:relative;overflow:hidden;background:#e7eaf1;border-radius:8px;}
+        .skel::after{content:'';position:absolute;top:0;left:-150%;width:150%;height:100%;
+            background:linear-gradient(90deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.65) 50%,rgba(255,255,255,0) 100%);
+            animation:skel-shimmer 1.4s ease-in-out infinite;}
+        @keyframes skel-shimmer{100%{left:150%;}}
+        .skel-header-title{width:260px;height:26px;margin-bottom:10px;}
+        .skel-header-sub{width:400px;height:14px;margin-bottom:24px;}
+        .skel-row-gap{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap;}
+        .skel-stat-card{flex:1;min-width:200px;height:76px;border-radius:12px;}
+        .skel-card{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.05);margin-bottom:24px;padding:20px;}
+        .skel-card-header{height:16px;width:190px;margin-bottom:18px;}
+        .skel-line{height:12px;border-radius:4px;margin-bottom:10px;}
+        .skel-table-row{height:44px;border-radius:6px;margin-bottom:8px;}
+        .skel-form-fld{height:40px;border-radius:8px;margin-bottom:18px;}
+        .skel-form-lbl{height:10px;width:110px;margin-bottom:8px;}
+        .skel-chart{height:220px;border-radius:10px;}
+        .skel-avatar-lg{width:100px;height:100px;border-radius:50%;margin:0 auto 20px;}
     </style>
     @yield('styles')
 </head>
@@ -348,6 +370,10 @@
 
     <!-- Main Content -->
     <main class="main-content">
+        <div id="finSkeletonOverlay" class="fin-skeleton-overlay">
+            @yield('skeleton')
+        </div>
+
         @if(session('success'))
             <div class="alert alert-success alert-dismissible fade show" role="alert">
                 {{ session('success') }}
@@ -368,5 +394,22 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     @yield('scripts')
     @stack('scripts')
+    <script>
+        (function(){
+            var overlay = document.getElementById('finSkeletonOverlay');
+            if (!overlay) return;
+            var minTime = 450; // minimum ms the skeleton stays visible, so it doesn't just flash
+            var start = Date.now();
+            function reveal(){
+                var wait = Math.max(0, minTime - (Date.now() - start));
+                setTimeout(function(){
+                    overlay.classList.add('fin-skel-hide');
+                    setTimeout(function(){ overlay.remove(); }, 400);
+                }, wait);
+            }
+            if (document.readyState === 'complete') reveal();
+            else window.addEventListener('load', reveal);
+        })();
+    </script>
 </body>
 </html>

@@ -118,6 +118,40 @@
 </style>
 @endsection
 
+@section('skeleton')
+<div class="skel skel-header-title"></div>
+<div class="skel-card">
+    <div style="display:flex;gap:12px;">
+        <div class="skel skel-form-fld" style="flex:1;"></div>
+        <div class="skel skel-form-fld" style="width:160px;"></div>
+        <div class="skel skel-form-fld" style="width:160px;"></div>
+        <div class="skel skel-form-fld" style="width:150px;"></div>
+    </div>
+</div>
+<div class="skel-row-gap">
+    <div class="skel skel-stat-card"></div>
+    <div class="skel skel-stat-card"></div>
+    <div class="skel skel-stat-card"></div>
+    <div class="skel skel-stat-card"></div>
+</div>
+<div class="skel-card">
+    <div class="skel skel-card-header"></div>
+    <div class="skel skel-table-row"></div>
+    <div class="skel skel-table-row"></div>
+    <div class="skel skel-table-row"></div>
+</div>
+<div class="skel-row-gap">
+    <div class="skel-card" style="flex:2;min-width:320px;">
+        <div class="skel skel-card-header"></div>
+        <div class="skel skel-chart"></div>
+    </div>
+    <div class="skel-card" style="flex:1;min-width:220px;">
+        <div class="skel skel-card-header"></div>
+        <div class="skel skel-chart" style="height:180px;"></div>
+    </div>
+</div>
+@endsection
+
 @section('content')
 <div class="page-header">
     <h1 class="page-title">Financial Reports</h1>

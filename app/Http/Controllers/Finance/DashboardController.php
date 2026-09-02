@@ -1287,7 +1287,7 @@ class DashboardController extends Controller
     {
         $payment->load(['enrollment', 'user', 'processedBy']);
 
-        return view('finance.payment-details', compact('payment'));
+        return view('finance.payment-details', ['document' => $payment]);
     }
 
     /**

@@ -131,6 +131,20 @@
 </style>
 @endsection
 
+@section('skeleton')
+<div class="skel skel-header-title"></div>
+<div class="skel-card" style="max-width:600px;">
+    <div class="skel skel-card-header"></div>
+    <div class="skel skel-line" style="width:100%;height:60px;border-radius:8px;margin-bottom:20px;"></div>
+    <div class="skel skel-form-lbl"></div>
+    <div class="skel skel-form-fld"></div>
+    <div class="skel skel-form-lbl"></div>
+    <div class="skel skel-form-fld"></div>
+    <div class="skel skel-form-lbl"></div>
+    <div class="skel skel-form-fld"></div>
+</div>
+@endsection
+
 @section('content')
 <div class="page-header">
     <h1 class="page-title">Change Password</h1>

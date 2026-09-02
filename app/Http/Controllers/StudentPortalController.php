@@ -30,6 +30,15 @@ class StudentPortalController extends Controller
     {
         $user = Auth::user();
 
+        // If we just landed back from a Xendit payment redirect, look up that transaction
+        // so the view can show a persistent "Payment Received" confirmation card.
+        $justPaidTransaction = null;
+        if ($paidRef = request()->query('paid_ref')) {
+            $justPaidTransaction = \App\Models\PaymentTransaction::where('reference_number', $paidRef)
+                ->where('user_id', $user->id)
+                ->first();
+        }
+
         // Prefer the newest school year first, then the most-advanced status within that year.
         // This ensures a just-approved re-enrollment for 2027-2028 takes over from 2026-2027 enrolled.
         $enrollment = $user->enrollments()
@@ -53,6 +62,7 @@ class StudentPortalController extends Controller
                 'documents' => collect([]),
                 'profileComplete' => false,
                 'schedules' => collect([]),
+                'justPaidTransaction' => $justPaidTransaction,
             ]);
         }
 
@@ -235,7 +245,8 @@ class StudentPortalController extends Controller
             'paymentInstallments', 'paymentSummary', 'availableSections',
             'needsReenrollment', 'reenrollmentOpen', 'suggestedGrade',
             'currentSchoolYear', 'promotionRecord', 'enrollmentWindowOpen',
-            'profile', 'address', 'guardian', 'mother', 'father', 'previousSchool'
+            'profile', 'address', 'guardian', 'mother', 'father', 'previousSchool',
+            'justPaidTransaction'
         ));
     }
 
@@ -1143,7 +1154,7 @@ class StudentPortalController extends Controller
                 'currency'             => 'PHP',
                 'customer'             => ['given_names' => $user->name, 'email' => $user->email],
                 'payment_methods'      => $allowedMethods,
-                'success_redirect_url' => route('student.portal'),
+                'success_redirect_url' => route('student.portal', ['paid_ref' => $externalId]),
                 'failure_redirect_url' => route('student.portal'),
             ]);
 

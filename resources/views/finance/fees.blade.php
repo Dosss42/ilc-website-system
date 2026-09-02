@@ -2,6 +2,35 @@
 
 @section('title', 'Fee Management')
 
+@section('skeleton')
+<div class="skel skel-header-title"></div>
+<div class="skel skel-header-sub"></div>
+<div class="skel-card">
+    <div class="skel skel-card-header"></div>
+    <div class="skel-row-gap" style="margin-bottom:0;">
+        <div style="flex:1;min-width:150px;"><div class="skel skel-form-lbl"></div><div class="skel skel-form-fld"></div></div>
+        <div style="flex:1;min-width:150px;"><div class="skel skel-form-lbl"></div><div class="skel skel-form-fld"></div></div>
+        <div style="flex:1;min-width:150px;"><div class="skel skel-form-lbl"></div><div class="skel skel-form-fld"></div></div>
+        <div style="flex:1;min-width:150px;"><div class="skel skel-form-lbl"></div><div class="skel skel-form-fld"></div></div>
+    </div>
+</div>
+<div class="skel-card">
+    <div class="skel skel-card-header"></div>
+    <div class="skel-row-gap" style="margin-bottom:0;">
+        <div style="flex:1;min-width:150px;"><div class="skel skel-form-lbl"></div><div class="skel skel-form-fld"></div></div>
+        <div style="flex:1;min-width:150px;"><div class="skel skel-form-lbl"></div><div class="skel skel-form-fld"></div></div>
+        <div style="flex:1;min-width:150px;"><div class="skel skel-form-lbl"></div><div class="skel skel-form-fld"></div></div>
+        <div style="flex:1;min-width:150px;"><div class="skel skel-form-lbl"></div><div class="skel skel-form-fld"></div></div>
+    </div>
+</div>
+<div class="skel-card">
+    <div class="skel skel-card-header"></div>
+    <div class="skel skel-table-row"></div>
+    <div class="skel skel-table-row"></div>
+    <div class="skel skel-table-row"></div>
+</div>
+@endsection
+
 @section('content')
 <div class="section-header">
     <div>
