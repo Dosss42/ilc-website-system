@@ -213,9 +213,10 @@ class SummerClassController extends Controller
         $failingStudents = DB::table('grades')
             ->join('users', 'grades.student_id', '=', 'users.id')
             ->where('grades.subject_id', $request->subject_id)
-            ->where('grades.final_grade', '<', 75)
-            ->whereNotNull('grades.final_grade')
-            ->select('users.id', 'users.name', 'users.email', 'users.lrn', 'grades.final_grade', 'grades.quarter')
+            ->where('grades.school_year', $request->school_year)
+            ->where('grades.grade', '<', 75)
+            ->whereNotNull('grades.grade')
+            ->select('users.id', 'users.name', 'users.email', 'users.lrn', 'grades.grade', 'grades.term')
             ->orderBy('users.name')
             ->get();
 

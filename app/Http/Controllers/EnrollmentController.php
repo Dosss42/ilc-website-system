@@ -1004,6 +1004,20 @@ class EnrollmentController extends Controller
             ->filter(fn($s) => ($s->latestEnrollment->student_data['student_type'] ?? '') !== 'transferee')
             ->values();
 
+        // Open/in-progress guidance concern counts, batched in one query rather than
+        // per-student, so the assessment table can flag them without an N+1.
+        $assessGuidanceCounts = \App\Models\GuidanceRecord::whereIn('student_id', $assessStudents->pluck('id'))
+            ->whereIn('status', ['open', 'in_progress'])
+            ->selectRaw('student_id, count(*) as c')
+            ->groupBy('student_id')
+            ->pluck('c', 'student_id');
+
+        // Staff who can be logged as the counselor on a guidance record.
+        $guidanceCounselors = \App\Models\User::whereIn('role', ['admin', 'superadmin', 'teacher'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name', 'role']);
+
         // Contact messages for admin inbox
         $contactMessages      = \App\Models\ContactMessage::orderByDesc('created_at')->get();
         $unreadMessagesCount  = $contactMessages->where('status', 'unread')->count();
@@ -1023,7 +1037,8 @@ class EnrollmentController extends Controller
             'subjects', 'sections', 'schedules', 'teachers', 'teacherAssignments', 'guidanceRecords',
             'guidanceSearch', 'guidanceStatus', 'guidanceConcern', 'guidanceSort',
             'feeBreakdowns', 'feeSettings', 'recentStudents', 'allSchedules',
-            'currentSchoolYear', 'enrollmentOpen', 'maintenanceMode', 'assessStudents',
+            'currentSchoolYear', 'enrollmentOpen', 'maintenanceMode', 'assessStudents', 'assessGuidanceCounts',
+            'guidanceCounselors',
             'contactMessages', 'unreadMessagesCount',
             'announcements', 'news'
         ));
@@ -2821,6 +2836,22 @@ class EnrollmentController extends Controller
             ->toArray();
 
         return response()->json(['documents' => $documents]);
+    }
+
+    /**
+     * Guidance records for a student, shown in the assessment modal so the
+     * admin sees behavioral/counseling history before deciding promote/retain.
+     * Informational only — does not block or auto-decide anything.
+     */
+    public function getStudentGuidanceForAssess(User $user)
+    {
+        $records = \App\Models\GuidanceRecord::where('student_id', $user->id)
+            ->with('counselor:id,name')
+            ->orderByDesc('date')
+            ->get(['id', 'counselor_id', 'date', 'concern_type', 'concern_description', 'status', 'follow_up_date'])
+            ->toArray();
+
+        return response()->json(['records' => $records]);
     }
 
     private function nextSchoolYear(string $schoolYear): string
