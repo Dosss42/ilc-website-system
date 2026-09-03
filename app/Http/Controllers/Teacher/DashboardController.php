@@ -261,6 +261,7 @@ class DashboardController extends Controller
             ->whereIn('status', ['submitted', 'approved', 'rejected'])
             ->whereIn('student_id', $students->pluck('id'))
             ->orderByRaw('(school_year IS NULL) DESC')
+            ->orderBy('id') // stable tiebreaker if a stray duplicate row exists for a student
             ->get()
             ->keyBy('student_id');
 
@@ -381,8 +382,23 @@ class DashboardController extends Controller
                     ->whereIn('student_id', $studentIds)
                     ->delete();
 
+                // Students whose grade for this exact scope is already posted —
+                // a draft can't be created to override an already-submitted/approved
+                // grade. (Server-side backstop; the UI already renders these locked.)
+                $lockedStudentIds = Grade::where('teacher_id', $teacher->id)
+                    ->when($subjectId, fn($q) => $q->where('subject_id', $subjectId))
+                    ->when(!$subjectId, fn($q) => $q->whereNull('subject_id'))
+                    ->where('term', $term)
+                    ->where('school_year', $sy)
+                    ->whereIn('status', ['submitted', 'approved'])
+                    ->whereIn('student_id', $studentIds)
+                    ->pluck('student_id')
+                    ->all();
+
                 $draftCount = 0;
                 foreach ($validated['grades'] as $gradeData) {
+                    if (in_array($gradeData['student_id'], $lockedStudentIds)) continue; // already posted
+
                     $descriptive = $gradeData['descriptive_grade'] ?? null;
                     $gradeValue  = isset($gradeData['grade']) && $gradeData['grade'] !== '' ? (float) $gradeData['grade'] : null;
                     if ($gradeValue === null && $descriptive === null) continue; // skip blanks
@@ -414,38 +430,71 @@ class DashboardController extends Controller
             }
 
             // ── Submit path ───────────────────────────────────────────────────
+            // Once a grade is posted (status submitted/approved), it can no longer
+            // be overwritten through this endpoint — the old updateOrCreate() only
+            // matched rows that already had status='submitted', so touching a
+            // grade the second time (or one already 'approved') created a second,
+            // duplicate row instead of updating or being blocked. That duplication
+            // is also why students could see stale/flip-flopping grades on reload.
+            $submittedCount = 0;
+            $lockedSubjects = [];
+
             foreach ($validated['grades'] as $gradeData) {
                 $descriptive = $gradeData['descriptive_grade'] ?? null;
                 $gradeValue  = isset($gradeData['grade']) && $gradeData['grade'] !== '' ? $gradeData['grade'] : null;
-                $remarks     = $descriptive
+                if ($gradeValue === null && $descriptive === null) continue; // nothing to post for this row
+
+                $remarks = $descriptive
                     ? \App\Models\Grade::getDescriptiveLabel($descriptive)
                     : Grade::getRemarks($gradeValue);
+                $sy = $gradeData['school_year'] ?? $schoolYear;
 
-                $update = [
+                $scope = Grade::where('student_id', $gradeData['student_id'])
+                    ->where('subject_id', $gradeData['subject_id'] ?? null)
+                    ->where('term', $gradeData['term'])
+                    ->where('teacher_id', $teacher->id)
+                    ->where('school_year', $sy);
+
+                $alreadyPosted = (clone $scope)->whereIn('status', ['submitted', 'approved'])->exists();
+                if ($alreadyPosted) {
+                    $lockedSubjects[] = $gradeData['student_id'];
+                    continue;
+                }
+
+                // Clear any stray draft/rejected row for this exact scope before
+                // creating the posted one, so there's ever only one live row.
+                (clone $scope)->whereIn('status', ['draft', 'rejected'])->delete();
+
+                $create = [
+                    'student_id'        => $gradeData['student_id'],
+                    'subject_id'        => $gradeData['subject_id'] ?? null,
+                    'term'              => $gradeData['term'],
+                    'teacher_id'        => $teacher->id,
+                    'school_year'       => $sy,
                     'grade'             => $gradeValue,
                     'descriptive_grade' => $descriptive,
                     'remarks'           => $remarks,
-                    'school_year'       => $gradeData['school_year'] ?? $schoolYear,
                     'status'            => 'submitted',
                 ];
                 if (!empty($gradeData['enrollment_id'])) {
-                    $update['enrollment_id'] = $gradeData['enrollment_id'];
+                    $create['enrollment_id'] = $gradeData['enrollment_id'];
                 }
-
-                Grade::updateOrCreate(
-                    [
-                        'student_id' => $gradeData['student_id'],
-                        'subject_id' => $gradeData['subject_id'] ?? null,
-                        'term'       => $gradeData['term'],
-                        'teacher_id' => $teacher->id,
-                        'school_year'=> $gradeData['school_year'] ?? $schoolYear,
-                        'status'     => 'submitted',
-                    ],
-                    $update
-                );
+                Grade::create($create);
+                $submittedCount++;
             }
+
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Grades submitted successfully!']);
+
+            $message = $submittedCount . ' grade(s) submitted successfully!';
+            if (!empty($lockedSubjects)) {
+                $message .= ' ' . count($lockedSubjects) . ' were skipped because they were already posted and can no longer be edited here.';
+            }
+            return response()->json([
+                'success'         => true,
+                'message'         => $message,
+                'submitted_count' => $submittedCount,
+                'locked_count'    => count($lockedSubjects),
+            ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -1561,22 +1610,51 @@ class DashboardController extends Controller
                 return response()->json(['success' => false, 'message' => 'No draft grades to submit.'], 422);
             }
 
+            $promoted = 0;
+            $skipped  = 0;
+
             foreach ($drafts as $draft) {
-                // Remove any existing submitted or rejected grade for same student/subject/term
+                // A grade already posted (submitted/approved) for this exact scope
+                // can't be silently replaced by promoting a newer draft over it —
+                // that's the "editable after posting" behavior this guard closes.
+                // 'rejected' grades are fair game to replace: that status means an
+                // admin sent it back for correction.
+                $alreadyPosted = Grade::where('student_id', $draft->student_id)
+                    ->where('teacher_id', $teacher->id)
+                    ->when($request->subject_id, fn($q) => $q->where('subject_id', $request->subject_id))
+                    ->when(!$request->subject_id, fn($q) => $q->whereNull('subject_id'))
+                    ->where('term', $request->term)
+                    ->where('school_year', $schoolYear)
+                    ->whereIn('status', ['submitted', 'approved'])
+                    ->exists();
+
+                if ($alreadyPosted) {
+                    $draft->delete(); // the stray draft can't go anywhere valid — discard it
+                    $skipped++;
+                    continue;
+                }
+
+                // Remove any existing rejected grade for same student/subject/term
                 Grade::where('student_id', $draft->student_id)
                     ->where('teacher_id', $teacher->id)
                     ->when($request->subject_id, fn($q) => $q->where('subject_id', $request->subject_id))
                     ->when(!$request->subject_id, fn($q) => $q->whereNull('subject_id'))
                     ->where('term', $request->term)
                     ->where('school_year', $schoolYear)
-                    ->whereIn('status', ['submitted', 'rejected'])
+                    ->where('status', 'rejected')
                     ->delete();
 
                 $draft->update(['status' => 'submitted']);
+                $promoted++;
             }
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => $drafts->count() . ' grades submitted successfully.']);
+
+            $message = $promoted . ' grade(s) submitted successfully.';
+            if ($skipped > 0) {
+                $message .= ' ' . $skipped . ' skipped — already posted and locked from editing.';
+            }
+            return response()->json(['success' => true, 'message' => $message, 'submitted_count' => $promoted, 'locked_count' => $skipped]);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Submit failed: ' . $e->getMessage()], 500);

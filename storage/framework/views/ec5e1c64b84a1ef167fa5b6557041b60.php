@@ -8,11 +8,11 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 
     <title>Admin Dashboard — ILC</title>
 
-    {{-- Preconnect to CDN domains for faster resource loading --}}
+    
 
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
@@ -20,9 +20,9 @@
 
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-    {{-- Critical CSS first, then non-blocking externals --}}
+    
 
-    <link rel="stylesheet" href="/css/adminDashboard.css?v={{ filemtime(public_path('css/adminDashboard.css')) }}">
+    <link rel="stylesheet" href="/css/adminDashboard.css?v=<?php echo e(filemtime(public_path('css/adminDashboard.css'))); ?>">
 
     <link rel="stylesheet" href="/css/global-scrollbar.css">
 
@@ -32,7 +32,7 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 
-    {{-- Chart.js for Reports --}}
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
@@ -631,13 +631,9 @@
 
 <body>
 
-{{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-     INITIALIZE VARIABLES
 
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
-
-@php
+<?php
     // Ensure all variables are defined with safe defaults
     $students = $students ?? collect();
     $teachers = $teachers ?? collect();
@@ -668,7 +664,7 @@
     $studentStatusFilter = $studentStatusFilter ?? '';
     $studentPaymentFilter = $studentPaymentFilter ?? '';
     $studentSchoolYearFilter = $studentSchoolYearFilter ?? '';
-@endphp
+?>
 
 <script>
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -908,27 +904,14 @@ function openWalkInEnrollmentModal() {
 
 </script>
 
-{{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-     TOPBAR
-
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
 
 <div class="dash-topbar">
 
     <div class="topbar-brand">
 
         <div class="brand-logos">
-        {{-- 
-            <div class="brand-logo-circle">
-
-                <img src="/images/logo1.png" alt=""
-
-                     onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\'bi bi-building\'></i>'">
-
-            </div>
-
-            --}}
+        
             <div class="brand-logo-circle">
 
                 <img src="/images/logo.png" alt=""
@@ -963,13 +946,13 @@ function openWalkInEnrollmentModal() {
 
     <div class="topbar-right">
 
-        {{-- Maintenance Mode Toggle --}}
-        @php $isMaintenance = $maintenanceMode ?? false; @endphp
+        
+        <?php $isMaintenance = $maintenanceMode ?? false; ?>
         <button id="maintenance-topbar-btn" onclick="toggleMaintenanceMode()"
-            title="{{ $isMaintenance ? 'Maintenance ON — click to turn off' : 'Turn on Maintenance Mode' }}"
-            style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid {{ $isMaintenance ? '#e74c3c' : '#ddd' }};background:{{ $isMaintenance ? '#fdecea' : '#f8f9fa' }};color:{{ $isMaintenance ? '#c0392b' : '#666' }};font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;">
-            <i class="bi bi-{{ $isMaintenance ? 'tools' : 'tools' }}" id="maintenance-topbar-icon"></i>
-            <span id="maintenance-topbar-label">{{ $isMaintenance ? 'Maintenance ON' : 'Maintenance' }}</span>
+            title="<?php echo e($isMaintenance ? 'Maintenance ON — click to turn off' : 'Turn on Maintenance Mode'); ?>"
+            style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid <?php echo e($isMaintenance ? '#e74c3c' : '#ddd'); ?>;background:<?php echo e($isMaintenance ? '#fdecea' : '#f8f9fa'); ?>;color:<?php echo e($isMaintenance ? '#c0392b' : '#666'); ?>;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;">
+            <i class="bi bi-<?php echo e($isMaintenance ? 'tools' : 'tools'); ?>" id="maintenance-topbar-icon"></i>
+            <span id="maintenance-topbar-label"><?php echo e($isMaintenance ? 'Maintenance ON' : 'Maintenance'); ?></span>
         </button>
 
         <a href="#" class="topbar-icon-btn">
@@ -989,14 +972,15 @@ function openWalkInEnrollmentModal() {
         <div class="dropdown">
             <div class="user-chip" data-bs-toggle="dropdown" aria-expanded="false">
                 <div class="user-avatar">
-                    @if(Auth::user()->profile_photo)
-                        <img src="{{ asset('storage/' . Auth::user()->profile_photo) }}" alt="Avatar">
-                    @else
-                        {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
-                    @endif
+                    <?php if(Auth::user()->profile_photo): ?>
+                        <img src="<?php echo e(asset('storage/' . Auth::user()->profile_photo)); ?>" alt="Avatar">
+                    <?php else: ?>
+                        <?php echo e(strtoupper(substr(Auth::user()->name, 0, 1))); ?>
+
+                    <?php endif; ?>
                 </div>
                 <div>
-                    <div class="user-chip-name">{{ Auth::user()->name }}</div>
+                    <div class="user-chip-name"><?php echo e(Auth::user()->name); ?></div>
                     <div class="user-chip-role">Admin / Registrar</div>
                 </div>
                 <i class="bi bi-chevron-down user-chip-caret"></i>
@@ -1004,15 +988,16 @@ function openWalkInEnrollmentModal() {
             <div class="dropdown-menu dropdown-menu-end user-chip-dropdown">
                 <div class="ucd-header">
                     <div class="ucd-avatar">
-                        @if(Auth::user()->profile_photo)
-                            <img src="{{ asset('storage/' . Auth::user()->profile_photo) }}" alt="Avatar">
-                        @else
-                            {{ strtoupper(substr(Auth::user()->name, 0, 2)) }}
-                        @endif
+                        <?php if(Auth::user()->profile_photo): ?>
+                            <img src="<?php echo e(asset('storage/' . Auth::user()->profile_photo)); ?>" alt="Avatar">
+                        <?php else: ?>
+                            <?php echo e(strtoupper(substr(Auth::user()->name, 0, 2))); ?>
+
+                        <?php endif; ?>
                     </div>
                     <div class="ucd-info">
-                        <div class="ucd-name">{{ Auth::user()->name }}</div>
-                        <div class="ucd-email">{{ Auth::user()->email }}</div>
+                        <div class="ucd-name"><?php echo e(Auth::user()->name); ?></div>
+                        <div class="ucd-email"><?php echo e(Auth::user()->email); ?></div>
                         <span class="ucd-badge">Admin / Registrar</span>
                     </div>
                 </div>
@@ -1022,8 +1007,8 @@ function openWalkInEnrollmentModal() {
                 </div>
                 <div class="ucd-divider"></div>
                 <div class="ucd-footer">
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
+                    <form method="POST" action="<?php echo e(route('logout')); ?>">
+                        <?php echo csrf_field(); ?>
                         <button type="submit" class="ucd-item ucd-logout">
                             <i class="bi bi-box-arrow-left"></i> Logout
                         </button>
@@ -1036,11 +1021,7 @@ function openWalkInEnrollmentModal() {
 
 </div>
 
-{{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-     SIDEBAR
-
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
 
 <div class="dash-sidebar">
 
@@ -1056,28 +1037,28 @@ function openWalkInEnrollmentModal() {
 
     <button class="sidebar-link" id="nav-students" onclick="showSection('students')">
         <i class="bi bi-people-fill"></i> Student Management
-        <span class="sidebar-badge">@isset($studentCount){{ $studentCount }}@endisset</span>
+        <span class="sidebar-badge"><?php if(isset($studentCount)): ?><?php echo e($studentCount); ?><?php endif; ?></span>
     </button>
 
-    @php
+    <?php
         $sidebarAssessCount = ($assessStudents ?? collect())->filter(fn($s) => $s->promotions->isEmpty())->count();
-    @endphp
+    ?>
     <button class="sidebar-link" id="nav-assessment" onclick="showSection('assessment')">
         <i class="bi bi-mortarboard-fill"></i> Assessment &amp; Promotion
-        @if($sidebarAssessCount > 0)
-            <span class="sidebar-badge">{{ $sidebarAssessCount }}</span>
-        @endif
+        <?php if($sidebarAssessCount > 0): ?>
+            <span class="sidebar-badge"><?php echo e($sidebarAssessCount); ?></span>
+        <?php endif; ?>
     </button>
 
     <button class="sidebar-link" id="nav-enrollment" onclick="showSection('enrollment')">
 
         <i class="bi bi-clipboard-check-fill"></i> Enrollment Management
 
-        @isset($enrollmentCount)
+        <?php if(isset($enrollmentCount)): ?>
 
-        <span class="sidebar-badge">{{ $enrollmentCount }}</span>
+        <span class="sidebar-badge"><?php echo e($enrollmentCount); ?></span>
 
-        @endisset
+        <?php endif; ?>
 
     </button>
 
@@ -1111,8 +1092,8 @@ function openWalkInEnrollmentModal() {
     </button>
 
 
-    {{-- Finance/Fee sections are managed by the Finance Portal and Cashier Portal --}}
-    {{-- Hidden from admin sidebar: Finance Management, Payments, Installments, Fee Management --}}
+    
+    
     
 
     <div class="sidebar-section-lbl">Academic</div>
@@ -1149,26 +1130,15 @@ function openWalkInEnrollmentModal() {
 
     </button>
 
-    {{--  
-    <button class="sidebar-link" id="nav-grade-oversight" onclick="showSection('grade-oversight')">
-        <i class="bi bi-patch-check-fill"></i> Grade Oversight
-        <span class="sidebar-badge" id="gradeOversightBadge" style="display:none;"></span>
-    </button>
-
-    <button class="sidebar-link" id="nav-messages" onclick="showSection('messages')">
-        <i class="bi bi-envelope-fill"></i> Messages
-        @if(($unreadMessagesCount ?? 0) > 0)
-            <span class="sidebar-badge">{{ $unreadMessagesCount }}</span>
-        @endif
-    </button>--}}
+    
     <div class="sidebar-section-lbl">settings</div>
     <div class="sidebar-divider"></div>
 
     <button class="sidebar-link" id="nav-archives" onclick="showSection('archives')">
         <i class="bi bi-archive-fill"></i> Archives
-        @if(($archivedStudents->total() ?? 0) > 0)
-            <span class="sidebar-badge" style="background:#b45309;">{{ $archivedStudents->total() }}</span>
-        @endif
+        <?php if(($archivedStudents->total() ?? 0) > 0): ?>
+            <span class="sidebar-badge" style="background:#b45309;"><?php echo e($archivedStudents->total()); ?></span>
+        <?php endif; ?>
     </button>
 
     <button class="sidebar-link" id="nav-reports" onclick="showSection('reports')">
@@ -1188,11 +1158,11 @@ function openWalkInEnrollmentModal() {
 
     <div class="sidebar-bottom">
 
-        {{-- CHANGE: action="{{ route('logout') }}" --}}
+        
 
         <form method="POST" action="/logout">
 
-            @csrf
+            <?php echo csrf_field(); ?>
 
             <button type="submit" class="sidebar-link"
 
@@ -1208,19 +1178,11 @@ function openWalkInEnrollmentModal() {
 
 </div>
 
-{{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-     MAIN CONTENT
-
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
 
 <div class="dash-main">
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-         SECTION: DASHBOARD
-
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
 
     <div id="section-dashboard" class="dash-section">
 
@@ -1230,7 +1192,7 @@ function openWalkInEnrollmentModal() {
 
                 <h1>Admin Dashboard</h1>
 
-                <p>{{ now()->format('l, F d, Y') }} — Welcome back!</p>
+                <p><?php echo e(now()->format('l, F d, Y')); ?> — Welcome back!</p>
 
             </div>
 
@@ -1242,9 +1204,9 @@ function openWalkInEnrollmentModal() {
 
         </div>
 
-        {{-- Stat Cards --}}
+        
 
-        {{-- CHANGE: Replace 0 with dynamic counts from controller --}}
+        
 
         <div class="row g-3 mb-4">
 
@@ -1256,7 +1218,7 @@ function openWalkInEnrollmentModal() {
 
                     <div>
 
-                        <div class="stat-value">{{ ($students ?? collect())->count() }}</div>
+                        <div class="stat-value"><?php echo e(($students ?? collect())->count()); ?></div>
 
                         <div class="stat-label">Total Students</div>
 
@@ -1276,7 +1238,7 @@ function openWalkInEnrollmentModal() {
 
                     <div>
 
-                        <div class="stat-value">{{ ($teachers ?? collect())->count() }}</div>
+                        <div class="stat-value"><?php echo e(($teachers ?? collect())->count()); ?></div>
 
                         <div class="stat-label">Total Teachers</div>
 
@@ -1294,7 +1256,7 @@ function openWalkInEnrollmentModal() {
 
                     <div>
 
-                        <div class="stat-value">{{ $paidCount ?? 0 }}</div>
+                        <div class="stat-value"><?php echo e($paidCount ?? 0); ?></div>
 
                         <div class="stat-label">Paid</div>
 
@@ -1314,7 +1276,7 @@ function openWalkInEnrollmentModal() {
 
                     <div>
 
-                        <div class="stat-value">{{ $unpaidCount ?? 0 }}</div>
+                        <div class="stat-value"><?php echo e($unpaidCount ?? 0); ?></div>
 
                         <div class="stat-label">Unpaid</div>
 
@@ -1328,8 +1290,8 @@ function openWalkInEnrollmentModal() {
 
         </div>
 
-        {{-- ── Overview Charts ── --}}
-        @php
+        
+        <?php
             $chMonths = []; $chEnroll = [];
             for ($i=5;$i>=0;$i--) {
                 $m = now()->subMonths($i);
@@ -1339,7 +1301,7 @@ function openWalkInEnrollmentModal() {
             $chPaid    = \App\Models\Enrollment::where('payment_status','paid')->count();
             $chPartial = \App\Models\Enrollment::where('payment_status','partial')->count();
             $chUnpaid  = \App\Models\Enrollment::whereNotIn('payment_status',['paid','partial'])->count();
-        @endphp
+        ?>
         <div class="row g-3 mb-4">
             <div class="col-lg-8">
                 <div class="content-card">
@@ -1360,7 +1322,7 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        {{-- Quick Actions --}}
+        
 
         <div class="row g-3 mb-4">
 
@@ -1456,7 +1418,7 @@ function openWalkInEnrollmentModal() {
 
         </div>
 
-        {{-- Students + Announcements --}}
+        
 
         <div class="row g-4">
 
@@ -1496,7 +1458,7 @@ function openWalkInEnrollmentModal() {
 
                             <tbody>
 
-                                @foreach($recentStudents as $s)
+                                <?php $__currentLoopData = $recentStudents; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $s): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
 
                                 <tr>
 
@@ -1504,13 +1466,13 @@ function openWalkInEnrollmentModal() {
 
                                         <div class="user-row-name">
 
-                                            <div class="user-row-avatar">{{ strtoupper(substr($s->name, 0, 2)) }}</div>
+                                            <div class="user-row-avatar"><?php echo e(strtoupper(substr($s->name, 0, 2))); ?></div>
 
                                             <div>
 
-                                                <div style="font-weight:600;">{{ $s->name }}</div>
+                                                <div style="font-weight:600;"><?php echo e($s->name); ?></div>
 
-                                                <div class="user-row-sub">{{ $s->email }}</div>
+                                                <div class="user-row-sub"><?php echo e($s->email); ?></div>
 
                                             </div>
 
@@ -1518,38 +1480,39 @@ function openWalkInEnrollmentModal() {
 
                                     </td>
 
-                                    <td>{{ $s->grade ?? '-' }}</td>
+                                    <td><?php echo e($s->grade ?? '-'); ?></td>
 
-                                    <td>{{ $s->section ?? '-' }}</td>
+                                    <td><?php echo e($s->section ?? '-'); ?></td>
 
-                                    <td><span class="status-badge {{ $s->is_active ? 'active' : 'inactive' }}">{{ $s->is_active ? 'Active' : 'Inactive' }}</span></td>
+                                    <td><span class="status-badge <?php echo e($s->is_active ? 'active' : 'inactive'); ?>"><?php echo e($s->is_active ? 'Active' : 'Inactive'); ?></span></td>
 
                                     <td>
 
-                                        <a href="#" class="action-btn view js-student-view" data-id="{{ $s->id }}"><i class="bi bi-eye-fill"></i></a>
+                                        <a href="#" class="action-btn view js-student-view" data-id="<?php echo e($s->id); ?>"><i class="bi bi-eye-fill"></i></a>
 
-                                        <a href="#" class="action-btn edit js-student-edit" data-id="{{ $s->id }}"><i class="bi bi-pencil-fill"></i></a>
+                                        <a href="#" class="action-btn edit js-student-edit" data-id="<?php echo e($s->id); ?>"><i class="bi bi-pencil-fill"></i></a>
 
                                     </td>
 
                                 </tr>
 
-                                @endforeach
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
 
                             </tbody>
 
                         </table>
 
-                        {{-- Recent Students Pagination --}}
+                        
                         <div class="p-3 border-top" style="border-color:var(--border);">
-                            @if(isset($recentStudents))
-                            {{ $recentStudents->links() }}
-                            @endif
-                            @if(isset($recentStudents) && $recentStudents->total() > 0)
+                            <?php if(isset($recentStudents)): ?>
+                            <?php echo e($recentStudents->links()); ?>
+
+                            <?php endif; ?>
+                            <?php if(isset($recentStudents) && $recentStudents->total() > 0): ?>
                             <div class="pagination-info">
-                                Showing {{ $recentStudents->firstItem() ?? 0 }} to {{ $recentStudents->lastItem() ?? 0 }} of {{ $recentStudents->total() }} students
+                                Showing <?php echo e($recentStudents->firstItem() ?? 0); ?> to <?php echo e($recentStudents->lastItem() ?? 0); ?> of <?php echo e($recentStudents->total()); ?> students
                             </div>
-                            @endif
+                            <?php endif; ?>
                         </div>
                     </div>
 
@@ -1599,13 +1562,9 @@ function openWalkInEnrollmentModal() {
 
         </div>
 
-    </div>{{-- /section-dashboard --}}
+    </div>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-         SECTION: STUDENT MANAGEMENT
-
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
 
     <div id="section-students" class="dash-section" style="display:none;">
 
@@ -1619,16 +1578,12 @@ function openWalkInEnrollmentModal() {
 
             </div>
 
-       {{--     <button class="btn-dash btn-primary" onclick="openWalkInEnrollmentModal()">
-
-                <i class="bi bi-person-plus-fill"></i> Add Student
-
-            </button> --}}
+       
 
         </div>
 
-        {{-- Analysis Summary Cards --}}
-        @php
+        
+        <?php
             $smTotal = ($students ?? collect())->count();
             $smEnrolled = ($students ?? collect())->filter(fn($s) => $s->latestEnrollment && $s->latestEnrollment->status === 'enrolled')->count();
             $smApproved = ($students ?? collect())->filter(fn($s) => $s->latestEnrollment && $s->latestEnrollment->status === 'approved')->count();
@@ -1636,13 +1591,13 @@ function openWalkInEnrollmentModal() {
             $smNotEnrolled = ($students ?? collect())->filter(fn($s) => !$s->latestEnrollment || !in_array($s->latestEnrollment->status, ['approved','enrolled','pending']))->count();
             $smPaid = ($students ?? collect())->filter(fn($s) => $s->latestEnrollment && $s->latestEnrollment->payment_status === 'paid')->count();
             $smBalance = ($students ?? collect())->filter(fn($s) => $s->latestEnrollment && in_array($s->latestEnrollment->payment_status, ['partial','pending','unpaid']))->count();
-        @endphp
+        ?>
         <div class="row g-3 mb-4">
             <div class="col-md-2 col-sm-4 col-6">
                 <div class="stat-card">
                     <div class="stat-icon blue"><i class="bi bi-people-fill"></i></div>
                     <div>
-                        <div class="stat-value" id="sm-total-count">{{ $smTotal }}</div>
+                        <div class="stat-value" id="sm-total-count"><?php echo e($smTotal); ?></div>
                         <div class="stat-label">Total Students</div>
                     </div>
                 </div>
@@ -1651,7 +1606,7 @@ function openWalkInEnrollmentModal() {
                 <div class="stat-card">
                     <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
                     <div>
-                        <div class="stat-value" id="sm-enrolled-count">{{ $smEnrolled }}</div>
+                        <div class="stat-value" id="sm-enrolled-count"><?php echo e($smEnrolled); ?></div>
                         <div class="stat-label">Enrolled</div>
                     </div>
                 </div>
@@ -1660,7 +1615,7 @@ function openWalkInEnrollmentModal() {
                 <div class="stat-card">
                     <div class="stat-icon teal"><i class="bi bi-check2-square"></i></div>
                     <div>
-                        <div class="stat-value" id="sm-approved-count">{{ $smApproved }}</div>
+                        <div class="stat-value" id="sm-approved-count"><?php echo e($smApproved); ?></div>
                         <div class="stat-label">Approved</div>
                     </div>
                 </div>
@@ -1669,7 +1624,7 @@ function openWalkInEnrollmentModal() {
                 <div class="stat-card">
                     <div class="stat-icon gold"><i class="bi bi-hourglass-split"></i></div>
                     <div>
-                        <div class="stat-value" id="sm-pending-count">{{ $smPending }}</div>
+                        <div class="stat-value" id="sm-pending-count"><?php echo e($smPending); ?></div>
                         <div class="stat-label">Pending</div>
                     </div>
                 </div>
@@ -1678,7 +1633,7 @@ function openWalkInEnrollmentModal() {
                 <div class="stat-card">
                     <div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div>
                     <div>
-                        <div class="stat-value" id="sm-notenrolled-count">{{ $smNotEnrolled }}</div>
+                        <div class="stat-value" id="sm-notenrolled-count"><?php echo e($smNotEnrolled); ?></div>
                         <div class="stat-label">Not Enrolled</div>
                     </div>
                 </div>
@@ -1687,7 +1642,7 @@ function openWalkInEnrollmentModal() {
                 <div class="stat-card">
                     <div class="stat-icon green"><i class="bi bi-cash-stack"></i></div>
                     <div>
-                        <div class="stat-value" id="sm-paid-count">{{ $smPaid }}</div>
+                        <div class="stat-value" id="sm-paid-count"><?php echo e($smPaid); ?></div>
                         <div class="stat-label">Fully Paid</div>
                     </div>
                 </div>
@@ -1696,14 +1651,14 @@ function openWalkInEnrollmentModal() {
                 <div class="stat-card">
                     <div class="stat-icon red"><i class="bi bi-exclamation-triangle-fill"></i></div>
                     <div>
-                        <div class="stat-value" id="sm-balance-count">{{ $smBalance }}</div>
+                        <div class="stat-value" id="sm-balance-count"><?php echo e($smBalance); ?></div>
                         <div class="stat-label">With Balance</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- Status Legend --}}
+        
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;padding:12px 16px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;font-size:12px;">
             <span style="font-weight:600;color:#555;margin-right:4px;">Enrollment:</span>
             <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;background:#e8f8f0;border:1px solid #27ae60;border-radius:3px;display:inline-block;"></span> Enrolled</span>
@@ -1722,68 +1677,68 @@ function openWalkInEnrollmentModal() {
         </div>
 
 
-        {{-- Search & Filter --}}
+        
         <div class="content-card mb-4">
             <div class="p-3">
-                <form method="GET" action="{{ url()->current() }}" class="row g-3" id="student-filter-form">
+                <form method="GET" action="<?php echo e(url()->current()); ?>" class="row g-3" id="student-filter-form">
                     <input type="hidden" name="section" value="students">
                     <div class="col-md-4">
-                        <input type="text" name="student_search" class="form-fld" placeholder="Search student name, LRN, or email..." value="{{ $studentSearch ?? '' }}" onchange="this.form.submit()">
+                        <input type="text" name="student_search" class="form-fld" placeholder="Search student name, LRN, or email..." value="<?php echo e($studentSearch ?? ''); ?>" onchange="this.form.submit()">
                     </div>
                     <div class="col-md-2">
                         <select name="student_grade" class="form-fld" onchange="this.form.submit()">
-                            <option value="all" {{ (!$studentGradeFilter || ($studentGradeFilter ?? 'all') === 'all') ? 'selected' : '' }}>All Grades</option>
-                            <option value="nursery" {{ ($studentGradeFilter ?? '') === 'nursery' ? 'selected' : '' }}>Nursery</option>
-                            <option value="kindergarten" {{ ($studentGradeFilter ?? '') === 'kindergarten' ? 'selected' : '' }}>Kindergarten</option>
-                            <option value="grade1" {{ ($studentGradeFilter ?? '') === 'grade1' ? 'selected' : '' }}>Grade 1</option>
-                            <option value="grade2" {{ ($studentGradeFilter ?? '') === 'grade2' ? 'selected' : '' }}>Grade 2</option>
-                            <option value="grade3" {{ ($studentGradeFilter ?? '') === 'grade3' ? 'selected' : '' }}>Grade 3</option>
-                            <option value="grade4" {{ ($studentGradeFilter ?? '') === 'grade4' ? 'selected' : '' }}>Grade 4</option>
-                            <option value="grade5" {{ ($studentGradeFilter ?? '') === 'grade5' ? 'selected' : '' }}>Grade 5</option>
-                            <option value="grade6" {{ ($studentGradeFilter ?? '') === 'grade6' ? 'selected' : '' }}>Grade 6</option>
+                            <option value="all" <?php echo e((!$studentGradeFilter || ($studentGradeFilter ?? 'all') === 'all') ? 'selected' : ''); ?>>All Grades</option>
+                            <option value="nursery" <?php echo e(($studentGradeFilter ?? '') === 'nursery' ? 'selected' : ''); ?>>Nursery</option>
+                            <option value="kindergarten" <?php echo e(($studentGradeFilter ?? '') === 'kindergarten' ? 'selected' : ''); ?>>Kindergarten</option>
+                            <option value="grade1" <?php echo e(($studentGradeFilter ?? '') === 'grade1' ? 'selected' : ''); ?>>Grade 1</option>
+                            <option value="grade2" <?php echo e(($studentGradeFilter ?? '') === 'grade2' ? 'selected' : ''); ?>>Grade 2</option>
+                            <option value="grade3" <?php echo e(($studentGradeFilter ?? '') === 'grade3' ? 'selected' : ''); ?>>Grade 3</option>
+                            <option value="grade4" <?php echo e(($studentGradeFilter ?? '') === 'grade4' ? 'selected' : ''); ?>>Grade 4</option>
+                            <option value="grade5" <?php echo e(($studentGradeFilter ?? '') === 'grade5' ? 'selected' : ''); ?>>Grade 5</option>
+                            <option value="grade6" <?php echo e(($studentGradeFilter ?? '') === 'grade6' ? 'selected' : ''); ?>>Grade 6</option>
                         </select>
                     </div>
                     <div class="col-md-2">
                         <select name="student_status" class="form-fld" onchange="this.form.submit()">
-                            <option value="all" {{ (!$studentStatusFilter || ($studentStatusFilter ?? 'all') === 'all') ? 'selected' : '' }}>All Status</option>
-                            <option value="enrolled"    {{ ($studentStatusFilter ?? '') === 'enrolled'    ? 'selected' : '' }}>Enrolled</option>
-                            <option value="approved"    {{ ($studentStatusFilter ?? '') === 'approved'    ? 'selected' : '' }}>Approved</option>
-                            <option value="pending"     {{ ($studentStatusFilter ?? '') === 'pending'     ? 'selected' : '' }}>Pending</option>
-                            <option value="completed"   {{ ($studentStatusFilter ?? '') === 'completed'   ? 'selected' : '' }}>Completed</option>
-                            <option value="dropped"     {{ ($studentStatusFilter ?? '') === 'dropped'     ? 'selected' : '' }}>Dropped</option>
-                            <option value="ghost"       {{ ($studentStatusFilter ?? '') === 'ghost'       ? 'selected' : '' }}>Ghost</option>
-                            <option value="transferred" {{ ($studentStatusFilter ?? '') === 'transferred' ? 'selected' : '' }}>Transferred</option>
-                            <option value="declined"    {{ ($studentStatusFilter ?? '') === 'declined'    ? 'selected' : '' }}>Declined</option>
-                            <option value="not_enrolled"{{ ($studentStatusFilter ?? '') === 'not_enrolled'? 'selected' : '' }}>Not Enrolled</option>
+                            <option value="all" <?php echo e((!$studentStatusFilter || ($studentStatusFilter ?? 'all') === 'all') ? 'selected' : ''); ?>>All Status</option>
+                            <option value="enrolled"    <?php echo e(($studentStatusFilter ?? '') === 'enrolled'    ? 'selected' : ''); ?>>Enrolled</option>
+                            <option value="approved"    <?php echo e(($studentStatusFilter ?? '') === 'approved'    ? 'selected' : ''); ?>>Approved</option>
+                            <option value="pending"     <?php echo e(($studentStatusFilter ?? '') === 'pending'     ? 'selected' : ''); ?>>Pending</option>
+                            <option value="completed"   <?php echo e(($studentStatusFilter ?? '') === 'completed'   ? 'selected' : ''); ?>>Completed</option>
+                            <option value="dropped"     <?php echo e(($studentStatusFilter ?? '') === 'dropped'     ? 'selected' : ''); ?>>Dropped</option>
+                            <option value="ghost"       <?php echo e(($studentStatusFilter ?? '') === 'ghost'       ? 'selected' : ''); ?>>Ghost</option>
+                            <option value="transferred" <?php echo e(($studentStatusFilter ?? '') === 'transferred' ? 'selected' : ''); ?>>Transferred</option>
+                            <option value="declined"    <?php echo e(($studentStatusFilter ?? '') === 'declined'    ? 'selected' : ''); ?>>Declined</option>
+                            <option value="not_enrolled"<?php echo e(($studentStatusFilter ?? '') === 'not_enrolled'? 'selected' : ''); ?>>Not Enrolled</option>
                         </select>
                     </div>
                     <div class="col-md-2">
                         <select name="student_payment" class="form-fld" onchange="this.form.submit()">
-                            <option value="all" {{ (!$studentPaymentFilter || ($studentPaymentFilter ?? 'all') === 'all') ? 'selected' : '' }}>All Payment</option>
-                            <option value="paid" {{ ($studentPaymentFilter ?? '') === 'paid' ? 'selected' : '' }}>Paid</option>
-                            <option value="partial" {{ ($studentPaymentFilter ?? '') === 'partial' ? 'selected' : '' }}>Partial</option>
-                            <option value="unpaid" {{ ($studentPaymentFilter ?? '') === 'unpaid' ? 'selected' : '' }}>Not Paid</option>
+                            <option value="all" <?php echo e((!$studentPaymentFilter || ($studentPaymentFilter ?? 'all') === 'all') ? 'selected' : ''); ?>>All Payment</option>
+                            <option value="paid" <?php echo e(($studentPaymentFilter ?? '') === 'paid' ? 'selected' : ''); ?>>Paid</option>
+                            <option value="partial" <?php echo e(($studentPaymentFilter ?? '') === 'partial' ? 'selected' : ''); ?>>Partial</option>
+                            <option value="unpaid" <?php echo e(($studentPaymentFilter ?? '') === 'unpaid' ? 'selected' : ''); ?>>Not Paid</option>
                         </select>
                     </div>
                     <div class="col-md-2">
                         <select name="sort" class="form-fld" onchange="this.form.submit()">
-                            <option value="newest" {{ ($sort ?? 'newest') === 'newest' ? 'selected' : '' }}>Newest First</option>
-                            <option value="oldest" {{ ($sort ?? 'newest') === 'oldest' ? 'selected' : '' }}>Oldest First</option>
-                            <option value="name_asc" {{ ($sort ?? 'newest') === 'name_asc' ? 'selected' : '' }}>Name (A-Z)</option>
-                            <option value="name_desc" {{ ($sort ?? 'newest') === 'name_desc' ? 'selected' : '' }}>Name (Z-A)</option>
+                            <option value="newest" <?php echo e(($sort ?? 'newest') === 'newest' ? 'selected' : ''); ?>>Newest First</option>
+                            <option value="oldest" <?php echo e(($sort ?? 'newest') === 'oldest' ? 'selected' : ''); ?>>Oldest First</option>
+                            <option value="name_asc" <?php echo e(($sort ?? 'newest') === 'name_asc' ? 'selected' : ''); ?>>Name (A-Z)</option>
+                            <option value="name_desc" <?php echo e(($sort ?? 'newest') === 'name_desc' ? 'selected' : ''); ?>>Name (Z-A)</option>
                         </select>
                     </div>
                     <div class="col-md-3">
                         <select name="student_schoolyear" class="form-fld" onchange="this.form.submit()">
-                            <option value="all" {{ (!$studentSchoolYearFilter || $studentSchoolYearFilter === '' || $studentSchoolYearFilter === 'all') ? 'selected' : '' }}>All School Years</option>
-                            @php
+                            <option value="all" <?php echo e((!$studentSchoolYearFilter || $studentSchoolYearFilter === '' || $studentSchoolYearFilter === 'all') ? 'selected' : ''); ?>>All School Years</option>
+                            <?php
                                 $syBase = (int) substr($currentSchoolYear ?? '2026-2027', 0, 4);
                                 for ($y = $syBase; $y <= $syBase + 10; $y++) {
                                     $sy = $y . '-' . ($y + 1);
                                     $selected = ($studentSchoolYearFilter ?? '') === $sy ? 'selected' : '';
                                     echo "<option value=\"$sy\" $selected>$sy</option>";
                                 }
-                            @endphp
+                            ?>
                         </select>
                     </div>
                 </form>
@@ -1828,11 +1783,11 @@ function openWalkInEnrollmentModal() {
 
                     <tbody>
 
-                        @if(isset($students) && $students->count() > 0)
+                        <?php if(isset($students) && $students->count() > 0): ?>
 
-                            @foreach($students as $s)
+                            <?php $__currentLoopData = $students; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $s): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
 
-                            @php
+                            <?php
 
                                 $enr = $s->latestEnrollment;
 
@@ -1881,21 +1836,21 @@ function openWalkInEnrollmentModal() {
                                 $payColor = $payStatus === 'paid' ? '#28a745' : ($payStatus === 'partial' ? '#e67e00' : '#dc3545');
                                 $payBg = $payStatus === 'paid' ? '#e8f5e9' : ($payStatus === 'partial' ? '#fff3e0' : '#ffebee');
 
-                            @endphp
+                            ?>
 
-                            <tr data-grade="{{ $gradeRaw ?? '' }}" data-status="{{ $enrollStatus }}" data-payment="{{ $payStatus }}" data-schoolyear="{{ $enr->school_year ?? '' }}" data-search="{{ strtolower($s->name . ' ' . ($s->lrn ?? '') . ' ' . $s->email) }}">
+                            <tr data-grade="<?php echo e($gradeRaw ?? ''); ?>" data-status="<?php echo e($enrollStatus); ?>" data-payment="<?php echo e($payStatus); ?>" data-schoolyear="<?php echo e($enr->school_year ?? ''); ?>" data-search="<?php echo e(strtolower($s->name . ' ' . ($s->lrn ?? '') . ' ' . $s->email)); ?>">
 
                                 <td>
 
                                     <div class="user-row-name">
 
-                                        <div class="user-row-avatar">{{ strtoupper(substr($s->name, 0, 2)) }}</div>
+                                        <div class="user-row-avatar"><?php echo e(strtoupper(substr($s->name, 0, 2))); ?></div>
 
                                         <div>
 
-                                            <div style="font-weight:600;">{{ $s->name }}</div>
+                                            <div style="font-weight:600;"><?php echo e($s->name); ?></div>
 
-                                            <div class="user-row-sub">{{ $enr ? $enr->reference_number : 'ID: '.$s->id }}</div>
+                                            <div class="user-row-sub"><?php echo e($enr ? $enr->reference_number : 'ID: '.$s->id); ?></div>
 
                                         </div>
 
@@ -1903,33 +1858,33 @@ function openWalkInEnrollmentModal() {
 
                                 </td>
 
-                                <td>{{ $gradeDisplay }}</td>
+                                <td><?php echo e($gradeDisplay); ?></td>
 
-                                <td><span class="{{ $sectionDisplay === '—' ? 'text-muted-alt' : '' }}">{{ $sectionDisplay }}</span></td>
+                                <td><span class="<?php echo e($sectionDisplay === '—' ? 'text-muted-alt' : ''); ?>"><?php echo e($sectionDisplay); ?></span></td>
 
-                                <td class="fs-12">{{ $s->email }}</td>
+                                <td class="fs-12"><?php echo e($s->email); ?></td>
 
-                                <td><span class="status-badge {{ $statusClass }}">{{ $statusLabel }}</span></td>
+                                <td><span class="status-badge <?php echo e($statusClass); ?>"><?php echo e($statusLabel); ?></span></td>
 
                                 <td>
-                                    @if($payStatus === 'paid')
+                                    <?php if($payStatus === 'paid'): ?>
                                         <span class="status-badge paid"><i class="bi bi-check-circle-fill"></i> Paid</span>
-                                    @elseif($payStatus === 'partial' || $payStatus === 'partially_paid')
+                                    <?php elseif($payStatus === 'partial' || $payStatus === 'partially_paid'): ?>
                                         <span class="status-badge partial"><i class="bi bi-hourglass-split"></i> Partial</span>
-                                    @elseif($payStatus === 'pending')
+                                    <?php elseif($payStatus === 'pending'): ?>
                                         <span class="status-badge pending"><i class="bi bi-clock"></i> Pending</span>
-                                    @else
+                                    <?php else: ?>
                                         <span class="status-badge unpaid"><i class="bi bi-exclamation-circle-fill"></i> Unpaid</span>
-                                    @endif
+                                    <?php endif; ?>
                                 </td>
 
                                 <td style="white-space:nowrap;">
 
-                                    <a href="#" class="action-btn view js-student-view" data-id="{{ $s->id }}" title="View"><i class="bi bi-eye-fill"></i></a>
+                                    <a href="#" class="action-btn view js-student-view" data-id="<?php echo e($s->id); ?>" title="View"><i class="bi bi-eye-fill"></i></a>
 
-                                    <a href="#" class="action-btn edit js-student-edit" data-id="{{ $s->id }}" title="Edit"><i class="bi bi-pencil-fill"></i></a>
+                                    <a href="#" class="action-btn edit js-student-edit" data-id="<?php echo e($s->id); ?>" title="Edit"><i class="bi bi-pencil-fill"></i></a>
 
-                                    <a href="{{ route('admin.students.sf10', $s->id) }}" target="_blank"
+                                    <a href="<?php echo e(route('admin.students.sf10', $s->id)); ?>" target="_blank"
                                        class="action-btn" title="Download SF10"
                                        style="background:#e8f8f0;color:#1a6b2d;">
                                         <i class="bi bi-file-earmark-pdf-fill"></i>
@@ -1937,20 +1892,13 @@ function openWalkInEnrollmentModal() {
 
                                     <a href="#" class="action-btn" title="Change Status"
                                        style="background:#f0f4f8;color:#555;"
-                                       onclick="openChangeStatusModal({{ $s->id }}, {{ $enr ? $enr->id : 'null' }}, '{{ $enrollStatus }}', '{{ addslashes($s->name) }}')">
+                                       onclick="openChangeStatusModal(<?php echo e($s->id); ?>, <?php echo e($enr ? $enr->id : 'null'); ?>, '<?php echo e($enrollStatus); ?>', '<?php echo e(addslashes($s->name)); ?>')">
                                         <i class="bi bi-arrow-left-right"></i>
                                     </a>
-                                    {{--  
-                                    @if($isAssessable)
-                                    <a href="#" class="action-btn" title="Assess Student"
-                                       style="background:#e8f8f0;color:#1a7a44;"
-                                       onclick="openSmAssessModal({{ $s->id }}, {{ $enr->id }}, '{{ addslashes($s->name) }}', '{{ $gradeRaw }}', '{{ $gradeDisplay }}')">
-                                        <i class="bi bi-mortarboard-fill"></i>
-                                    </a>
-                                    @endif--}}
+                                    
 
                                     <a href="#" class="action-btn js-student-archive"
-                                       data-id="{{ $s->id }}" data-name="{{ addslashes($s->name) }}"
+                                       data-id="<?php echo e($s->id); ?>" data-name="<?php echo e(addslashes($s->name)); ?>"
                                        title="Archive Student"
                                        style="background:#fff8e1;color:#b45309;">
                                         <i class="bi bi-archive-fill"></i>
@@ -1960,9 +1908,9 @@ function openWalkInEnrollmentModal() {
 
                             </tr>
 
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
 
-                        @else
+                        <?php else: ?>
 
                             <tr>
 
@@ -1976,16 +1924,16 @@ function openWalkInEnrollmentModal() {
 
                             </tr>
 
-                        @endif
+                        <?php endif; ?>
 
                     </tbody>
 
                 </table>
 
-                {{-- Pagination Links --}}
+                
                 <div class="p-3 border-top" style="border-color:var(--border);">
-                    @if(isset($students))
-                    {{ $students->appends([
+                    <?php if(isset($students)): ?>
+                    <?php echo e($students->appends([
                         'section' => 'students',
                         'sort' => $sort ?? 'newest',
                         'student_search' => $studentSearch ?? '',
@@ -1993,22 +1941,21 @@ function openWalkInEnrollmentModal() {
                         'student_status' => $studentStatusFilter ?? '',
                         'student_payment' => $studentPaymentFilter ?? '',
                         'student_schoolyear' => $studentSchoolYearFilter ?? '',
-                    ])->links() }}
+                    ])->links()); ?>
+
                     <div class="pagination-info">
-                        Showing {{ $students->firstItem() ?? 0 }} to {{ $students->lastItem() ?? 0 }} of {{ $students->total() }} students
+                        Showing <?php echo e($students->firstItem() ?? 0); ?> to <?php echo e($students->lastItem() ?? 0); ?> of <?php echo e($students->total()); ?> students
                     </div>
-                    @endif
+                    <?php endif; ?>
                 </div>
 
             </div>
 
         </div>
 
-    </div>{{-- /section-students --}}
+    </div>
 
-    {{-- ══════════════════════════════════════
-         SECTION: ARCHIVES
-    ══════════════════════════════════════ --}}
+    
     <div id="section-archives" class="dash-section" style="display:none;">
 
         <div class="section-header">
@@ -2018,13 +1965,13 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        {{-- Summary cards --}}
+        
         <div class="row g-3 mb-4">
             <div class="col-md-3 col-sm-6">
                 <div class="stat-card">
                     <div class="stat-icon amber"><i class="bi bi-archive-fill"></i></div>
                     <div>
-                        <div class="stat-value" style="color:#b45309;">{{ $archivedStudents->total() }}</div>
+                        <div class="stat-value" style="color:#b45309;"><?php echo e($archivedStudents->total()); ?></div>
                         <div class="stat-label">Total Archived</div>
                     </div>
                 </div>
@@ -2034,7 +1981,8 @@ function openWalkInEnrollmentModal() {
                     <div class="stat-icon green"><i class="bi bi-arrow-counterclockwise"></i></div>
                     <div>
                         <div class="stat-value">
-                            {{ $archivedStudents->filter(fn($a) => $a->latestEnrollment && in_array($a->latestEnrollment->status, ['enrolled','approved']))->count() }}
+                            <?php echo e($archivedStudents->filter(fn($a) => $a->latestEnrollment && in_array($a->latestEnrollment->status, ['enrolled','approved']))->count()); ?>
+
                         </div>
                         <div class="stat-label">Restorable</div>
                     </div>
@@ -2050,7 +1998,7 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        {{-- Search bar --}}
+        
         <div class="content-card mb-4">
             <div class="p-3">
                 <div class="row g-3">
@@ -2075,7 +2023,7 @@ function openWalkInEnrollmentModal() {
                     </div>
                     <div class="col-md-4" style="display:flex;align-items:center;gap:8px;">
                         <span style="font-size:12px;color:var(--muted);" id="archive-count-label">
-                            Showing {{ $archivedStudents->total() }} archived student(s)
+                            Showing <?php echo e($archivedStudents->total()); ?> archived student(s)
                         </span>
                     </div>
                 </div>
@@ -2087,7 +2035,7 @@ function openWalkInEnrollmentModal() {
                 <h6><i class="bi bi-people me-2" style="color:#b45309;"></i>Archived Students</h6>
             </div>
 
-            @if($archivedStudents->isEmpty())
+            <?php if($archivedStudents->isEmpty()): ?>
                 <div style="text-align:center; padding:60px 24px; color:#aaa;">
                     <div style="width:72px;height:72px;background:#fff8e1;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
                         <i class="bi bi-archive" style="font-size:32px; color:#f5c842;"></i>
@@ -2101,7 +2049,7 @@ function openWalkInEnrollmentModal() {
                         <i class="bi bi-people-fill"></i> Go to Student Management
                     </button>
                 </div>
-            @else
+            <?php else: ?>
                 <div style="overflow-x:auto;" id="archive-table-wrap">
                     <table class="dash-table" style="min-width:760px;" id="archive-table">
                         <thead>
@@ -2116,8 +2064,8 @@ function openWalkInEnrollmentModal() {
                             </tr>
                         </thead>
                         <tbody id="archive-tbody">
-                            @foreach($archivedStudents as $arc)
-                            @php
+                            <?php $__currentLoopData = $archivedStudents; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $arc): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <?php
                                 $arcEnr  = $arc->latestEnrollment;
                                 $arcSd   = $arcEnr ? ($arcEnr->student_data ?? []) : [];
                                 $arcGr   = $arcSd['grade_level'] ?? ($arcEnr ? ($arcEnr->grade_level ?? null) : null);
@@ -2133,79 +2081,82 @@ function openWalkInEnrollmentModal() {
                                     'pending'     => 'color:#92400e;background:#fff8e1;',
                                     default       => 'color:#6b7280;background:#f3f4f6;',
                                 };
-                            @endphp
-                            <tr data-search="{{ strtolower($arc->name . ' ' . $arc->email . ' ' . ($arc->lrn ?? '')) }}"
-                                data-grade="{{ $arcGrDisplay }}">
+                            ?>
+                            <tr data-search="<?php echo e(strtolower($arc->name . ' ' . $arc->email . ' ' . ($arc->lrn ?? ''))); ?>"
+                                data-grade="<?php echo e($arcGrDisplay); ?>">
                                 <td>
                                     <div class="user-row-name">
                                         <div class="user-row-avatar" style="background:#fff8e1;color:#b45309;">
-                                            {{ strtoupper(substr($arc->name, 0, 2)) }}
+                                            <?php echo e(strtoupper(substr($arc->name, 0, 2))); ?>
+
                                         </div>
                                         <div>
-                                            <div style="font-weight:600; color:var(--text);">{{ $arc->name }}</div>
-                                            <div style="font-size:11px; color:var(--muted);">{{ $arc->email }}</div>
+                                            <div style="font-weight:600; color:var(--text);"><?php echo e($arc->name); ?></div>
+                                            <div style="font-size:11px; color:var(--muted);"><?php echo e($arc->email); ?></div>
                                         </div>
                                     </div>
                                 </td>
-                                <td style="font-size:12px; color:var(--muted);">{{ $arc->lrn ?: '—' }}</td>
+                                <td style="font-size:12px; color:var(--muted);"><?php echo e($arc->lrn ?: '—'); ?></td>
                                 <td>
-                                    @if($arcGrDisplay)
-                                        <span class="grade-chip">{{ $arcGrDisplay }}</span>
-                                    @else
+                                    <?php if($arcGrDisplay): ?>
+                                        <span class="grade-chip"><?php echo e($arcGrDisplay); ?></span>
+                                    <?php else: ?>
                                         <span style="color:#aaa;">—</span>
-                                    @endif
+                                    <?php endif; ?>
                                 </td>
-                                <td style="font-size:12px;">{{ $arcEnr ? ($arcEnr->school_year ?? '—') : '—' }}</td>
+                                <td style="font-size:12px;"><?php echo e($arcEnr ? ($arcEnr->school_year ?? '—') : '—'); ?></td>
                                 <td>
-                                    @if($arcStatus)
-                                        <span class="status-badge" style="{{ $arcStatusClass }}">{{ ucfirst($arcStatus) }}</span>
-                                    @else
+                                    <?php if($arcStatus): ?>
+                                        <span class="status-badge" style="<?php echo e($arcStatusClass); ?>"><?php echo e(ucfirst($arcStatus)); ?></span>
+                                    <?php else: ?>
                                         <span style="color:#aaa; font-size:12px;">—</span>
-                                    @endif
+                                    <?php endif; ?>
                                 </td>
                                 <td style="white-space:nowrap;">
                                     <div style="font-size:12px; color:#92400e; font-weight:600;">
-                                        {{ $arc->deleted_at->format('M d, Y') }}
+                                        <?php echo e($arc->deleted_at->format('M d, Y')); ?>
+
                                     </div>
-                                    <div style="font-size:10px; color:#bbb;">{{ $arc->deleted_at->diffForHumans() }}</div>
+                                    <div style="font-size:10px; color:#bbb;"><?php echo e($arc->deleted_at->diffForHumans()); ?></div>
                                 </td>
                                 <td style="white-space:nowrap;">
                                     <a href="#" class="action-btn js-student-restore"
-                                       data-id="{{ $arc->id }}" data-name="{{ addslashes($arc->name) }}"
+                                       data-id="<?php echo e($arc->id); ?>" data-name="<?php echo e(addslashes($arc->name)); ?>"
                                        title="Restore Student" style="background:#e8f8f0;color:#1a6b2d;">
                                         <i class="bi bi-arrow-counterclockwise"></i>
                                     </a>
-                                    <a href="{{ route('admin.students.sf10', $arc->id) }}" target="_blank"
+                                    <a href="<?php echo e(route('admin.students.sf10', $arc->id)); ?>" target="_blank"
                                        class="action-btn" title="Download SF10"
                                        style="background:#eef2ff;color:#3730a3;">
                                         <i class="bi bi-file-earmark-pdf-fill"></i>
                                     </a>
                                     <a href="#" class="action-btn js-student-force-delete"
-                                       data-id="{{ $arc->id }}" data-name="{{ addslashes($arc->name) }}"
+                                       data-id="<?php echo e($arc->id); ?>" data-name="<?php echo e(addslashes($arc->name)); ?>"
                                        title="Permanently Delete" style="background:#fdecea;color:#c0392b;">
                                         <i class="bi bi-trash3-fill"></i>
                                     </a>
                                 </td>
                             </tr>
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </tbody>
                     </table>
-                    {{-- No results row (shown by JS filter) --}}
+                    
                     <div id="archive-no-results" style="display:none; text-align:center; padding:40px; color:#aaa;">
                         <i class="bi bi-search" style="font-size:32px; display:block; margin-bottom:10px; opacity:0.4;"></i>
                         No archived students match your search.
                     </div>
                 </div>
                 <div class="p-3 border-top" style="border-color:var(--border);">
-                    {{ $archivedStudents->appends(['section' => 'archives'])->links() }}
+                    <?php echo e($archivedStudents->appends(['section' => 'archives'])->links()); ?>
+
                     <div class="pagination-info">
-                        Showing {{ $archivedStudents->firstItem() }} to {{ $archivedStudents->lastItem() }} of {{ $archivedStudents->total() }} archived student(s)
+                        Showing <?php echo e($archivedStudents->firstItem()); ?> to <?php echo e($archivedStudents->lastItem()); ?> of <?php echo e($archivedStudents->total()); ?> archived student(s)
                     </div>
                 </div>
-            @endif
+            <?php endif; ?>
         </div>
 
-    </div>{{-- /section-archives --}}
+    </div>
 
     <script>
     function filterArchiveRows() {
@@ -2227,7 +2178,7 @@ function openWalkInEnrollmentModal() {
     }
     </script>
 
-    {{-- â”€â”€ Change Status Modal â”€â”€ --}}
+    
     <div class="modal fade" id="changeStatusModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-sm">
             <div class="modal-content" style="border:0;border-radius:14px;overflow:hidden;">
@@ -2258,7 +2209,7 @@ function openWalkInEnrollmentModal() {
         </div>
     </div>
 
-    {{-- â”€â”€ SM Assess Modal (Student Management inline assessment) â”€â”€ --}}
+    
     <div class="modal fade" id="smAssessModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content" style="border:0;border-radius:14px;overflow:hidden;">
@@ -2270,7 +2221,7 @@ function openWalkInEnrollmentModal() {
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body" style="padding:0;">
-                    {{-- Tabs --}}
+                    
                     <div style="display:flex;border-bottom:1px solid #e5e7eb;">
                         <button class="sm-assess-tab active" onclick="smAssessTab('grades',this)" style="flex:1;padding:12px;border:0;background:#fff;font-size:13px;font-weight:600;color:var(--blue);border-bottom:2px solid var(--blue);cursor:pointer;">
                             <i class="bi bi-bar-chart-fill me-1"></i> Grades
@@ -2292,7 +2243,7 @@ function openWalkInEnrollmentModal() {
                         </button>
                     </div>
 
-                    {{-- Grades Tab --}}
+                    
                     <div id="sm-tab-grades" class="sm-assess-panel" style="padding:20px;">
                         <div id="sm-grades-loading" style="text-align:center;padding:30px;color:#999;">
                             <div class="spinner-border spinner-border-sm me-2"></div> Loading grades...
@@ -2300,7 +2251,7 @@ function openWalkInEnrollmentModal() {
                         <div id="sm-grades-content" style="display:none;"></div>
                     </div>
 
-                    {{-- Balance Tab --}}
+                    
                     <div id="sm-tab-balance" class="sm-assess-panel" style="display:none;padding:20px;">
                         <div id="sm-balance-content">
                             <div style="text-align:center;padding:30px;color:#999;">
@@ -2309,7 +2260,7 @@ function openWalkInEnrollmentModal() {
                         </div>
                     </div>
 
-                    {{-- Documents Tab --}}
+                    
                     <div id="sm-tab-docs" class="sm-assess-panel" style="display:none;padding:20px;">
                         <div id="sm-docs-loading" style="text-align:center;padding:30px;color:#999;">
                             <div class="spinner-border spinner-border-sm me-2"></div> Loading documents...
@@ -2317,7 +2268,7 @@ function openWalkInEnrollmentModal() {
                         <div id="sm-docs-content" style="display:none;"></div>
                     </div>
 
-                    {{-- Guidance Tab — informational only, does not block assessment --}}
+                    
                     <div id="sm-tab-guidance" class="sm-assess-panel" style="display:none;padding:20px;">
                         <div id="sm-guidance-loading" style="text-align:center;padding:30px;color:#999;">
                             <div class="spinner-border spinner-border-sm me-2"></div> Loading guidance records...
@@ -2325,7 +2276,7 @@ function openWalkInEnrollmentModal() {
                         <div id="sm-guidance-content" style="display:none;"></div>
                     </div>
 
-                    {{-- Summer Class Tab — informational only, does not block assessment --}}
+                    
                     <div id="sm-tab-summer" class="sm-assess-panel" style="display:none;padding:20px;">
                         <div id="sm-summer-loading" style="text-align:center;padding:30px;color:#999;">
                             <div class="spinner-border spinner-border-sm me-2"></div> Loading summer class status...
@@ -2333,7 +2284,7 @@ function openWalkInEnrollmentModal() {
                         <div id="sm-summer-content" style="display:none;"></div>
                     </div>
 
-                    {{-- Decision Tab --}}
+                    
                     <div id="sm-tab-decision" class="sm-assess-panel" style="display:none;padding:20px;">
                         <p style="font-size:13px;color:#555;margin-bottom:16px;">
                             Review the student's grades and balance above, then choose an action for the next school year.
@@ -2357,7 +2308,7 @@ function openWalkInEnrollmentModal() {
                         <div style="margin-bottom:12px;">
                             <label class="form-lbl">Next School Year</label>
                             <select id="sm-assess-to-sy" class="form-fld">
-                                @php
+                                <?php
                                     $syBase = $currentSchoolYear ?? '';
                                     $baseY  = $syBase ? (int) explode('-', $syBase)[0] : (now()->month >= 6 ? now()->year : now()->year - 1);
                                     for ($y = $baseY + 6; $y >= $baseY + 1; $y--) {
@@ -2365,7 +2316,7 @@ function openWalkInEnrollmentModal() {
                                         $sel = ($y === $baseY + 1) ? 'selected' : '';
                                         echo "<option value=\"$sy\" $sel>$sy</option>";
                                     }
-                                @endphp
+                                ?>
                             </select>
                         </div>
                         <div>
@@ -2384,7 +2335,7 @@ function openWalkInEnrollmentModal() {
         </div>
     </div>
 
-    {{-- Walk-in Enrollment Modal --}}
+    
 
     <div class="modal fade" id="walkInEnrollmentModal" tabindex="-1">
 
@@ -2991,11 +2942,7 @@ function openWalkInEnrollmentModal() {
 
     </div>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-         SECTION: TEACHER MANAGEMENT
-
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
 
     <div id="section-teachers" class="dash-section" style="display:none;">
 
@@ -3017,7 +2964,7 @@ function openWalkInEnrollmentModal() {
 
         </div>
 
-        @php
+        <?php
             $totalTeachers    = ($teachers ?? collect())->count();
             $activeTeachers   = ($teachers ?? collect())->where('is_active', true)->count();
             $inactiveTeachers = $totalTeachers - $activeTeachers;
@@ -3052,7 +2999,7 @@ function openWalkInEnrollmentModal() {
                     ]);
                 }
             }
-        @endphp
+        ?>
 
         <div class="row g-3 mb-4">
 
@@ -3064,7 +3011,7 @@ function openWalkInEnrollmentModal() {
 
                     <div>
 
-                        <div class="stat-value">{{ $totalTeachers }}</div>
+                        <div class="stat-value"><?php echo e($totalTeachers); ?></div>
 
                         <div class="stat-label">Total Teachers</div>
 
@@ -3082,7 +3029,7 @@ function openWalkInEnrollmentModal() {
 
                     <div>
 
-                        <div class="stat-value">{{ $activeTeachers }}</div>
+                        <div class="stat-value"><?php echo e($activeTeachers); ?></div>
 
                         <div class="stat-label">Active</div>
 
@@ -3100,7 +3047,7 @@ function openWalkInEnrollmentModal() {
 
                     <div>
 
-                        <div class="stat-value">{{ $inactiveTeachers }}</div>
+                        <div class="stat-value"><?php echo e($inactiveTeachers); ?></div>
 
                         <div class="stat-label">Inactive</div>
 
@@ -3114,7 +3061,7 @@ function openWalkInEnrollmentModal() {
                 <div class="stat-card">
                     <div class="stat-icon gold"><i class="bi bi-calendar3"></i></div>
                     <div>
-                        <div class="stat-value">{{ $teacherScheduleMap->pluck('teacher_id')->unique()->count() }}</div>
+                        <div class="stat-value"><?php echo e($teacherScheduleMap->pluck('teacher_id')->unique()->count()); ?></div>
                         <div class="stat-label">With Schedules</div>
                     </div>
                 </div>
@@ -3146,7 +3093,7 @@ function openWalkInEnrollmentModal() {
 
             </div>
 
-            <span class="toolbar-count"><span id="teacherVisibleCount">{{ $totalTeachers }}</span> of {{ $totalTeachers }} teachers</span>
+            <span class="toolbar-count"><span id="teacherVisibleCount"><?php echo e($totalTeachers); ?></span> of <?php echo e($totalTeachers); ?> teachers</span>
 
         </div>
 
@@ -3184,71 +3131,73 @@ function openWalkInEnrollmentModal() {
 
                     <tbody>
 
-                        @forelse(($teachers ?? collect()) as $t)
+                        <?php $__empty_1 = true; $__currentLoopData = ($teachers ?? collect()); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $t): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
 
-                        @php
+                        <?php
                             $tStatus      = $t->is_active ? 'active' : 'inactive';
                             $tAdvisory    = $teacherAdvisoryMap->where('teacher_id', $t->id)->values();
                             $tScheduleSec = $teacherScheduleMap->where('teacher_id', $t->id)
                                 ->unique('section_name')->values();
                             $glMap = ['nursery'=>'Nursery','kindergarten'=>'Kinder','grade1'=>'G1','grade2'=>'G2','grade3'=>'G3','grade4'=>'G4','grade5'=>'G5','grade6'=>'G6'];
-                        @endphp
+                        ?>
 
-                        <tr data-search="{{ strtolower($t->name . ' ' . $t->email) }}" data-status="{{ $tStatus }}">
+                        <tr data-search="<?php echo e(strtolower($t->name . ' ' . $t->email)); ?>" data-status="<?php echo e($tStatus); ?>">
 
                             <td>
                                 <div class="user-row-name">
-                                    <div class="user-row-avatar" style="background:var(--purple);">{{ strtoupper(substr($t->name, 0, 2)) }}</div>
+                                    <div class="user-row-avatar" style="background:var(--purple);"><?php echo e(strtoupper(substr($t->name, 0, 2))); ?></div>
                                     <div>
-                                        <div style="font-weight:600;">{{ $t->name }}</div>
-                                        <div class="user-row-sub">ID: {{ $t->id }}</div>
+                                        <div style="font-weight:600;"><?php echo e($t->name); ?></div>
+                                        <div class="user-row-sub">ID: <?php echo e($t->id); ?></div>
                                     </div>
                                 </div>
                             </td>
 
-                            <td class="fs-12">{{ $t->email }}</td>
+                            <td class="fs-12"><?php echo e($t->email); ?></td>
 
                             <td style="max-width:260px;">
-                                {{-- Advisory sections --}}
-                                @foreach($tAdvisory as $adv)
-                                    <span title="Advisory: {{ $adv['section_name'] }}"
+                                
+                                <?php $__currentLoopData = $tAdvisory; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $adv): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <span title="Advisory: <?php echo e($adv['section_name']); ?>"
                                         style="display:inline-flex;align-items:center;gap:3px;background:#e0f2fe;color:#0369a1;border:1px solid #bae6fd;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:600;margin:2px 2px 2px 0;white-space:nowrap;">
                                         <i class="bi bi-star-fill" style="font-size:9px;"></i>
-                                        {{ $adv['section_name'] }}
-                                        <span style="font-size:10px;opacity:0.75;">({{ $glMap[$adv['grade_level']] ?? $adv['grade_level'] }})</span>
+                                        <?php echo e($adv['section_name']); ?>
+
+                                        <span style="font-size:10px;opacity:0.75;">(<?php echo e($glMap[$adv['grade_level']] ?? $adv['grade_level']); ?>)</span>
                                     </span>
-                                @endforeach
-                                {{-- Schedule-based teaching sections --}}
-                                @foreach($tScheduleSec->take(4) as $sch)
-                                    <span title="Teaches in: {{ $sch['section_name'] }}"
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                
+                                <?php $__currentLoopData = $tScheduleSec->take(4); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sch): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <span title="Teaches in: <?php echo e($sch['section_name']); ?>"
                                         style="display:inline-flex;align-items:center;gap:3px;background:#e8f5e9;color:#166534;border:1px solid #bbf7d0;border-radius:12px;padding:2px 8px;font-size:11px;font-weight:600;margin:2px 2px 2px 0;white-space:nowrap;">
                                         <i class="bi bi-calendar3" style="font-size:9px;"></i>
-                                        {{ $sch['section_name'] }}
-                                        <span style="font-size:10px;opacity:0.75;">({{ $glMap[$sch['grade_level']] ?? $sch['grade_level'] }})</span>
+                                        <?php echo e($sch['section_name']); ?>
+
+                                        <span style="font-size:10px;opacity:0.75;">(<?php echo e($glMap[$sch['grade_level']] ?? $sch['grade_level']); ?>)</span>
                                     </span>
-                                @endforeach
-                                @if($tScheduleSec->count() > 4)
-                                    <span style="background:#eee;border-radius:12px;padding:2px 8px;font-size:11px;color:#555;">+{{ $tScheduleSec->count() - 4 }} more</span>
-                                @endif
-                                @if($tAdvisory->count() === 0 && $tScheduleSec->count() === 0)
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                <?php if($tScheduleSec->count() > 4): ?>
+                                    <span style="background:#eee;border-radius:12px;padding:2px 8px;font-size:11px;color:#555;">+<?php echo e($tScheduleSec->count() - 4); ?> more</span>
+                                <?php endif; ?>
+                                <?php if($tAdvisory->count() === 0 && $tScheduleSec->count() === 0): ?>
                                     <span style="color:#bbb;font-size:12px;">— Not assigned</span>
-                                @endif
+                                <?php endif; ?>
                             </td>
 
                             <td>
 
-                                <span class="status-badge {{ $tStatus === 'active' ? 'enrolled' : 'inactive' }}">{{ ucfirst($tStatus) }}</span>
+                                <span class="status-badge <?php echo e($tStatus === 'active' ? 'enrolled' : 'inactive'); ?>"><?php echo e(ucfirst($tStatus)); ?></span>
 
                             </td>
 
                             <td style="white-space:nowrap;">
                                 <button class="action-btn edit js-teacher-edit" title="Edit Teacher"
-                                    data-id="{{ $t->id }}" data-name="{{ $t->name }}" data-email="{{ $t->email }}" data-active="{{ $t->is_active ? '1' : '0' }}">
+                                    data-id="<?php echo e($t->id); ?>" data-name="<?php echo e($t->name); ?>" data-email="<?php echo e($t->email); ?>" data-active="<?php echo e($t->is_active ? '1' : '0'); ?>">
                                     <i class="bi bi-pencil-fill"></i>
                                 </button>
                                 <button class="action-btn" title="Assign Advisory"
                                     style="background:#e0f2fe;color:#0369a1;"
-                                    onclick="openAddAssignmentModalForTeacher({{ $t->id }}, '{{ addslashes($t->name) }}')">
+                                    onclick="openAddAssignmentModalForTeacher(<?php echo e($t->id); ?>, '<?php echo e(addslashes($t->name)); ?>')">
                                     <i class="bi bi-star-fill"></i>
                                 </button>
                                 <button class="action-btn" title="Add Schedule"
@@ -3256,14 +3205,14 @@ function openWalkInEnrollmentModal() {
                                     onclick="showSection('schedules'); setTimeout(() => openScheduleModal(), 200);">
                                     <i class="bi bi-calendar-plus-fill"></i>
                                 </button>
-                                <button class="action-btn delete js-teacher-delete" title="Delete Teacher" data-id="{{ $t->id }}">
+                                <button class="action-btn delete js-teacher-delete" title="Delete Teacher" data-id="<?php echo e($t->id); ?>">
                                     <i class="bi bi-trash-fill"></i>
                                 </button>
                             </td>
 
                         </tr>
 
-                        @empty
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
 
                         <tr>
 
@@ -3277,7 +3226,7 @@ function openWalkInEnrollmentModal() {
 
                         </tr>
 
-                        @endforelse
+                        <?php endif; ?>
 
                     </tbody>
 
@@ -3285,21 +3234,22 @@ function openWalkInEnrollmentModal() {
 
             </div>
 
-            {{-- Teacher Management Pagination --}}
+            
             <div class="p-3 border-top" style="border-color:var(--border);">
-                @if(isset($teachers))
-                {{ $teachers->links() }}
-                @endif
-                @if(isset($teachers) && $teachers->count() > 0)
+                <?php if(isset($teachers)): ?>
+                <?php echo e($teachers->links()); ?>
+
+                <?php endif; ?>
+                <?php if(isset($teachers) && $teachers->count() > 0): ?>
                 <div class="pagination-info">
-                    Showing {{ $teachers->firstItem() }} to {{ $teachers->lastItem() }} of {{ $teachers->total() }} teachers
+                    Showing <?php echo e($teachers->firstItem()); ?> to <?php echo e($teachers->lastItem()); ?> of <?php echo e($teachers->total()); ?> teachers
                 </div>
-                @endif
+                <?php endif; ?>
             </div>
 
         </div>
 
-        {{-- Teacher Add/Edit Modal --}}
+        
 
         <div class="modal fade" id="teacherModal" tabindex="-1">
 
@@ -3400,11 +3350,9 @@ function openWalkInEnrollmentModal() {
 
         </div>
 
-    </div>{{-- /section-teachers --}}
+    </div>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-         SECTION: TEACHER ASSIGNMENTS
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
     <div id="section-teacher-assignments" class="dash-section" style="display:none;">
         <div class="section-header">
             <div>
@@ -3413,7 +3361,7 @@ function openWalkInEnrollmentModal() {
             </div>
             <div style="display:flex; gap:12px; align-items:center;">
                 <select id="ta-school-year-filter" class="dash-form-control" style="width:180px;" onchange="loadTeacherAssignments()">
-                    @php
+                    <?php
                         $taBase = (int) substr($currentSchoolYear ?? '2026-2027', 0, 4);
                         $taDefault = $currentSchoolYear ?? ($taBase . '-' . ($taBase + 1));
                         for ($y = $taBase; $y <= $taBase + 10; $y++) {
@@ -3421,7 +3369,7 @@ function openWalkInEnrollmentModal() {
                             $selected = $sy === $taDefault ? 'selected' : '';
                             echo "<option value=\"$sy\" $selected>$sy</option>";
                         }
-                    @endphp
+                    ?>
                 </select>
                 <select id="ta-sort-filter" class="dash-form-control" style="width:180px;" onchange="loadTeacherAssignments()">
                     <option value="newest">Newest First</option>
@@ -3435,7 +3383,7 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        {{-- Summary Cards --}}
+        
         <div class="row g-3 mb-4" id="ta-summary-cards">
             <div class="col-md-4">
                 <div class="stat-card">
@@ -3466,7 +3414,7 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        {{-- Assignments Table --}}
+        
         <div class="dash-card">
             <div class="dash-card-header">
                 <h6><i class="bi bi-table me-2"></i>Advisory Assignments</h6>
@@ -3491,9 +3439,9 @@ function openWalkInEnrollmentModal() {
                 <div id="ta-pagination"></div>
             </div>
         </div>
-    </div>{{-- /section-teacher-assignments --}}
+    </div>
 
-    {{-- Teacher Assignment Add/Edit Modal --}}
+    
     <div class="modal fade" id="assignmentModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content modal-content-styled">
@@ -3519,7 +3467,7 @@ function openWalkInEnrollmentModal() {
                         <div class="mb-3">
                             <label class="dash-form-label">School Year <span class="text-danger">*</span></label>
                             <select id="assignment-school-year" class="dash-form-control" required>
-                                @php
+                                <?php
                                     $amBase = (int) substr($currentSchoolYear ?? '2026-2027', 0, 4);
                                     $amDefault = $currentSchoolYear ?? ($amBase . '-' . ($amBase + 1));
                                     for ($y = $amBase; $y <= $amBase + 10; $y++) {
@@ -3527,7 +3475,7 @@ function openWalkInEnrollmentModal() {
                                         $selected = $sy === $amDefault ? 'selected' : '';
                                         echo "<option value=\"$sy\" $selected>$sy</option>";
                                     }
-                                @endphp
+                                ?>
                             </select>
                         </div>
                         <div class="alert alert-info py-2 px-3 mb-3" style="font-size:12px; border-radius:8px;">
@@ -3545,11 +3493,7 @@ function openWalkInEnrollmentModal() {
         </div>
     </div>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-         SECTION: ENROLLMENT MANAGEMENT
-
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
 
     <div id="section-enrollment" class="dash-section" style="display:none;">
 
@@ -3565,24 +3509,24 @@ function openWalkInEnrollmentModal() {
 
             <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
 
-                {{-- Enrollment Window Toggle --}}
-                @php $isEnrollOpen = $enrollmentOpen ?? true; @endphp
+                
+                <?php $isEnrollOpen = $enrollmentOpen ?? true; ?>
                 <div id="enrollment-window-badge"
                      style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:10px;font-size:13px;font-weight:700;
-                            background:{{ $isEnrollOpen ? '#e8f8f0' : '#fdecea' }};
-                            color:{{ $isEnrollOpen ? '#1a7a44' : '#c0392b' }};
-                            border:1.5px solid {{ $isEnrollOpen ? '#27ae60' : '#e74c3c' }};">
+                            background:<?php echo e($isEnrollOpen ? '#e8f8f0' : '#fdecea'); ?>;
+                            color:<?php echo e($isEnrollOpen ? '#1a7a44' : '#c0392b'); ?>;
+                            border:1.5px solid <?php echo e($isEnrollOpen ? '#27ae60' : '#e74c3c'); ?>;">
                     <span style="width:8px;height:8px;border-radius:50%;display:inline-block;
-                                 background:{{ $isEnrollOpen ? '#27ae60' : '#e74c3c' }};
-                                 box-shadow:0 0 0 2px {{ $isEnrollOpen ? '#a8d5b5' : '#f5b7b1' }};"></span>
-                    <span id="enrollment-window-label">Enrollment {{ $isEnrollOpen ? 'OPEN' : 'CLOSED' }}</span>
+                                 background:<?php echo e($isEnrollOpen ? '#27ae60' : '#e74c3c'); ?>;
+                                 box-shadow:0 0 0 2px <?php echo e($isEnrollOpen ? '#a8d5b5' : '#f5b7b1'); ?>;"></span>
+                    <span id="enrollment-window-label">Enrollment <?php echo e($isEnrollOpen ? 'OPEN' : 'CLOSED'); ?></span>
                 </div>
 
-                <button class="btn-dash {{ $isEnrollOpen ? 'btn-secondary' : 'btn-primary' }}"
+                <button class="btn-dash <?php echo e($isEnrollOpen ? 'btn-secondary' : 'btn-primary'); ?>"
                         id="enrollment-toggle-btn"
                         onclick="toggleEnrollmentWindow()">
-                    <i class="bi bi-{{ $isEnrollOpen ? 'lock-fill' : 'unlock-fill' }} me-1"></i>
-                    <span id="enrollment-toggle-label">{{ $isEnrollOpen ? 'Close Enrollment' : 'Open Enrollment' }}</span>
+                    <i class="bi bi-<?php echo e($isEnrollOpen ? 'lock-fill' : 'unlock-fill'); ?> me-1"></i>
+                    <span id="enrollment-toggle-label"><?php echo e($isEnrollOpen ? 'Close Enrollment' : 'Open Enrollment'); ?></span>
                 </button>
 
                 <a href="#" class="btn-dash btn-primary" onclick="openWalkInEnrollmentModal()">
@@ -3593,15 +3537,15 @@ function openWalkInEnrollmentModal() {
 
         </div>
 
-        {{-- Enrollment closed notice --}}
-        @if(!$isEnrollOpen)
+        
+        <?php if(!$isEnrollOpen): ?>
         <div style="background:#fff8ec;border:1px solid #f5a623;border-radius:10px;padding:12px 18px;margin-bottom:16px;display:flex;align-items:center;gap:10px;font-size:13px;">
             <i class="bi bi-exclamation-triangle-fill" style="color:#d68910;font-size:16px;"></i>
             <span><strong>Online enrollment is currently closed.</strong> Students cannot submit new applications. Walk-in enrollment is still available through this panel.</span>
         </div>
-        @endif
+        <?php endif; ?>
 
-        {{-- Enrollment Stats --}}
+        
 
         <div class="row g-3 mb-4">
 
@@ -3661,7 +3605,7 @@ function openWalkInEnrollmentModal() {
 
         </div>
 
-        {{-- React Component Island: Dashboard Charts --}}
+        
 
         <div id="admin-dashboard-charts"></div>
 
@@ -3669,40 +3613,40 @@ function openWalkInEnrollmentModal() {
             <div class="p-3">
                 <div class="row g-3">
                     <div class="col-md-3">
-                        <select class="form-fld" id="statusFilter" data-sort="{{ $sort ?? 'newest' }}" data-grade="{{ $gradeFilter ?? 'all' }}" onchange="filterEnrollments()">
-                            <option value="all" {{ ($statusFilter ?? 'all') === 'all' ? 'selected' : '' }}>All Status</option>
-                            <option value="pending" {{ ($statusFilter ?? 'all') === 'pending' ? 'selected' : '' }}>Pending</option>
-                            <option value="approved" {{ ($statusFilter ?? 'all') === 'approved' ? 'selected' : '' }}>Approved</option>
-                            <option value="enrolled" {{ ($statusFilter ?? 'all') === 'enrolled' ? 'selected' : '' }}>Enrolled</option>
-                            <option value="rejected" {{ ($statusFilter ?? 'all') === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                        <select class="form-fld" id="statusFilter" data-sort="<?php echo e($sort ?? 'newest'); ?>" data-grade="<?php echo e($gradeFilter ?? 'all'); ?>" onchange="filterEnrollments()">
+                            <option value="all" <?php echo e(($statusFilter ?? 'all') === 'all' ? 'selected' : ''); ?>>All Status</option>
+                            <option value="pending" <?php echo e(($statusFilter ?? 'all') === 'pending' ? 'selected' : ''); ?>>Pending</option>
+                            <option value="approved" <?php echo e(($statusFilter ?? 'all') === 'approved' ? 'selected' : ''); ?>>Approved</option>
+                            <option value="enrolled" <?php echo e(($statusFilter ?? 'all') === 'enrolled' ? 'selected' : ''); ?>>Enrolled</option>
+                            <option value="rejected" <?php echo e(($statusFilter ?? 'all') === 'rejected' ? 'selected' : ''); ?>>Rejected</option>
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <select class="form-fld" id="gradeFilter" data-sort="{{ $sort ?? 'newest' }}" data-status="{{ $statusFilter ?? 'all' }}" onchange="filterEnrollmentsGrade()">
-                            <option value="all" {{ ($gradeFilter ?? 'all') === 'all' ? 'selected' : '' }}>All Grades</option>
-                            <option value="nursery" {{ ($gradeFilter ?? 'all') === 'nursery' ? 'selected' : '' }}>Nursery</option>
-                            <option value="kindergarten" {{ ($gradeFilter ?? 'all') === 'kindergarten' ? 'selected' : '' }}>Kindergarten</option>
-                            <option value="grade1" {{ ($gradeFilter ?? 'all') === 'grade1' ? 'selected' : '' }}>Grade 1</option>
-                            <option value="grade2" {{ ($gradeFilter ?? 'all') === 'grade2' ? 'selected' : '' }}>Grade 2</option>
-                            <option value="grade3" {{ ($gradeFilter ?? 'all') === 'grade3' ? 'selected' : '' }}>Grade 3</option>
-                            <option value="grade4" {{ ($gradeFilter ?? 'all') === 'grade4' ? 'selected' : '' }}>Grade 4</option>
-                            <option value="grade5" {{ ($gradeFilter ?? 'all') === 'grade5' ? 'selected' : '' }}>Grade 5</option>
-                            <option value="grade6" {{ ($gradeFilter ?? 'all') === 'grade6' ? 'selected' : '' }}>Grade 6</option>
+                        <select class="form-fld" id="gradeFilter" data-sort="<?php echo e($sort ?? 'newest'); ?>" data-status="<?php echo e($statusFilter ?? 'all'); ?>" onchange="filterEnrollmentsGrade()">
+                            <option value="all" <?php echo e(($gradeFilter ?? 'all') === 'all' ? 'selected' : ''); ?>>All Grades</option>
+                            <option value="nursery" <?php echo e(($gradeFilter ?? 'all') === 'nursery' ? 'selected' : ''); ?>>Nursery</option>
+                            <option value="kindergarten" <?php echo e(($gradeFilter ?? 'all') === 'kindergarten' ? 'selected' : ''); ?>>Kindergarten</option>
+                            <option value="grade1" <?php echo e(($gradeFilter ?? 'all') === 'grade1' ? 'selected' : ''); ?>>Grade 1</option>
+                            <option value="grade2" <?php echo e(($gradeFilter ?? 'all') === 'grade2' ? 'selected' : ''); ?>>Grade 2</option>
+                            <option value="grade3" <?php echo e(($gradeFilter ?? 'all') === 'grade3' ? 'selected' : ''); ?>>Grade 3</option>
+                            <option value="grade4" <?php echo e(($gradeFilter ?? 'all') === 'grade4' ? 'selected' : ''); ?>>Grade 4</option>
+                            <option value="grade5" <?php echo e(($gradeFilter ?? 'all') === 'grade5' ? 'selected' : ''); ?>>Grade 5</option>
+                            <option value="grade6" <?php echo e(($gradeFilter ?? 'all') === 'grade6' ? 'selected' : ''); ?>>Grade 6</option>
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <select class="form-fld" id="enrollmentSortFilter" data-status="{{ $statusFilter ?? 'all' }}" data-grade="{{ $gradeFilter ?? 'all' }}">
-                            <option value="newest" {{ ($sort ?? 'newest') === 'newest' ? 'selected' : '' }}>Newest First</option>
-                            <option value="oldest" {{ ($sort ?? 'newest') === 'oldest' ? 'selected' : '' }}>Oldest First</option>
-                            <option value="name_asc" {{ ($sort ?? 'newest') === 'name_asc' ? 'selected' : '' }}>Name (A-Z)</option>
-                            <option value="name_desc" {{ ($sort ?? 'newest') === 'name_desc' ? 'selected' : '' }}>Name (Z-A)</option>
+                        <select class="form-fld" id="enrollmentSortFilter" data-status="<?php echo e($statusFilter ?? 'all'); ?>" data-grade="<?php echo e($gradeFilter ?? 'all'); ?>">
+                            <option value="newest" <?php echo e(($sort ?? 'newest') === 'newest' ? 'selected' : ''); ?>>Newest First</option>
+                            <option value="oldest" <?php echo e(($sort ?? 'newest') === 'oldest' ? 'selected' : ''); ?>>Oldest First</option>
+                            <option value="name_asc" <?php echo e(($sort ?? 'newest') === 'name_asc' ? 'selected' : ''); ?>>Name (A-Z)</option>
+                            <option value="name_desc" <?php echo e(($sort ?? 'newest') === 'name_desc' ? 'selected' : ''); ?>>Name (Z-A)</option>
                         </select>
                     </div>
                     <div class="col-md-3 text-end">
                         <span class="text-muted" style="font-size:13px;">
-                            @if(isset($enrollments))
-                            Showing {{ $enrollments->firstItem() ?? 0 }} to {{ $enrollments->lastItem() ?? 0 }} of {{ $enrollments->total() }} enrollments
-                            @endif
+                            <?php if(isset($enrollments)): ?>
+                            Showing <?php echo e($enrollments->firstItem() ?? 0); ?> to <?php echo e($enrollments->lastItem() ?? 0); ?> of <?php echo e($enrollments->total()); ?> enrollments
+                            <?php endif; ?>
                         </span>
                     </div>
                 </div>
@@ -3739,39 +3683,43 @@ function openWalkInEnrollmentModal() {
 
                     <tbody>
 
-                        @if(isset($enrollments) && $enrollments->count() > 0)
+                        <?php if(isset($enrollments) && $enrollments->count() > 0): ?>
 
-                            @foreach($enrollments as $e)
+                            <?php $__currentLoopData = $enrollments; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $e): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
 
                             <tr>
 
-                                <td>{{ $e->reference_number }}</td>
+                                <td><?php echo e($e->reference_number); ?></td>
 
                                 <td>
-                                    {{ $e->student_data['first_name'] ?? '' }}
-                                    {{ $e->student_data['middle_name'] ?? '' }}
-                                    {{ $e->student_data['last_name'] ?? '' }}
-                                    @php $eType = $e->student_data['student_type'] ?? ''; @endphp
-                                    @if($eType === 'returning')
+                                    <?php echo e($e->student_data['first_name'] ?? ''); ?>
+
+                                    <?php echo e($e->student_data['middle_name'] ?? ''); ?>
+
+                                    <?php echo e($e->student_data['last_name'] ?? ''); ?>
+
+                                    <?php $eType = $e->student_data['student_type'] ?? ''; ?>
+                                    <?php if($eType === 'returning'): ?>
                                         <span style="display:inline-flex;align-items:center;gap:4px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;margin-left:4px;vertical-align:middle;">
                                             <i class="bi bi-arrow-repeat"></i> Re-Enroll
                                         </span>
-                                    @elseif($eType === 'transferee')
+                                    <?php elseif($eType === 'transferee'): ?>
                                         <span style="display:inline-flex;align-items:center;gap:4px;background:#f0fdf4;color:#15803d;border:1px solid #86efac;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;margin-left:4px;vertical-align:middle;">
                                             <i class="bi bi-box-arrow-in-right"></i> Transferee
                                         </span>
-                                    @endif
+                                    <?php endif; ?>
                                 </td>
 
                                 <td>
 
-                                    {{ $e->student_data['grade_level'] ?? '' }}
+                                    <?php echo e($e->student_data['grade_level'] ?? ''); ?>
+
 
                                 </td>
 
                                 <td>
 
-                                    @php
+                                    <?php
                                         $enrollIcon = match($e->status) {
                                             'enrolled'  => 'bi-check-circle-fill',
                                             'approved'  => 'bi-shield-check',
@@ -3780,41 +3728,42 @@ function openWalkInEnrollmentModal() {
                                             'completed' => 'bi-archive-fill',
                                             default     => 'bi-circle',
                                         };
-                                    @endphp
-                                    <span class="status-badge status-{{ $e->status }}">
-                                        <i class="bi {{ $enrollIcon }}"></i> {{ ucfirst($e->status) }}
+                                    ?>
+                                    <span class="status-badge status-<?php echo e($e->status); ?>">
+                                        <i class="bi <?php echo e($enrollIcon); ?>"></i> <?php echo e(ucfirst($e->status)); ?>
+
                                     </span>
 
                                 </td>
 
-                                <td>{{ $e->created_at }}</td>
+                                <td><?php echo e($e->created_at); ?></td>
 
                                 <td>
 
-                                    <a href="#" class="btn btn-sm js-enrollment-view" data-id="{{ $e->id }}" title="View Application Details"
+                                    <a href="#" class="btn btn-sm js-enrollment-view" data-id="<?php echo e($e->id); ?>" title="View Application Details"
                                         style="background:#eff6ff;color:#1d4ed8;border:none;">
                                         <i class="bi bi-eye"></i>
                                     </a>
 
-                                    @if($e->status === 'pending')
-                                        <button class="btn btn-sm js-enrollment-approve" data-id="{{ $e->id }}" title="Approve Enrollment"
+                                    <?php if($e->status === 'pending'): ?>
+                                        <button class="btn btn-sm js-enrollment-approve" data-id="<?php echo e($e->id); ?>" title="Approve Enrollment"
                                             style="background:#f0fdf4;color:#16a34a;border:none;">
                                             <i class="bi bi-check"></i>
                                         </button>
 
-                                        <button class="btn btn-sm js-enrollment-decline" data-id="{{ $e->id }}" title="Decline Enrollment"
+                                        <button class="btn btn-sm js-enrollment-decline" data-id="<?php echo e($e->id); ?>" title="Decline Enrollment"
                                             style="background:#fef2f2;color:#dc2626;border:none;">
                                             <i class="bi bi-x"></i>
                                         </button>
-                                    @endif
+                                    <?php endif; ?>
 
                                 </td>
 
                             </tr>
 
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
 
-                        @else
+                        <?php else: ?>
 
                             <tr>
 
@@ -3828,39 +3777,36 @@ function openWalkInEnrollmentModal() {
 
                             </tr>
 
-                        @endif
+                        <?php endif; ?>
 
                     </tbody>
 
                 </table>
 
-                {{-- Pagination Links --}}
+                
                 <div class="p-3 border-top" style="border-color:var(--border);">
-                    @if(isset($enrollments))
-                    {{ $enrollments->appends([
+                    <?php if(isset($enrollments)): ?>
+                    <?php echo e($enrollments->appends([
                         'sort' => $sort ?? 'newest',
                         'status' => $statusFilter ?? 'all',
                         'grade' => $gradeFilter ?? 'all',
-                    ])->links() }}
-                    @endif
-                    @if(isset($enrollments) && $enrollments->count() > 0)
+                    ])->links()); ?>
+
+                    <?php endif; ?>
+                    <?php if(isset($enrollments) && $enrollments->count() > 0): ?>
                     <div class="pagination-info">
-                        Showing {{ $enrollments->firstItem() }} to {{ $enrollments->lastItem() }} of {{ $enrollments->total() }} enrollments
+                        Showing <?php echo e($enrollments->firstItem()); ?> to <?php echo e($enrollments->lastItem()); ?> of <?php echo e($enrollments->total()); ?> enrollments
                     </div>
-                    @endif
+                    <?php endif; ?>
                 </div>
 
             </div>
 
         </div>
 
-    </div>{{-- /section-enrollment --}}
+    </div>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-         SECTION: FINANCE MANAGEMENT
-
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
 
     <div id="section-finance" class="dash-section" style="display:none;">
 
@@ -3876,7 +3822,7 @@ function openWalkInEnrollmentModal() {
 
         </div>
 
-        {{-- Finance Stats --}}
+        
 
         <div class="row g-3 mb-4">
 
@@ -3888,7 +3834,7 @@ function openWalkInEnrollmentModal() {
 
                     <div>
 
-                        <div class="stat-value">₱{{ number_format($totalCollected ?? 0, 2) }}</div>
+                        <div class="stat-value">₱<?php echo e(number_format($totalCollected ?? 0, 2)); ?></div>
 
                         <div class="stat-label">Total Collected</div>
 
@@ -3906,7 +3852,7 @@ function openWalkInEnrollmentModal() {
 
                     <div>
 
-                        <div class="stat-value">{{ $paidCount ?? 0 }}</div>
+                        <div class="stat-value"><?php echo e($paidCount ?? 0); ?></div>
 
                         <div class="stat-label">Fully Paid</div>
 
@@ -3924,7 +3870,7 @@ function openWalkInEnrollmentModal() {
 
                     <div>
 
-                        <div class="stat-value">{{ $partialCount ?? 0 }}</div>
+                        <div class="stat-value"><?php echo e($partialCount ?? 0); ?></div>
 
                         <div class="stat-label">Partial Payments</div>
 
@@ -3942,7 +3888,7 @@ function openWalkInEnrollmentModal() {
 
                     <div>
 
-                        <div class="stat-value">{{ $unpaidCount ?? 0 }}</div>
+                        <div class="stat-value"><?php echo e($unpaidCount ?? 0); ?></div>
 
                         <div class="stat-label">Unpaid Students</div>
 
@@ -3954,17 +3900,9 @@ function openWalkInEnrollmentModal() {
 
         </div>
 
-        {{-- Payment Status Legend 
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;padding:12px 16px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;font-size:12px;">
-            <span style="font-weight:600;color:#555;margin-right:4px;">Payment Status:</span>
-            <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;background:#e8f8f0;border:1px solid #27ae60;border-radius:3px;display:inline-block;"></span> Paid</span>
-            <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;background:#fff3e0;border:1px solid #e65100;border-radius:3px;display:inline-block;"></span> Partial</span>
-            <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;background:#fdecea;border:1px solid #e74c3c;border-radius:3px;display:inline-block;"></span> Unpaid</span>
-            <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;background:#fff8ec;border:1px solid #f5a623;border-radius:3px;display:inline-block;"></span> Pending Approval</span>
-            <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;background:#ede7f6;border:1px solid #512da8;border-radius:3px;display:inline-block;"></span> Waived</span>
-        </div> --}}
+        
 
-        {{-- Student Payment Overview --}}
+        
 
         <div class="content-card mb-4">
 
@@ -4002,15 +3940,15 @@ function openWalkInEnrollmentModal() {
 
                         <option value="">All Sections</option>
 
-                        @foreach(($sections ?? collect()) as $sec)
+                        <?php $__currentLoopData = ($sections ?? collect()); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sec): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
 
-                            <option value="{{ $sec->name }}">{{ $sec->name }}</option>
+                            <option value="<?php echo e($sec->name); ?>"><?php echo e($sec->name); ?></option>
 
-                        @endforeach
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
 
                     </select>
 
-                    <span class="toolbar-count"><span id="financeVisibleCount">{{ ($allStudentsPayment ?? collect())->count() }}</span> of {{ ($allStudentsPayment ?? collect())->count() }} students</span>
+                    <span class="toolbar-count"><span id="financeVisibleCount"><?php echo e(($allStudentsPayment ?? collect())->count()); ?></span> of <?php echo e(($allStudentsPayment ?? collect())->count()); ?> students</span>
 
                 </div> 
 
@@ -4048,9 +3986,9 @@ function openWalkInEnrollmentModal() {
 
                     <tbody>
 
-                        @forelse(($allStudentsPayment ?? collect()) as $sp)
+                        <?php $__empty_1 = true; $__currentLoopData = ($allStudentsPayment ?? collect()); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sp): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
 
-                        @php
+                        <?php
 
                             $spEnr = $sp->enrollments->first() ?? $sp->latestEnrollment;
 
@@ -4088,21 +4026,21 @@ function openWalkInEnrollmentModal() {
                                 ? ($spEnr->paymentInstallments->where('status', 'paid')->count() / $spEnr->paymentInstallments->count()) * 100
                                 : 0;
 
-                        @endphp
+                        ?>
 
-                        <tr data-search="{{ strtolower($sp->name . ' ' . $spSection) }}" data-pay="{{ $spPayStatus }}" data-section="{{ $spSection }}">
+                        <tr data-search="<?php echo e(strtolower($sp->name . ' ' . $spSection)); ?>" data-pay="<?php echo e($spPayStatus); ?>" data-section="<?php echo e($spSection); ?>">
 
                             <td>
 
                                 <div class="user-row-name">
 
-                                    <div class="user-row-avatar">{{ strtoupper(substr($sp->name, 0, 2)) }}</div>
+                                    <div class="user-row-avatar"><?php echo e(strtoupper(substr($sp->name, 0, 2))); ?></div>
 
                                     <div>
 
-                                        <div style="font-weight:600;">{{ $sp->name }}</div>
+                                        <div style="font-weight:600;"><?php echo e($sp->name); ?></div>
 
-                                        <div class="user-row-sub">{{ $spEnr ? $spEnr->reference_number : 'ID: '.$sp->id }}</div>
+                                        <div class="user-row-sub"><?php echo e($spEnr ? $spEnr->reference_number : 'ID: '.$sp->id); ?></div>
 
                                     </div>
 
@@ -4110,22 +4048,22 @@ function openWalkInEnrollmentModal() {
 
                             </td>
 
-                            <td>{{ $spSection }}</td>
+                            <td><?php echo e($spSection); ?></td>
 
-                            <td><span class="grade-chip">{{ $spGradeDisplay }}</span></td>
+                            <td><span class="grade-chip"><?php echo e($spGradeDisplay); ?></span></td>
 
-                            <td style="font-weight:600; white-space:nowrap;">{{ $spEnr ? '₱' . number_format($spAmountPaid, 2) : '—' }}</td>
+                            <td style="font-weight:600; white-space:nowrap;"><?php echo e($spEnr ? '₱' . number_format($spAmountPaid, 2) : '—'); ?></td>
 
                             <td>
-                                @if(($spBalance ?? 0) > 0)
-                                    <span style="font-weight:600; white-space:nowrap; color:#dc3545;">{{ $spEnr ? '₱' . number_format($spBalance ?? 0, 2) : '—' }}</span>
-                                @else
-                                    <span style="font-weight:600; white-space:nowrap; color:#28a745;">{{ $spEnr ? '₱' . number_format($spBalance ?? 0, 2) : '—' }}</span>
-                                @endif
+                                <?php if(($spBalance ?? 0) > 0): ?>
+                                    <span style="font-weight:600; white-space:nowrap; color:#dc3545;"><?php echo e($spEnr ? '₱' . number_format($spBalance ?? 0, 2) : '—'); ?></span>
+                                <?php else: ?>
+                                    <span style="font-weight:600; white-space:nowrap; color:#28a745;"><?php echo e($spEnr ? '₱' . number_format($spBalance ?? 0, 2) : '—'); ?></span>
+                                <?php endif; ?>
                             </td>
 
                             <td style="text-align:center;">
-                                @php
+                                <?php
                                     $spStatusLabel = match($spPayStatus) {
                                         'paid'    => 'Paid',
                                         'partial' => 'Partial',
@@ -4136,88 +4074,91 @@ function openWalkInEnrollmentModal() {
                                         'partial' => 'background:#fff3e0;color:#e65100;border:1px solid #ffcc80;',
                                         default   => 'background:#ffebee;color:#b71c1c;border:1px solid #ef9a9a;',
                                     };
-                                @endphp
-                                @if($spEnr)
-                                    <span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;{{ $spStatusStyle }}">{{ $spStatusLabel }}</span>
-                                @else
+                                ?>
+                                <?php if($spEnr): ?>
+                                    <span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;<?php echo e($spStatusStyle); ?>"><?php echo e($spStatusLabel); ?></span>
+                                <?php else: ?>
                                     <span class="text-muted-alt">—</span>
-                                @endif
+                                <?php endif; ?>
                             </td>
 
-                            <td style="text-align:center;">@if($spPaymentType)<span class="badge bg-{{ $spPaymentType === 'installment' ? 'primary' : 'secondary' }}">{{ ucfirst($spPaymentType) }}</span>@else<span class="text-muted-alt">—</span>@endif</td>
+                            <td style="text-align:center;"><?php if($spPaymentType): ?><span class="badge bg-<?php echo e($spPaymentType === 'installment' ? 'primary' : 'secondary'); ?>"><?php echo e(ucfirst($spPaymentType)); ?></span><?php else: ?><span class="text-muted-alt">—</span><?php endif; ?></td>
 
                             <td style="white-space:nowrap;">
-                                @if($spNextPending)
-                                    @if($spIsOverdue)
+                                <?php if($spNextPending): ?>
+                                    <?php if($spIsOverdue): ?>
                                         <div style="font-weight:600; color:#dc3545;">
-                                            {{ $spNextMonth }}: ₱{{ number_format($spNextAmount, 2) }}
+                                            <?php echo e($spNextMonth); ?>: ₱<?php echo e(number_format($spNextAmount, 2)); ?>
+
                                         </div>
-                                    @else
+                                    <?php else: ?>
                                         <div style="font-weight:600;">
-                                            {{ $spNextMonth }}: ₱{{ number_format($spNextAmount, 2) }}
+                                            <?php echo e($spNextMonth); ?>: ₱<?php echo e(number_format($spNextAmount, 2)); ?>
+
                                         </div>
-                                    @endif
-                                    <div style="font-size:11px; color:#666;">Due: {{ $spNextDueDate }}</div>
-                                    @if($spIsOverdue)
+                                    <?php endif; ?>
+                                    <div style="font-size:11px; color:#666;">Due: <?php echo e($spNextDueDate); ?></div>
+                                    <?php if($spIsOverdue): ?>
                                         <span style="font-size:10px; padding:2px 6px; border-radius:10px; background:#ffcdd2; color:#c62828;">
-                                            <i class="bi bi-exclamation-triangle"></i> {{ $spWeeksOverdue }}w overdue
+                                            <i class="bi bi-exclamation-triangle"></i> <?php echo e($spWeeksOverdue); ?>w overdue
                                         </span>
-                                    @endif
-                                @else
-                                    {{ $spNextDueDate }}
-                                @endif
+                                    <?php endif; ?>
+                                <?php else: ?>
+                                    <?php echo e($spNextDueDate); ?>
+
+                                <?php endif; ?>
                             </td>
 
 
                             <td style="vertical-align:middle;">
 
-                                @if($spEnr)
+                                <?php if($spEnr): ?>
 
                                 <div style="display:flex; align-items:center; gap:6px;">
 
                                     <button class="action-btn edit js-payment-update" title="Update Payment"
-                                        data-id="{{ $spEnr->id }}"
-                                        data-name="{{ $sp->name }}"
-                                        data-status="{{ $spPayStatus }}"
-                                        data-amount="{{ $spAmountPaid }}"
-                                        data-method="{{ $spEnr->payment_method ?? '' }}"
-                                        data-ref="{{ $spEnr->payment_reference ?? '' }}"
-                                        data-payment-option="{{ $spEnr->payment_option ?? '' }}"
-                                        data-downpayment="{{ $spEnr->downpayment_amount ?? 0 }}"
-                                        data-monthly="{{ $spEnr->monthly_amount ?? 0 }}"
-                                        data-total-fee="{{ $spEnr->total_fee ?? 0 }}"
-                                        data-remaining="{{ $spEnr->remaining_balance ?? 0 }}"
-                                        data-grade="{{ $spGrade }}"><i class="bi bi-cash-coin"></i></button>
+                                        data-id="<?php echo e($spEnr->id); ?>"
+                                        data-name="<?php echo e($sp->name); ?>"
+                                        data-status="<?php echo e($spPayStatus); ?>"
+                                        data-amount="<?php echo e($spAmountPaid); ?>"
+                                        data-method="<?php echo e($spEnr->payment_method ?? ''); ?>"
+                                        data-ref="<?php echo e($spEnr->payment_reference ?? ''); ?>"
+                                        data-payment-option="<?php echo e($spEnr->payment_option ?? ''); ?>"
+                                        data-downpayment="<?php echo e($spEnr->downpayment_amount ?? 0); ?>"
+                                        data-monthly="<?php echo e($spEnr->monthly_amount ?? 0); ?>"
+                                        data-total-fee="<?php echo e($spEnr->total_fee ?? 0); ?>"
+                                        data-remaining="<?php echo e($spEnr->remaining_balance ?? 0); ?>"
+                                        data-grade="<?php echo e($spGrade); ?>"><i class="bi bi-cash-coin"></i></button>
 
-                                    <button class="action-btn view js-payment-pay" title="Pay" data-id="{{ $spEnr->id }}" data-name="{{ $sp->name }}" data-grade="{{ $spGrade }}" data-amount-paid="{{ $spAmountPaid }}" data-downpayment="{{ $spEnr->downpayment_amount ?? 0 }}" data-monthly="{{ $spEnr->monthly_amount ?? 0 }}" data-payment-type="{{ $spEnr->payment_type ?? '' }}" data-payment-option="{{ $spEnr->payment_option ?? '' }}" data-total-fee="{{ $spEnr->total_fee ?? 0 }}"><i class="bi bi-credit-card"></i></button>
+                                    <button class="action-btn view js-payment-pay" title="Pay" data-id="<?php echo e($spEnr->id); ?>" data-name="<?php echo e($sp->name); ?>" data-grade="<?php echo e($spGrade); ?>" data-amount-paid="<?php echo e($spAmountPaid); ?>" data-downpayment="<?php echo e($spEnr->downpayment_amount ?? 0); ?>" data-monthly="<?php echo e($spEnr->monthly_amount ?? 0); ?>" data-payment-type="<?php echo e($spEnr->payment_type ?? ''); ?>" data-payment-option="<?php echo e($spEnr->payment_option ?? ''); ?>" data-total-fee="<?php echo e($spEnr->total_fee ?? 0); ?>"><i class="bi bi-credit-card"></i></button>
 
-                                    @if($spEnr->paymentInstallments->count() > 0)
+                                    <?php if($spEnr->paymentInstallments->count() > 0): ?>
                                     <button class="action-btn view js-view-installments" title="View Installments"
-                                        data-id="{{ $spEnr->id }}"
-                                        data-name="{{ htmlspecialchars($sp->name, ENT_QUOTES, 'UTF-8') }}"
-                                        data-grade="{{ $spGradeDisplay }}"
-                                        data-option="{{ $spEnr->payment_type ?? ($spEnr->payment_option === 'A' ? 'full' : ($spEnr->payment_option ? 'installment' : '')) }}"
-                                        data-monthly="{{ $spEnr->monthly_amount ?? 0 }}"
-                                        data-downpayment="{{ $spEnr->downpayment_amount ?? 0 }}"
-                                        data-total-fee="{{ $spEnr->total_fee ?? 0 }}"
-                                        data-total-paid="{{ $spEnr->payment_amount ?? 0 }}">
+                                        data-id="<?php echo e($spEnr->id); ?>"
+                                        data-name="<?php echo e(htmlspecialchars($sp->name, ENT_QUOTES, 'UTF-8')); ?>"
+                                        data-grade="<?php echo e($spGradeDisplay); ?>"
+                                        data-option="<?php echo e($spEnr->payment_type ?? ($spEnr->payment_option === 'A' ? 'full' : ($spEnr->payment_option ? 'installment' : ''))); ?>"
+                                        data-monthly="<?php echo e($spEnr->monthly_amount ?? 0); ?>"
+                                        data-downpayment="<?php echo e($spEnr->downpayment_amount ?? 0); ?>"
+                                        data-total-fee="<?php echo e($spEnr->total_fee ?? 0); ?>"
+                                        data-total-paid="<?php echo e($spEnr->payment_amount ?? 0); ?>">
                                         <i class="bi bi-list-ul"></i>
                                     </button>
-                                    @endif
+                                    <?php endif; ?>
 
                                 </div>
 
-                                @else
+                                <?php else: ?>
 
                                 <span class="text-muted-alt">—</span>
 
-                                @endif
+                                <?php endif; ?>
 
                             </td>
 
                         </tr>
 
-                        @empty
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
 
                         <tr>
 
@@ -4231,41 +4172,38 @@ function openWalkInEnrollmentModal() {
 
                         </tr>
 
-                        @endforelse
+                        <?php endif; ?>
 
                     </tbody>
 
                 </table>
 
-                {{-- Finance Management Pagination --}}
+                
                 <div class="p-3 border-top" style="border-color:var(--border);">
-                    @if(isset($allStudentsPayment))
-                    {{ $allStudentsPayment->appends([
+                    <?php if(isset($allStudentsPayment)): ?>
+                    <?php echo e($allStudentsPayment->appends([
                         'sort' => $sort ?? 'newest',
                         'student_grade' => $studentGradeFilter ?? '',
                         'student_status' => $studentStatusFilter ?? '',
                         'student_payment' => $studentPaymentFilter ?? '',
                         'student_schoolyear' => $studentSchoolYearFilter ?? '',
-                    ])->links() }}
-                    @endif
-                    @if(isset($allStudentsPayment) && $allStudentsPayment->count() > 0)
+                    ])->links()); ?>
+
+                    <?php endif; ?>
+                    <?php if(isset($allStudentsPayment) && $allStudentsPayment->count() > 0): ?>
                     <div class="pagination-info">
-                        Showing {{ $allStudentsPayment->firstItem() }} to {{ $allStudentsPayment->lastItem() }} of {{ $allStudentsPayment->total() }} records
+                        Showing <?php echo e($allStudentsPayment->firstItem()); ?> to <?php echo e($allStudentsPayment->lastItem()); ?> of <?php echo e($allStudentsPayment->total()); ?> records
                     </div>
-                    @endif
+                    <?php endif; ?>
                 </div>
 
             </div>
 
         </div>
 
-    </div>{{-- /section-finance --}}
+    </div>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-         SECTION: PAYMENTS
-
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
 
     <div id="section-payments" class="dash-section" style="display:none;">
         <div class="section-header">
@@ -4275,51 +4213,51 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        {{-- Payment Stats (online + walk-in combined) --}}
-        @php
+        
+        <?php
             $cps = $combinedPayStats ?? ['total'=>0,'pending'=>0,'completed'=>0,'rejected'=>0,'walkin_amount'=>0];
-        @endphp
+        ?>
 
         <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px;">
             <div class="stat-card">
                 <div class="stat-icon blue"><i class="bi bi-receipt"></i></div>
                 <div>
-                    <div class="stat-value">{{ $cps['total'] }}</div>
+                    <div class="stat-value"><?php echo e($cps['total']); ?></div>
                     <div class="stat-label">Total Payments</div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon gold"><i class="bi bi-hourglass-split"></i></div>
                 <div>
-                    <div class="stat-value">{{ $cps['pending'] }}</div>
+                    <div class="stat-value"><?php echo e($cps['pending']); ?></div>
                     <div class="stat-label">Pending Review</div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon green"><i class="bi bi-check-circle"></i></div>
                 <div>
-                    <div class="stat-value">{{ $cps['completed'] }}</div>
+                    <div class="stat-value"><?php echo e($cps['completed']); ?></div>
                     <div class="stat-label">Completed</div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon red"><i class="bi bi-x-circle"></i></div>
                 <div>
-                    <div class="stat-value">{{ $cps['rejected'] }}</div>
+                    <div class="stat-value"><?php echo e($cps['rejected']); ?></div>
                     <div class="stat-label">Rejected</div>
                 </div>
             </div>
         </div>
 
-        {{-- Payment Filters --}}
-        @php
+        
+        <?php
             $currentYear = now()->year;
             $schoolYears = [];
             for ($i = -2; $i <= 2; $i++) {
                 $start = $currentYear + $i;
                 $schoolYears[] = $start . '-' . ($start + 1);
             }
-        @endphp
+        ?>
 
         <div class="content-card mb-4">
             <div class="content-card-header">
@@ -4330,9 +4268,9 @@ function openWalkInEnrollmentModal() {
                     <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">School Year</label>
                     <select id="payFilterYear" class="form-select" style="font-size:13px; padding:8px 12px;">
                         <option value="all">All Years</option>
-                        @foreach($schoolYears as $year)
-                            <option value="{{ $year }}">{{ $year }}</option>
-                        @endforeach
+                        <?php $__currentLoopData = $schoolYears; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $year): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <option value="<?php echo e($year); ?>"><?php echo e($year); ?></option>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     </select>
                 </div>
                 <div style="flex:1; min-width:140px;">
@@ -4364,17 +4302,17 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        {{-- Payment Tables — tabbed --}}
+        
         <div class="content-card mb-4" style="overflow:hidden;">
 
-            {{-- Tab nav --}}
+            
             <ul class="nav nav-tabs mb-0" style="padding:0 16px; background:#f8f9fa; border-bottom:1px solid #dee2e6; margin:0;">
                 <li class="nav-item">
                     <button type="button" id="adminPmtTab-online" class="nav-link active"
                         onclick="switchAdminPmtTab('online')"
                         style="font-size:13px; font-weight:600; border-radius:6px 6px 0 0; display:flex; align-items:center; gap:7px;">
                         <i class="bi bi-phone"></i> Online Payments
-                        <span class="badge bg-warning text-dark" style="font-size:10px;">{{ isset($financePayments) ? $financePayments->total() : 0 }}</span>
+                        <span class="badge bg-warning text-dark" style="font-size:10px;"><?php echo e(isset($financePayments) ? $financePayments->total() : 0); ?></span>
                     </button>
                 </li>
                 <li class="nav-item">
@@ -4382,16 +4320,16 @@ function openWalkInEnrollmentModal() {
                         onclick="switchAdminPmtTab('walkin')"
                         style="font-size:13px; font-weight:600; border-radius:6px 6px 0 0; display:flex; align-items:center; gap:7px;">
                         <i class="bi bi-cash-stack"></i> Walk-in Transactions
-                        <span class="badge bg-primary" style="font-size:10px;">{{ isset($walkInTransactions) ? $walkInTransactions->total() : 0 }}</span>
+                        <span class="badge bg-primary" style="font-size:10px;"><?php echo e(isset($walkInTransactions) ? $walkInTransactions->total() : 0); ?></span>
                     </button>
                 </li>
             </ul>
 
-            {{-- Panel: Online Payment Records --}}
+            
             <div id="adminPmtPanel-online">
             <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 20px; border-bottom:1px solid #f0f0f0;">
                 <h6 style="margin:0; font-size:14px; font-weight:700;"><i class="bi bi-table me-2" style="color:var(--gold);"></i>Online Payment Records</h6>
-                <span style="font-size:12px; color:var(--muted);">Walk-in Collected: ₱{{ number_format($combinedPayStats['walkin_amount'] ?? 0, 2) }}</span>
+                <span style="font-size:12px; color:var(--muted);">Walk-in Collected: ₱<?php echo e(number_format($combinedPayStats['walkin_amount'] ?? 0, 2)); ?></span>
             </div>
             <div style="overflow-x:auto;">
                 <table class="dash-table" id="paymentsTable">
@@ -4407,8 +4345,8 @@ function openWalkInEnrollmentModal() {
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse(($financePayments ?? collect()) as $payment)
-                        @php
+                        <?php $__empty_1 = true; $__currentLoopData = ($financePayments ?? collect()); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $payment): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                        <?php
                             $installment = $payment->paymentInstallment;
                             $hasLateFee = $installment && $installment->late_fee > 0;
                             $paymentAmount = $installment->amount ?? 0;
@@ -4418,109 +4356,112 @@ function openWalkInEnrollmentModal() {
                             // Extract submitted amount from description (e.g. "Payment via GCash - ₱4,505.00")
                             preg_match('/[₱P]([\d,]+\.?\d*)/', $payment->description ?? '', $_amtMatch);
                             $receiptAmount = isset($_amtMatch[1]) ? (float) str_replace(',', '', $_amtMatch[1]) : ($payment->enrollment->payment_amount ?? 0);
-                        @endphp
-                        <tr data-status="{{ $payment->status }}" data-method="{{ $payMethod }}" data-year="{{ $payment->enrollment->school_year ?? '' }}" data-student="{{ strtolower($payment->user->name ?? '') }} {{ strtolower($payment->user->email ?? '') }}">
-                            <td style="font-weight:600;">#{{ $payment->id }}</td>
+                        ?>
+                        <tr data-status="<?php echo e($payment->status); ?>" data-method="<?php echo e($payMethod); ?>" data-year="<?php echo e($payment->enrollment->school_year ?? ''); ?>" data-student="<?php echo e(strtolower($payment->user->name ?? '')); ?> <?php echo e(strtolower($payment->user->email ?? '')); ?>">
+                            <td style="font-weight:600;">#<?php echo e($payment->id); ?></td>
                             <td>
-                                <div style="font-weight:600; color:var(--text);">{{ $payment->user->name ?? 'N/A' }}</div>
-                                <div style="font-size:11px; color:var(--muted);">{{ $payment->user->email ?? '' }}</div>
+                                <div style="font-weight:600; color:var(--text);"><?php echo e($payment->user->name ?? 'N/A'); ?></div>
+                                <div style="font-size:11px; color:var(--muted);"><?php echo e($payment->user->email ?? ''); ?></div>
                             </td>
-                            <td><span class="grade-chip">{{ $payment->enrollment->grade_level ?? 'N/A' }}</span></td>
+                            <td><span class="grade-chip"><?php echo e($payment->enrollment->grade_level ?? 'N/A'); ?></span></td>
                             <td>
-                                @if($installment)
+                                <?php if($installment): ?>
                                     <div style="font-weight:600; color:var(--blue);">
-                                        {{ $installment->month_name }} Installment
+                                        <?php echo e($installment->month_name); ?> Installment
                                     </div>
                                     <div style="font-size:12px; color:var(--muted);">
-                                        ₱{{ number_format($installment->amount ?? 0, 2) }}
-                                        @if($hasLateFee)
-                                            <span style="color:var(--red);">+ ₱{{ number_format($installment->late_fee ?? 0, 2) }} late fee</span>
-                                        @endif
+                                        ₱<?php echo e(number_format($installment->amount ?? 0, 2)); ?>
+
+                                        <?php if($hasLateFee): ?>
+                                            <span style="color:var(--red);">+ ₱<?php echo e(number_format($installment->late_fee ?? 0, 2)); ?> late fee</span>
+                                        <?php endif; ?>
                                     </div>
                                     <div style="font-size:11px; color:var(--green); font-weight:600;">
-                                        Total: ₱{{ number_format($paymentAmount, 2) }}
+                                        Total: ₱<?php echo e(number_format($paymentAmount, 2)); ?>
+
                                     </div>
-                                @else
+                                <?php else: ?>
                                     <div style="font-weight:600; color:var(--blue);">
-                                        {{ $payment->installment_month ?? $payment->description ?? 'Payment' }}
+                                        <?php echo e($payment->installment_month ?? $payment->description ?? 'Payment'); ?>
+
                                     </div>
-                                @endif
+                                <?php endif; ?>
                             </td>
                             <td>
-                                @if($payMethod === 'gcash')
+                                <?php if($payMethod === 'gcash'): ?>
                                     <span style="display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:500; background:#e3f2fd; color:#1565c0;">
                                         <i class="bi bi-phone"></i> GCash
                                     </span>
-                                @else
+                                <?php else: ?>
                                     <span style="display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:500; background:#e8f5e9; color:#2e7d32;">
                                         <i class="bi bi-cash-stack"></i> Cash
                                     </span>
-                                @endif
+                                <?php endif; ?>
                             </td>
-                            <td style="white-space:nowrap;">{{ $payment->created_at->format('M d, Y') }}<br><span style="font-size:11px; color:var(--muted);">{{ $payment->created_at->format('h:i A') }}</span></td>
+                            <td style="white-space:nowrap;"><?php echo e($payment->created_at->format('M d, Y')); ?><br><span style="font-size:11px; color:var(--muted);"><?php echo e($payment->created_at->format('h:i A')); ?></span></td>
                             <td>
                                 <div style="display:flex; gap:6px; align-items:center;">
                                     <button type="button" class="action-btn view js-view-payment" title="View Details"
-                                        data-id="{{ $payment->id }}"
-                                        data-payment-id="{{ $payment->id }}"
-                                        data-student-name="{{ $payment->user->name ?? 'N/A' }}"
-                                        data-email="{{ $payment->user->email ?? '' }}"
-                                        data-grade="{{ $payment->enrollment->grade_level ?? 'N/A' }}"
-                                        data-description="{{ $payment->description ?? 'Payment' }}"
-                                        data-submitted="{{ $payment->created_at->format('M d, Y H:i') }}"
-                                        data-status="{{ $payment->status }}"
-                                        data-installment='@json($installment)'
-                                        data-total-amount="{{ $paymentAmount }}"
-                                        data-method="{{ $payMethod }}"
-                                        data-has-enrollment="{{ $payment->enrollment ? 'true' : 'false' }}"
-                                        data-payment-option="{{ $payment->enrollment->payment_option ?? 'N/A' }}"
-                                        data-total-fee="{{ $payment->enrollment->total_fee ?? 0 }}"
-                                        data-amount-paid="{{ $payment->enrollment->payment_amount ?? 0 }}"
-                                        data-balance="{{ $payment->enrollment->remaining_balance ?? 0 }}"
-                                        data-enrollment-status="{{ $payment->enrollment->payment_status ?? 'pending' }}"
-                                        data-reviewed-by="{{ $payment->reviewedBy->name ?? 'System' }}"
-                                        data-reviewed-at="{{ $payment->reviewed_at ? $payment->reviewed_at->format('M d, Y h:i A') : $payment->updated_at->format('M d, Y h:i A') }}"
-                                        data-screenshot-url="{{ $payment->file_path ? route('documents.view', $payment) : '' }}">
+                                        data-id="<?php echo e($payment->id); ?>"
+                                        data-payment-id="<?php echo e($payment->id); ?>"
+                                        data-student-name="<?php echo e($payment->user->name ?? 'N/A'); ?>"
+                                        data-email="<?php echo e($payment->user->email ?? ''); ?>"
+                                        data-grade="<?php echo e($payment->enrollment->grade_level ?? 'N/A'); ?>"
+                                        data-description="<?php echo e($payment->description ?? 'Payment'); ?>"
+                                        data-submitted="<?php echo e($payment->created_at->format('M d, Y H:i')); ?>"
+                                        data-status="<?php echo e($payment->status); ?>"
+                                        data-installment='<?php echo json_encode($installment, 15, 512) ?>'
+                                        data-total-amount="<?php echo e($paymentAmount); ?>"
+                                        data-method="<?php echo e($payMethod); ?>"
+                                        data-has-enrollment="<?php echo e($payment->enrollment ? 'true' : 'false'); ?>"
+                                        data-payment-option="<?php echo e($payment->enrollment->payment_option ?? 'N/A'); ?>"
+                                        data-total-fee="<?php echo e($payment->enrollment->total_fee ?? 0); ?>"
+                                        data-amount-paid="<?php echo e($payment->enrollment->payment_amount ?? 0); ?>"
+                                        data-balance="<?php echo e($payment->enrollment->remaining_balance ?? 0); ?>"
+                                        data-enrollment-status="<?php echo e($payment->enrollment->payment_status ?? 'pending'); ?>"
+                                        data-reviewed-by="<?php echo e($payment->reviewedBy->name ?? 'System'); ?>"
+                                        data-reviewed-at="<?php echo e($payment->reviewed_at ? $payment->reviewed_at->format('M d, Y h:i A') : $payment->updated_at->format('M d, Y h:i A')); ?>"
+                                        data-screenshot-url="<?php echo e($payment->file_path ? route('documents.view', $payment) : ''); ?>">
                                         <i class="bi bi-eye"></i>
                                     </button>
-                                    @if($payment->file_path)
+                                    <?php if($payment->file_path): ?>
                                         <button type="button" class="action-btn view js-view-screenshot" title="View Screenshot" style="background:#e8f5e9;"
-                                            data-id="{{ $payment->id }}"
-                                            data-screenshot-url="{{ route('documents.view', $payment) }}">
+                                            data-id="<?php echo e($payment->id); ?>"
+                                            data-screenshot-url="<?php echo e(route('documents.view', $payment)); ?>">
                                             <i class="bi bi-image"></i>
                                         </button>
-                                    @endif
-                                    @if($payment->status === 'pending')
-                                        <button type="button" class="action-btn edit js-approve-payment" title="Approve Payment" data-id="{{ $payment->id }}">
+                                    <?php endif; ?>
+                                    <?php if($payment->status === 'pending'): ?>
+                                        <button type="button" class="action-btn edit js-approve-payment" title="Approve Payment" data-id="<?php echo e($payment->id); ?>">
                                             <i class="bi bi-check-lg"></i>
                                         </button>
-                                        <button type="button" class="action-btn delete js-reject-payment" title="Reject Payment" data-id="{{ $payment->id }}">
+                                        <button type="button" class="action-btn delete js-reject-payment" title="Reject Payment" data-id="<?php echo e($payment->id); ?>">
                                             <i class="bi bi-x-lg"></i>
                                         </button>
-                                    @else
+                                    <?php else: ?>
                                         <span style="font-size:11px; color:var(--green); font-weight:500;"><i class="bi bi-check-circle-fill"></i> Processed</span>
                                         <button type="button" class="action-btn" title="Print Official Receipt"
                                             style="background:#e8f5e9;color:#2e7d32;"
                                             onclick="printOfficialReceipt({
-                                                or_no: 'OR-{{ str_pad($payment->id, 6, "0", STR_PAD_LEFT) }}',
-                                                date: '{{ $payment->updated_at->format("F d, Y") }}',
-                                                time: '{{ $payment->updated_at->format("h:i A") }}',
-                                                student_name: '{{ addslashes($payment->user->name ?? "N/A") }}',
-                                                grade_level: '{{ $payment->enrollment->grade_level ?? "N/A" }}',
-                                                school_year: '{{ $payment->enrollment->school_year ?? "N/A" }}',
-                                                description: '{{ addslashes($installment ? ($installment->month_name." Installment") : ($payment->description ?? "Payment")) }}',
-                                                amount: '{{ number_format($receiptAmount, 2) }}',
-                                                method: '{{ ucfirst($payMethod) }}',
-                                                received_by: '{{ addslashes($payment->reviewedBy->name ?? "Admin") }}',
+                                                or_no: 'OR-<?php echo e(str_pad($payment->id, 6, "0", STR_PAD_LEFT)); ?>',
+                                                date: '<?php echo e($payment->updated_at->format("F d, Y")); ?>',
+                                                time: '<?php echo e($payment->updated_at->format("h:i A")); ?>',
+                                                student_name: '<?php echo e(addslashes($payment->user->name ?? "N/A")); ?>',
+                                                grade_level: '<?php echo e($payment->enrollment->grade_level ?? "N/A"); ?>',
+                                                school_year: '<?php echo e($payment->enrollment->school_year ?? "N/A"); ?>',
+                                                description: '<?php echo e(addslashes($installment ? ($installment->month_name." Installment") : ($payment->description ?? "Payment"))); ?>',
+                                                amount: '<?php echo e(number_format($receiptAmount, 2)); ?>',
+                                                method: '<?php echo e(ucfirst($payMethod)); ?>',
+                                                received_by: '<?php echo e(addslashes($payment->reviewedBy->name ?? "Admin")); ?>',
                                                 type: 'online'
                                             })">
                                             <i class="bi bi-printer-fill"></i>
                                         </button>
-                                    @endif
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
-                        @empty
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                         <tr>
                             <td colspan="8" style="text-align:center; color:var(--muted); padding:60px;">
                                 <i class="bi bi-credit-card" style="font-size:48px; display:block; margin-bottom:12px; opacity:0.2;"></i>
@@ -4528,29 +4469,30 @@ function openWalkInEnrollmentModal() {
                                 <div style="font-size:12px;">Payment submissions will appear here once students upload screenshots.</div>
                             </td>
                         </tr>
-                        @endforelse
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
-            {{-- Payment Records Pagination --}}
+            
             <div class="p-3 border-top" style="border-color:var(--border);">
-                @if(isset($financePayments))
-                {{ $financePayments->links() }}
-                @endif
-                @if(isset($financePayments) && $financePayments->count() > 0)
-                <div class="pagination-info">
-                    Showing {{ $financePayments->firstItem() }} to {{ $financePayments->lastItem() }} of {{ $financePayments->total() }} payments
-                </div>
-                @endif
-            </div>
-            </div>{{-- /adminPmtPanel-online --}}
+                <?php if(isset($financePayments)): ?>
+                <?php echo e($financePayments->links()); ?>
 
-            {{-- Panel: Walk-in Payment Transactions --}}
-            @php $walkInTotalAmount = ($walkInTransactions ?? collect())->sum('amount'); @endphp
+                <?php endif; ?>
+                <?php if(isset($financePayments) && $financePayments->count() > 0): ?>
+                <div class="pagination-info">
+                    Showing <?php echo e($financePayments->firstItem()); ?> to <?php echo e($financePayments->lastItem()); ?> of <?php echo e($financePayments->total()); ?> payments
+                </div>
+                <?php endif; ?>
+            </div>
+            </div>
+
+            
+            <?php $walkInTotalAmount = ($walkInTransactions ?? collect())->sum('amount'); ?>
             <div id="adminPmtPanel-walkin" style="display:none;">
             <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 20px; border-bottom:1px solid #f0f0f0;">
                 <h6 style="margin:0; font-size:14px; font-weight:700;"><i class="bi bi-building me-2" style="color:var(--blue);"></i>Walk-in Payment Transactions</h6>
-                <span style="font-size:12px; color:var(--muted);">Total Amount: ₱{{ number_format($walkInTotalAmount, 2) }}</span>
+                <span style="font-size:12px; color:var(--muted);">Total Amount: ₱<?php echo e(number_format($walkInTotalAmount, 2)); ?></span>
             </div>
             <div style="overflow-x:auto;">
                 <table class="dash-table" id="walkInPaymentsTable">
@@ -4568,99 +4510,104 @@ function openWalkInEnrollmentModal() {
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse(($walkInTransactions ?? collect()) as $walkInTx)
-                        @php
+                        <?php $__empty_1 = true; $__currentLoopData = ($walkInTransactions ?? collect()); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $walkInTx): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                        <?php
                             $walkInInstallment = $walkInTx->installment;
-                        @endphp
-                        <tr data-status="{{ $walkInTx->status }}" data-student="{{ strtolower($walkInTx->user->name ?? '') }}">
-                            <td style="font-weight:600;">#{{ $walkInTx->id }}</td>
+                        ?>
+                        <tr data-status="<?php echo e($walkInTx->status); ?>" data-student="<?php echo e(strtolower($walkInTx->user->name ?? '')); ?>">
+                            <td style="font-weight:600;">#<?php echo e($walkInTx->id); ?></td>
                             <td>
-                                <div style="font-weight:600; color:var(--text);">{{ $walkInTx->user->name ?? 'N/A' }}</div>
-                                <div style="font-size:11px; color:var(--muted);">{{ $walkInTx->user->email ?? '' }}</div>
+                                <div style="font-weight:600; color:var(--text);"><?php echo e($walkInTx->user->name ?? 'N/A'); ?></div>
+                                <div style="font-size:11px; color:var(--muted);"><?php echo e($walkInTx->user->email ?? ''); ?></div>
                             </td>
-                            <td><span class="grade-chip">{{ $walkInTx->enrollment->grade_level ?? 'N/A' }}</span></td>
+                            <td><span class="grade-chip"><?php echo e($walkInTx->enrollment->grade_level ?? 'N/A'); ?></span></td>
                             <td>
-                                @if($walkInInstallment)
+                                <?php if($walkInInstallment): ?>
                                     <div style="font-weight:600; color:var(--blue);">
-                                        {{ $walkInInstallment->month_name }} Installment
+                                        <?php echo e($walkInInstallment->month_name); ?> Installment
                                     </div>
                                     <div style="font-size:12px; color:var(--muted);">
-                                        ₱{{ number_format($walkInInstallment->amount ?? 0, 2) }}
+                                        ₱<?php echo e(number_format($walkInInstallment->amount ?? 0, 2)); ?>
+
                                     </div>
                                     <div style="font-size:11px; color:var(--green); font-weight:600;">
-                                        Total: ₱{{ number_format($walkInTx->amount, 2) }}
+                                        Total: ₱<?php echo e(number_format($walkInTx->amount, 2)); ?>
+
                                     </div>
-                                @else
+                                <?php else: ?>
                                     <div style="font-weight:600; color:var(--blue);">
-                                        {{ $walkInTx->installment_month ?? 'Downpayment' }}
+                                        <?php echo e($walkInTx->installment_month ?? 'Downpayment'); ?>
+
                                     </div>
                                     <div style="font-size:11px; color:var(--green); font-weight:600;">
-                                        ₱{{ number_format($walkInTx->amount, 2) }}
+                                        ₱<?php echo e(number_format($walkInTx->amount, 2)); ?>
+
                                     </div>
-                                @endif
+                                <?php endif; ?>
                             </td>
                             <td>
-                                @if($walkInTx->payment_method === 'gcash')
+                                <?php if($walkInTx->payment_method === 'gcash'): ?>
                                     <span style="display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:500; background:#e3f2fd; color:#1565c0;">
                                         <i class="bi bi-phone"></i> GCash
                                     </span>
-                                @else
+                                <?php else: ?>
                                     <span style="display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:500; background:#e8f5e9; color:#2e7d32;">
                                         <i class="bi bi-cash-stack"></i> Cash
                                     </span>
-                                @endif
+                                <?php endif; ?>
                             </td>
                             <td>
-                                <div style="font-size:12px; color:var(--text);">{{ $walkInTx->processedBy->name ?? 'System' }}</div>
+                                <div style="font-size:12px; color:var(--text);"><?php echo e($walkInTx->processedBy->name ?? 'System'); ?></div>
                             </td>
-                            <td style="white-space:nowrap;">{{ $walkInTx->created_at->format('M d, Y') }}<br><span style="font-size:11px; color:var(--muted);">{{ $walkInTx->created_at->format('h:i A') }}</span></td>
+                            <td style="white-space:nowrap;"><?php echo e($walkInTx->created_at->format('M d, Y')); ?><br><span style="font-size:11px; color:var(--muted);"><?php echo e($walkInTx->created_at->format('h:i A')); ?></span></td>
                             <td>
-                                @if($walkInTx->status === 'completed')
+                                <?php if($walkInTx->status === 'completed'): ?>
                                     <span style="display:inline-flex; align-items:center; gap:4px; padding:5px 12px; border-radius:20px; font-size:11px; font-weight:600; background:#e8f5e9; color:#2e7d32;">
                                         <i class="bi bi-check-circle"></i> Completed
                                     </span>
-                                @else
+                                <?php else: ?>
                                     <span style="display:inline-flex; align-items:center; gap:4px; padding:5px 12px; border-radius:20px; font-size:11px; font-weight:600; background:#fff3e0; color:#e65100;">
-                                        <i class="bi bi-hourglass-split"></i> {{ ucfirst($walkInTx->status) }}
+                                        <i class="bi bi-hourglass-split"></i> <?php echo e(ucfirst($walkInTx->status)); ?>
+
                                     </span>
-                                @endif
-                                @if($walkInTx->payment_type === 'admin')
+                                <?php endif; ?>
+                                <?php if($walkInTx->payment_type === 'admin'): ?>
                                     <br>
                                     <span style="display:inline-flex; align-items:center; margin-top:3px; padding:2px 6px; border-radius:5px; font-size:10px; background:#e3f2fd; color:#1565c0; border:1px solid #90caf9;">
                                         <i class="bi bi-building me-1"></i>Cashier
                                     </span>
-                                @elseif($walkInTx->payment_type === 'walkin')
+                                <?php elseif($walkInTx->payment_type === 'walkin'): ?>
                                     <br>
                                     <span style="display:inline-flex; align-items:center; margin-top:3px; padding:2px 6px; border-radius:5px; font-size:10px; background:#f3e5f5; color:#7b1fa2; border:1px solid #ce93d8;">
                                         <i class="bi bi-building me-1"></i>Cashier
                                     </span>
-                                @endif
+                                <?php endif; ?>
                             </td>
                             <td>
-                                @if($walkInTx->status === 'completed')
+                                <?php if($walkInTx->status === 'completed'): ?>
                                     <button type="button" class="action-btn" title="Print Official Receipt"
                                         style="background:#e8f5e9;color:#2e7d32;"
                                         onclick="printOfficialReceipt({
-                                            or_no: 'OR-{{ str_pad($walkInTx->id, 6, "0", STR_PAD_LEFT) }}',
-                                            date: '{{ $walkInTx->created_at->format("F d, Y") }}',
-                                            time: '{{ $walkInTx->created_at->format("h:i A") }}',
-                                            student_name: '{{ addslashes($walkInTx->user->name ?? "N/A") }}',
-                                            grade_level: '{{ $walkInTx->enrollment->grade_level ?? "N/A" }}',
-                                            school_year: '{{ $walkInTx->enrollment->school_year ?? "N/A" }}',
-                                            description: '{{ addslashes($walkInInstallment ? ($walkInInstallment->month_name." Installment") : ($walkInTx->installment_month ?? "Downpayment")) }}',
-                                            amount: '{{ number_format($walkInTx->amount, 2) }}',
-                                            method: '{{ ucfirst($walkInTx->payment_method ?? "Cash") }}',
-                                            received_by: '{{ addslashes($walkInTx->processedBy->name ?? "Admin") }}',
+                                            or_no: 'OR-<?php echo e(str_pad($walkInTx->id, 6, "0", STR_PAD_LEFT)); ?>',
+                                            date: '<?php echo e($walkInTx->created_at->format("F d, Y")); ?>',
+                                            time: '<?php echo e($walkInTx->created_at->format("h:i A")); ?>',
+                                            student_name: '<?php echo e(addslashes($walkInTx->user->name ?? "N/A")); ?>',
+                                            grade_level: '<?php echo e($walkInTx->enrollment->grade_level ?? "N/A"); ?>',
+                                            school_year: '<?php echo e($walkInTx->enrollment->school_year ?? "N/A"); ?>',
+                                            description: '<?php echo e(addslashes($walkInInstallment ? ($walkInInstallment->month_name." Installment") : ($walkInTx->installment_month ?? "Downpayment"))); ?>',
+                                            amount: '<?php echo e(number_format($walkInTx->amount, 2)); ?>',
+                                            method: '<?php echo e(ucfirst($walkInTx->payment_method ?? "Cash")); ?>',
+                                            received_by: '<?php echo e(addslashes($walkInTx->processedBy->name ?? "Admin")); ?>',
                                             type: 'walkin'
                                         })">
                                         <i class="bi bi-printer-fill"></i>
                                     </button>
-                                @else
+                                <?php else: ?>
                                     <span style="font-size:11px; color:var(--muted);">—</span>
-                                @endif
+                                <?php endif; ?>
                             </td>
                         </tr>
-                        @empty
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                         <tr>
                             <td colspan="9" style="text-align:center; color:var(--muted); padding:60px;">
                                 <i class="bi bi-building" style="font-size:48px; display:block; margin-bottom:12px; opacity:0.2;"></i>
@@ -4668,31 +4615,28 @@ function openWalkInEnrollmentModal() {
                                 <div style="font-size:12px;">Walk-in payment records will appear here once processed at the cashier.</div>
                             </td>
                         </tr>
-                        @endforelse
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
-            {{-- Walk-in Pagination --}}
+            
             <div class="p-3 border-top" style="border-color:var(--border);">
-                @if(isset($walkInTransactions))
-                {{ $walkInTransactions->links() }}
-                @endif
-                @if(isset($walkInTransactions) && $walkInTransactions->count() > 0)
+                <?php if(isset($walkInTransactions)): ?>
+                <?php echo e($walkInTransactions->links()); ?>
+
+                <?php endif; ?>
+                <?php if(isset($walkInTransactions) && $walkInTransactions->count() > 0): ?>
                 <div class="pagination-info">
-                    Showing {{ $walkInTransactions->firstItem() }} to {{ $walkInTransactions->lastItem() }} of {{ $walkInTransactions->total() }} walk-in transactions
+                    Showing <?php echo e($walkInTransactions->firstItem()); ?> to <?php echo e($walkInTransactions->lastItem()); ?> of <?php echo e($walkInTransactions->total()); ?> walk-in transactions
                 </div>
-                @endif
+                <?php endif; ?>
             </div>
-            </div>{{-- /adminPmtPanel-walkin --}}
+            </div>
 
-        </div>{{-- /tabbed card --}}
-    </div>{{-- /section-payments --}}
+        </div>
+    </div>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-         SECTION: INSTALLMENTS
-
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
 
     <div id="section-installments" class="dash-section" style="display:none;">
         <div class="section-header">
@@ -4702,58 +4646,58 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        {{-- Stats Row --}}
-        @php
+        
+        <?php
             $totalInstStudents = ($installmentEnrollments ?? collect())->count();
             $overdueInstStudents = ($installmentEnrollments ?? collect())->where('is_overdue', true)->count();
             $fullyPaidInst = ($installmentEnrollments ?? collect())->where('payment_status', 'paid')->count();
             $partialPaidInst = ($installmentEnrollments ?? collect())->where('payment_status', 'partial')->count();
             $totalLateFeesAll = ($installmentEnrollments ?? collect())->sum('total_late_fees');
-        @endphp
+        ?>
         
         <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px;">
             <div class="stat-card">
                 <div class="stat-icon blue"><i class="bi bi-people"></i></div>
                 <div>
-                    <div class="stat-value">{{ $totalInstStudents }}</div>
+                    <div class="stat-value"><?php echo e($totalInstStudents); ?></div>
                     <div class="stat-label">Installment Students</div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon red"><i class="bi bi-exclamation-triangle"></i></div>
                 <div>
-                    <div class="stat-value">{{ $overdueInstStudents }}</div>
+                    <div class="stat-value"><?php echo e($overdueInstStudents); ?></div>
                     <div class="stat-label">Overdue</div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon green"><i class="bi bi-check-circle"></i></div>
                 <div>
-                    <div class="stat-value">{{ $fullyPaidInst }}</div>
+                    <div class="stat-value"><?php echo e($fullyPaidInst); ?></div>
                     <div class="stat-label">Fully Paid</div>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon gold"><i class="bi bi-hourglass-split"></i></div>
                 <div>
-                    <div class="stat-value">{{ $partialPaidInst }}</div>
+                    <div class="stat-value"><?php echo e($partialPaidInst); ?></div>
                     <div class="stat-label">Partially Paid</div>
                 </div>
             </div>
         </div>
 
-        @if($totalLateFeesAll > 0)
+        <?php if($totalLateFeesAll > 0): ?>
         <div style="background:#fff3e0; border:1px solid #ffe0b2; border-radius:10px; padding:14px 20px; margin-bottom:20px; display:flex; align-items:center; gap:10px;">
             <i class="bi bi-exclamation-triangle-fill" style="color:#e65100; font-size:18px;"></i>
             <div>
                 <span style="font-weight:600; color:#e65100;">Late Fees Accumulated:</span>
-                <span style="font-weight:700; color:#bf360c; font-size:16px;">₱{{ number_format($totalLateFeesAll, 2) }}</span>
-                <span style="color:#666; font-size:12px; margin-left:8px;">across {{ $overdueInstStudents }} overdue student(s)</span>
+                <span style="font-weight:700; color:#bf360c; font-size:16px;">₱<?php echo e(number_format($totalLateFeesAll, 2)); ?></span>
+                <span style="color:#666; font-size:12px; margin-left:8px;">across <?php echo e($overdueInstStudents); ?> overdue student(s)</span>
             </div>
         </div>
-        @endif
+        <?php endif; ?>
 
-        {{-- Installment Filters --}}
+        
         <div class="content-card mb-4">
             <div class="content-card-header">
                 <h6><i class="bi bi-funnel me-2" style="color:var(--gold);"></i>Filter Installments</h6>
@@ -4763,9 +4707,9 @@ function openWalkInEnrollmentModal() {
                     <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">School Year</label>
                     <select id="instFilterYear" class="form-select" style="font-size:13px; padding:8px 12px;">
                         <option value="all">All Years</option>
-                        @foreach($schoolYears as $year)
-                            <option value="{{ $year }}">{{ $year }}</option>
-                        @endforeach
+                        <?php $__currentLoopData = $schoolYears; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $year): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <option value="<?php echo e($year); ?>"><?php echo e($year); ?></option>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     </select>
                 </div>
                 <div style="flex:1; min-width:140px;">
@@ -4797,19 +4741,12 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        {{-- Installment Status Legend 
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;padding:12px 16px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;font-size:12px;">
-            <span style="font-weight:600;color:#555;margin-right:4px;">Installment Status:</span>
-            <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;background:#e8f8f0;border:1px solid #27ae60;border-radius:3px;display:inline-block;"></span> Paid</span>
-            <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;background:#fff3e0;border:1px solid #e65100;border-radius:3px;display:inline-block;"></span> Partial</span>
-            <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;background:#fdecea;border:1px solid #e74c3c;border-radius:3px;display:inline-block;"></span> Unpaid / Overdue</span>
-            <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;background:#fff8ec;border:1px solid #f5a623;border-radius:3px;display:inline-block;"></span> Pending</span>
-        </div> --}}
+        
 
         <div class="content-card mb-4">
             <div class="content-card-header" style="display:flex; justify-content:space-between; align-items:center;">
                 <h6><i class="bi bi-table me-2" style="color:var(--gold);"></i>Student Installments</h6>
-                <span style="font-size:12px; color:var(--muted);">{{ $totalInstStudents }} student(s) on installment plans</span>
+                <span style="font-size:12px; color:var(--muted);"><?php echo e($totalInstStudents); ?> student(s) on installment plans</span>
             </div>
             <div style="overflow-x:auto;">
                 <table class="dash-table" id="installmentsTable">
@@ -4825,8 +4762,8 @@ function openWalkInEnrollmentModal() {
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse(($installmentEnrollments ?? collect()) as $enrollment)
-                        @php
+                        <?php $__empty_1 = true; $__currentLoopData = ($installmentEnrollments ?? collect()); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $enrollment): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                        <?php
                             $totalPaid = $enrollment->payment_amount ?? 0;
                             $totalFee = $enrollment->total_fee ?? 1;
                             $progress = $enrollment->installment_progress ?? min(100, ($totalPaid / $totalFee) * 100);
@@ -4837,116 +4774,123 @@ function openWalkInEnrollmentModal() {
                             $totalMonths = $enrollment->paymentInstallments->count();
                             $downpaymentAmount = $enrollment->downpayment_amount ?? 0;
                             $downpaymentPaid = $downpaymentAmount > 0 && $totalPaid >= $downpaymentAmount;
-                        @endphp
-                        @if($isOverdue)
-                        <tr style="background:#fff8f8;" data-status="{{ $enrollment->payment_status }}" data-year="{{ $enrollment->school_year ?? '' }}" data-overdue="yes" data-student="{{ strtolower($enrollment->user->name ?? '') }} {{ strtolower($enrollment->user->email ?? '') }}">
-                        @else
-                        <tr data-status="{{ $enrollment->payment_status }}" data-year="{{ $enrollment->school_year ?? '' }}" data-overdue="no" data-student="{{ strtolower($enrollment->user->name ?? '') }} {{ strtolower($enrollment->user->email ?? '') }}">
-                        @endif
+                        ?>
+                        <?php if($isOverdue): ?>
+                        <tr style="background:#fff8f8;" data-status="<?php echo e($enrollment->payment_status); ?>" data-year="<?php echo e($enrollment->school_year ?? ''); ?>" data-overdue="yes" data-student="<?php echo e(strtolower($enrollment->user->name ?? '')); ?> <?php echo e(strtolower($enrollment->user->email ?? '')); ?>">
+                        <?php else: ?>
+                        <tr data-status="<?php echo e($enrollment->payment_status); ?>" data-year="<?php echo e($enrollment->school_year ?? ''); ?>" data-overdue="no" data-student="<?php echo e(strtolower($enrollment->user->name ?? '')); ?> <?php echo e(strtolower($enrollment->user->email ?? '')); ?>">
+                        <?php endif; ?>
                             <td>
-                                <div style="font-weight:600; color:var(--text);">{{ $enrollment->user->name ?? 'N/A' }}</div>
-                                <div style="font-size:11px; color:var(--muted);">{{ $enrollment->user->email ?? '' }}</div>
+                                <div style="font-weight:600; color:var(--text);"><?php echo e($enrollment->user->name ?? 'N/A'); ?></div>
+                                <div style="font-size:11px; color:var(--muted);"><?php echo e($enrollment->user->email ?? ''); ?></div>
                             </td>
-                            <td><span class="grade-chip">{{ $enrollment->grade_level ?? 'N/A' }}</span></td>
+                            <td><span class="grade-chip"><?php echo e($enrollment->grade_level ?? 'N/A'); ?></span></td>
                             <td>
-                                <div style="font-weight:600; color:var(--blue);">Option {{ $enrollment->payment_option ?? 'N/A' }}</div>
+                                <div style="font-weight:600; color:var(--blue);">Option <?php echo e($enrollment->payment_option ?? 'N/A'); ?></div>
                                 <div style="font-size:11px; color:var(--muted);">
-                                    ₱{{ number_format($enrollment->monthly_amount ?? 0, 2) }}/month
-                                    @if($totalLateFees > 0)
-                                        <span style="color:var(--red);">(+₱{{ number_format($totalLateFees, 0) }} fees)</span>
-                                    @endif
+                                    ₱<?php echo e(number_format($enrollment->monthly_amount ?? 0, 2)); ?>/month
+                                    <?php if($totalLateFees > 0): ?>
+                                        <span style="color:var(--red);">(+₱<?php echo e(number_format($totalLateFees, 0)); ?> fees)</span>
+                                    <?php endif; ?>
                                 </div>
                             </td>
                             <td style="width:180px;">
                                 <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
                                     <span style="font-weight:500;">
-                                        @if($downpaymentAmount > 0)
-                                            <span style="color:{{ $downpaymentPaid ? 'var(--green)' : 'var(--red)' }}; font-size:11px;"><i class="bi bi-{{ $downpaymentPaid ? 'check-circle' : 'circle' }}"></i> DP</span>
+                                        <?php if($downpaymentAmount > 0): ?>
+                                            <span style="color:<?php echo e($downpaymentPaid ? 'var(--green)' : 'var(--red)'); ?>; font-size:11px;"><i class="bi bi-<?php echo e($downpaymentPaid ? 'check-circle' : 'circle'); ?>"></i> DP</span>
                                             <span style="margin:0 4px;">|</span>
-                                        @endif
-                                        {{ $paidMonths }}/{{ $totalMonths }} monthly
+                                        <?php endif; ?>
+                                        <?php echo e($paidMonths); ?>/<?php echo e($totalMonths); ?> monthly
                                     </span>
-                                    @if($progress >= 100)
-                                        <span style="font-weight:600; color:var(--green);">{{ number_format($progress, 0) }}%</span>
-                                    @else
-                                        <span style="font-weight:600; color:var(--blue);">{{ number_format($progress, 0) }}%</span>
-                                    @endif
+                                    <?php if($progress >= 100): ?>
+                                        <span style="font-weight:600; color:var(--green);"><?php echo e(number_format($progress, 0)); ?>%</span>
+                                    <?php else: ?>
+                                        <span style="font-weight:600; color:var(--blue);"><?php echo e(number_format($progress, 0)); ?>%</span>
+                                    <?php endif; ?>
                                 </div>
                                 <div style="height:8px; background:#e8eaf0; border-radius:4px; overflow:hidden;">
-                                    @if($progress >= 100)
-                                        <div class="installment-progress-bar" data-progress="{{ $progress }}" data-type="complete"></div>
-                                    @elseif($isOverdue)
-                                        <div class="installment-progress-bar" data-progress="{{ $progress }}" data-type="overdue"></div>
-                                    @else
-                                        <div class="installment-progress-bar" data-progress="{{ $progress }}" data-type="normal"></div>
-                                    @endif
+                                    <?php if($progress >= 100): ?>
+                                        <div class="installment-progress-bar" data-progress="<?php echo e($progress); ?>" data-type="complete"></div>
+                                    <?php elseif($isOverdue): ?>
+                                        <div class="installment-progress-bar" data-progress="<?php echo e($progress); ?>" data-type="overdue"></div>
+                                    <?php else: ?>
+                                        <div class="installment-progress-bar" data-progress="<?php echo e($progress); ?>" data-type="normal"></div>
+                                    <?php endif; ?>
                                 </div>
                                 <div style="font-size:11px; color:var(--muted); margin-top:4px;">
-                                    ₱{{ number_format($totalPaid, 0) }} of ₱{{ number_format($totalFee, 0) }}
+                                    ₱<?php echo e(number_format($totalPaid, 0)); ?> of ₱<?php echo e(number_format($totalFee, 0)); ?>
+
                                 </div>
                             </td>
                             <td>
-                                @if($enrollment->next_due_date)
-                                    @if($isOverdue)
+                                <?php if($enrollment->next_due_date): ?>
+                                    <?php if($isOverdue): ?>
                                         <div style="font-weight:600; color:var(--red);">
-                                            {{ $enrollment->next_month_name ?? 'Monthly' }}: ₱{{ number_format($enrollment->next_due_amount ?? 0, 2) }}
+                                            <?php echo e($enrollment->next_month_name ?? 'Monthly'); ?>: ₱<?php echo e(number_format($enrollment->next_due_amount ?? 0, 2)); ?>
+
                                         </div>
-                                    @else
+                                    <?php else: ?>
                                         <div style="font-weight:600; color:var(--text);">
-                                            {{ $enrollment->next_month_name ?? 'Monthly' }}: ₱{{ number_format($enrollment->next_due_amount ?? 0, 2) }}
+                                            <?php echo e($enrollment->next_month_name ?? 'Monthly'); ?>: ₱<?php echo e(number_format($enrollment->next_due_amount ?? 0, 2)); ?>
+
                                         </div>
-                                    @endif
+                                    <?php endif; ?>
                                     <div style="font-size:11px; color:var(--muted);">
-                                        Due: {{ $enrollment->next_due_date->format('M d, Y') }}
+                                        Due: <?php echo e($enrollment->next_due_date->format('M d, Y')); ?>
+
                                     </div>
-                                    @if($isOverdue)
+                                    <?php if($isOverdue): ?>
                                         <span style="display:inline-flex; align-items:center; gap:4px; margin-top:4px; padding:3px 10px; border-radius:12px; font-size:10px; font-weight:700; background:#ffebee; color:#c62828;">
                                             <i class="bi bi-exclamation-triangle-fill"></i>
-                                            {{ $weeksOverdue > 0 ? $weeksOverdue . 'w overdue' : 'Overdue' }}
+                                            <?php echo e($weeksOverdue > 0 ? $weeksOverdue . 'w overdue' : 'Overdue'); ?>
+
                                         </span>
-                                    @endif
-                                @else
+                                    <?php endif; ?>
+                                <?php else: ?>
                                     <span style="display:inline-flex; align-items:center; gap:4px; color:var(--green); font-weight:600;">
-                                        <i class="bi bi-check-circle-fill"></i> {{ $enrollment->next_month_name ?? 'Fully Paid' }}
+                                        <i class="bi bi-check-circle-fill"></i> <?php echo e($enrollment->next_month_name ?? 'Fully Paid'); ?>
+
                                     </span>
-                                @endif
+                                <?php endif; ?>
                             </td>
                             <td style="white-space:nowrap;">
-                                @php $balance = $enrollment->remaining_balance ?? ($totalFee - $totalPaid); @endphp
-                                @if($balance <= 0)
+                                <?php $balance = $enrollment->remaining_balance ?? ($totalFee - $totalPaid); ?>
+                                <?php if($balance <= 0): ?>
                                     <div style="font-weight:700; color:var(--green);">
                                         <i class="bi bi-check-circle-fill"></i> Fully Paid
                                     </div>
-                                @else
-                                    <div style="font-weight:700; color:{{ $isOverdue ? 'var(--red)' : 'var(--blue)' }}; font-size:14px;">
-                                        ₱{{ number_format($balance, 2) }}
+                                <?php else: ?>
+                                    <div style="font-weight:700; color:<?php echo e($isOverdue ? 'var(--red)' : 'var(--blue)'); ?>; font-size:14px;">
+                                        ₱<?php echo e(number_format($balance, 2)); ?>
+
                                     </div>
                                     <div style="font-size:11px; color:var(--muted);">remaining</div>
-                                @endif
+                                <?php endif; ?>
                             </td>
                             <td style="white-space:nowrap;">
                                 <button type="button" class="action-btn view js-view-installments" title="View Installment Details"
-                                    data-id="{{ $enrollment->id }}"
-                                    data-name="{{ htmlspecialchars($enrollment->user->name ?? 'N/A', ENT_QUOTES, 'UTF-8') }}"
-                                    data-grade="{{ $enrollment->grade_level ?? 'N/A' }}"
-                                    data-option="{{ $enrollment->payment_type ?? ($enrollment->payment_option === 'A' ? 'full' : ($enrollment->payment_option ? 'installment' : 'N/A')) }}"
-                                    data-monthly="{{ $enrollment->monthly_amount ?? 0 }}"
-                                    data-downpayment="{{ $enrollment->downpayment_amount ?? 0 }}"
-                                    data-total-fee="{{ $enrollment->total_fee ?? 0 }}"
-                                    data-total-paid="{{ $enrollment->payment_amount ?? 0 }}">
+                                    data-id="<?php echo e($enrollment->id); ?>"
+                                    data-name="<?php echo e(htmlspecialchars($enrollment->user->name ?? 'N/A', ENT_QUOTES, 'UTF-8')); ?>"
+                                    data-grade="<?php echo e($enrollment->grade_level ?? 'N/A'); ?>"
+                                    data-option="<?php echo e($enrollment->payment_type ?? ($enrollment->payment_option === 'A' ? 'full' : ($enrollment->payment_option ? 'installment' : 'N/A'))); ?>"
+                                    data-monthly="<?php echo e($enrollment->monthly_amount ?? 0); ?>"
+                                    data-downpayment="<?php echo e($enrollment->downpayment_amount ?? 0); ?>"
+                                    data-total-fee="<?php echo e($enrollment->total_fee ?? 0); ?>"
+                                    data-total-paid="<?php echo e($enrollment->payment_amount ?? 0); ?>">
                                     <i class="bi bi-eye"></i>
                                 </button>
-                                @if($enrollment->is_overdue ?? false)
+                                <?php if($enrollment->is_overdue ?? false): ?>
                                 <button type="button" class="action-btn"
                                     style="background:#fff3e0;color:#e65100;border:1px solid #f5a623;"
                                     title="Add Promissory Note"
-                                    onclick="openAdminPromissoryModal({{ $enrollment->id }}, '{{ addslashes($enrollment->user->name ?? '') }}', {{ $enrollment->remaining_balance ?? 0 }})">
+                                    onclick="openAdminPromissoryModal(<?php echo e($enrollment->id); ?>, '<?php echo e(addslashes($enrollment->user->name ?? '')); ?>', <?php echo e($enrollment->remaining_balance ?? 0); ?>)">
                                     <i class="bi bi-file-earmark-text"></i>
                                 </button>
-                                @endif
+                                <?php endif; ?>
                             </td>
                         </tr>
-                        @empty
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                         <tr>
                             <td colspan="7" style="text-align:center; color:var(--muted); padding:60px;">
                                 <i class="bi bi-calendar-check" style="font-size:48px; display:block; margin-bottom:12px; opacity:0.2;"></i>
@@ -4954,25 +4898,26 @@ function openWalkInEnrollmentModal() {
                                 <div style="font-size:12px;">Students on installment plans will appear here.</div>
                             </td>
                         </tr>
-                        @endforelse
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
-            {{-- Installment Records Pagination --}}
+            
             <div class="p-3 border-top" style="border-color:var(--border);">
-                @if(isset($installmentEnrollments))
-                {{ $installmentEnrollments->links() }}
-                @endif
-                @if(isset($installmentEnrollments))
+                <?php if(isset($installmentEnrollments)): ?>
+                <?php echo e($installmentEnrollments->links()); ?>
+
+                <?php endif; ?>
+                <?php if(isset($installmentEnrollments)): ?>
                 <div class="pagination-info">
-                    Showing {{ $installmentEnrollments->firstItem() ?? 0 }} to {{ $installmentEnrollments->lastItem() ?? 0 }} of {{ $installmentEnrollments->total() }} installments
+                    Showing <?php echo e($installmentEnrollments->firstItem() ?? 0); ?> to <?php echo e($installmentEnrollments->lastItem() ?? 0); ?> of <?php echo e($installmentEnrollments->total()); ?> installments
                 </div>
-                @endif
+                <?php endif; ?>
             </div>
         </div>
-    </div>{{-- /section-installments --}}
+    </div>
 
-    {{-- â”€â”€ Promissory Note Modal (Admin) â”€â”€ --}}
+    
     <div class="modal fade" id="adminPromissoryModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" style="max-width:520px;">
             <div class="modal-content" style="border-radius:14px;border:none;box-shadow:0 20px 60px rgba(0,0,0,0.15);">
@@ -5025,11 +4970,7 @@ function openWalkInEnrollmentModal() {
         </div>
     </div>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-         SECTION: FEE MANAGEMENT
-
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
 
     <div id="section-fees" class="dash-section" style="display:none;">
         <div class="section-header">
@@ -5039,7 +4980,7 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        {{-- Base Fee Components --}}
+        
         <div class="content-card mb-4">
             <div class="content-card-header">
                 <h6><i class="bi bi-grid-3x3 me-2"></i>Base Fee Components</h6>
@@ -5050,14 +4991,14 @@ function openWalkInEnrollmentModal() {
                         <label class="form-lbl">Tuition Fee</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-tuition" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->tuition ?? 7505 }}" oninput="recalculateFromBaseFees()">
+                            <input type="number" id="fee-tuition" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->tuition ?? 7505); ?>" oninput="recalculateFromBaseFees()">
                         </div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-lbl">Misc/Reg/PTA Fee</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-misc" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->misc ?? 2800 }}" oninput="recalculateFromBaseFees()">
+                            <input type="number" id="fee-misc" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->misc ?? 2800); ?>" oninput="recalculateFromBaseFees()">
                         </div>
                         <small class="text-muted" style="font-size:10px;">2000+700+100</small>
                     </div>
@@ -5065,21 +5006,21 @@ function openWalkInEnrollmentModal() {
                         <label class="form-lbl">Insurance Fee</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-insurance" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->insurance ?? 150 }}" oninput="recalculateFromBaseFees()">
+                            <input type="number" id="fee-insurance" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->insurance ?? 150); ?>" oninput="recalculateFromBaseFees()">
                         </div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-lbl">Electric Bill Fee</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-electric" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->electric ?? 2000 }}" oninput="recalculateFromBaseFees()">
+                            <input type="number" id="fee-electric" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->electric ?? 2000); ?>" oninput="recalculateFromBaseFees()">
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- Books Fees --}}
+        
         <div class="content-card mb-4">
             <div class="content-card-header">
                 <h6><i class="bi bi-book me-2"></i>Books Fees by Grade Level</h6>
@@ -5090,54 +5031,54 @@ function openWalkInEnrollmentModal() {
                         <label class="form-lbl">Nursery / Kinder</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-books-nursery" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->books_nursery ?? 3550 }}" oninput="recalculateFromBaseFees()">
+                            <input type="number" id="fee-books-nursery" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->books_nursery ?? 3550); ?>" oninput="recalculateFromBaseFees()">
                         </div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-lbl">Grade 1 & 2</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-books-grade1" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->books_grade1 ?? 4550 }}" oninput="recalculateFromBaseFees()">
+                            <input type="number" id="fee-books-grade1" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->books_grade1 ?? 4550); ?>" oninput="recalculateFromBaseFees()">
                         </div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-lbl">Grade 3</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-books-grade3" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->books_grade3 ?? 5050 }}" oninput="recalculateFromBaseFees()">
+                            <input type="number" id="fee-books-grade3" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->books_grade3 ?? 5050); ?>" oninput="recalculateFromBaseFees()">
                         </div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-lbl">Grade 4-6</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-books-grade4" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->books_grade4 ?? 5550 }}" oninput="recalculateFromBaseFees()">
+                            <input type="number" id="fee-books-grade4" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->books_grade4 ?? 5550); ?>" oninput="recalculateFromBaseFees()">
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- Payment Options --}}
+        
         <div class="content-card mb-4">
             <div class="content-card-header">
                 <h6><i class="bi bi-credit-card me-2"></i>Payment Options Configuration</h6>
             </div>
             <div class="p-4">
-                {{-- Option A --}}
+                
                 <h6 class="mb-3" style="font-weight:700; color:var(--text);"><i class="bi bi-cash-coin me-2"></i>Option A: Cash Basis</h6>
                 <div class="row g-3 mb-4">
                     <div class="col-md-4">
                         <label class="form-lbl">Cash Discount Amount</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-opta-discount" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->option_a_discount ?? 1501 }}">
+                            <input type="number" id="fee-opta-discount" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->option_a_discount ?? 1501); ?>">
                         </div>
                         <small class="text-muted" style="font-size:10px;">~20% discount on total</small>
                     </div>
                 </div>
 
-                {{-- Option B --}}
+                
                 <h6 class="mb-3" style="font-weight:700; color:var(--text);"><i class="bi bi-calendar-month me-2"></i>Option B: Monthly Payment (All Levels)</h6>
                 <div class="row g-3 mb-3">
                     <div class="col-md-2" style="width:18%;">
@@ -5151,14 +5092,14 @@ function openWalkInEnrollmentModal() {
                         <label class="form-lbl">Tuition/Mo</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optb-monthly-tuition" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optb_monthly_tuition ?? 833.89 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optb-monthly-tuition" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optb_monthly_tuition ?? 833.89); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                     </div>
                     <div class="col-md-2" style="width:18%;">
                         <label class="form-lbl">Electric/Mo</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optb-monthly-electric" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optb_monthly_electric ?? 222.22 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optb-monthly-electric" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optb_monthly_electric ?? 222.22); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                     </div>
                 </div>
@@ -5167,7 +5108,7 @@ function openWalkInEnrollmentModal() {
                         <label class="form-lbl">Nursery DP</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optb-dp-nursery" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optb_dp_nursery ?? 6500 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optb-dp-nursery" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optb_dp_nursery ?? 6500); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                         <small class="text-muted" style="font-size:9px;">(Books + Insurance + Misc/REG./PTA)</small>
                     </div>
@@ -5175,7 +5116,7 @@ function openWalkInEnrollmentModal() {
                         <label class="form-lbl">Kinder DP</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optb-dp-kinder" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optb_dp_kinder ?? 6500 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optb-dp-kinder" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optb_dp_kinder ?? 6500); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                         <small class="text-muted" style="font-size:9px;">(Books + Insurance + Misc/REG./PTA)</small>
                     </div>
@@ -5183,7 +5124,7 @@ function openWalkInEnrollmentModal() {
                         <label class="form-lbl">Grade 1-2 DP</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optb-dp-grade1" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optb_dp_grade1 ?? 7500 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optb-dp-grade1" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optb_dp_grade1 ?? 7500); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                         <small class="text-muted" style="font-size:9px;">(Books + Insurance + Misc/REG./PTA)</small>
                     </div>
@@ -5191,7 +5132,7 @@ function openWalkInEnrollmentModal() {
                         <label class="form-lbl">Grade 3 DP</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optb-dp-grade3" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optb_dp_grade3 ?? 8000 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optb-dp-grade3" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optb_dp_grade3 ?? 8000); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                         <small class="text-muted" style="font-size:9px;">(Books + Insurance + Misc/REG./PTA)</small>
                     </div>
@@ -5199,13 +5140,13 @@ function openWalkInEnrollmentModal() {
                         <label class="form-lbl">Grade 4-6 DP</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optb-dp-grade4" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optb_dp_grade4 ?? 8500 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optb-dp-grade4" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optb_dp_grade4 ?? 8500); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                         <small class="text-muted" style="font-size:9px;">(Books + Insurance + Misc/REG./PTA)</small>
                     </div>
                 </div>
 
-                {{-- Option C --}}
+                
                 <h6 class="mb-3" style="font-weight:700; color:var(--text);"><i class="bi bi-mortarboard me-2"></i>Option C: Elem. Pupils Only (Grade 1-6)</h6>
                 <div class="row g-3 mb-3">
                     <div class="col-md-2" style="width:18%;">
@@ -5219,21 +5160,21 @@ function openWalkInEnrollmentModal() {
                         <label class="form-lbl">Tuition/Mo</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optc-monthly-tuition" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optc_monthly_tuition ?? 833.89 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optc-monthly-tuition" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optc_monthly_tuition ?? 833.89); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                     </div>
                     <div class="col-md-2" style="width:18%;">
                         <label class="form-lbl">Misc/Mo</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optc-monthly-misc" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optc_monthly_misc ?? 311.11 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optc-monthly-misc" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optc_monthly_misc ?? 311.11); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                     </div>
                     <div class="col-md-2" style="width:18%;">
                         <label class="form-lbl">Electric/Mo</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optc-monthly-electric" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optc_monthly_electric ?? 222.22 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optc-monthly-electric" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optc_monthly_electric ?? 222.22); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                     </div>
                 </div>
@@ -5242,7 +5183,7 @@ function openWalkInEnrollmentModal() {
                         <label class="form-lbl">Grade 1-2 Downpayment</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optc-dp-grade1" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optc_dp_grade1 ?? 5500 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optc-dp-grade1" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optc_dp_grade1 ?? 5500); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                         <small class="text-muted" style="font-size:9px;">(Books + Insurance + Registration/PTA)</small>
                     </div>
@@ -5250,7 +5191,7 @@ function openWalkInEnrollmentModal() {
                         <label class="form-lbl">Grade 3 Downpayment</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optc-dp-grade3" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optc_dp_grade3 ?? 6000 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optc-dp-grade3" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optc_dp_grade3 ?? 6000); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                         <small class="text-muted" style="font-size:9px;">(Books + Insurance + Registration/PTA)</small>
                     </div>
@@ -5258,13 +5199,13 @@ function openWalkInEnrollmentModal() {
                         <label class="form-lbl">Grade 4-6 Downpayment</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optc-dp-grade4" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optc_dp_grade4 ?? 6500 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optc-dp-grade4" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optc_dp_grade4 ?? 6500); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                         <small class="text-muted" style="font-size:9px;">(Books + Insurance + Registration/PTA)</small>
                     </div>
                 </div>
 
-                {{-- Option D --}}
+                
                 <h6 class="mb-3" style="font-weight:700; color:var(--text);"><i class="bi bi-balloon me-2"></i>Option D: Pre-Elem Only (Nursery/Kinder)</h6>
                 <div class="row g-3 mb-3">
                     <div class="col-md-2" style="width:18%;">
@@ -5278,21 +5219,21 @@ function openWalkInEnrollmentModal() {
                         <label class="form-lbl">Tuition/Mo</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optd-monthly-tuition" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optd_monthly_tuition ?? 833.89 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optd-monthly-tuition" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optd_monthly_tuition ?? 833.89); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                     </div>
                     <div class="col-md-2" style="width:18%;">
                         <label class="form-lbl">Misc/Mo</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optd-monthly-misc" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optd_monthly_misc ?? 311.11 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optd-monthly-misc" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optd_monthly_misc ?? 311.11); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                     </div>
                     <div class="col-md-2" style="width:18%;">
                         <label class="form-lbl">Electric/Mo</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optd-monthly-electric" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optd_monthly_electric ?? 222.22 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optd-monthly-electric" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optd_monthly_electric ?? 222.22); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                     </div>
                 </div>
@@ -5301,7 +5242,7 @@ function openWalkInEnrollmentModal() {
                         <label class="form-lbl">Nursery Downpayment</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optd-dp-nursery" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optd_dp_nursery ?? 4505 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optd-dp-nursery" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optd_dp_nursery ?? 4505); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                         <small class="text-muted" style="font-size:9px;">(Books + Insurance + Registration/PTA)</small>
                     </div>
@@ -5309,7 +5250,7 @@ function openWalkInEnrollmentModal() {
                         <label class="form-lbl">Kinder Downpayment</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optd-dp-kinder" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optd_dp_kinder ?? 4505 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optd-dp-kinder" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optd_dp_kinder ?? 4505); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                         <small class="text-muted" style="font-size:9px;">(Books + Insurance + Registration/PTA)</small>
                     </div>
@@ -5317,30 +5258,30 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        {{-- Summary Card --}}
+        
         <div class="alert alert-info mb-4" style="background:#e3f2fd;border:1px solid #90caf9;border-radius:8px;padding:16px;">
             <h6 style="font-weight:700;color:#1565c0;margin-bottom:12px;"><i class="bi bi-info-circle me-2"></i>Fee Summary Reference</h6>
             <div class="row" style="font-size:12px;">
                 <div class="col-md-3">
-                    <strong>Nursery/Kinder:</strong> <span id="summary-nursery">₱{{ number_format(($feeSettings->tuition ?? 7505) + ($feeSettings->misc ?? 2800) + ($feeSettings->books_nursery ?? 3550) + ($feeSettings->insurance ?? 150) + ($feeSettings->electric ?? 2000), 2) }}</span><br>
-                    <small class="text-muted" id="summary-nursery-breakdown">({{ ($feeSettings->tuition ?? 7505) . '+' . ($feeSettings->misc ?? 2800) . '+' . ($feeSettings->books_nursery ?? 3550) . '+' . ($feeSettings->insurance ?? 150) . '+' . ($feeSettings->electric ?? 2000) }})</small>
+                    <strong>Nursery/Kinder:</strong> <span id="summary-nursery">₱<?php echo e(number_format(($feeSettings->tuition ?? 7505) + ($feeSettings->misc ?? 2800) + ($feeSettings->books_nursery ?? 3550) + ($feeSettings->insurance ?? 150) + ($feeSettings->electric ?? 2000), 2)); ?></span><br>
+                    <small class="text-muted" id="summary-nursery-breakdown">(<?php echo e(($feeSettings->tuition ?? 7505) . '+' . ($feeSettings->misc ?? 2800) . '+' . ($feeSettings->books_nursery ?? 3550) . '+' . ($feeSettings->insurance ?? 150) . '+' . ($feeSettings->electric ?? 2000)); ?>)</small>
                 </div>
                 <div class="col-md-3">
-                    <strong>Grade 1-2:</strong> <span id="summary-grade1">₱{{ number_format(($feeSettings->tuition ?? 7505) + ($feeSettings->misc ?? 2800) + ($feeSettings->books_grade1 ?? 4550) + ($feeSettings->insurance ?? 150) + ($feeSettings->electric ?? 2000), 2) }}</span><br>
-                    <small class="text-muted" id="summary-grade1-breakdown">({{ ($feeSettings->tuition ?? 7505) . '+' . ($feeSettings->misc ?? 2800) . '+' . ($feeSettings->books_grade1 ?? 4550) . '+' . ($feeSettings->insurance ?? 150) . '+' . ($feeSettings->electric ?? 2000) }})</small>
+                    <strong>Grade 1-2:</strong> <span id="summary-grade1">₱<?php echo e(number_format(($feeSettings->tuition ?? 7505) + ($feeSettings->misc ?? 2800) + ($feeSettings->books_grade1 ?? 4550) + ($feeSettings->insurance ?? 150) + ($feeSettings->electric ?? 2000), 2)); ?></span><br>
+                    <small class="text-muted" id="summary-grade1-breakdown">(<?php echo e(($feeSettings->tuition ?? 7505) . '+' . ($feeSettings->misc ?? 2800) . '+' . ($feeSettings->books_grade1 ?? 4550) . '+' . ($feeSettings->insurance ?? 150) . '+' . ($feeSettings->electric ?? 2000)); ?>)</small>
                 </div>
                 <div class="col-md-3">
-                    <strong>Grade 3:</strong> <span id="summary-grade3">₱{{ number_format(($feeSettings->tuition ?? 7505) + ($feeSettings->misc ?? 2800) + ($feeSettings->books_grade3 ?? 5050) + ($feeSettings->insurance ?? 150) + ($feeSettings->electric ?? 2000), 2) }}</span><br>
-                    <small class="text-muted" id="summary-grade3-breakdown">({{ ($feeSettings->tuition ?? 7505) . '+' . ($feeSettings->misc ?? 2800) . '+' . ($feeSettings->books_grade3 ?? 5050) . '+' . ($feeSettings->insurance ?? 150) . '+' . ($feeSettings->electric ?? 2000) }})</small>
+                    <strong>Grade 3:</strong> <span id="summary-grade3">₱<?php echo e(number_format(($feeSettings->tuition ?? 7505) + ($feeSettings->misc ?? 2800) + ($feeSettings->books_grade3 ?? 5050) + ($feeSettings->insurance ?? 150) + ($feeSettings->electric ?? 2000), 2)); ?></span><br>
+                    <small class="text-muted" id="summary-grade3-breakdown">(<?php echo e(($feeSettings->tuition ?? 7505) . '+' . ($feeSettings->misc ?? 2800) . '+' . ($feeSettings->books_grade3 ?? 5050) . '+' . ($feeSettings->insurance ?? 150) . '+' . ($feeSettings->electric ?? 2000)); ?>)</small>
                 </div>
                 <div class="col-md-3">
-                    <strong>Grade 4-6:</strong> <span id="summary-grade4">₱{{ number_format(($feeSettings->tuition ?? 7505) + ($feeSettings->misc ?? 2800) + ($feeSettings->books_grade4 ?? 5550) + ($feeSettings->insurance ?? 150) + ($feeSettings->electric ?? 2000), 2) }}</span><br>
-                    <small class="text-muted" id="summary-grade4-breakdown">({{ ($feeSettings->tuition ?? 7505) . '+' . ($feeSettings->misc ?? 2800) . '+' . ($feeSettings->books_grade4 ?? 5550) . '+' . ($feeSettings->insurance ?? 150) . '+' . ($feeSettings->electric ?? 2000) }})</small>
+                    <strong>Grade 4-6:</strong> <span id="summary-grade4">₱<?php echo e(number_format(($feeSettings->tuition ?? 7505) + ($feeSettings->misc ?? 2800) + ($feeSettings->books_grade4 ?? 5550) + ($feeSettings->insurance ?? 150) + ($feeSettings->electric ?? 2000), 2)); ?></span><br>
+                    <small class="text-muted" id="summary-grade4-breakdown">(<?php echo e(($feeSettings->tuition ?? 7505) . '+' . ($feeSettings->misc ?? 2800) . '+' . ($feeSettings->books_grade4 ?? 5550) . '+' . ($feeSettings->insurance ?? 150) . '+' . ($feeSettings->electric ?? 2000)); ?>)</small>
                 </div>
             </div>
         </div>
 
-        {{-- Save Button --}}
+        
         <div class="d-flex justify-content-end">
             <button id="btn-save-fees" class="btn-dash btn-primary" onclick="confirmSaveFeeSettings()">
                 <span id="btn-save-fees-text"><i class="bi bi-floppy-fill me-1"></i> Save Fee Settings</span>
@@ -5555,30 +5496,26 @@ function openWalkInEnrollmentModal() {
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($feeBreakdowns as $grade => $breakdown)
+                            <?php $__currentLoopData = $feeBreakdowns; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $grade => $breakdown): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                 <tr>
-                                    <td style="text-transform: capitalize;">{{ str_replace(['grade', 'nursery', 'kindergarten'], ['Grade ', 'Nursery', 'Kindergarten'], $grade) }}</td>
-                                    <td>₱{{ number_format($breakdown['tuition'], 2) }}</td>
-                                    <td>₱{{ number_format($breakdown['misc'], 2) }}</td>
-                                    <td>₱{{ number_format($breakdown['insurance'], 2) }}</td>
-                                    <td>₱{{ number_format($breakdown['electric'], 2) }}</td>
-                                    <td>₱{{ number_format($breakdown['books'], 2) }}</td>
-                                    <td style="font-weight: 700; color: var(--blue);">₱{{ number_format($breakdown['base_total'], 2) }}</td>
+                                    <td style="text-transform: capitalize;"><?php echo e(str_replace(['grade', 'nursery', 'kindergarten'], ['Grade ', 'Nursery', 'Kindergarten'], $grade)); ?></td>
+                                    <td>₱<?php echo e(number_format($breakdown['tuition'], 2)); ?></td>
+                                    <td>₱<?php echo e(number_format($breakdown['misc'], 2)); ?></td>
+                                    <td>₱<?php echo e(number_format($breakdown['insurance'], 2)); ?></td>
+                                    <td>₱<?php echo e(number_format($breakdown['electric'], 2)); ?></td>
+                                    <td>₱<?php echo e(number_format($breakdown['books'], 2)); ?></td>
+                                    <td style="font-weight: 700; color: var(--blue);">₱<?php echo e(number_format($breakdown['base_total'], 2)); ?></td>
                                 </tr>
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-    </div>{{-- /section-fees --}}
+    </div>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-         SECTION: SUBJECT MANAGEMENT
-
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
 
     <div id="section-subjects" class="dash-section" style="display:none;">
 
@@ -5702,7 +5639,7 @@ function openWalkInEnrollmentModal() {
 
             </div>
 
-            <span class="toolbar-count">Showing <span id="subjectVisibleCount">0</span> of {{ $subjects->total() }} subjects</span>
+            <span class="toolbar-count">Showing <span id="subjectVisibleCount">0</span> of <?php echo e($subjects->total()); ?> subjects</span>
 
         </div>
 
@@ -5733,70 +5670,71 @@ function openWalkInEnrollmentModal() {
 
                     <tbody>
 
-                        @forelse(($subjects ?? collect()) as $subj)
+                        <?php $__empty_1 = true; $__currentLoopData = ($subjects ?? collect()); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $subj): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
 
-                        @php
+                        <?php
                             $subjSchedCount = ($allSchedules ?? collect())->where('subject_id', $subj->id)->count();
                             $subjSections   = ($allSchedules ?? collect())
                                 ->where('subject_id', $subj->id)
                                 ->filter(fn($s) => $s->section)
                                 ->pluck('section.name')->unique()->values();
-                        @endphp
+                        ?>
 
-                        <tr data-grade="{{ $subj->grade_level }}" data-status="{{ $subj->is_active ? 'active' : 'inactive' }}" data-search="{{ strtolower($subj->code . ' ' . $subj->name) }}">
+                        <tr data-grade="<?php echo e($subj->grade_level); ?>" data-status="<?php echo e($subj->is_active ? 'active' : 'inactive'); ?>" data-search="<?php echo e(strtolower($subj->code . ' ' . $subj->name)); ?>">
 
-                            <td><span class="code-chip">{{ $subj->code }}</span></td>
+                            <td><span class="code-chip"><?php echo e($subj->code); ?></span></td>
 
                             <td>
-                                <div style="font-weight:600;">{{ $subj->name }}</div>
-                                @if($subj->description)
-                                    <div style="font-size:11px; color:var(--muted); margin-top:2px;">{{ Str::limit($subj->description, 50) }}</div>
-                                @endif
+                                <div style="font-weight:600;"><?php echo e($subj->name); ?></div>
+                                <?php if($subj->description): ?>
+                                    <div style="font-size:11px; color:var(--muted); margin-top:2px;"><?php echo e(Str::limit($subj->description, 50)); ?></div>
+                                <?php endif; ?>
                             </td>
 
-                            <td><span class="grade-chip">{{ ucfirst(str_replace(['grade','_'],[' Grade ',''],$subj->grade_level ?? '')) }}</span></td>
+                            <td><span class="grade-chip"><?php echo e(ucfirst(str_replace(['grade','_'],[' Grade ',''],$subj->grade_level ?? ''))); ?></span></td>
 
                             <td>
-                                @if($subjSchedCount > 0)
+                                <?php if($subjSchedCount > 0): ?>
                                     <div style="font-size:12px;font-weight:600;color:#166534;">
-                                        <i class="bi bi-calendar3 me-1"></i>{{ $subjSchedCount }} schedule(s)
+                                        <i class="bi bi-calendar3 me-1"></i><?php echo e($subjSchedCount); ?> schedule(s)
                                     </div>
                                     <div style="font-size:10px;color:var(--muted);">
-                                        {{ $subjSections->take(2)->implode(', ') }}{{ $subjSections->count() > 2 ? ' +'.($subjSections->count()-2) : '' }}
+                                        <?php echo e($subjSections->take(2)->implode(', ')); ?><?php echo e($subjSections->count() > 2 ? ' +'.($subjSections->count()-2) : ''); ?>
+
                                     </div>
-                                @else
+                                <?php else: ?>
                                     <span style="font-size:11px;color:#bbb;"><i class="bi bi-calendar-x me-1"></i>Not scheduled</span>
-                                @endif
+                                <?php endif; ?>
                             </td>
 
                             <td>
-                                @if($subj->is_active)
+                                <?php if($subj->is_active): ?>
                                     <span class="status-badge active"><i class="bi bi-check-circle-fill me-1"></i>Active</span>
-                                @else
+                                <?php else: ?>
                                     <span class="status-badge inactive"><i class="bi bi-x-circle-fill me-1"></i>Inactive</span>
-                                @endif
+                                <?php endif; ?>
                             </td>
 
                             <td style="text-align:center;">
                                 <button class="action-btn edit js-subject-edit" title="Edit Subject"
-                                    data-id="{{ $subj->id }}" data-name="{{ $subj->name }}" data-code="{{ $subj->code }}"
-                                    data-desc="{{ $subj->description }}" data-grade="{{ $subj->grade_level }}"
-                                    data-active="{{ $subj->is_active ? '1' : '0' }}">
+                                    data-id="<?php echo e($subj->id); ?>" data-name="<?php echo e($subj->name); ?>" data-code="<?php echo e($subj->code); ?>"
+                                    data-desc="<?php echo e($subj->description); ?>" data-grade="<?php echo e($subj->grade_level); ?>"
+                                    data-active="<?php echo e($subj->is_active ? '1' : '0'); ?>">
                                     <i class="bi bi-pencil-fill"></i>
                                 </button>
                                 <button class="action-btn" title="Add to Schedule"
                                     style="background:#e8f5e9;color:#166534;"
-                                    onclick="showSection('schedules'); setTimeout(() => { document.getElementById('scheduleGradeFilter').value='{{ $subj->grade_level }}'; document.getElementById('scheduleGradeFilter').dispatchEvent(new Event('change')); }, 300);">
+                                    onclick="showSection('schedules'); setTimeout(() => { document.getElementById('scheduleGradeFilter').value='<?php echo e($subj->grade_level); ?>'; document.getElementById('scheduleGradeFilter').dispatchEvent(new Event('change')); }, 300);">
                                     <i class="bi bi-calendar-plus-fill"></i>
                                 </button>
-                                <button class="action-btn delete js-subject-delete" title="Delete Subject" data-id="{{ $subj->id }}">
+                                <button class="action-btn delete js-subject-delete" title="Delete Subject" data-id="<?php echo e($subj->id); ?>">
                                     <i class="bi bi-trash-fill"></i>
                                 </button>
                             </td>
 
                         </tr>
 
-                        @empty
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
 
                         <tr>
 
@@ -5822,21 +5760,22 @@ function openWalkInEnrollmentModal() {
 
                         </tr>
 
-                        @endforelse
+                        <?php endif; ?>
 
                     </tbody>
 
                 </table>
 
                 <div class="p-3 border-top" style="border-color:var(--border);">
-                    @if(isset($subjects))
-                    {{ $subjects->links() }}
-                    @endif
-                    @if(isset($subjects) && $subjects->count() > 0)
+                    <?php if(isset($subjects)): ?>
+                    <?php echo e($subjects->links()); ?>
+
+                    <?php endif; ?>
+                    <?php if(isset($subjects) && $subjects->count() > 0): ?>
                     <div class="pagination-info">
-                        Showing {{ $subjects->firstItem() }} to {{ $subjects->lastItem() }} of {{ $subjects->total() }} subjects
+                        Showing <?php echo e($subjects->firstItem()); ?> to <?php echo e($subjects->lastItem()); ?> of <?php echo e($subjects->total()); ?> subjects
                     </div>
-                    @endif
+                    <?php endif; ?>
                 </div>
 
             </div>
@@ -5845,9 +5784,9 @@ function openWalkInEnrollmentModal() {
 
         </div>
 
-    </div>{{-- /section-subjects --}}
+    </div>
 
-    {{-- Section Management --}}
+    
 
     <div id="section-sections" class="dash-section" style="display:none;">
 
@@ -5870,7 +5809,7 @@ function openWalkInEnrollmentModal() {
 
         </div>
 
-        @php
+        <?php
 
             $sections = $sections ?? collect();
 
@@ -5880,7 +5819,7 @@ function openWalkInEnrollmentModal() {
 
             $totalEnrolled = $sections->sum('current_enrollment');
 
-        @endphp
+        ?>
 
         <div class="row g-3 mb-4">
 
@@ -5892,7 +5831,7 @@ function openWalkInEnrollmentModal() {
 
                     <div>
 
-                        <div class="stat-value">{{ $totalSections }}</div>
+                        <div class="stat-value"><?php echo e($totalSections); ?></div>
 
                         <div class="stat-label">Total Sections</div>
 
@@ -5910,7 +5849,7 @@ function openWalkInEnrollmentModal() {
 
                     <div>
 
-                        <div class="stat-value">{{ $activeSections }}</div>
+                        <div class="stat-value"><?php echo e($activeSections); ?></div>
 
                         <div class="stat-label">Active Sections</div>
 
@@ -5928,7 +5867,7 @@ function openWalkInEnrollmentModal() {
 
                     <div>
 
-                        <div class="stat-value">{{ $totalEnrolled }}</div>
+                        <div class="stat-value"><?php echo e($totalEnrolled); ?></div>
 
                         <div class="stat-label">Total Enrolled</div>
 
@@ -5970,9 +5909,9 @@ function openWalkInEnrollmentModal() {
 
                     <tbody>
 
-                        @forelse(($sections ?? collect()) as $sec)
+                        <?php $__empty_1 = true; $__currentLoopData = ($sections ?? collect()); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sec): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
 
-                        @php
+                        <?php
                             $sec = collect([$sec])->first();
                             // Advisory teacher for this section (from TeacherAssignment, is_advisory=true)
                             $secAdvisory = \App\Models\TeacherAssignment::where('section_id', $sec->id)
@@ -5987,102 +5926,106 @@ function openWalkInEnrollmentModal() {
                                 ->where('section_id', $sec->id)
                                 ->filter(fn($s) => $s->subject)
                                 ->pluck('subject.name')->unique()->values();
-                        @endphp
+                        ?>
 
-                        <tr data-grade="{{ $sec->grade_level }}" data-search="{{ strtolower($sec->name . ' ' . ($secAdviserName ?? '') . ' ' . ($sec->room_number ?? '')) }}">
+                        <tr data-grade="<?php echo e($sec->grade_level); ?>" data-search="<?php echo e(strtolower($sec->name . ' ' . ($secAdviserName ?? '') . ' ' . ($sec->room_number ?? ''))); ?>">
 
                             <td>
                                 <div class="section-name-badge">
-                                    <span class="section-dot {{ $sec->is_active ? 'dot-active' : 'dot-inactive' }}"></span>
-                                    <span style="font-weight:600;">{{ $sec->name }}</span>
+                                    <span class="section-dot <?php echo e($sec->is_active ? 'dot-active' : 'dot-inactive'); ?>"></span>
+                                    <span style="font-weight:600;"><?php echo e($sec->name); ?></span>
                                 </div>
                                 <div style="font-size:11px; color:var(--muted); margin-top:2px; padding-left:14px;">
-                                    S.Y. {{ $sec->school_year ?? '—' }}
-                                    @if($sec->room_number)
-                                        &nbsp;·&nbsp;<i class="bi bi-geo-alt-fill" style="color:var(--blue);font-size:10px;"></i> {{ $sec->room_number }}
-                                    @endif
+                                    S.Y. <?php echo e($sec->school_year ?? '—'); ?>
+
+                                    <?php if($sec->room_number): ?>
+                                        &nbsp;·&nbsp;<i class="bi bi-geo-alt-fill" style="color:var(--blue);font-size:10px;"></i> <?php echo e($sec->room_number); ?>
+
+                                    <?php endif; ?>
                                 </div>
                             </td>
 
-                            <td><span class="grade-chip">{{ ucfirst(str_replace(['grade','_'],[' Grade ',''],$sec->grade_level ?? '')) }}</span></td>
+                            <td><span class="grade-chip"><?php echo e(ucfirst(str_replace(['grade','_'],[' Grade ',''],$sec->grade_level ?? ''))); ?></span></td>
 
                             <td>
-                                @if($secAdviserName)
+                                <?php if($secAdviserName): ?>
                                     <div style="display:flex;align-items:center;gap:5px;">
                                         <span style="width:26px;height:26px;border-radius:50%;background:#e0f2fe;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#0369a1;flex-shrink:0;">
-                                            {{ strtoupper(substr($secAdviserName, 0, 2)) }}
+                                            <?php echo e(strtoupper(substr($secAdviserName, 0, 2))); ?>
+
                                         </span>
                                         <div>
-                                            <div style="font-size:12px;font-weight:600;">{{ $secAdviserName }}</div>
+                                            <div style="font-size:12px;font-weight:600;"><?php echo e($secAdviserName); ?></div>
                                             <div style="font-size:10px;color:var(--muted);">Advisory</div>
                                         </div>
                                     </div>
-                                @else
+                                <?php else: ?>
                                     <span style="font-size:12px;color:#bbb;">
                                         <i class="bi bi-exclamation-circle me-1"></i>Not assigned
                                     </span>
-                                @endif
+                                <?php endif; ?>
                             </td>
 
                             <td>
-                                @if($secScheduleCount > 0)
+                                <?php if($secScheduleCount > 0): ?>
                                     <div style="font-size:12px;font-weight:600;color:#166534;margin-bottom:3px;">
-                                        <i class="bi bi-calendar3 me-1"></i>{{ $secScheduleCount }} slot(s)
+                                        <i class="bi bi-calendar3 me-1"></i><?php echo e($secScheduleCount); ?> slot(s)
                                     </div>
                                     <div style="font-size:10px;color:var(--muted);">
-                                        {{ $secScheduleSubjects->take(3)->implode(', ') }}{{ $secScheduleSubjects->count() > 3 ? ' +'.($secScheduleSubjects->count()-3).' more' : '' }}
+                                        <?php echo e($secScheduleSubjects->take(3)->implode(', ')); ?><?php echo e($secScheduleSubjects->count() > 3 ? ' +'.($secScheduleSubjects->count()-3).' more' : ''); ?>
+
                                     </div>
-                                @else
+                                <?php else: ?>
                                     <span style="font-size:12px;color:#bbb;"><i class="bi bi-calendar-x me-1"></i>No schedule yet</span>
-                                @endif
+                                <?php endif; ?>
                             </td>
 
                             <td style="text-align:center;">
-                                @php
+                                <?php
                                     $secEnrolled = $sec->current_enrollment ?? 0;
                                     $secMax = $sec->max_students ?? 30;
                                     $secPct = $secMax > 0 ? min(100, round($secEnrolled / $secMax * 100)) : 0;
                                     $secColorClass = $secPct >= 90 ? 'red' : ($secPct >= 70 ? 'gold' : 'green');
-                                @endphp
-                                <div style="font-size:12px; font-weight:700; color:var(--{{ $secColorClass }}); margin-bottom:3px;">{{ $secEnrolled }}/{{ $secMax }}</div>
+                                ?>
+                                <div style="font-size:12px; font-weight:700; color:var(--<?php echo e($secColorClass); ?>); margin-bottom:3px;"><?php echo e($secEnrolled); ?>/<?php echo e($secMax); ?></div>
                                 <div style="height:5px; background:#e2e8f0; border-radius:4px; overflow:hidden; width:72px; margin:0 auto;">
-                                    <div style="height:100%; background:var(--{{ $secColorClass }}); width:{{ $secPct }}%; border-radius:4px; transition:width .3s;"></div>
+                                    <div style="height:100%; background:var(--<?php echo e($secColorClass); ?>); width:<?php echo e($secPct); ?>%; border-radius:4px; transition:width .3s;"></div>
                                 </div>
                             </td>
 
                             <td>
 
-                                @if($sec->is_active)
+                                <?php if($sec->is_active): ?>
 
                                     <span class="status-badge active"><i class="bi bi-check-circle-fill me-1"></i>Active</span>
 
-                                @else
+                                <?php else: ?>
 
                                     <span class="status-badge inactive"><i class="bi bi-x-circle-fill me-1"></i>Inactive</span>
 
-                                @endif
+                                <?php endif; ?>
 
                             </td>
 
                             <td style="text-align:center;white-space:nowrap;">
-                                <button class="action-btn view js-section-view-students" title="View Students" data-id="{{ $sec->id }}" data-name="{{ $sec->name }}"><i class="bi bi-people-fill"></i></button>
-                                <button class="action-btn view js-section-view-subjects" title="View Subjects" data-id="{{ $sec->id }}" data-name="{{ $sec->name }}"><i class="bi bi-book-fill"></i></button>
-<button class="action-btn edit js-section-manage-subjects" title="Manage Subjects" data-id="{{ $sec->id }}" data-name="{{ $sec->name }}" data-grade="{{ $sec->grade_level }}"><i class="bi bi-gear-fill"></i></button>
-                                <button class="action-btn add-student" title="Add Student" data-id="{{ $sec->id }}" data-name="{{ $sec->name }}" data-enrolled="{{ $sec->current_enrollment ?? 0 }}" data-max="{{ $sec->max_students ?? 30 }}"><i class="bi bi-person-plus-fill"></i></button>
+                                <button class="action-btn view js-section-view-students" title="View Students" data-id="<?php echo e($sec->id); ?>" data-name="<?php echo e($sec->name); ?>"><i class="bi bi-people-fill"></i></button>
+                                <button class="action-btn view js-section-view-subjects" title="View Subjects" data-id="<?php echo e($sec->id); ?>" data-name="<?php echo e($sec->name); ?>"><i class="bi bi-book-fill"></i></button>
+<button class="action-btn edit js-section-manage-subjects" title="Manage Subjects" data-id="<?php echo e($sec->id); ?>" data-name="<?php echo e($sec->name); ?>" data-grade="<?php echo e($sec->grade_level); ?>"><i class="bi bi-gear-fill"></i></button>
+                                <button class="action-btn add-student" title="Add Student" data-id="<?php echo e($sec->id); ?>" data-name="<?php echo e($sec->name); ?>" data-enrolled="<?php echo e($sec->current_enrollment ?? 0); ?>" data-max="<?php echo e($sec->max_students ?? 30); ?>"><i class="bi bi-person-plus-fill"></i></button>
                                 <button class="action-btn edit js-section-edit" title="Edit Section"
-                                    data-id="{{ $sec->id }}"
-                                    data-name="{{ $sec->name }}"
-                                    data-grade="{{ $sec->grade_level }}"
-                                    data-room="{{ $sec->room_number }}"
-                                    data-sy="{{ $sec->school_year }}"
-                                    data-active="{{ $sec->is_active ? '1' : '0' }}"
-                                    data-max="{{ $sec->max_students ?? 30 }}"><i class="bi bi-pencil-fill"></i></button>
-                                <button class="action-btn delete js-section-delete" title="Delete" data-id="{{ $sec->id }}"><i class="bi bi-trash-fill"></i></button>
+                                    data-id="<?php echo e($sec->id); ?>"
+                                    data-name="<?php echo e($sec->name); ?>"
+                                    data-grade="<?php echo e($sec->grade_level); ?>"
+                                    data-room="<?php echo e($sec->room_number); ?>"
+                                    data-sy="<?php echo e($sec->school_year); ?>"
+                                    data-active="<?php echo e($sec->is_active ? '1' : '0'); ?>"
+                                    data-max="<?php echo e($sec->max_students ?? 30); ?>"><i class="bi bi-pencil-fill"></i></button>
+                                <button class="action-btn delete js-section-delete" title="Delete" data-id="<?php echo e($sec->id); ?>"><i class="bi bi-trash-fill"></i></button>
                             </td>
 
                         </tr>
 
-                        @empty
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
 
                         <tr>
 
@@ -6108,21 +6051,22 @@ function openWalkInEnrollmentModal() {
 
                         </tr>
 
-                        @endforelse
+                        <?php endif; ?>
 
                     </tbody>
 
                 </table>
 
                 <div class="p-3 border-top" style="border-color:var(--border);">
-                    @if(isset($sections))
-                    {{ $sections->links() }}
-                    @endif
-                    @if(isset($sections) && $sections->count() > 0)
+                    <?php if(isset($sections)): ?>
+                    <?php echo e($sections->links()); ?>
+
+                    <?php endif; ?>
+                    <?php if(isset($sections) && $sections->count() > 0): ?>
                     <div class="pagination-info">
-                        Showing {{ $sections->firstItem() }} to {{ $sections->lastItem() }} of {{ $sections->total() }} sections
+                        Showing <?php echo e($sections->firstItem()); ?> to <?php echo e($sections->lastItem()); ?> of <?php echo e($sections->total()); ?> sections
                     </div>
-                    @endif
+                    <?php endif; ?>
                 </div>
 
             </div>
@@ -6131,9 +6075,9 @@ function openWalkInEnrollmentModal() {
 
         </div>
 
-    </div>{{-- /section-sections --}}
+    </div>
 
-    {{-- Schedule Management --}}
+    
 
     <div id="section-schedules" class="dash-section" style="display:none;">
 
@@ -6152,7 +6096,7 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        {{-- Schedule Filters --}}
+        
         <div class="content-card mb-4">
             <div class="content-card-header">
                 <h6>Filter Schedules</h6>
@@ -6196,14 +6140,14 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        {{-- Empty State --}}
+        
         <div id="scheduleEmptyState" style="text-align:center; padding:60px; color:var(--muted);">
             <i class="bi bi-calendar-week" style="font-size:48px; display:block; margin-bottom:12px; opacity:0.3;"></i>
             <div style="font-size:15px; font-weight:600; margin-bottom:4px;">Select a grade level to view schedules</div>
             <div style="font-size:13px;">Choose a grade level above to load the schedule grid.</div>
         </div>
 
-        {{-- Schedule Grid --}}
+        
         <div id="scheduleGridContainer" class="content-card" style="display:none;">
             <div class="content-card-header">
                 <h6 id="scheduleInfoText">Schedule</h6>
@@ -6231,9 +6175,9 @@ function openWalkInEnrollmentModal() {
         </div>
 
 
-    </div>{{-- /section-schedules --}}
+    </div>
 
-    {{-- Guidance Records --}}
+    
 
     <div id="section-guidance" class="dash-section" style="display:none;">
 
@@ -6255,48 +6199,48 @@ function openWalkInEnrollmentModal() {
 
         </div>
 
-        {{-- Guidance Filter Bar --}}
+        
         <div class="content-card mb-4">
             <div class="p-3">
-                <form method="GET" action="{{ url()->current() }}" class="row g-3" id="guidance-filter-form">
+                <form method="GET" action="<?php echo e(url()->current()); ?>" class="row g-3" id="guidance-filter-form">
                     <input type="hidden" name="section" value="guidance">
                     <div class="col-md-4">
-                        <input type="text" name="guidance_search" class="form-fld" placeholder="Search student name..." value="{{ $guidanceSearch ?? '' }}" onchange="this.form.submit()">
+                        <input type="text" name="guidance_search" class="form-fld" placeholder="Search student name..." value="<?php echo e($guidanceSearch ?? ''); ?>" onchange="this.form.submit()">
                     </div>
                     <div class="col-md-2">
                         <select name="guidance_concern" class="form-fld" onchange="this.form.submit()">
                             <option value="">All Concerns</option>
-                            <option value="Behavioral" {{ ($guidanceConcern ?? '') === 'Behavioral' ? 'selected' : '' }}>Behavioral</option>
-                            <option value="Academic" {{ ($guidanceConcern ?? '') === 'Academic' ? 'selected' : '' }}>Academic</option>
-                            <option value="Emotional" {{ ($guidanceConcern ?? '') === 'Emotional' ? 'selected' : '' }}>Emotional</option>
-                            <option value="Family" {{ ($guidanceConcern ?? '') === 'Family' ? 'selected' : '' }}>Family</option>
-                            <option value="Social" {{ ($guidanceConcern ?? '') === 'Social' ? 'selected' : '' }}>Social</option>
-                            <option value="Health" {{ ($guidanceConcern ?? '') === 'Health' ? 'selected' : '' }}>Health</option>
-                            <option value="Other" {{ ($guidanceConcern ?? '') === 'Other' ? 'selected' : '' }}>Other</option>
+                            <option value="Behavioral" <?php echo e(($guidanceConcern ?? '') === 'Behavioral' ? 'selected' : ''); ?>>Behavioral</option>
+                            <option value="Academic" <?php echo e(($guidanceConcern ?? '') === 'Academic' ? 'selected' : ''); ?>>Academic</option>
+                            <option value="Emotional" <?php echo e(($guidanceConcern ?? '') === 'Emotional' ? 'selected' : ''); ?>>Emotional</option>
+                            <option value="Family" <?php echo e(($guidanceConcern ?? '') === 'Family' ? 'selected' : ''); ?>>Family</option>
+                            <option value="Social" <?php echo e(($guidanceConcern ?? '') === 'Social' ? 'selected' : ''); ?>>Social</option>
+                            <option value="Health" <?php echo e(($guidanceConcern ?? '') === 'Health' ? 'selected' : ''); ?>>Health</option>
+                            <option value="Other" <?php echo e(($guidanceConcern ?? '') === 'Other' ? 'selected' : ''); ?>>Other</option>
                         </select>
                     </div>
                     <div class="col-md-2">
                         <select name="guidance_status" class="form-fld" onchange="this.form.submit()">
                             <option value="">All Status</option>
-                            <option value="open" {{ ($guidanceStatus ?? '') === 'open' ? 'selected' : '' }}>Open</option>
-                            <option value="in_progress" {{ ($guidanceStatus ?? '') === 'in_progress' ? 'selected' : '' }}>In Progress</option>
-                            <option value="resolved" {{ ($guidanceStatus ?? '') === 'resolved' ? 'selected' : '' }}>Resolved</option>
-                            <option value="closed" {{ ($guidanceStatus ?? '') === 'closed' ? 'selected' : '' }}>Closed</option>
+                            <option value="open" <?php echo e(($guidanceStatus ?? '') === 'open' ? 'selected' : ''); ?>>Open</option>
+                            <option value="in_progress" <?php echo e(($guidanceStatus ?? '') === 'in_progress' ? 'selected' : ''); ?>>In Progress</option>
+                            <option value="resolved" <?php echo e(($guidanceStatus ?? '') === 'resolved' ? 'selected' : ''); ?>>Resolved</option>
+                            <option value="closed" <?php echo e(($guidanceStatus ?? '') === 'closed' ? 'selected' : ''); ?>>Closed</option>
                         </select>
                     </div>
                     <div class="col-md-2">
                         <select name="guidance_sort" class="form-fld" onchange="this.form.submit()">
-                            <option value="date_desc" {{ ($guidanceSort ?? 'date_desc') === 'date_desc' ? 'selected' : '' }}>Newest First</option>
-                            <option value="date_asc" {{ ($guidanceSort ?? 'date_desc') === 'date_asc' ? 'selected' : '' }}>Oldest First</option>
+                            <option value="date_desc" <?php echo e(($guidanceSort ?? 'date_desc') === 'date_desc' ? 'selected' : ''); ?>>Newest First</option>
+                            <option value="date_asc" <?php echo e(($guidanceSort ?? 'date_desc') === 'date_asc' ? 'selected' : ''); ?>>Oldest First</option>
                         </select>
                     </div>
-                    @if(($guidanceSearch ?? '') || ($guidanceConcern ?? '') || ($guidanceStatus ?? ''))
+                    <?php if(($guidanceSearch ?? '') || ($guidanceConcern ?? '') || ($guidanceStatus ?? '')): ?>
                     <div class="col-md-2">
-                        <a href="{{ url()->current() }}?section=guidance" class="btn-dash btn-secondary" style="width:100%;text-align:center;">
+                        <a href="<?php echo e(url()->current()); ?>?section=guidance" class="btn-dash btn-secondary" style="width:100%;text-align:center;">
                             <i class="bi bi-x-circle me-1"></i>Clear
                         </a>
                     </div>
-                    @endif
+                    <?php endif; ?>
                 </form>
             </div>
         </div>
@@ -6332,25 +6276,25 @@ function openWalkInEnrollmentModal() {
                     </thead>
 
                     <tbody>
-                        @if(isset($guidanceRecords) && $guidanceRecords->count() > 0)
-                            @foreach($guidanceRecords as $g)
+                        <?php if(isset($guidanceRecords) && $guidanceRecords->count() > 0): ?>
+                            <?php $__currentLoopData = $guidanceRecords; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $g): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                             <tr>
                                 <td>
                                     <div class="user-row-name">
-                                        <div class="user-row-avatar">{{ strtoupper(substr($g->student->name ?? '?', 0, 2)) }}</div>
+                                        <div class="user-row-avatar"><?php echo e(strtoupper(substr($g->student->name ?? '?', 0, 2))); ?></div>
                                         <div>
-                                            <div style="font-weight:600;">{{ $g->student->name ?? 'Unknown' }}</div>
+                                            <div style="font-weight:600;"><?php echo e($g->student->name ?? 'Unknown'); ?></div>
                                         </div>
                                     </div>
                                 </td>
-                                <td>{{ $g->date->format('M d, Y') }}</td>
+                                <td><?php echo e($g->date->format('M d, Y')); ?></td>
                                 <td>
-                                    <span class="badge bg-info text-dark">{{ $g->concern_type }}</span>
-                                    <div class="small text-muted mt-1">{{ Str::limit($g->concern_description, 50) }}</div>
+                                    <span class="badge bg-info text-dark"><?php echo e($g->concern_type); ?></span>
+                                    <div class="small text-muted mt-1"><?php echo e(Str::limit($g->concern_description, 50)); ?></div>
                                 </td>
-                                <td>{{ $g->counselor->name ?? 'Unassigned' }}</td>
+                                <td><?php echo e($g->counselor->name ?? 'Unassigned'); ?></td>
                                 <td>
-                                    @php
+                                    <?php
                                         $statusClass = match($g->status) {
                                             'open' => 'bg-warning',
                                             'in_progress' => 'bg-primary',
@@ -6358,30 +6302,30 @@ function openWalkInEnrollmentModal() {
                                             'closed' => 'bg-secondary',
                                             default => 'bg-light'
                                         };
-                                    @endphp
-                                    <span class="badge {{ $statusClass }}">{{ ucfirst(str_replace('_', ' ', $g->status)) }}</span>
+                                    ?>
+                                    <span class="badge <?php echo e($statusClass); ?>"><?php echo e(ucfirst(str_replace('_', ' ', $g->status))); ?></span>
                                 </td>
                                 <td>
-                                    <button class="action-btn view js-guidance-view" title="View" data-id="{{ $g->id }}">
+                                    <button class="action-btn view js-guidance-view" title="View" data-id="<?php echo e($g->id); ?>">
                                         <i class="bi bi-eye-fill"></i>
                                     </button>
-                                    <button class="action-btn edit js-guidance-edit" title="Edit" data-id="{{ $g->id }}">
+                                    <button class="action-btn edit js-guidance-edit" title="Edit" data-id="<?php echo e($g->id); ?>">
                                         <i class="bi bi-pencil-fill"></i>
                                     </button>
-                                    <button class="action-btn delete js-guidance-delete" title="Delete" data-id="{{ $g->id }}">
+                                    <button class="action-btn delete js-guidance-delete" title="Delete" data-id="<?php echo e($g->id); ?>">
                                         <i class="bi bi-trash-fill"></i>
                                     </button>
                                 </td>
                             </tr>
-                            @endforeach
-                        @else
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                        <?php else: ?>
                             <tr>
                                 <td colspan="6" style="text-align:center; color:var(--text); padding:40px;">
                                     <i class="bi bi-journal-medical" style="font-size:36px; display:block; margin-bottom:8px; opacity:0.3;"></i>
                                     No guidance records yet.
                                 </td>
                             </tr>
-                        @endif
+                        <?php endif; ?>
                     </tbody>
 
                 </table>
@@ -6390,27 +6334,28 @@ function openWalkInEnrollmentModal() {
 
 
             <div class="p-3 border-top" style="border-color:var(--border);">
-                @if(isset($guidanceRecords))
-                {{ $guidanceRecords->appends([
+                <?php if(isset($guidanceRecords)): ?>
+                <?php echo e($guidanceRecords->appends([
                     'section'          => 'guidance',
                     'guidance_search'  => $guidanceSearch ?? '',
                     'guidance_concern' => $guidanceConcern ?? '',
                     'guidance_status'  => $guidanceStatus ?? '',
                     'guidance_sort'    => $guidanceSort ?? 'date_desc',
-                ])->links() }}
+                ])->links()); ?>
+
                 <div class="pagination-info">
-                    Showing {{ $guidanceRecords->firstItem() ?? 0 }} to {{ $guidanceRecords->lastItem() ?? 0 }} of {{ $guidanceRecords->total() }} records
+                    Showing <?php echo e($guidanceRecords->firstItem() ?? 0); ?> to <?php echo e($guidanceRecords->lastItem() ?? 0); ?> of <?php echo e($guidanceRecords->total()); ?> records
                 </div>
-                @endif
+                <?php endif; ?>
             </div>
 
 
         </div>
 
-    </div>{{-- /section-guidance --}}
+    </div>
 
-    {{-- ... rest of the code remains the same ... --}}
-    {{-- Guidance Record Modal --}}
+    
+    
     <div class="modal fade" id="guidanceModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content" style="border:0; border-radius:16px; overflow:hidden;">
@@ -6426,9 +6371,9 @@ function openWalkInEnrollmentModal() {
                                 <label class="form-lbl">Student *</label>
                                 <select id="guidance-student" class="form-fld" required>
                                     <option value="">Select Student</option>
-                                    @foreach($students as $s)
-                                        <option value="{{ $s->id }}">{{ $s->name }}</option>
-                                    @endforeach
+                                    <?php $__currentLoopData = $students; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $s): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                        <option value="<?php echo e($s->id); ?>"><?php echo e($s->name); ?></option>
+                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                 </select>
                             </div>
                             <div class="col-md-6">
@@ -6452,11 +6397,11 @@ function openWalkInEnrollmentModal() {
                                 <label class="form-lbl">Counselor *</label>
                                 <select id="guidance-counselor" class="form-fld" required>
                                     <option value="">Select Counselor</option>
-                                    @foreach($guidanceCounselors ?? [] as $gc)
-                                        <option value="{{ $gc->id }}" {{ auth()->id() === $gc->id ? 'selected' : '' }}>
-                                            {{ $gc->name }} ({{ ucfirst($gc->role) }})
+                                    <?php $__currentLoopData = $guidanceCounselors ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $gc): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                        <option value="<?php echo e($gc->id); ?>" <?php echo e(auth()->id() === $gc->id ? 'selected' : ''); ?>>
+                                            <?php echo e($gc->name); ?> (<?php echo e(ucfirst($gc->role)); ?>)
                                         </option>
-                                    @endforeach
+                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                 </select>
                             </div>
                             <div class="col-12">
@@ -6504,11 +6449,7 @@ function openWalkInEnrollmentModal() {
         </div>
     </div>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-         SECTION: ANNOUNCEMENTS
-
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
 
     <div id="section-announcements" class="dash-section" style="display:none;">
 
@@ -6524,20 +6465,21 @@ function openWalkInEnrollmentModal() {
 
         </div>
 
-        {{-- Success message --}}
-        @if(session('sa_success') && session('sa_section') === 'announcements')
+        
+        <?php if(session('sa_success') && session('sa_section') === 'announcements'): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius:10px;margin-bottom:16px;">
-            <i class="bi bi-check-circle-fill me-2"></i>{{ session('sa_success') }}
+            <i class="bi bi-check-circle-fill me-2"></i><?php echo e(session('sa_success')); ?>
+
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
-        @endif
+        <?php endif; ?>
 
-        {{-- Post New Announcement --}}
+        
         <div class="content-card mb-4">
             <div class="content-card-header"><h6><i class="bi bi-plus-circle me-2" style="color:var(--gold);"></i>Post New Announcement</h6></div>
             <div class="p-4">
-                <form method="POST" action="{{ route('admin.announcements.store') }}" enctype="multipart/form-data">
-                    @csrf
+                <form method="POST" action="<?php echo e(route('admin.announcements.store')); ?>" enctype="multipart/form-data">
+                    <?php echo csrf_field(); ?>
                     <input type="hidden" name="audience" value="all">
                     <div class="row g-3">
                         <div class="col-md-8">
@@ -6574,36 +6516,36 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        {{-- Posted Announcements List --}}
+        
         <div class="content-card">
             <div class="content-card-header">
                 <h6><i class="bi bi-megaphone me-2" style="color:var(--gold);"></i>Posted Announcements</h6>
-                <span style="font-size:12px;color:var(--muted);">{{ $announcements->count() }} total</span>
+                <span style="font-size:12px;color:var(--muted);"><?php echo e($announcements->count()); ?> total</span>
             </div>
-            @forelse($announcements as $ann)
+            <?php $__empty_1 = true; $__currentLoopData = $announcements; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $ann): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
             <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 20px;border-bottom:1px solid #f0f0f0;">
                 <div style="flex:1;min-width:0;">
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#e8f0fb;color:#1a3a6c;">{{ ucfirst($ann->category) }}</span>
-                        @if(!$ann->is_active)
+                        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#e8f0fb;color:#1a3a6c;"><?php echo e(ucfirst($ann->category)); ?></span>
+                        <?php if(!$ann->is_active): ?>
                         <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#f3f4f6;color:#6b7280;">Hidden</span>
-                        @endif
+                        <?php endif; ?>
                     </div>
-                    <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px;">{{ $ann->title }}</div>
-                    <div style="font-size:12px;color:var(--muted);">{{ Str::limit($ann->content, 100) }}</div>
-                    <div style="font-size:11px;color:var(--muted);margin-top:4px;"><i class="bi bi-clock me-1"></i>{{ $ann->created_at->format('M d, Y h:i A') }}</div>
+                    <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px;"><?php echo e($ann->title); ?></div>
+                    <div style="font-size:12px;color:var(--muted);"><?php echo e(Str::limit($ann->content, 100)); ?></div>
+                    <div style="font-size:11px;color:var(--muted);margin-top:4px;"><i class="bi bi-clock me-1"></i><?php echo e($ann->created_at->format('M d, Y h:i A')); ?></div>
                 </div>
                 <div style="display:flex;gap:6px;flex-shrink:0;align-items:center;">
-                    <form method="POST" action="{{ route('admin.announcements.toggle', $ann) }}" style="margin:0;">
-                        @csrf
-                        <button type="submit" title="{{ $ann->is_active ? 'Hide' : 'Show' }}"
-                            style="padding:6px 10px;border-radius:8px;border:1.5px solid #e2e8f0;background:{{ $ann->is_active ? '#fff3e0' : '#f0fdf4' }};color:{{ $ann->is_active ? '#e65100' : '#16a34a' }};cursor:pointer;font-size:13px;">
-                            <i class="bi bi-{{ $ann->is_active ? 'eye-slash' : 'eye' }}"></i>
+                    <form method="POST" action="<?php echo e(route('admin.announcements.toggle', $ann)); ?>" style="margin:0;">
+                        <?php echo csrf_field(); ?>
+                        <button type="submit" title="<?php echo e($ann->is_active ? 'Hide' : 'Show'); ?>"
+                            style="padding:6px 10px;border-radius:8px;border:1.5px solid #e2e8f0;background:<?php echo e($ann->is_active ? '#fff3e0' : '#f0fdf4'); ?>;color:<?php echo e($ann->is_active ? '#e65100' : '#16a34a'); ?>;cursor:pointer;font-size:13px;">
+                            <i class="bi bi-<?php echo e($ann->is_active ? 'eye-slash' : 'eye'); ?>"></i>
                         </button>
                     </form>
-                    <form method="POST" action="{{ route('admin.announcements.destroy', $ann) }}" style="margin:0;"
+                    <form method="POST" action="<?php echo e(route('admin.announcements.destroy', $ann)); ?>" style="margin:0;"
                           onsubmit="return confirm('Delete this announcement? This cannot be undone.')">
-                        @csrf @method('DELETE')
+                        <?php echo csrf_field(); ?> <?php echo method_field('DELETE'); ?>
                         <button type="submit" title="Delete"
                             style="padding:6px 10px;border-radius:8px;border:1.5px solid #fecaca;background:#fff5f5;color:#dc2626;cursor:pointer;font-size:13px;">
                             <i class="bi bi-trash3"></i>
@@ -6611,21 +6553,17 @@ function openWalkInEnrollmentModal() {
                     </form>
                 </div>
             </div>
-            @empty
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
             <div style="padding:40px;text-align:center;color:var(--muted);">
                 <i class="bi bi-megaphone" style="font-size:36px;display:block;margin-bottom:8px;opacity:0.3;"></i>
                 No announcements posted yet.
             </div>
-            @endforelse
+            <?php endif; ?>
         </div>
 
-    </div>{{-- /section-announcements --}}
+    </div>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-         SECTION: NEWS
-
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
 
     <div id="section-news" class="dash-section" style="display:none;">
 
@@ -6641,20 +6579,21 @@ function openWalkInEnrollmentModal() {
 
         </div>
 
-        {{-- Success message --}}
-        @if(session('sa_success') && session('sa_section') === 'news')
+        
+        <?php if(session('sa_success') && session('sa_section') === 'news'): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert" style="border-radius:10px;margin-bottom:16px;">
-            <i class="bi bi-check-circle-fill me-2"></i>{{ session('sa_success') }}
+            <i class="bi bi-check-circle-fill me-2"></i><?php echo e(session('sa_success')); ?>
+
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
-        @endif
+        <?php endif; ?>
 
-        {{-- Post New Article --}}
+        
         <div class="content-card mb-4">
             <div class="content-card-header"><h6><i class="bi bi-plus-circle me-2" style="color:var(--gold);"></i>Post New Article</h6></div>
             <div class="p-4">
-                <form method="POST" action="{{ route('admin.news.store') }}" enctype="multipart/form-data">
-                    @csrf
+                <form method="POST" action="<?php echo e(route('admin.news.store')); ?>" enctype="multipart/form-data">
+                    <?php echo csrf_field(); ?>
                     <div class="row g-3">
                         <div class="col-md-8">
                             <label class="form-lbl">Article Title *</label>
@@ -6690,44 +6629,44 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        {{-- Published Articles List --}}
+        
         <div class="content-card">
             <div class="content-card-header">
                 <h6><i class="bi bi-newspaper me-2" style="color:var(--gold);"></i>Published Articles</h6>
-                <span style="font-size:12px;color:var(--muted);">{{ $news->count() }} total</span>
+                <span style="font-size:12px;color:var(--muted);"><?php echo e($news->count()); ?> total</span>
             </div>
-            @forelse($news as $article)
+            <?php $__empty_1 = true; $__currentLoopData = $news; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $article): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
             <div style="display:flex;align-items:flex-start;gap:14px;padding:14px 20px;border-bottom:1px solid #f0f0f0;">
-                @if($article->image)
-                <img src="{{ asset('storage/'.$article->image) }}" alt=""
+                <?php if($article->image): ?>
+                <img src="<?php echo e(asset('storage/'.$article->image)); ?>" alt=""
                     style="width:60px;height:50px;object-fit:cover;border-radius:8px;flex-shrink:0;">
-                @else
+                <?php else: ?>
                 <div style="width:60px;height:50px;border-radius:8px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <i class="bi bi-image" style="color:#94a3b8;font-size:20px;"></i>
                 </div>
-                @endif
+                <?php endif; ?>
                 <div style="flex:1;min-width:0;">
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-                        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#e8f0fb;color:#1a3a6c;">{{ ucfirst($article->category) }}</span>
-                        @if(!$article->is_active)
+                        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#e8f0fb;color:#1a3a6c;"><?php echo e(ucfirst($article->category)); ?></span>
+                        <?php if(!$article->is_active): ?>
                         <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#f3f4f6;color:#6b7280;">Hidden</span>
-                        @endif
+                        <?php endif; ?>
                     </div>
-                    <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px;">{{ $article->title }}</div>
-                    <div style="font-size:12px;color:var(--muted);">{{ Str::limit($article->body, 100) }}</div>
-                    <div style="font-size:11px;color:var(--muted);margin-top:4px;"><i class="bi bi-clock me-1"></i>{{ $article->created_at->format('M d, Y h:i A') }}</div>
+                    <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px;"><?php echo e($article->title); ?></div>
+                    <div style="font-size:12px;color:var(--muted);"><?php echo e(Str::limit($article->body, 100)); ?></div>
+                    <div style="font-size:11px;color:var(--muted);margin-top:4px;"><i class="bi bi-clock me-1"></i><?php echo e($article->created_at->format('M d, Y h:i A')); ?></div>
                 </div>
                 <div style="display:flex;gap:6px;flex-shrink:0;align-items:center;">
-                    <form method="POST" action="{{ route('admin.news.toggle', $article) }}" style="margin:0;">
-                        @csrf
-                        <button type="submit" title="{{ $article->is_active ? 'Hide' : 'Show' }}"
-                            style="padding:6px 10px;border-radius:8px;border:1.5px solid #e2e8f0;background:{{ $article->is_active ? '#fff3e0' : '#f0fdf4' }};color:{{ $article->is_active ? '#e65100' : '#16a34a' }};cursor:pointer;font-size:13px;">
-                            <i class="bi bi-{{ $article->is_active ? 'eye-slash' : 'eye' }}"></i>
+                    <form method="POST" action="<?php echo e(route('admin.news.toggle', $article)); ?>" style="margin:0;">
+                        <?php echo csrf_field(); ?>
+                        <button type="submit" title="<?php echo e($article->is_active ? 'Hide' : 'Show'); ?>"
+                            style="padding:6px 10px;border-radius:8px;border:1.5px solid #e2e8f0;background:<?php echo e($article->is_active ? '#fff3e0' : '#f0fdf4'); ?>;color:<?php echo e($article->is_active ? '#e65100' : '#16a34a'); ?>;cursor:pointer;font-size:13px;">
+                            <i class="bi bi-<?php echo e($article->is_active ? 'eye-slash' : 'eye'); ?>"></i>
                         </button>
                     </form>
-                    <form method="POST" action="{{ route('admin.news.destroy', $article) }}" style="margin:0;"
+                    <form method="POST" action="<?php echo e(route('admin.news.destroy', $article)); ?>" style="margin:0;"
                           onsubmit="return confirm('Delete this article? This cannot be undone.')">
-                        @csrf @method('DELETE')
+                        <?php echo csrf_field(); ?> <?php echo method_field('DELETE'); ?>
                         <button type="submit" title="Delete"
                             style="padding:6px 10px;border-radius:8px;border:1.5px solid #fecaca;background:#fff5f5;color:#dc2626;cursor:pointer;font-size:13px;">
                             <i class="bi bi-trash3"></i>
@@ -6735,25 +6674,21 @@ function openWalkInEnrollmentModal() {
                     </form>
                 </div>
             </div>
-            @empty
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
             <div style="padding:40px;text-align:center;color:var(--muted);">
                 <i class="bi bi-newspaper" style="font-size:36px;display:block;margin-bottom:8px;opacity:0.3;"></i>
                 No articles published yet.
             </div>
-            @endforelse
+            <?php endif; ?>
         </div>
 
-    </div>{{-- /section-news --}}
+    </div>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-         SECTION: REPORTS
-
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
 
     <div id="section-reports" class="dash-section" style="display:none;">
 
-        @php
+        <?php
             // â”€â”€ Grade level map â”€â”€
             $rptGradeLevels = ['nursery'=>'Nursery','kindergarten'=>'Kindergarten','grade1'=>'Grade 1','grade2'=>'Grade 2','grade3'=>'Grade 3','grade4'=>'Grade 4','grade5'=>'Grade 5','grade6'=>'Grade 6'];
 
@@ -6881,24 +6816,24 @@ function openWalkInEnrollmentModal() {
                 ->orderByDesc('created_at')
                 ->limit(100)
                 ->get(['id','name','email','is_active','created_at']);
-        @endphp
+        ?>
 
-        {{-- Header --}}
+        
         <div class="section-header">
             <div>
                 <h1><i class="bi bi-bar-chart-line-fill" style="color:var(--blue);margin-right:8px;"></i>Reports</h1>
-                <p>S.Y. {{ $currentSchoolYear }} &mdash; Comprehensive reports for students, enrollment, financials, and KPIs.</p>
+                <p>S.Y. <?php echo e($currentSchoolYear); ?> &mdash; Comprehensive reports for students, enrollment, financials, and KPIs.</p>
             </div>
             <button class="btn-dash btn-secondary" onclick="printCurrentReport()">
                 <i class="bi bi-printer"></i> Print Current Report
             </button>
         </div>
 
-        {{-- ── Report Overview Charts ── --}}
-        @php
+        
+        <?php
             $rptChartGradeLabels = collect($rptStudentsByGrade ?? [])->keys()->map(fn($k)=>ucwords(str_replace(['grade','_'],['Grade ',' '],$k)))->values()->toArray();
             $rptChartGradeData   = collect($rptStudentsByGrade ?? [])->values()->toArray();
-        @endphp
+        ?>
         <div class="row g-3 mb-4">
             <div class="col-lg-4">
                 <div class="content-card">
@@ -6920,7 +6855,7 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        {{-- Main Report Tabs --}}
+        
         <div style="display:flex;gap:4px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:5px;margin-bottom:24px;flex-wrap:wrap;width:fit-content;">
             <button class="rpt-tab-btn active" id="rpt-tab-students" onclick="switchRptTab('students')">
                 <i class="bi bi-people-fill"></i> Student Reports
@@ -6931,47 +6866,45 @@ function openWalkInEnrollmentModal() {
             <button class="rpt-tab-btn" id="rpt-tab-financial" onclick="switchRptTab('financial')">
                 <i class="bi bi-cash-stack"></i> Financial Reports
             </button>
-            @if(Auth::user()->role === 'superadmin')
+            <?php if(Auth::user()->role === 'superadmin'): ?>
             <button class="rpt-tab-btn" id="rpt-tab-kpi" onclick="switchRptTab('kpi')">
                 <i class="bi bi-speedometer2"></i> KPI Dashboard
             </button>
-            @endif
+            <?php endif; ?>
         </div>
 
-        {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-             TAB 1: STUDENT REPORTS
-        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+        
         <div id="rpt-panel-students" class="rpt-panel">
 
-            {{-- Stat cards --}}
+            
             <div class="row g-3 mb-4">
                 <div class="col-6 col-md-3">
                     <div class="stat-card">
                         <div class="stat-icon blue"><i class="bi bi-people-fill"></i></div>
-                        <div><div class="stat-value">{{ $rptTotalStudents }}</div><div class="stat-label">Total Students</div></div>
+                        <div><div class="stat-value"><?php echo e($rptTotalStudents); ?></div><div class="stat-label">Total Students</div></div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
                     <div class="stat-card">
                         <div class="stat-icon green"><i class="bi bi-person-check-fill"></i></div>
-                        <div><div class="stat-value">{{ $rptActiveStudents }}</div><div class="stat-label">Active Students</div></div>
+                        <div><div class="stat-value"><?php echo e($rptActiveStudents); ?></div><div class="stat-label">Active Students</div></div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
                     <div class="stat-card">
                         <div class="stat-icon gold"><i class="bi bi-person-plus-fill"></i></div>
-                        <div><div class="stat-value">{{ $rptEnrollNew }}</div><div class="stat-label">New This Year</div></div>
+                        <div><div class="stat-value"><?php echo e($rptEnrollNew); ?></div><div class="stat-label">New This Year</div></div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
                     <div class="stat-card">
                         <div class="stat-icon" style="background:rgba(139,92,246,0.12);color:#7c3aed;"><i class="bi bi-arrow-repeat"></i></div>
-                        <div><div class="stat-value">{{ $rptEnrollReturning }}</div><div class="stat-label">Returning</div></div>
+                        <div><div class="stat-value"><?php echo e($rptEnrollReturning); ?></div><div class="stat-label">Returning</div></div>
                     </div>
                 </div>
             </div>
 
-            {{-- Sub-report navigation --}}
+            
             <div class="rpt-subnav">
                 <button class="rpt-sub-btn active" data-subreport="master" onclick="switchRptSubReport('students','master')">
                     <i class="bi bi-list-ul"></i> Master List
@@ -6987,11 +6920,11 @@ function openWalkInEnrollmentModal() {
                 </button>
             </div>
 
-            {{-- Sub-panel: Master List --}}
+            
             <div id="rpt-sub-students-master" class="rpt-sub-panel">
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
-                        <h6><i class="bi bi-table" style="color:var(--blue);margin-right:6px;"></i>Student Master List &mdash; S.Y. {{ $currentSchoolYear }}</h6>
+                        <h6><i class="bi bi-table" style="color:var(--blue);margin-right:6px;"></i>Student Master List &mdash; S.Y. <?php echo e($currentSchoolYear); ?></h6>
                         <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
                     </div>
                     <div style="overflow-x:auto;">
@@ -7008,70 +6941,70 @@ function openWalkInEnrollmentModal() {
                                 </tr>
                             </thead>
                             <tbody>
-                                @php $rptMasterN = 0; @endphp
-                                @forelse($rptActiveSYEnrolls->take(50) as $e)
-                                    @php
+                                <?php $rptMasterN = 0; ?>
+                                <?php $__empty_1 = true; $__currentLoopData = $rptActiveSYEnrolls->take(50); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $e): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                                    <?php
                                         $rptMasterN++;
                                         $sd = $e->student_data ?? [];
                                         $fullName = trim(($sd['first_name'] ?? '') . ' ' . ($sd['last_name'] ?? '')) ?: ($e->full_name ?? '—');
                                         $gl = $sd['grade_level'] ?? ($e->grade_level ?? '');
                                         $glLabel = $rptGradeLevels[$gl] ?? $gl;
                                         $stype = ucfirst($sd['student_type'] ?? '—');
-                                    @endphp
+                                    ?>
                                     <tr>
-                                        <td style="color:var(--muted);font-size:12px;">{{ $rptMasterN }}</td>
-                                        <td style="font-weight:600;">{{ $fullName }}</td>
-                                        <td>{{ $glLabel }}</td>
+                                        <td style="color:var(--muted);font-size:12px;"><?php echo e($rptMasterN); ?></td>
+                                        <td style="font-weight:600;"><?php echo e($fullName); ?></td>
+                                        <td><?php echo e($glLabel); ?></td>
                                         <td style="text-align:center;">
-                                            @if(strtolower($sd['gender'] ?? '') === 'male')
+                                            <?php if(strtolower($sd['gender'] ?? '') === 'male'): ?>
                                                 <span style="color:#2563eb;font-size:12px;font-weight:600;"><i class="bi bi-gender-male"></i> Male</span>
-                                            @elseif(strtolower($sd['gender'] ?? '') === 'female')
+                                            <?php elseif(strtolower($sd['gender'] ?? '') === 'female'): ?>
                                                 <span style="color:#db2777;font-size:12px;font-weight:600;"><i class="bi bi-gender-female"></i> Female</span>
-                                            @else
+                                            <?php else: ?>
                                                 <span style="color:var(--muted);font-size:12px;">—</span>
-                                            @endif
+                                            <?php endif; ?>
                                         </td>
-                                        <td style="text-align:center;font-size:12px;">{{ $stype }}</td>
+                                        <td style="text-align:center;font-size:12px;"><?php echo e($stype); ?></td>
                                         <td style="text-align:center;">
-                                            <span class="status-badge status-{{ $e->status ?? 'pending' }}">{{ ucfirst($e->status ?? 'pending') }}</span>
+                                            <span class="status-badge status-<?php echo e($e->status ?? 'pending'); ?>"><?php echo e(ucfirst($e->status ?? 'pending')); ?></span>
                                         </td>
                                         <td style="text-align:center;">
-                                            @if(($e->payment_status ?? '') === 'paid')
+                                            <?php if(($e->payment_status ?? '') === 'paid'): ?>
                                                 <span class="status-badge" style="background:#d1fae5;color:#065f46;">Paid</span>
-                                            @elseif(($e->payment_status ?? '') === 'partial')
+                                            <?php elseif(($e->payment_status ?? '') === 'partial'): ?>
                                                 <span class="status-badge" style="background:#fef3c7;color:#92400e;">Partial</span>
-                                            @else
+                                            <?php else: ?>
                                                 <span class="status-badge" style="background:#f1f5f9;color:var(--muted);">Unpaid</span>
-                                            @endif
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
-                                @empty
-                                    <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:28px;">No enrolled students found for S.Y. {{ $currentSchoolYear }}.</td></tr>
-                                @endforelse
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
+                                    <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:28px;">No enrolled students found for S.Y. <?php echo e($currentSchoolYear); ?>.</td></tr>
+                                <?php endif; ?>
                             </tbody>
-                            @if($rptActiveSYEnrolls->count() > 50)
+                            <?php if($rptActiveSYEnrolls->count() > 50): ?>
                             <tfoot>
-                                <tr><td colspan="7" style="text-align:center;font-size:12px;color:var(--muted);padding:10px;">Showing 50 of {{ $rptActiveSYEnrolls->count() }} enrolled students.</td></tr>
+                                <tr><td colspan="7" style="text-align:center;font-size:12px;color:var(--muted);padding:10px;">Showing 50 of <?php echo e($rptActiveSYEnrolls->count()); ?> enrolled students.</td></tr>
                             </tfoot>
-                            @endif
+                            <?php endif; ?>
                         </table>
                     </div>
-                    @php $rptGenderTotal = $rptMale + $rptFemale; @endphp
-                    @if($rptGenderTotal > 0)
+                    <?php $rptGenderTotal = $rptMale + $rptFemale; ?>
+                    <?php if($rptGenderTotal > 0): ?>
                     <div style="display:flex;gap:24px;padding:14px 16px;border-top:1px solid var(--border);font-size:13px;">
-                        <span><i class="bi bi-gender-male" style="color:#2563eb;"></i> Male: <strong>{{ $rptMale }}</strong></span>
-                        <span><i class="bi bi-gender-female" style="color:#db2777;"></i> Female: <strong>{{ $rptFemale }}</strong></span>
-                        <span style="color:var(--muted);">Total Enrolled: <strong>{{ $rptGenderTotal }}</strong></span>
+                        <span><i class="bi bi-gender-male" style="color:#2563eb;"></i> Male: <strong><?php echo e($rptMale); ?></strong></span>
+                        <span><i class="bi bi-gender-female" style="color:#db2777;"></i> Female: <strong><?php echo e($rptFemale); ?></strong></span>
+                        <span style="color:var(--muted);">Total Enrolled: <strong><?php echo e($rptGenderTotal); ?></strong></span>
                     </div>
-                    @endif
+                    <?php endif; ?>
                 </div>
             </div>
 
-            {{-- Sub-panel: By Grade Level --}}
+            
             <div id="rpt-sub-students-grade" class="rpt-sub-panel" style="display:none;">
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
-                        <h6><i class="bi bi-diagram-3" style="color:var(--blue);margin-right:6px;"></i>Students by Grade Level &mdash; S.Y. {{ $currentSchoolYear }}</h6>
+                        <h6><i class="bi bi-diagram-3" style="color:var(--blue);margin-right:6px;"></i>Students by Grade Level &mdash; S.Y. <?php echo e($currentSchoolYear); ?></h6>
                         <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
                     </div>
                     <div style="overflow-x:auto;">
@@ -7087,47 +7020,47 @@ function openWalkInEnrollmentModal() {
                                 </tr>
                             </thead>
                             <tbody>
-                                @php $rptSGrandEnrolled = 0; $rptSGrandCap = 0; @endphp
-                                @foreach($rptGradeLevels as $key => $label)
-                                    @php
+                                <?php $rptSGrandEnrolled = 0; $rptSGrandCap = 0; ?>
+                                <?php $__currentLoopData = $rptGradeLevels; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <?php
                                         $cnt    = $rptStudentsByGrade[$key] ?? 0;
                                         $rptSGrandEnrolled += $cnt;
                                         $secCnt = ($sections ?? collect())->where('grade_level', $key)->count();
                                         $cap    = ($sections ?? collect())->where('grade_level', $key)->sum('max_students') ?: ($secCnt * 40);
                                         $rptSGrandCap += $cap;
                                         $util   = $cap > 0 ? min(100, round($cnt / $cap * 100)) : 0;
-                                    @endphp
+                                    ?>
                                     <tr>
-                                        <td style="font-weight:600;">{{ $label }}</td>
-                                        <td style="text-align:center;font-size:16px;font-weight:700;color:var(--blue);">{{ $cnt }}</td>
-                                        <td style="text-align:center;">{{ $secCnt ?: '—' }}</td>
-                                        <td style="text-align:center;color:var(--muted);">{{ $cap ?: '—' }}</td>
+                                        <td style="font-weight:600;"><?php echo e($label); ?></td>
+                                        <td style="text-align:center;font-size:16px;font-weight:700;color:var(--blue);"><?php echo e($cnt); ?></td>
+                                        <td style="text-align:center;"><?php echo e($secCnt ?: '—'); ?></td>
+                                        <td style="text-align:center;color:var(--muted);"><?php echo e($cap ?: '—'); ?></td>
                                         <td style="text-align:center;">
-                                            @if($cap > 0)
+                                            <?php if($cap > 0): ?>
                                             <div style="display:flex;align-items:center;gap:6px;justify-content:center;">
                                                 <div style="width:70px;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;">
-                                                    <div style="width:{{ $util }}%;height:100%;background:{{ $util >= 95 ? 'var(--red)' : ($util >= 80 ? 'var(--green)' : 'var(--gold)') }};border-radius:3px;"></div>
+                                                    <div style="width:<?php echo e($util); ?>%;height:100%;background:<?php echo e($util >= 95 ? 'var(--red)' : ($util >= 80 ? 'var(--green)' : 'var(--gold)')); ?>;border-radius:3px;"></div>
                                                 </div>
-                                                <span style="font-size:11px;color:var(--muted);">{{ $util }}%</span>
+                                                <span style="font-size:11px;color:var(--muted);"><?php echo e($util); ?>%</span>
                                             </div>
-                                            @else
+                                            <?php else: ?>
                                                 <span style="color:var(--muted);font-size:12px;">—</span>
-                                            @endif
+                                            <?php endif; ?>
                                         </td>
                                         <td style="text-align:center;">
-                                            @if($cnt > 0)
+                                            <?php if($cnt > 0): ?>
                                                 <span class="status-badge status-enrolled">Active</span>
-                                            @else
+                                            <?php else: ?>
                                                 <span style="color:var(--muted);font-size:12px;">No data</span>
-                                            @endif
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
-                                @endforeach
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                 <tr style="background:#f8fafc;font-weight:700;">
                                     <td>TOTAL</td>
-                                    <td style="text-align:center;color:var(--blue);font-size:15px;">{{ $rptSGrandEnrolled }}</td>
-                                    <td style="text-align:center;">{{ ($sections ?? collect())->count() }}</td>
-                                    <td style="text-align:center;">{{ $rptSGrandCap ?: '—' }}</td>
+                                    <td style="text-align:center;color:var(--blue);font-size:15px;"><?php echo e($rptSGrandEnrolled); ?></td>
+                                    <td style="text-align:center;"><?php echo e(($sections ?? collect())->count()); ?></td>
+                                    <td style="text-align:center;"><?php echo e($rptSGrandCap ?: '—'); ?></td>
                                     <td></td><td></td>
                                 </tr>
                             </tbody>
@@ -7136,29 +7069,29 @@ function openWalkInEnrollmentModal() {
                 </div>
             </div>
 
-            {{-- Sub-panel: New vs Returning --}}
+            
             <div id="rpt-sub-students-newret" class="rpt-sub-panel" style="display:none;">
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
-                        <h6><i class="bi bi-people" style="color:var(--blue);margin-right:6px;"></i>New vs Returning vs Transferee &mdash; S.Y. {{ $currentSchoolYear }}</h6>
+                        <h6><i class="bi bi-people" style="color:var(--blue);margin-right:6px;"></i>New vs Returning vs Transferee &mdash; S.Y. <?php echo e($currentSchoolYear); ?></h6>
                         <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
                     </div>
-                    @php $rptNRTotal = max(1, $rptEnrollNew + $rptEnrollReturning + $rptEnrollTransferee); @endphp
+                    <?php $rptNRTotal = max(1, $rptEnrollNew + $rptEnrollReturning + $rptEnrollTransferee); ?>
                     <div style="display:flex;gap:16px;padding:16px;flex-wrap:wrap;">
                         <div style="flex:1;min-width:140px;background:#eff6ff;border-radius:10px;padding:14px;text-align:center;">
-                            <div style="font-size:26px;font-weight:800;color:var(--blue);">{{ $rptEnrollNew }}</div>
+                            <div style="font-size:26px;font-weight:800;color:var(--blue);"><?php echo e($rptEnrollNew); ?></div>
                             <div style="font-size:12px;font-weight:600;color:#1d4ed8;">New Students</div>
-                            <div style="font-size:11px;color:var(--muted);">{{ round($rptEnrollNew / $rptNRTotal * 100) }}% of enrollees</div>
+                            <div style="font-size:11px;color:var(--muted);"><?php echo e(round($rptEnrollNew / $rptNRTotal * 100)); ?>% of enrollees</div>
                         </div>
                         <div style="flex:1;min-width:140px;background:#f0fdf4;border-radius:10px;padding:14px;text-align:center;">
-                            <div style="font-size:26px;font-weight:800;color:var(--green);">{{ $rptEnrollReturning }}</div>
+                            <div style="font-size:26px;font-weight:800;color:var(--green);"><?php echo e($rptEnrollReturning); ?></div>
                             <div style="font-size:12px;font-weight:600;color:#15803d;">Returning</div>
-                            <div style="font-size:11px;color:var(--muted);">{{ round($rptEnrollReturning / $rptNRTotal * 100) }}% of enrollees</div>
+                            <div style="font-size:11px;color:var(--muted);"><?php echo e(round($rptEnrollReturning / $rptNRTotal * 100)); ?>% of enrollees</div>
                         </div>
                         <div style="flex:1;min-width:140px;background:#fefce8;border-radius:10px;padding:14px;text-align:center;">
-                            <div style="font-size:26px;font-weight:800;color:var(--gold);">{{ $rptEnrollTransferee }}</div>
+                            <div style="font-size:26px;font-weight:800;color:var(--gold);"><?php echo e($rptEnrollTransferee); ?></div>
                             <div style="font-size:12px;font-weight:600;color:#b45309;">Transferee</div>
-                            <div style="font-size:11px;color:var(--muted);">{{ round($rptEnrollTransferee / $rptNRTotal * 100) }}% of enrollees</div>
+                            <div style="font-size:11px;color:var(--muted);"><?php echo e(round($rptEnrollTransferee / $rptNRTotal * 100)); ?>% of enrollees</div>
                         </div>
                     </div>
                     <div style="overflow-x:auto;">
@@ -7173,29 +7106,29 @@ function openWalkInEnrollmentModal() {
                                 </tr>
                             </thead>
                             <tbody>
-                                @php $rptNRGNew=0;$rptNRGRet=0;$rptNRGTrans=0;$rptNRGTot=0; @endphp
-                                @foreach($rptGradeLevels as $key => $label)
-                                    @php
+                                <?php $rptNRGNew=0;$rptNRGRet=0;$rptNRGTrans=0;$rptNRGTot=0; ?>
+                                <?php $__currentLoopData = $rptGradeLevels; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <?php
                                         $row = $rptEnrollByGrade[$key] ?? ['new'=>0,'returning'=>0,'transferee'=>0,'total'=>0];
                                         $rptNRGNew   += $row['new'] ?? 0;
                                         $rptNRGRet   += $row['returning'] ?? 0;
                                         $rptNRGTrans += $row['transferee'] ?? 0;
                                         $rptNRGTot   += $row['total'] ?? 0;
-                                    @endphp
+                                    ?>
                                     <tr>
-                                        <td style="font-weight:600;">{{ $label }}</td>
-                                        <td style="text-align:center;color:#2563eb;font-weight:600;">{{ $row['new'] ?? 0 }}</td>
-                                        <td style="text-align:center;color:var(--green);font-weight:600;">{{ $row['returning'] ?? 0 }}</td>
-                                        <td style="text-align:center;color:var(--gold);font-weight:600;">{{ $row['transferee'] ?? 0 }}</td>
-                                        <td style="text-align:center;font-weight:700;">{{ $row['total'] ?? 0 }}</td>
+                                        <td style="font-weight:600;"><?php echo e($label); ?></td>
+                                        <td style="text-align:center;color:#2563eb;font-weight:600;"><?php echo e($row['new'] ?? 0); ?></td>
+                                        <td style="text-align:center;color:var(--green);font-weight:600;"><?php echo e($row['returning'] ?? 0); ?></td>
+                                        <td style="text-align:center;color:var(--gold);font-weight:600;"><?php echo e($row['transferee'] ?? 0); ?></td>
+                                        <td style="text-align:center;font-weight:700;"><?php echo e($row['total'] ?? 0); ?></td>
                                     </tr>
-                                @endforeach
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                 <tr style="background:#f8fafc;font-weight:700;">
                                     <td>TOTAL</td>
-                                    <td style="text-align:center;color:#2563eb;">{{ $rptNRGNew }}</td>
-                                    <td style="text-align:center;color:var(--green);">{{ $rptNRGRet }}</td>
-                                    <td style="text-align:center;color:var(--gold);">{{ $rptNRGTrans }}</td>
-                                    <td style="text-align:center;color:var(--blue);font-size:15px;">{{ $rptNRGTot }}</td>
+                                    <td style="text-align:center;color:#2563eb;"><?php echo e($rptNRGNew); ?></td>
+                                    <td style="text-align:center;color:var(--green);"><?php echo e($rptNRGRet); ?></td>
+                                    <td style="text-align:center;color:var(--gold);"><?php echo e($rptNRGTrans); ?></td>
+                                    <td style="text-align:center;color:var(--blue);font-size:15px;"><?php echo e($rptNRGTot); ?></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -7203,32 +7136,32 @@ function openWalkInEnrollmentModal() {
                 </div>
             </div>
 
-            {{-- Sub-panel: Document Compliance --}}
+            
             <div id="rpt-sub-students-docs" class="rpt-sub-panel" style="display:none;">
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
-                        <h6><i class="bi bi-file-earmark-check" style="color:var(--blue);margin-right:6px;"></i>Document Compliance &mdash; S.Y. {{ $currentSchoolYear }}</h6>
+                        <h6><i class="bi bi-file-earmark-check" style="color:var(--blue);margin-right:6px;"></i>Document Compliance &mdash; S.Y. <?php echo e($currentSchoolYear); ?></h6>
                         <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
                     </div>
-                    @php $rptDocTotal = max(1, $rptTotalDocs); @endphp
+                    <?php $rptDocTotal = max(1, $rptTotalDocs); ?>
                     <div style="display:flex;gap:16px;padding:16px;flex-wrap:wrap;">
                         <div style="flex:1;min-width:130px;background:#f0fdf4;border-radius:10px;padding:14px;text-align:center;">
-                            <div style="font-size:26px;font-weight:800;color:var(--green);">{{ $rptApprovedDocs }}</div>
+                            <div style="font-size:26px;font-weight:800;color:var(--green);"><?php echo e($rptApprovedDocs); ?></div>
                             <div style="font-size:12px;font-weight:600;color:#15803d;">Approved</div>
-                            <div style="font-size:11px;color:var(--muted);">{{ round($rptApprovedDocs / $rptDocTotal * 100) }}%</div>
+                            <div style="font-size:11px;color:var(--muted);"><?php echo e(round($rptApprovedDocs / $rptDocTotal * 100)); ?>%</div>
                         </div>
                         <div style="flex:1;min-width:130px;background:#fefce8;border-radius:10px;padding:14px;text-align:center;">
-                            <div style="font-size:26px;font-weight:800;color:var(--gold);">{{ $rptPendingDocs }}</div>
+                            <div style="font-size:26px;font-weight:800;color:var(--gold);"><?php echo e($rptPendingDocs); ?></div>
                             <div style="font-size:12px;font-weight:600;color:#b45309;">Pending Review</div>
-                            <div style="font-size:11px;color:var(--muted);">{{ round($rptPendingDocs / $rptDocTotal * 100) }}%</div>
+                            <div style="font-size:11px;color:var(--muted);"><?php echo e(round($rptPendingDocs / $rptDocTotal * 100)); ?>%</div>
                         </div>
                         <div style="flex:1;min-width:130px;background:#fef2f2;border-radius:10px;padding:14px;text-align:center;">
-                            <div style="font-size:26px;font-weight:800;color:var(--red);">{{ $rptRejectedDocs }}</div>
+                            <div style="font-size:26px;font-weight:800;color:var(--red);"><?php echo e($rptRejectedDocs); ?></div>
                             <div style="font-size:12px;font-weight:600;color:#b91c1c;">Rejected</div>
-                            <div style="font-size:11px;color:var(--muted);">{{ round($rptRejectedDocs / $rptDocTotal * 100) }}%</div>
+                            <div style="font-size:11px;color:var(--muted);"><?php echo e(round($rptRejectedDocs / $rptDocTotal * 100)); ?>%</div>
                         </div>
                         <div style="flex:1;min-width:130px;background:#f8fafc;border-radius:10px;padding:14px;text-align:center;">
-                            <div style="font-size:26px;font-weight:800;color:var(--blue);">{{ $rptTotalDocs }}</div>
+                            <div style="font-size:26px;font-weight:800;color:var(--blue);"><?php echo e($rptTotalDocs); ?></div>
                             <div style="font-size:12px;font-weight:600;color:var(--muted);">Total Documents</div>
                         </div>
                     </div>
@@ -7243,62 +7176,60 @@ function openWalkInEnrollmentModal() {
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse(($studentDocuments ?? collect())->take(30) as $doc)
+                                <?php $__empty_1 = true; $__currentLoopData = ($studentDocuments ?? collect())->take(30); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $doc): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                                     <tr>
-                                        <td style="font-weight:600;">{{ $doc->user->name ?? '—' }}</td>
-                                        <td style="font-size:12px;">{{ ucwords(str_replace('_',' ', $doc->document_type ?? '')) }}</td>
+                                        <td style="font-weight:600;"><?php echo e($doc->user->name ?? '—'); ?></td>
+                                        <td style="font-size:12px;"><?php echo e(ucwords(str_replace('_',' ', $doc->document_type ?? ''))); ?></td>
                                         <td style="text-align:center;">
-                                            @if(($doc->status ?? '') === 'approved')
+                                            <?php if(($doc->status ?? '') === 'approved'): ?>
                                                 <span class="status-badge" style="background:#d1fae5;color:#065f46;">Approved</span>
-                                            @elseif(($doc->status ?? '') === 'pending')
+                                            <?php elseif(($doc->status ?? '') === 'pending'): ?>
                                                 <span class="status-badge" style="background:#fef3c7;color:#92400e;">Pending</span>
-                                            @elseif(($doc->status ?? '') === 'rejected')
+                                            <?php elseif(($doc->status ?? '') === 'rejected'): ?>
                                                 <span class="status-badge" style="background:#fee2e2;color:#991b1b;">Rejected</span>
-                                            @else
-                                                <span class="status-badge" style="background:#f1f5f9;color:var(--muted);">{{ ucfirst($doc->status ?? '—') }}</span>
-                                            @endif
+                                            <?php else: ?>
+                                                <span class="status-badge" style="background:#f1f5f9;color:var(--muted);"><?php echo e(ucfirst($doc->status ?? '—')); ?></span>
+                                            <?php endif; ?>
                                         </td>
-                                        <td style="font-size:12px;color:var(--muted);">{{ $doc->created_at ? $doc->created_at->format('M j, Y') : '—' }}</td>
+                                        <td style="font-size:12px;color:var(--muted);"><?php echo e($doc->created_at ? $doc->created_at->format('M j, Y') : '—'); ?></td>
                                     </tr>
-                                @empty
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                                     <tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px;">No document records found.</td></tr>
-                                @endforelse
+                                <?php endif; ?>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-        </div>{{-- /rpt-panel-students --}}
+        </div>
 
-        {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-             TAB 2: ENROLLMENT REPORTS
-        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+        
         <div id="rpt-panel-enrollment" class="rpt-panel" style="display:none;">
 
             <div class="row g-3 mb-4">
                 <div class="col-6 col-md-3">
                     <div class="stat-card">
                         <div class="stat-icon blue"><i class="bi bi-clipboard-fill"></i></div>
-                        <div><div class="stat-value">{{ $rptEnrollTotal }}</div><div class="stat-label">Total Enrollments</div></div>
+                        <div><div class="stat-value"><?php echo e($rptEnrollTotal); ?></div><div class="stat-label">Total Enrollments</div></div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
                     <div class="stat-card">
                         <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
-                        <div><div class="stat-value">{{ $rptEnrollApproved }}</div><div class="stat-label">Approved / Enrolled</div></div>
+                        <div><div class="stat-value"><?php echo e($rptEnrollApproved); ?></div><div class="stat-label">Approved / Enrolled</div></div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
                     <div class="stat-card">
                         <div class="stat-icon gold"><i class="bi bi-hourglass-split"></i></div>
-                        <div><div class="stat-value">{{ $rptEnrollPending }}</div><div class="stat-label">Pending</div></div>
+                        <div><div class="stat-value"><?php echo e($rptEnrollPending); ?></div><div class="stat-label">Pending</div></div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
                     <div class="stat-card">
                         <div class="stat-icon red"><i class="bi bi-person-dash-fill"></i></div>
-                        <div><div class="stat-value">{{ $rptEnrollDropped }}</div><div class="stat-label">Dropped</div></div>
+                        <div><div class="stat-value"><?php echo e($rptEnrollDropped); ?></div><div class="stat-label">Dropped</div></div>
                     </div>
                 </div>
             </div>
@@ -7318,15 +7249,15 @@ function openWalkInEnrollmentModal() {
                 </button>
             </div>
 
-            {{-- Sub-panel: Status Summary --}}
+            
             <div id="rpt-sub-enrollment-status" class="rpt-sub-panel">
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
-                        <h6><i class="bi bi-bar-chart" style="color:var(--blue);margin-right:6px;"></i>Enrollment Status Summary &mdash; S.Y. {{ $currentSchoolYear }}</h6>
+                        <h6><i class="bi bi-bar-chart" style="color:var(--blue);margin-right:6px;"></i>Enrollment Status Summary &mdash; S.Y. <?php echo e($currentSchoolYear); ?></h6>
                         <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
                     </div>
                     <div style="overflow-x:auto;">
-                        @php
+                        <?php
                             $rptStatusRows = [
                                 ['label'=>'Enrolled',  'key'=>'enrolled',  'color'=>'var(--blue)',  'icon'=>'bi-person-badge-fill'],
                                 ['label'=>'Approved',  'key'=>'approved',  'color'=>'var(--green)', 'icon'=>'bi-check-circle-fill'],
@@ -7336,7 +7267,7 @@ function openWalkInEnrollmentModal() {
                                 ['label'=>'Dropped',   'key'=>'dropped',   'color'=>'#f97316',      'icon'=>'bi-person-dash-fill'],
                             ];
                             $rptEnrollTotalSafe = max(1, $rptEnrollTotal);
-                        @endphp
+                        ?>
                         <table class="dash-table">
                             <thead>
                                 <tr>
@@ -7347,30 +7278,30 @@ function openWalkInEnrollmentModal() {
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($rptStatusRows as $sr)
-                                    @php
+                                <?php $__currentLoopData = $rptStatusRows; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sr): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <?php
                                         $srCount = $rptEnrollAll->where('status', $sr['key'])->count();
                                         $srPct   = round($srCount / $rptEnrollTotalSafe * 100);
-                                    @endphp
+                                    ?>
                                     <tr>
                                         <td>
                                             <span style="display:inline-flex;align-items:center;gap:7px;">
-                                                <i class="bi {{ $sr['icon'] }}" style="color:{{ $sr['color'] }};"></i>
-                                                <span style="font-weight:600;">{{ $sr['label'] }}</span>
+                                                <i class="bi <?php echo e($sr['icon']); ?>" style="color:<?php echo e($sr['color']); ?>;"></i>
+                                                <span style="font-weight:600;"><?php echo e($sr['label']); ?></span>
                                             </span>
                                         </td>
-                                        <td style="text-align:center;font-weight:700;font-size:16px;color:{{ $sr['color'] }};">{{ $srCount }}</td>
-                                        <td style="text-align:center;font-size:12px;color:var(--muted);">{{ $srPct }}%</td>
+                                        <td style="text-align:center;font-weight:700;font-size:16px;color:<?php echo e($sr['color']); ?>;"><?php echo e($srCount); ?></td>
+                                        <td style="text-align:center;font-size:12px;color:var(--muted);"><?php echo e($srPct); ?>%</td>
                                         <td>
                                             <div style="height:8px;background:#e2e8f0;border-radius:4px;overflow:hidden;max-width:200px;">
-                                                <div style="width:{{ $srPct }}%;height:100%;background:{{ $sr['color'] }};border-radius:4px;"></div>
+                                                <div style="width:<?php echo e($srPct); ?>%;height:100%;background:<?php echo e($sr['color']); ?>;border-radius:4px;"></div>
                                             </div>
                                         </td>
                                     </tr>
-                                @endforeach
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                 <tr style="background:#f8fafc;font-weight:700;">
                                     <td>TOTAL</td>
-                                    <td style="text-align:center;font-size:16px;color:var(--blue);">{{ $rptEnrollTotal }}</td>
+                                    <td style="text-align:center;font-size:16px;color:var(--blue);"><?php echo e($rptEnrollTotal); ?></td>
                                     <td style="text-align:center;">100%</td>
                                     <td></td>
                                 </tr>
@@ -7380,11 +7311,11 @@ function openWalkInEnrollmentModal() {
                 </div>
             </div>
 
-            {{-- Sub-panel: By Grade Level --}}
+            
             <div id="rpt-sub-enrollment-grade" class="rpt-sub-panel" style="display:none;">
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
-                        <h6><i class="bi bi-diagram-3" style="color:var(--blue);margin-right:6px;"></i>Enrollment by Grade Level &mdash; S.Y. {{ $currentSchoolYear }}</h6>
+                        <h6><i class="bi bi-diagram-3" style="color:var(--blue);margin-right:6px;"></i>Enrollment by Grade Level &mdash; S.Y. <?php echo e($currentSchoolYear); ?></h6>
                         <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
                     </div>
                     <div style="overflow-x:auto;">
@@ -7400,42 +7331,42 @@ function openWalkInEnrollmentModal() {
                                 </tr>
                             </thead>
                             <tbody>
-                                @php $rptEGGT=0;$rptEGGA=0;$rptEGGP=0;$rptEGGD=0; @endphp
-                                @foreach($rptGradeLevels as $key => $label)
-                                    @php
+                                <?php $rptEGGT=0;$rptEGGA=0;$rptEGGP=0;$rptEGGD=0; ?>
+                                <?php $__currentLoopData = $rptGradeLevels; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <?php
                                         $row = $rptEnrollByGrade[$key] ?? ['total'=>0,'approved'=>0,'pending'=>0,'dropped'=>0];
                                         $rptEGGT += $row['total'];
                                         $rptEGGA += $row['approved'];
                                         $rptEGGP += $row['pending'];
                                         $rptEGGD += $row['dropped'] ?? 0;
                                         $pct = $row['total'] > 0 ? round($row['approved'] / $row['total'] * 100) : 0;
-                                    @endphp
+                                    ?>
                                     <tr>
-                                        <td style="font-weight:600;">{{ $label }}</td>
-                                        <td style="text-align:center;font-weight:700;">{{ $row['total'] }}</td>
-                                        <td style="text-align:center;color:var(--green);font-weight:600;">{{ $row['approved'] }}</td>
-                                        <td style="text-align:center;color:var(--gold);font-weight:600;">{{ $row['pending'] }}</td>
-                                        <td style="text-align:center;color:var(--red);font-weight:600;">{{ $row['dropped'] ?? 0 }}</td>
+                                        <td style="font-weight:600;"><?php echo e($label); ?></td>
+                                        <td style="text-align:center;font-weight:700;"><?php echo e($row['total']); ?></td>
+                                        <td style="text-align:center;color:var(--green);font-weight:600;"><?php echo e($row['approved']); ?></td>
+                                        <td style="text-align:center;color:var(--gold);font-weight:600;"><?php echo e($row['pending']); ?></td>
+                                        <td style="text-align:center;color:var(--red);font-weight:600;"><?php echo e($row['dropped'] ?? 0); ?></td>
                                         <td style="text-align:center;">
-                                            @if($row['total'] > 0)
+                                            <?php if($row['total'] > 0): ?>
                                             <div style="display:flex;align-items:center;gap:6px;justify-content:center;">
                                                 <div style="width:70px;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;">
-                                                    <div style="width:{{ $pct }}%;height:100%;background:var(--green);border-radius:3px;"></div>
+                                                    <div style="width:<?php echo e($pct); ?>%;height:100%;background:var(--green);border-radius:3px;"></div>
                                                 </div>
-                                                <span style="font-size:11px;color:var(--muted);">{{ $pct }}%</span>
+                                                <span style="font-size:11px;color:var(--muted);"><?php echo e($pct); ?>%</span>
                                             </div>
-                                            @else
+                                            <?php else: ?>
                                                 <span style="color:var(--muted);font-size:12px;">—</span>
-                                            @endif
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
-                                @endforeach
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                 <tr style="background:#f8fafc;font-weight:700;">
                                     <td>TOTAL</td>
-                                    <td style="text-align:center;color:var(--blue);font-size:15px;">{{ $rptEGGT }}</td>
-                                    <td style="text-align:center;color:var(--green);">{{ $rptEGGA }}</td>
-                                    <td style="text-align:center;color:var(--gold);">{{ $rptEGGP }}</td>
-                                    <td style="text-align:center;color:var(--red);">{{ $rptEGGD }}</td>
+                                    <td style="text-align:center;color:var(--blue);font-size:15px;"><?php echo e($rptEGGT); ?></td>
+                                    <td style="text-align:center;color:var(--green);"><?php echo e($rptEGGA); ?></td>
+                                    <td style="text-align:center;color:var(--gold);"><?php echo e($rptEGGP); ?></td>
+                                    <td style="text-align:center;color:var(--red);"><?php echo e($rptEGGD); ?></td>
                                     <td></td>
                                 </tr>
                             </tbody>
@@ -7444,11 +7375,11 @@ function openWalkInEnrollmentModal() {
                 </div>
             </div>
 
-            {{-- Sub-panel: New vs Returning --}}
+            
             <div id="rpt-sub-enrollment-newret" class="rpt-sub-panel" style="display:none;">
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
-                        <h6><i class="bi bi-people" style="color:var(--blue);margin-right:6px;"></i>New vs Returning vs Transferee &mdash; S.Y. {{ $currentSchoolYear }}</h6>
+                        <h6><i class="bi bi-people" style="color:var(--blue);margin-right:6px;"></i>New vs Returning vs Transferee &mdash; S.Y. <?php echo e($currentSchoolYear); ?></h6>
                         <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
                     </div>
                     <div style="overflow-x:auto;">
@@ -7463,29 +7394,29 @@ function openWalkInEnrollmentModal() {
                                 </tr>
                             </thead>
                             <tbody>
-                                @php $rptENRN=0;$rptENRR=0;$rptENRT=0;$rptENRTot=0; @endphp
-                                @foreach($rptGradeLevels as $key => $label)
-                                    @php
+                                <?php $rptENRN=0;$rptENRR=0;$rptENRT=0;$rptENRTot=0; ?>
+                                <?php $__currentLoopData = $rptGradeLevels; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <?php
                                         $row=$rptEnrollByGrade[$key]??['new'=>0,'returning'=>0,'transferee'=>0,'total'=>0];
                                         $rptENRN   += $row['new']??0;
                                         $rptENRR   += $row['returning']??0;
                                         $rptENRT   += $row['transferee']??0;
                                         $rptENRTot += $row['total']??0;
-                                    @endphp
+                                    ?>
                                     <tr>
-                                        <td style="font-weight:600;">{{ $label }}</td>
-                                        <td style="text-align:center;color:#2563eb;font-weight:600;">{{ $row['new']??0 }}</td>
-                                        <td style="text-align:center;color:var(--green);font-weight:600;">{{ $row['returning']??0 }}</td>
-                                        <td style="text-align:center;color:var(--gold);font-weight:600;">{{ $row['transferee']??0 }}</td>
-                                        <td style="text-align:center;font-weight:700;">{{ $row['total']??0 }}</td>
+                                        <td style="font-weight:600;"><?php echo e($label); ?></td>
+                                        <td style="text-align:center;color:#2563eb;font-weight:600;"><?php echo e($row['new']??0); ?></td>
+                                        <td style="text-align:center;color:var(--green);font-weight:600;"><?php echo e($row['returning']??0); ?></td>
+                                        <td style="text-align:center;color:var(--gold);font-weight:600;"><?php echo e($row['transferee']??0); ?></td>
+                                        <td style="text-align:center;font-weight:700;"><?php echo e($row['total']??0); ?></td>
                                     </tr>
-                                @endforeach
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                 <tr style="background:#f8fafc;font-weight:700;">
                                     <td>TOTAL</td>
-                                    <td style="text-align:center;color:#2563eb;">{{ $rptENRN }}</td>
-                                    <td style="text-align:center;color:var(--green);">{{ $rptENRR }}</td>
-                                    <td style="text-align:center;color:var(--gold);">{{ $rptENRT }}</td>
-                                    <td style="text-align:center;color:var(--blue);font-size:15px;">{{ $rptENRTot }}</td>
+                                    <td style="text-align:center;color:#2563eb;"><?php echo e($rptENRN); ?></td>
+                                    <td style="text-align:center;color:var(--green);"><?php echo e($rptENRR); ?></td>
+                                    <td style="text-align:center;color:var(--gold);"><?php echo e($rptENRT); ?></td>
+                                    <td style="text-align:center;color:var(--blue);font-size:15px;"><?php echo e($rptENRTot); ?></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -7493,14 +7424,14 @@ function openWalkInEnrollmentModal() {
                 </div>
             </div>
 
-            {{-- Sub-panel: Daily Trend --}}
+            
             <div id="rpt-sub-enrollment-trend" class="rpt-sub-panel" style="display:none;">
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-graph-up" style="color:var(--blue);margin-right:6px;"></i>Daily Enrollment &mdash; Last 7 Days</h6>
                         <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
                     </div>
-                    @php $rptDailyMax = max(1, collect($rptDailyDays)->max('count')); @endphp
+                    <?php $rptDailyMax = max(1, collect($rptDailyDays)->max('count')); ?>
                     <div style="overflow-x:auto;">
                         <table class="dash-table">
                             <thead>
@@ -7511,21 +7442,21 @@ function openWalkInEnrollmentModal() {
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($rptDailyDays as $day)
-                                    @php $barW = round($day['count'] / $rptDailyMax * 100); @endphp
+                                <?php $__currentLoopData = $rptDailyDays; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $day): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <?php $barW = round($day['count'] / $rptDailyMax * 100); ?>
                                     <tr>
-                                        <td style="font-weight:600;white-space:nowrap;">{{ $day['label'] }}</td>
-                                        <td style="text-align:center;font-weight:700;color:var(--blue);font-size:16px;">{{ $day['count'] }}</td>
+                                        <td style="font-weight:600;white-space:nowrap;"><?php echo e($day['label']); ?></td>
+                                        <td style="text-align:center;font-weight:700;color:var(--blue);font-size:16px;"><?php echo e($day['count']); ?></td>
                                         <td>
                                             <div style="height:10px;background:#e2e8f0;border-radius:5px;overflow:hidden;max-width:240px;">
-                                                <div style="width:{{ $barW }}%;height:100%;background:var(--blue);border-radius:5px;"></div>
+                                                <div style="width:<?php echo e($barW); ?>%;height:100%;background:var(--blue);border-radius:5px;"></div>
                                             </div>
                                         </td>
                                     </tr>
-                                @endforeach
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                 <tr style="background:#f8fafc;font-weight:700;">
                                     <td>7-Day Total</td>
-                                    <td style="text-align:center;color:var(--blue);font-size:15px;">{{ collect($rptDailyDays)->sum('count') }}</td>
+                                    <td style="text-align:center;color:var(--blue);font-size:15px;"><?php echo e(collect($rptDailyDays)->sum('count')); ?></td>
                                     <td></td>
                                 </tr>
                             </tbody>
@@ -7534,11 +7465,9 @@ function openWalkInEnrollmentModal() {
                 </div>
             </div>
 
-        </div>{{-- /rpt-panel-enrollment --}}
+        </div>
 
-        {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-             TAB 3: FINANCIAL REPORTS
-        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+        
         <div id="rpt-panel-financial" class="rpt-panel" style="display:none;">
 
             <div class="row g-3 mb-4">
@@ -7546,7 +7475,7 @@ function openWalkInEnrollmentModal() {
                     <div class="stat-card">
                         <div class="stat-icon blue"><i class="bi bi-cash-coin"></i></div>
                         <div>
-                            <div class="stat-value" style="font-size:18px;">&#8369;{{ number_format($rptTotalFees, 0) }}</div>
+                            <div class="stat-value" style="font-size:18px;">&#8369;<?php echo e(number_format($rptTotalFees, 0)); ?></div>
                             <div class="stat-label">Total Assessed</div>
                         </div>
                     </div>
@@ -7555,7 +7484,7 @@ function openWalkInEnrollmentModal() {
                     <div class="stat-card">
                         <div class="stat-icon green"><i class="bi bi-cash-stack"></i></div>
                         <div>
-                            <div class="stat-value" style="font-size:18px;">&#8369;{{ number_format($rptTotalCollected, 0) }}</div>
+                            <div class="stat-value" style="font-size:18px;">&#8369;<?php echo e(number_format($rptTotalCollected, 0)); ?></div>
                             <div class="stat-label">Total Collected</div>
                         </div>
                     </div>
@@ -7564,7 +7493,7 @@ function openWalkInEnrollmentModal() {
                     <div class="stat-card">
                         <div class="stat-icon red"><i class="bi bi-exclamation-circle-fill"></i></div>
                         <div>
-                            <div class="stat-value" style="font-size:18px;">&#8369;{{ number_format($rptOutstanding, 0) }}</div>
+                            <div class="stat-value" style="font-size:18px;">&#8369;<?php echo e(number_format($rptOutstanding, 0)); ?></div>
                             <div class="stat-label">Outstanding</div>
                         </div>
                     </div>
@@ -7573,7 +7502,7 @@ function openWalkInEnrollmentModal() {
                     <div class="stat-card">
                         <div class="stat-icon gold"><i class="bi bi-percent"></i></div>
                         <div>
-                            <div class="stat-value" style="font-size:22px;">{{ $rptCollectionRate }}%</div>
+                            <div class="stat-value" style="font-size:22px;"><?php echo e($rptCollectionRate); ?>%</div>
                             <div class="stat-label">Collection Rate</div>
                         </div>
                     </div>
@@ -7595,21 +7524,21 @@ function openWalkInEnrollmentModal() {
                 </button>
             </div>
 
-            {{-- Sub-panel: Collection Summary --}}
+            
             <div id="rpt-sub-financial-collection" class="rpt-sub-panel">
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
-                        <h6><i class="bi bi-cash" style="color:var(--blue);margin-right:6px;"></i>Collection Summary &mdash; S.Y. {{ $currentSchoolYear }}</h6>
+                        <h6><i class="bi bi-cash" style="color:var(--blue);margin-right:6px;"></i>Collection Summary &mdash; S.Y. <?php echo e($currentSchoolYear); ?></h6>
                         <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
                     </div>
-                    @php
+                    <?php
                         $rptFinStatusRows = [
                             ['label'=>'Fully Paid', 'color'=>'var(--green)', 'amount'=>$rptFinAll->where('payment_status','paid')->sum('payment_amount'),   'count'=>$rptPaid],
                             ['label'=>'Partial',    'color'=>'var(--gold)',  'amount'=>$rptFinAll->where('payment_status','partial')->sum('payment_amount'), 'count'=>$rptPartial],
                             ['label'=>'Unpaid',     'color'=>'var(--muted)', 'amount'=>0,                                                                   'count'=>$rptUnpaid],
                         ];
                         $rptFinTotalCount = max(1, $rptPaid + $rptPartial + $rptUnpaid);
-                    @endphp
+                    ?>
                     <div style="overflow-x:auto;">
                         <table class="dash-table">
                             <thead>
@@ -7621,26 +7550,26 @@ function openWalkInEnrollmentModal() {
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($rptFinStatusRows as $fsr)
-                                    @php $fsrPct = round($fsr['count'] / $rptFinTotalCount * 100); @endphp
+                                <?php $__currentLoopData = $rptFinStatusRows; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $fsr): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <?php $fsrPct = round($fsr['count'] / $rptFinTotalCount * 100); ?>
                                     <tr>
-                                        <td style="font-weight:600;color:{{ $fsr['color'] }};">{{ $fsr['label'] }}</td>
-                                        <td style="text-align:center;font-weight:700;font-size:16px;color:{{ $fsr['color'] }};">{{ $fsr['count'] }}</td>
-                                        <td style="text-align:right;font-weight:600;">{!! $fsr['amount'] > 0 ? '&#8369;'.number_format($fsr['amount'],0) : '&mdash;' !!}</td>
-                                        <td style="text-align:center;font-size:12px;color:var(--muted);">{{ $fsrPct }}%</td>
+                                        <td style="font-weight:600;color:<?php echo e($fsr['color']); ?>;"><?php echo e($fsr['label']); ?></td>
+                                        <td style="text-align:center;font-weight:700;font-size:16px;color:<?php echo e($fsr['color']); ?>;"><?php echo e($fsr['count']); ?></td>
+                                        <td style="text-align:right;font-weight:600;"><?php echo $fsr['amount'] > 0 ? '&#8369;'.number_format($fsr['amount'],0) : '&mdash;'; ?></td>
+                                        <td style="text-align:center;font-size:12px;color:var(--muted);"><?php echo e($fsrPct); ?>%</td>
                                     </tr>
-                                @endforeach
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                 <tr style="background:#f8fafc;font-weight:700;">
                                     <td>TOTAL ASSESSED</td>
-                                    <td style="text-align:center;color:var(--blue);font-size:15px;">{{ $rptPaid + $rptPartial + $rptUnpaid }}</td>
-                                    <td style="text-align:right;color:var(--blue);">&#8369;{{ number_format($rptTotalFees, 0) }}</td>
+                                    <td style="text-align:center;color:var(--blue);font-size:15px;"><?php echo e($rptPaid + $rptPartial + $rptUnpaid); ?></td>
+                                    <td style="text-align:right;color:var(--blue);">&#8369;<?php echo e(number_format($rptTotalFees, 0)); ?></td>
                                     <td></td>
                                 </tr>
                                 <tr style="background:#f0f9ff;font-weight:700;">
                                     <td style="color:var(--green);">TOTAL COLLECTED</td>
                                     <td></td>
-                                    <td style="text-align:right;color:var(--green);font-size:15px;">&#8369;{{ number_format($rptTotalCollected, 0) }}</td>
-                                    <td style="text-align:center;color:var(--green);">{{ $rptCollectionRate }}%</td>
+                                    <td style="text-align:right;color:var(--green);font-size:15px;">&#8369;<?php echo e(number_format($rptTotalCollected, 0)); ?></td>
+                                    <td style="text-align:center;color:var(--green);"><?php echo e($rptCollectionRate); ?>%</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -7648,11 +7577,11 @@ function openWalkInEnrollmentModal() {
                 </div>
             </div>
 
-            {{-- Sub-panel: By Grade Level --}}
+            
             <div id="rpt-sub-financial-grade" class="rpt-sub-panel" style="display:none;">
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
-                        <h6><i class="bi bi-diagram-3" style="color:var(--blue);margin-right:6px;"></i>Financial by Grade Level &mdash; S.Y. {{ $currentSchoolYear }}</h6>
+                        <h6><i class="bi bi-diagram-3" style="color:var(--blue);margin-right:6px;"></i>Financial by Grade Level &mdash; S.Y. <?php echo e($currentSchoolYear); ?></h6>
                         <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
                     </div>
                     <div style="overflow-x:auto;">
@@ -7668,38 +7597,38 @@ function openWalkInEnrollmentModal() {
                                 </tr>
                             </thead>
                             <tbody>
-                                @php $rptFGF=0;$rptFGC=0;$rptFGO=0;$rptFGP=0; @endphp
-                                @foreach($rptGradeLevels as $key => $label)
-                                    @php
+                                <?php $rptFGF=0;$rptFGC=0;$rptFGO=0;$rptFGP=0; ?>
+                                <?php $__currentLoopData = $rptGradeLevels; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <?php
                                         $row = $rptFinByGrade[$key] ?? ['total_fee'=>0,'collected'=>0,'outstanding'=>0,'paid'=>0,'partial'=>0,'count'=>0];
                                         $rptFGF += $row['total_fee'];
                                         $rptFGC += $row['collected'];
                                         $rptFGO += $row['outstanding'];
                                         $rptFGP += $row['paid'];
                                         $colRate = $row['total_fee'] > 0 ? round($row['collected'] / $row['total_fee'] * 100) : 0;
-                                    @endphp
+                                    ?>
                                     <tr>
-                                        <td style="font-weight:600;">{{ $label }}</td>
-                                        <td style="text-align:right;">&#8369;{{ number_format($row['total_fee'], 0) }}</td>
-                                        <td style="text-align:right;color:var(--green);font-weight:600;">&#8369;{{ number_format($row['collected'], 0) }}</td>
-                                        <td style="text-align:right;color:var(--red);font-weight:600;">&#8369;{{ number_format($row['outstanding'], 0) }}</td>
-                                        <td style="text-align:center;">{{ $row['paid'] }}</td>
+                                        <td style="font-weight:600;"><?php echo e($label); ?></td>
+                                        <td style="text-align:right;">&#8369;<?php echo e(number_format($row['total_fee'], 0)); ?></td>
+                                        <td style="text-align:right;color:var(--green);font-weight:600;">&#8369;<?php echo e(number_format($row['collected'], 0)); ?></td>
+                                        <td style="text-align:right;color:var(--red);font-weight:600;">&#8369;<?php echo e(number_format($row['outstanding'], 0)); ?></td>
+                                        <td style="text-align:center;"><?php echo e($row['paid']); ?></td>
                                         <td style="text-align:center;">
                                             <div style="display:flex;align-items:center;gap:6px;justify-content:center;">
                                                 <div style="width:70px;height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;">
-                                                    <div style="width:{{ $colRate }}%;height:100%;background:{{ $colRate >= 90 ? 'var(--green)' : ($colRate >= 60 ? 'var(--gold)' : 'var(--red)') }};border-radius:3px;"></div>
+                                                    <div style="width:<?php echo e($colRate); ?>%;height:100%;background:<?php echo e($colRate >= 90 ? 'var(--green)' : ($colRate >= 60 ? 'var(--gold)' : 'var(--red)')); ?>;border-radius:3px;"></div>
                                                 </div>
-                                                <span style="font-size:11px;color:var(--muted);">{{ $colRate }}%</span>
+                                                <span style="font-size:11px;color:var(--muted);"><?php echo e($colRate); ?>%</span>
                                             </div>
                                         </td>
                                     </tr>
-                                @endforeach
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                 <tr style="background:#f8fafc;font-weight:700;">
                                     <td>TOTAL</td>
-                                    <td style="text-align:right;">&#8369;{{ number_format($rptFGF,0) }}</td>
-                                    <td style="text-align:right;color:var(--green);">&#8369;{{ number_format($rptFGC,0) }}</td>
-                                    <td style="text-align:right;color:var(--red);">&#8369;{{ number_format($rptFGO,0) }}</td>
-                                    <td style="text-align:center;">{{ $rptFGP }}</td>
+                                    <td style="text-align:right;">&#8369;<?php echo e(number_format($rptFGF,0)); ?></td>
+                                    <td style="text-align:right;color:var(--green);">&#8369;<?php echo e(number_format($rptFGC,0)); ?></td>
+                                    <td style="text-align:right;color:var(--red);">&#8369;<?php echo e(number_format($rptFGO,0)); ?></td>
+                                    <td style="text-align:center;"><?php echo e($rptFGP); ?></td>
                                     <td></td>
                                 </tr>
                             </tbody>
@@ -7708,14 +7637,14 @@ function openWalkInEnrollmentModal() {
                 </div>
             </div>
 
-            {{-- Sub-panel: By Payment Option --}}
+            
             <div id="rpt-sub-financial-option" class="rpt-sub-panel" style="display:none;">
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
-                        <h6><i class="bi bi-list-check" style="color:var(--blue);margin-right:6px;"></i>By Payment Option &mdash; S.Y. {{ $currentSchoolYear }}</h6>
+                        <h6><i class="bi bi-list-check" style="color:var(--blue);margin-right:6px;"></i>By Payment Option &mdash; S.Y. <?php echo e($currentSchoolYear); ?></h6>
                         <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
                     </div>
-                    @php $rptOptionLabels = ['A'=>'Option A — Full Payment','B'=>'Option B — 2 Installments','C'=>'Option C — 3 Installments','D'=>'Option D — Monthly']; @endphp
+                    <?php $rptOptionLabels = ['A'=>'Option A — Full Payment','B'=>'Option B — 2 Installments','C'=>'Option C — 3 Installments','D'=>'Option D — Monthly']; ?>
                     <div style="overflow-x:auto;">
                         <table class="dash-table">
                             <thead>
@@ -7729,29 +7658,29 @@ function openWalkInEnrollmentModal() {
                                 </tr>
                             </thead>
                             <tbody>
-                                @forelse($rptFinByOption as $opt => $row)
+                                <?php $__empty_1 = true; $__currentLoopData = $rptFinByOption; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $opt => $row): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                                     <tr>
-                                        <td style="font-weight:600;">{{ $rptOptionLabels[$opt] ?? 'Option '.$opt }}</td>
-                                        <td style="text-align:center;font-weight:700;color:var(--blue);">{{ $row['count'] }}</td>
-                                        <td style="text-align:right;">&#8369;{{ number_format($row['total_fee'],0) }}</td>
-                                        <td style="text-align:right;color:var(--green);font-weight:600;">&#8369;{{ number_format($row['collected'],0) }}</td>
-                                        <td style="text-align:right;color:var(--red);font-weight:600;">&#8369;{{ number_format($row['outstanding'],0) }}</td>
-                                        <td style="text-align:center;">{{ $row['paid'] }}</td>
+                                        <td style="font-weight:600;"><?php echo e($rptOptionLabels[$opt] ?? 'Option '.$opt); ?></td>
+                                        <td style="text-align:center;font-weight:700;color:var(--blue);"><?php echo e($row['count']); ?></td>
+                                        <td style="text-align:right;">&#8369;<?php echo e(number_format($row['total_fee'],0)); ?></td>
+                                        <td style="text-align:right;color:var(--green);font-weight:600;">&#8369;<?php echo e(number_format($row['collected'],0)); ?></td>
+                                        <td style="text-align:right;color:var(--red);font-weight:600;">&#8369;<?php echo e(number_format($row['outstanding'],0)); ?></td>
+                                        <td style="text-align:center;"><?php echo e($row['paid']); ?></td>
                                     </tr>
-                                @empty
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                                     <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">No payment option data available.</td></tr>
-                                @endforelse
+                                <?php endif; ?>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
 
-            {{-- Sub-panel: Outstanding Balances --}}
+            
             <div id="rpt-sub-financial-outstanding" class="rpt-sub-panel" style="display:none;">
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
-                        <h6><i class="bi bi-exclamation-triangle" style="color:var(--red);margin-right:6px;"></i>Outstanding Balances &mdash; S.Y. {{ $currentSchoolYear }}</h6>
+                        <h6><i class="bi bi-exclamation-triangle" style="color:var(--red);margin-right:6px;"></i>Outstanding Balances &mdash; S.Y. <?php echo e($currentSchoolYear); ?></h6>
                         <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
                     </div>
                     <div style="overflow-x:auto;">
@@ -7769,55 +7698,53 @@ function openWalkInEnrollmentModal() {
                                 </tr>
                             </thead>
                             <tbody>
-                                @php $rptObN=0;$rptObTotalBal=0; @endphp
-                                @forelse($rptOutstandingList->take(40) as $e)
-                                    @php
+                                <?php $rptObN=0;$rptObTotalBal=0; ?>
+                                <?php $__empty_1 = true; $__currentLoopData = $rptOutstandingList->take(40); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $e): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                                    <?php
                                         $rptObN++;
                                         $sd = $e->student_data ?? [];
                                         $obName = trim(($sd['first_name']??'').(' '.($sd['last_name']??''))) ?: '—';
                                         $obGl   = $rptGradeLevels[$sd['grade_level'] ?? $e->grade_level ?? ''] ?? '—';
                                         $rptObTotalBal += $e->remaining_balance ?? 0;
-                                    @endphp
+                                    ?>
                                     <tr>
-                                        <td style="color:var(--muted);font-size:12px;">{{ $rptObN }}</td>
-                                        <td style="font-weight:600;">{{ $obName }}</td>
-                                        <td style="font-size:12px;">{{ $obGl }}</td>
-                                        <td style="text-align:center;font-size:12px;">{{ $e->payment_option ? 'Option '.$e->payment_option : '—' }}</td>
-                                        <td style="text-align:right;">&#8369;{{ number_format($e->total_fee ?? 0, 0) }}</td>
-                                        <td style="text-align:right;color:var(--green);font-weight:600;">&#8369;{{ number_format($e->payment_amount ?? 0, 0) }}</td>
-                                        <td style="text-align:right;color:var(--red);font-weight:700;">&#8369;{{ number_format($e->remaining_balance ?? 0, 0) }}</td>
+                                        <td style="color:var(--muted);font-size:12px;"><?php echo e($rptObN); ?></td>
+                                        <td style="font-weight:600;"><?php echo e($obName); ?></td>
+                                        <td style="font-size:12px;"><?php echo e($obGl); ?></td>
+                                        <td style="text-align:center;font-size:12px;"><?php echo e($e->payment_option ? 'Option '.$e->payment_option : '—'); ?></td>
+                                        <td style="text-align:right;">&#8369;<?php echo e(number_format($e->total_fee ?? 0, 0)); ?></td>
+                                        <td style="text-align:right;color:var(--green);font-weight:600;">&#8369;<?php echo e(number_format($e->payment_amount ?? 0, 0)); ?></td>
+                                        <td style="text-align:right;color:var(--red);font-weight:700;">&#8369;<?php echo e(number_format($e->remaining_balance ?? 0, 0)); ?></td>
                                         <td style="text-align:center;">
                                             <span class="status-badge" style="background:#fee2e2;color:#991b1b;">Outstanding</span>
                                         </td>
                                     </tr>
-                                @empty
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                                     <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:28px;"><i class="bi bi-check-circle-fill" style="color:var(--green);margin-right:6px;"></i>No outstanding balances.</td></tr>
-                                @endforelse
-                                @if($rptOutstandingList->count() > 0)
+                                <?php endif; ?>
+                                <?php if($rptOutstandingList->count() > 0): ?>
                                 <tr style="background:#fef2f2;font-weight:700;">
                                     <td colspan="6" style="text-align:right;color:var(--red);">Total Outstanding:</td>
-                                    <td style="text-align:right;color:var(--red);font-size:15px;">&#8369;{{ number_format($rptObTotalBal, 0) }}</td>
+                                    <td style="text-align:right;color:var(--red);font-size:15px;">&#8369;<?php echo e(number_format($rptObTotalBal, 0)); ?></td>
                                     <td></td>
                                 </tr>
-                                @endif
+                                <?php endif; ?>
                             </tbody>
                         </table>
                     </div>
-                    @if($rptOutstandingList->count() > 40)
-                        <div style="padding:10px 16px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);">Showing 40 of {{ $rptOutstandingList->count() }} accounts with outstanding balances.</div>
-                    @endif
+                    <?php if($rptOutstandingList->count() > 40): ?>
+                        <div style="padding:10px 16px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);">Showing 40 of <?php echo e($rptOutstandingList->count()); ?> accounts with outstanding balances.</div>
+                    <?php endif; ?>
                 </div>
             </div>
 
-        </div>{{-- /rpt-panel-financial --}}
+        </div>
 
-        {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-             TAB 4: KPI DASHBOARD (superadmin only)
-        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
-        @if(Auth::user()->role === 'superadmin')
+        
+        <?php if(Auth::user()->role === 'superadmin'): ?>
         <div id="rpt-panel-kpi" class="rpt-panel" style="display:none;">
 
-            @php
+            <?php
                 $kpiEnrollTotal  = max(1, $rptEnrollTotal);
                 $kpiEnrollRate   = round($rptEnrollApproved / $kpiEnrollTotal * 100, 1);
                 $kpiColRate      = $rptCollectionRate;
@@ -7858,49 +7785,49 @@ function openWalkInEnrollmentModal() {
                      'met'=>$kpiOnlineRate>=50,'warn'=>$kpiOnlineRate>=30,'bar'=>min(100,$kpiOnlineRate),
                      'barcolor'=>$kpiOnlineRate>=50?'var(--green)':($kpiOnlineRate>=30?'var(--gold)':'var(--red)')],
                 ];
-            @endphp
+            ?>
 
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
                 <div>
                     <h5 style="font-weight:700;color:var(--blue);margin:0;"><i class="bi bi-speedometer2" style="margin-right:8px;"></i>KPI Dashboard</h5>
-                    <p style="color:var(--muted);font-size:13px;margin:4px 0 0;">Key Performance Indicators &mdash; S.Y. {{ $currentSchoolYear }}</p>
+                    <p style="color:var(--muted);font-size:13px;margin:4px 0 0;">Key Performance Indicators &mdash; S.Y. <?php echo e($currentSchoolYear); ?></p>
                 </div>
                 <button class="btn-dash btn-secondary" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print KPIs</button>
             </div>
 
             <div id="rpt-sub-kpi-overview" class="rpt-sub-panel">
-                {{-- KPI cards --}}
+                
                 <div class="row g-3 mb-4">
-                    @foreach($kpiCards as $kpi)
+                    <?php $__currentLoopData = $kpiCards; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $kpi): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                     <div class="col-12 col-sm-6 col-lg-3">
                         <div class="kpi-card">
                             <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-                                <div class="kpi-label">{{ $kpi['label'] }}</div>
-                                <i class="bi {{ $kpi['icon'] }}" style="font-size:18px;color:{{ $kpi['color'] }};opacity:0.7;"></i>
+                                <div class="kpi-label"><?php echo e($kpi['label']); ?></div>
+                                <i class="bi <?php echo e($kpi['icon']); ?>" style="font-size:18px;color:<?php echo e($kpi['color']); ?>;opacity:0.7;"></i>
                             </div>
-                            <div class="kpi-value" style="color:{{ $kpi['barcolor'] }};">{{ $kpi['value'] }}</div>
-                            <div class="kpi-target">Target: {{ $kpi['target'] }}</div>
+                            <div class="kpi-value" style="color:<?php echo e($kpi['barcolor']); ?>;"><?php echo e($kpi['value']); ?></div>
+                            <div class="kpi-target">Target: <?php echo e($kpi['target']); ?></div>
                             <div class="kpi-bar-wrap">
-                                <div class="kpi-bar" style="width:{{ $kpi['bar'] }}%;background:{{ $kpi['barcolor'] }};"></div>
+                                <div class="kpi-bar" style="width:<?php echo e($kpi['bar']); ?>%;background:<?php echo e($kpi['barcolor']); ?>;"></div>
                             </div>
                             <div style="margin-top:8px;font-size:11px;font-weight:600;">
-                                @if($kpi['met'])
+                                <?php if($kpi['met']): ?>
                                     <span class="kpi-status-dot kpi-dot-met"></span><span class="kpi-status-met">Target Met</span>
-                                @elseif($kpi['warn'])
+                                <?php elseif($kpi['warn']): ?>
                                     <span class="kpi-status-dot kpi-dot-warn"></span><span class="kpi-status-warn">Near Target</span>
-                                @else
+                                <?php else: ?>
                                     <span class="kpi-status-dot kpi-dot-low"></span><span class="kpi-status-low">Below Target</span>
-                                @endif
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
-                    @endforeach
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                 </div>
 
-                {{-- KPI Summary Table --}}
+                
                 <div class="content-card">
                     <div class="content-card-header">
-                        <h6><i class="bi bi-table" style="color:var(--blue);margin-right:6px;"></i>KPI Summary Table &mdash; S.Y. {{ $currentSchoolYear }}</h6>
+                        <h6><i class="bi bi-table" style="color:var(--blue);margin-right:6px;"></i>KPI Summary Table &mdash; S.Y. <?php echo e($currentSchoolYear); ?></h6>
                     </div>
                     <div style="overflow-x:auto;">
                         <table class="dash-table">
@@ -7914,31 +7841,32 @@ function openWalkInEnrollmentModal() {
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($kpiCards as $kpi)
+                                <?php $__currentLoopData = $kpiCards; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $kpi): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                 <tr>
                                     <td style="font-weight:600;">
-                                        <i class="bi {{ $kpi['icon'] }}" style="color:{{ $kpi['color'] }};margin-right:6px;"></i>{{ $kpi['label'] }}
+                                        <i class="bi <?php echo e($kpi['icon']); ?>" style="color:<?php echo e($kpi['color']); ?>;margin-right:6px;"></i><?php echo e($kpi['label']); ?>
+
                                     </td>
-                                    <td style="text-align:center;font-weight:700;font-size:15px;color:{{ $kpi['barcolor'] }};">{{ $kpi['value'] }}</td>
-                                    <td style="text-align:center;font-size:12px;color:var(--muted);">{{ $kpi['target'] }}</td>
+                                    <td style="text-align:center;font-weight:700;font-size:15px;color:<?php echo e($kpi['barcolor']); ?>;"><?php echo e($kpi['value']); ?></td>
+                                    <td style="text-align:center;font-size:12px;color:var(--muted);"><?php echo e($kpi['target']); ?></td>
                                     <td style="text-align:center;">
                                         <div style="display:flex;align-items:center;gap:6px;justify-content:center;">
                                             <div style="width:80px;height:7px;background:#e2e8f0;border-radius:4px;overflow:hidden;">
-                                                <div style="width:{{ $kpi['bar'] }}%;height:100%;background:{{ $kpi['barcolor'] }};border-radius:4px;"></div>
+                                                <div style="width:<?php echo e($kpi['bar']); ?>%;height:100%;background:<?php echo e($kpi['barcolor']); ?>;border-radius:4px;"></div>
                                             </div>
                                         </div>
                                     </td>
                                     <td style="text-align:center;">
-                                        @if($kpi['met'])
+                                        <?php if($kpi['met']): ?>
                                             <span class="status-badge" style="background:#d1fae5;color:#065f46;"><i class="bi bi-check-circle-fill"></i> Met</span>
-                                        @elseif($kpi['warn'])
+                                        <?php elseif($kpi['warn']): ?>
                                             <span class="status-badge" style="background:#fef3c7;color:#92400e;"><i class="bi bi-dash-circle-fill"></i> Near</span>
-                                        @else
+                                        <?php else: ?>
                                             <span class="status-badge" style="background:#fee2e2;color:#991b1b;"><i class="bi bi-x-circle-fill"></i> Below</span>
-                                        @endif
+                                        <?php endif; ?>
                                     </td>
                                 </tr>
-                                @endforeach
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                             </tbody>
                         </table>
                     </div>
@@ -7946,19 +7874,17 @@ function openWalkInEnrollmentModal() {
                         <span><span class="kpi-status-dot kpi-dot-met"></span> Target Met</span>
                         <span><span class="kpi-status-dot kpi-dot-warn"></span> Near Target</span>
                         <span><span class="kpi-status-dot kpi-dot-low"></span> Below Target</span>
-                        <span style="color:var(--muted);margin-left:auto;">Generated: {{ now()->format('F j, Y') }}</span>
+                        <span style="color:var(--muted);margin-left:auto;">Generated: <?php echo e(now()->format('F j, Y')); ?></span>
                     </div>
                 </div>
             </div>
 
-        </div>{{-- /rpt-panel-kpi --}}
-        @endif
+        </div>
+        <?php endif; ?>
 
-    </div>{{-- /section-reports --}}
+    </div>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-         SECTION: GRADE OVERSIGHT
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
     <div id="section-grade-oversight" class="dash-section" style="display:none;">
         <div class="section-header">
             <div>
@@ -7970,7 +7896,7 @@ function openWalkInEnrollmentModal() {
             </button>
         </div>
 
-        {{-- Pending badge info --}}
+        
         <div id="gradeOversightEmpty" style="display:none; text-align:center; padding:60px 20px; color:var(--muted);">
             <i class="bi bi-check2-all" style="font-size:48px; display:block; margin-bottom:12px; opacity:0.2;"></i>
             <div style="font-size:15px; font-weight:600; margin-bottom:4px;">No Pending Submissions</div>
@@ -7978,9 +7904,9 @@ function openWalkInEnrollmentModal() {
         </div>
 
         <div id="gradeSubmissionsList"></div>
-    </div>{{-- /section-grade-oversight --}}
+    </div>
 
-    {{-- Grade Reject Reason Modal --}}
+    
     <div class="modal fade" id="gradeRejectModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content" style="border-radius:14px; overflow:hidden; border:none;">
@@ -8002,11 +7928,7 @@ function openWalkInEnrollmentModal() {
         </div>
     </div>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-         SECTION: MESSAGES (Contact Form Inbox)
-
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
 
     <div id="section-messages" class="dash-section" style="display:none;">
         <div class="section-header-bar">
@@ -8014,43 +7936,43 @@ function openWalkInEnrollmentModal() {
             <small class="text-muted">Messages submitted through the website contact form</small>
         </div>
 
-        {{-- Stats row --}}
-        @php
+        
+        <?php
             $msgUnread  = ($contactMessages ?? collect())->where('status','unread')->count();
             $msgRead    = ($contactMessages ?? collect())->where('status','read')->count();
             $msgReplied = ($contactMessages ?? collect())->where('status','replied')->count();
             $msgTotal   = ($contactMessages ?? collect())->count();
-        @endphp
+        ?>
         <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:22px;">
             <div style="flex:1;min-width:120px;background:#fff;border:1px solid #e8edf5;border-radius:12px;padding:16px 18px;text-align:center;">
-                <div style="font-size:26px;font-weight:800;color:#1a3a6c;">{{ $msgTotal }}</div>
+                <div style="font-size:26px;font-weight:800;color:#1a3a6c;"><?php echo e($msgTotal); ?></div>
                 <div style="font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;margin-top:2px;">Total</div>
             </div>
             <div style="flex:1;min-width:120px;background:#fef3c7;border:1px solid #fcd34d;border-radius:12px;padding:16px 18px;text-align:center;">
-                <div style="font-size:26px;font-weight:800;color:#92400e;">{{ $msgUnread }}</div>
+                <div style="font-size:26px;font-weight:800;color:#92400e;"><?php echo e($msgUnread); ?></div>
                 <div style="font-size:11px;color:#92400e;font-weight:600;text-transform:uppercase;margin-top:2px;">Unread</div>
             </div>
             <div style="flex:1;min-width:120px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 18px;text-align:center;">
-                <div style="font-size:26px;font-weight:800;color:#1d4ed8;">{{ $msgRead }}</div>
+                <div style="font-size:26px;font-weight:800;color:#1d4ed8;"><?php echo e($msgRead); ?></div>
                 <div style="font-size:11px;color:#1d4ed8;font-weight:600;text-transform:uppercase;margin-top:2px;">Read</div>
             </div>
             <div style="flex:1;min-width:120px;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:16px 18px;text-align:center;">
-                <div style="font-size:26px;font-weight:800;color:#15803d;">{{ $msgReplied }}</div>
+                <div style="font-size:26px;font-weight:800;color:#15803d;"><?php echo e($msgReplied); ?></div>
                 <div style="font-size:11px;color:#15803d;font-weight:600;text-transform:uppercase;margin-top:2px;">Replied</div>
             </div>
         </div>
 
-        {{-- Messages Table --}}
+        
         <div style="background:#fff;border:1px solid #e8edf5;border-radius:14px;overflow:hidden;">
             <div style="padding:16px 20px;border-bottom:1px solid #f0f4f8;display:flex;align-items:center;justify-content:space-between;">
                 <span style="font-weight:700;font-size:14px;color:#1a2a4a;">Inbox</span>
             </div>
-            @if(($contactMessages ?? collect())->isEmpty())
+            <?php if(($contactMessages ?? collect())->isEmpty()): ?>
                 <div style="text-align:center;padding:60px 20px;color:#94a3b8;">
                     <i class="bi bi-inbox" style="font-size:48px;display:block;margin-bottom:12px;opacity:.4;"></i>
                     <div style="font-size:14px;">No messages yet.</div>
                 </div>
-            @else
+            <?php else: ?>
             <div style="overflow-x:auto;">
                 <table style="width:100%;border-collapse:collapse;font-size:13px;">
                     <thead>
@@ -8063,60 +7985,60 @@ function openWalkInEnrollmentModal() {
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($contactMessages ?? [] as $msg)
-                        @php
+                        <?php $__currentLoopData = $contactMessages ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $msg): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <?php
                             $isUnread = $msg->status === 'unread';
                             $statusConfig = [
                                 'unread'  => ['#fef3c7','#92400e','Unread'],
                                 'read'    => ['#eff6ff','#1d4ed8','Read'],
                                 'replied' => ['#f0fdf4','#15803d','Replied'],
                             ][$msg->status] ?? ['#f3f4f6','#6b7280','—'];
-                        @endphp
-                        <tr id="msg-row-{{ $msg->id }}"
-                            style="border-bottom:1px solid #f0f4f8;background:{{ $isUnread ? '#fffbeb' : '#fff' }};cursor:pointer;"
-                            onclick="openMsgModal({{ $msg->id }}, {{ json_encode($msg->name) }}, {{ json_encode($msg->email) }}, {{ json_encode($msg->phone ?? '—') }}, {{ json_encode($msg->subject) }}, {{ json_encode($msg->message) }}, {{ json_encode($msg->created_at->format('M d, Y h:i A')) }}, {{ json_encode($msg->status) }})">
+                        ?>
+                        <tr id="msg-row-<?php echo e($msg->id); ?>"
+                            style="border-bottom:1px solid #f0f4f8;background:<?php echo e($isUnread ? '#fffbeb' : '#fff'); ?>;cursor:pointer;"
+                            onclick="openMsgModal(<?php echo e($msg->id); ?>, <?php echo e(json_encode($msg->name)); ?>, <?php echo e(json_encode($msg->email)); ?>, <?php echo e(json_encode($msg->phone ?? '—')); ?>, <?php echo e(json_encode($msg->subject)); ?>, <?php echo e(json_encode($msg->message)); ?>, <?php echo e(json_encode($msg->created_at->format('M d, Y h:i A'))); ?>, <?php echo e(json_encode($msg->status)); ?>)">
                             <td style="padding:12px 16px;">
-                                <div style="font-weight:{{ $isUnread ? '700' : '500' }};color:#1e293b;">{{ $msg->name }}</div>
-                                <div style="font-size:11px;color:#94a3b8;margin-top:1px;">{{ $msg->email }}</div>
+                                <div style="font-weight:<?php echo e($isUnread ? '700' : '500'); ?>;color:#1e293b;"><?php echo e($msg->name); ?></div>
+                                <div style="font-size:11px;color:#94a3b8;margin-top:1px;"><?php echo e($msg->email); ?></div>
                             </td>
                             <td style="padding:12px 16px;">
-                                <div style="font-weight:{{ $isUnread ? '700' : '400' }};color:#1e293b;">{{ $msg->subject }}</div>
-                                <div style="font-size:11px;color:#94a3b8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px;">{{ Str::limit($msg->message, 70) }}</div>
+                                <div style="font-weight:<?php echo e($isUnread ? '700' : '400'); ?>;color:#1e293b;"><?php echo e($msg->subject); ?></div>
+                                <div style="font-size:11px;color:#94a3b8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px;"><?php echo e(Str::limit($msg->message, 70)); ?></div>
                             </td>
-                            <td style="padding:12px 16px;font-size:12px;color:#64748b;white-space:nowrap;">{{ $msg->created_at->format('M d, Y') }}<br>{{ $msg->created_at->format('h:i A') }}</td>
+                            <td style="padding:12px 16px;font-size:12px;color:#64748b;white-space:nowrap;"><?php echo e($msg->created_at->format('M d, Y')); ?><br><?php echo e($msg->created_at->format('h:i A')); ?></td>
                             <td style="padding:12px 16px;">
-                                <span style="background:{{ $statusConfig[0] }};color:{{ $statusConfig[1] }};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">{{ $statusConfig[2] }}</span>
+                                <span style="background:<?php echo e($statusConfig[0]); ?>;color:<?php echo e($statusConfig[1]); ?>;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;"><?php echo e($statusConfig[2]); ?></span>
                             </td>
                             <td style="padding:12px 16px;" onclick="event.stopPropagation();">
                                 <div style="display:flex;gap:5px;flex-wrap:wrap;">
-                                    @if($msg->status !== 'read')
-                                    <button onclick="updateMsgStatus({{ $msg->id }}, 'read')" title="Mark as Read"
+                                    <?php if($msg->status !== 'read'): ?>
+                                    <button onclick="updateMsgStatus(<?php echo e($msg->id); ?>, 'read')" title="Mark as Read"
                                         style="padding:4px 9px;background:#eff6ff;color:#1d4ed8;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">
                                         <i class="bi bi-eye"></i>
                                     </button>
-                                    @endif
-                                    @if($msg->status !== 'replied')
-                                    <button onclick="updateMsgStatus({{ $msg->id }}, 'replied')" title="Mark as Replied"
+                                    <?php endif; ?>
+                                    <?php if($msg->status !== 'replied'): ?>
+                                    <button onclick="updateMsgStatus(<?php echo e($msg->id); ?>, 'replied')" title="Mark as Replied"
                                         style="padding:4px 9px;background:#f0fdf4;color:#15803d;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">
                                         <i class="bi bi-reply-fill"></i>
                                     </button>
-                                    @endif
-                                    <button onclick="deleteMsg({{ $msg->id }})" title="Delete"
+                                    <?php endif; ?>
+                                    <button onclick="deleteMsg(<?php echo e($msg->id); ?>)" title="Delete"
                                         style="padding:4px 9px;background:#fef2f2;color:#dc2626;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">
                                         <i class="bi bi-trash3"></i>
                                     </button>
                                 </div>
                             </td>
                         </tr>
-                        @endforeach
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     </tbody>
                 </table>
             </div>
-            @endif
+            <?php endif; ?>
         </div>
     </div>
 
-    {{-- Message View Modal --}}
+    
     <div class="modal fade" id="msgViewModal" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content" style="border:0;border-radius:16px;overflow:hidden;">
@@ -8159,7 +8081,7 @@ function openWalkInEnrollmentModal() {
         </div>
     </div>
 
-    {{-- JS for messages section --}}
+    
     <script>
     var _currentMsgId = null;
 
@@ -8391,14 +8313,11 @@ function openWalkInEnrollmentModal() {
     });
     </script>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-         SECTION: SETTINGS
-
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
 
     <div id="section-settings" class="dash-section" style="display:none;">
 
-        {{-- Hero Banner --}}
+        
         <div class="stg-hero">
             <div class="stg-hero-icon"><i class="bi bi-gear-fill"></i></div>
             <div>
@@ -8407,10 +8326,10 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        {{-- Two-Column Layout --}}
+        
         <div class="stg-layout">
 
-            {{-- Left Navigation --}}
+            
             <div class="stg-nav">
                 <button class="stg-nav-item active" id="stab-btn-school" onclick="showSettingsTab('school')">
                     <div class="stg-nav-icon"><i class="bi bi-building"></i></div>
@@ -8446,10 +8365,10 @@ function openWalkInEnrollmentModal() {
                 </button>
             </div>
 
-            {{-- Right Content --}}
+            
             <div class="stg-content">
 
-                {{-- School Information Tab --}}
+                
                 <div class="content-card settings-tab" id="tab-school">
                     <div class="content-card-header" style="border-left:4px solid var(--blue);padding-left:16px;">
                         <div>
@@ -8521,7 +8440,7 @@ function openWalkInEnrollmentModal() {
                     </div>
                 </div>
 
-                {{-- Academic Settings Tab --}}
+                
                 <div class="content-card settings-tab" id="tab-academic" style="display:none;">
                     <div class="content-card-header" style="border-left:4px solid #f59e0b;padding-left:16px;">
                         <div>
@@ -8563,26 +8482,26 @@ function openWalkInEnrollmentModal() {
                             </div>
                             <div class="col-md-3">
                                 <label class="form-lbl">Enrollment Target School Year</label>
-                                @php
+                                <?php
                                     $baseY = now()->month >= 6 ? now()->year : now()->year - 1;
                                     $syOptions = [];
                                     for ($i = 0; $i <= 3; $i++) {
                                         $syOptions[] = ($baseY + $i) . '-' . ($baseY + $i + 1);
                                     }
-                                @endphp
+                                ?>
                                 <select id="set-enrollment_target_year" class="form-fld">
                                     <option value="">— Auto (next school year) —</option>
-                                    @foreach($syOptions as $sy)
-                                    <option value="{{ $sy }}">{{ $sy }}</option>
-                                    @endforeach
+                                    <?php $__currentLoopData = $syOptions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sy): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <option value="<?php echo e($sy); ?>"><?php echo e($sy); ?></option>
+                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                 </select>
                                 <small class="text-muted" style="font-size:11px;">The year students are enrolling INTO. Used for re-enrollment.</small>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-lbl">Maintenance Mode</label>
                                 <select id="set-maintenance_mode" class="form-fld" onchange="toggleMaintenanceMode()">
-                                    <option value="0" {{ !($maintenanceMode ?? false) ? 'selected' : '' }}>Off — Portals accessible</option>
-                                    <option value="1" {{ ($maintenanceMode ?? false) ? 'selected' : '' }}>On — Portals blocked</option>
+                                    <option value="0" <?php echo e(!($maintenanceMode ?? false) ? 'selected' : ''); ?>>Off — Portals accessible</option>
+                                    <option value="1" <?php echo e(($maintenanceMode ?? false) ? 'selected' : ''); ?>>On — Portals blocked</option>
                                 </select>
                                 <small class="text-muted" style="font-size:11px;">Blocks student &amp; teacher portals. Admins always have access.</small>
                             </div>
@@ -8624,7 +8543,7 @@ function openWalkInEnrollmentModal() {
                     </div>
                 </div>
 
-                {{-- Security Settings Tab --}}
+                
                 <div class="content-card settings-tab" id="tab-security" style="display:none;">
                     <div class="content-card-header" style="border-left:4px solid var(--red);padding-left:16px;">
                         <div>
@@ -8677,35 +8596,36 @@ function openWalkInEnrollmentModal() {
                     </div>
                 </div>
 
-                {{-- My Account Tab --}}
+                
                 <div class="settings-tab" id="tab-account" style="display:none;">
-                    @if(session('photo_success'))
+                    <?php if(session('photo_success')): ?>
                         <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#2e7d32;display:flex;align-items:center;gap:8px;">
-                            <i class="bi bi-check-circle-fill"></i> {{ session('photo_success') }}
+                            <i class="bi bi-check-circle-fill"></i> <?php echo e(session('photo_success')); ?>
+
                         </div>
-                    @endif
+                    <?php endif; ?>
                     <div class="row g-4">
-                        {{-- Profile Card --}}
+                        
                         <div class="col-md-5">
                             <div class="content-card">
                                 <div class="content-card-header" style="border-left:4px solid var(--blue);padding-left:16px;">
                                     <h6 style="margin:0;"><i class="bi bi-person-circle me-2" style="color:var(--blue);"></i>Account Information</h6>
                                 </div>
                                 <div class="p-4">
-                                    <form method="POST" action="{{ route('admin.settings.photo') }}" enctype="multipart/form-data" id="admin-photo-form">
-                                        @csrf
+                                    <form method="POST" action="<?php echo e(route('admin.settings.photo')); ?>" enctype="multipart/form-data" id="admin-photo-form">
+                                        <?php echo csrf_field(); ?>
                                         <div style="display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:24px;padding:20px;background:linear-gradient(135deg,#f0f5ff,#fff);border-radius:12px;border:1px solid #e8f0fb;">
                                             <div style="position:relative;flex-shrink:0;width:88px;height:88px;">
-                                                @if(Auth::user()->profile_photo)
-                                                    <img id="admin-avatar-img" src="{{ asset('storage/' . Auth::user()->profile_photo) }}" alt="Profile"
+                                                <?php if(Auth::user()->profile_photo): ?>
+                                                    <img id="admin-avatar-img" src="<?php echo e(asset('storage/' . Auth::user()->profile_photo)); ?>" alt="Profile"
                                                          style="width:88px;height:88px;border-radius:50%;object-fit:cover;border:3px solid var(--blue-pale);box-shadow:0 4px 12px rgba(26,58,108,.15);">
-                                                @else
+                                                <?php else: ?>
                                                     <div id="admin-avatar-placeholder" style="width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--blue-light));display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(26,58,108,.2);">
-                                                        <span style="font-size:32px;font-weight:700;color:#fff;">{{ strtoupper(substr(Auth::user()->name,0,1)) }}</span>
+                                                        <span style="font-size:32px;font-weight:700;color:#fff;"><?php echo e(strtoupper(substr(Auth::user()->name,0,1))); ?></span>
                                                     </div>
                                                     <img id="admin-avatar-img" src="" alt="Profile"
                                                          style="width:88px;height:88px;border-radius:50%;object-fit:cover;border:3px solid var(--blue-pale);display:none;">
-                                                @endif
+                                                <?php endif; ?>
                                                 <label for="admin-photo-input" title="Change photo"
                                                        style="position:absolute;bottom:2px;right:2px;width:26px;height:26px;border-radius:50%;background:var(--blue);border:2px solid #fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.2);">
                                                     <i class="bi bi-camera-fill" style="font-size:12px;color:#fff;"></i>
@@ -8714,8 +8634,8 @@ function openWalkInEnrollmentModal() {
                                                        style="display:none;" onchange="previewAdminPhoto(this)">
                                             </div>
                                             <div style="text-align:center;">
-                                                <div style="font-size:16px;font-weight:700;color:var(--text);">{{ Auth::user()->name }}</div>
-                                                <div style="font-size:12px;color:var(--muted);margin-top:2px;">{{ Auth::user()->email }}</div>
+                                                <div style="font-size:16px;font-weight:700;color:var(--text);"><?php echo e(Auth::user()->name); ?></div>
+                                                <div style="font-size:12px;color:var(--muted);margin-top:2px;"><?php echo e(Auth::user()->email); ?></div>
                                                 <span style="display:inline-block;background:#fef3e2;color:#b45309;border:1px solid #fcd34d;border-radius:20px;padding:2px 12px;font-size:11px;font-weight:600;margin-top:6px;">Admin / Registrar</span>
                                             </div>
                                         </div>
@@ -8724,11 +8644,11 @@ function openWalkInEnrollmentModal() {
                                     <div style="display:flex;flex-direction:column;gap:0;">
                                         <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f5f5f5;">
                                             <span style="font-size:12px;color:var(--muted);font-weight:500;">Full Name</span>
-                                            <span style="font-size:12px;font-weight:600;color:var(--text);">{{ Auth::user()->name }}</span>
+                                            <span style="font-size:12px;font-weight:600;color:var(--text);"><?php echo e(Auth::user()->name); ?></span>
                                         </div>
                                         <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f5f5f5;">
                                             <span style="font-size:12px;color:var(--muted);font-weight:500;">Email</span>
-                                            <span style="font-size:12px;font-weight:600;color:var(--text);">{{ Auth::user()->email }}</span>
+                                            <span style="font-size:12px;font-weight:600;color:var(--text);"><?php echo e(Auth::user()->email); ?></span>
                                         </div>
                                         <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;">
                                             <span style="font-size:12px;color:var(--muted);font-weight:500;">Role</span>
@@ -8739,26 +8659,28 @@ function openWalkInEnrollmentModal() {
                             </div>
                         </div>
 
-                        {{-- Change Password --}}
+                        
                         <div class="col-md-7">
                             <div class="content-card">
                                 <div class="content-card-header" style="border-left:4px solid var(--blue);padding-left:16px;">
                                     <h6 style="margin:0;"><i class="bi bi-lock-fill me-2" style="color:var(--blue);"></i>Change Password</h6>
                                 </div>
                                 <div class="p-4">
-                                    @if(session('password_success'))
+                                    <?php if(session('password_success')): ?>
                                         <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#2e7d32;display:flex;align-items:center;gap:8px;">
-                                            <i class="bi bi-check-circle-fill"></i> {{ session('password_success') }}
+                                            <i class="bi bi-check-circle-fill"></i> <?php echo e(session('password_success')); ?>
+
                                         </div>
-                                    @endif
-                                    @if($errors->has('current_password'))
+                                    <?php endif; ?>
+                                    <?php if($errors->has('current_password')): ?>
                                         <div style="background:#fdecea;border:1px solid #f5c6cb;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#c0392b;display:flex;align-items:center;gap:8px;">
-                                            <i class="bi bi-exclamation-circle-fill"></i> {{ $errors->first('current_password') }}
+                                            <i class="bi bi-exclamation-circle-fill"></i> <?php echo e($errors->first('current_password')); ?>
+
                                         </div>
-                                    @endif
-                                    <form method="POST" action="{{ route('admin.settings.password') }}">
-                                        @csrf
-                                        @method('PUT')
+                                    <?php endif; ?>
+                                    <form method="POST" action="<?php echo e(route('admin.settings.password')); ?>">
+                                        <?php echo csrf_field(); ?>
+                                        <?php echo method_field('PUT'); ?>
                                         <div class="mb-3">
                                             <label class="form-lbl">Current Password <span style="color:var(--red);">*</span></label>
                                             <input type="password" name="current_password" class="form-fld" placeholder="Enter your current password" required>
@@ -8781,16 +8703,12 @@ function openWalkInEnrollmentModal() {
                     </div>
                 </div>
 
-            </div>{{-- /stg-content --}}
-        </div>{{-- /stg-layout --}}
+            </div>
+        </div>
 
-    </div>{{-- /section-settings --}}
+    </div>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-         SECTION: SUMMER CLASSES
-
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
 
     <div id="section-summer" class="dash-section" style="display:none;">
 
@@ -8824,13 +8742,13 @@ function openWalkInEnrollmentModal() {
 
                         <select class="form-fld" id="summer-sy-filter">
                             <option value="">All School Years</option>
-                            @php
+                            <?php
                                 $currentSY = now()->month >= 6 ? now()->year : now()->year - 1;
                                 for ($y = $currentSY + 1; $y >= 1994; $y--) {
                                     $sy = $y . '-' . ($y + 1);
                                     echo "<option value=\"$sy\">$sy</option>";
                                 }
-                            @endphp
+                            ?>
                         </select>
 
                     </div>
@@ -8933,11 +8851,9 @@ function openWalkInEnrollmentModal() {
 
         </div>
 
-    </div>{{-- /section-summer --}}
+    </div>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-         SECTION: ASSESSMENT & PROMOTION
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
     <div id="section-assessment" class="dash-section" style="display:none;">
 
         <div class="section-header">
@@ -8947,7 +8863,7 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        @php
+        <?php
             $glMap = ['nursery'=>'Nursery','kindergarten'=>'Kinder','grade1'=>'Grade 1','grade2'=>'Grade 2','grade3'=>'Grade 3','grade4'=>'Grade 4','grade5'=>'Grade 5','grade6'=>'Grade 6'];
             $nextGlMap = ['nursery'=>'kindergarten','kindergarten'=>'grade1','grade1'=>'grade2','grade2'=>'grade3','grade3'=>'grade4','grade4'=>'grade5','grade5'=>'grade6','grade6'=>'graduated'];
 
@@ -8968,25 +8884,25 @@ function openWalkInEnrollmentModal() {
                     return $gl === $gk;
                 })->count();
             }
-        @endphp
+        ?>
 
-        {{-- Stats --}}
+        
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;">
             <div class="stat-card">
                 <div class="stat-icon blue"><i class="bi bi-people-fill"></i></div>
-                <div><div class="stat-value">{{ $assessTotal }}</div><div class="stat-label">Eligible Students</div></div>
+                <div><div class="stat-value"><?php echo e($assessTotal); ?></div><div class="stat-label">Eligible Students</div></div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon gold"><i class="bi bi-hourglass-split"></i></div>
-                <div><div class="stat-value">{{ $assessPending }}</div><div class="stat-label">Pending Assessment</div></div>
+                <div><div class="stat-value"><?php echo e($assessPending); ?></div><div class="stat-label">Pending Assessment</div></div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
-                <div><div class="stat-value">{{ $assessDone }}</div><div class="stat-label">Already Assessed</div></div>
+                <div><div class="stat-value"><?php echo e($assessDone); ?></div><div class="stat-label">Already Assessed</div></div>
             </div>
         </div>
 
-        {{-- Info banner --}}
+        
         <div style="background:#e8f4ff;border:1px solid #b8d4f0;border-radius:10px;padding:12px 18px;margin-bottom:20px;font-size:12px;color:#1a3a6c;display:flex;gap:10px;align-items:flex-start;">
             <i class="bi bi-info-circle-fill" style="font-size:16px;margin-top:1px;flex-shrink:0;"></i>
             <div>
@@ -8996,23 +8912,23 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        {{-- Grade filter chips --}}
+        
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;align-items:center;">
             <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-right:4px;">Grade:</span>
             <button onclick="filterAssessGrade('')" id="assess-chip-all"
                 style="padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--blue);background:var(--blue);color:#fff;cursor:pointer;">
-                All ({{ $assessTotal }})
+                All (<?php echo e($assessTotal); ?>)
             </button>
-            @foreach($glMap as $gk => $gl)
-                @if(($assessByGrade[$gk] ?? 0) > 0)
-                <button onclick="filterAssessGrade('{{ $gk }}')" id="assess-chip-{{ $gk }}"
+            <?php $__currentLoopData = $glMap; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $gk => $gl): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                <?php if(($assessByGrade[$gk] ?? 0) > 0): ?>
+                <button onclick="filterAssessGrade('<?php echo e($gk); ?>')" id="assess-chip-<?php echo e($gk); ?>"
                     style="padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid #ddd;background:#f8f9fa;color:#555;cursor:pointer;">
-                    {{ $gl }} ({{ $assessByGrade[$gk] }})
+                    <?php echo e($gl); ?> (<?php echo e($assessByGrade[$gk]); ?>)
                 </button>
-                @endif
-            @endforeach
+                <?php endif; ?>
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
 
-            {{-- Status filter --}}
+            
             <div style="margin-left:auto;display:flex;gap:6px;">
                 <button onclick="filterAssessStatus('')" id="assess-status-all"
                     style="padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--blue);background:var(--blue);color:#fff;cursor:pointer;">All</button>
@@ -9027,7 +8943,7 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        {{-- Search --}}
+        
         <div class="content-card mb-3">
             <div style="padding:14px 18px;">
                 <input type="text" id="assessSearch" placeholder="Search student name..."
@@ -9036,11 +8952,11 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        {{-- Assessment Table --}}
+        
         <div class="content-card">
             <div class="content-card-header" style="display:flex;justify-content:space-between;align-items:center;">
                 <h6><i class="bi bi-table me-2" style="color:var(--gold);"></i>Students for Assessment</h6>
-                <span style="font-size:12px;color:var(--muted);" id="assess-count-label">{{ $assessTotal }} student(s)</span>
+                <span style="font-size:12px;color:var(--muted);" id="assess-count-label"><?php echo e($assessTotal); ?> student(s)</span>
             </div>
             <div style="overflow-x:auto;">
                 <table class="dash-table" id="assessTable">
@@ -9056,8 +8972,8 @@ function openWalkInEnrollmentModal() {
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($assessAll as $as)
-                        @php
+                        <?php $__empty_1 = true; $__currentLoopData = $assessAll; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $as): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                        <?php
                             $asEnr    = $as->latestEnrollment;
                             $asGl     = $asEnr ? ($asEnr->student_data['grade_level'] ?? ($asEnr->grade_level ?? '')) : '';
                             $asGlLbl  = $glMap[$asGl] ?? ucfirst($asGl);
@@ -9074,71 +8990,75 @@ function openWalkInEnrollmentModal() {
                                 'Graduated' => '#1a3a6c',
                                 default     => null
                             };
-                        @endphp
-                        <tr data-grade="{{ $asGl }}" data-status="{{ $isDone ? 'done' : 'pending' }}" data-name="{{ strtolower($as->name) }}"
-                            style="{{ $isDone ? 'background:#f6fef9;' : 'background:#fffbf0;' }}">
+                        ?>
+                        <tr data-grade="<?php echo e($asGl); ?>" data-status="<?php echo e($isDone ? 'done' : 'pending'); ?>" data-name="<?php echo e(strtolower($as->name)); ?>"
+                            style="<?php echo e($isDone ? 'background:#f6fef9;' : 'background:#fffbf0;'); ?>">
                             <td>
                                 <div style="display:flex;align-items:center;gap:6px;">
-                                    <span style="font-weight:600;">{{ $as->name }}</span>
-                                    @php $asGuidanceCount = $assessGuidanceCounts[$as->id] ?? 0; @endphp
-                                    @if($asGuidanceCount > 0)
-                                        <span title="{{ $asGuidanceCount }} open guidance concern(s) — informational only, does not block assessment"
+                                    <span style="font-weight:600;"><?php echo e($as->name); ?></span>
+                                    <?php $asGuidanceCount = $assessGuidanceCounts[$as->id] ?? 0; ?>
+                                    <?php if($asGuidanceCount > 0): ?>
+                                        <span title="<?php echo e($asGuidanceCount); ?> open guidance concern(s) — informational only, does not block assessment"
                                             style="display:inline-flex;align-items:center;gap:3px;background:#fff3e0;color:#e65100;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;">
-                                            <i class="bi bi-flag-fill"></i> {{ $asGuidanceCount }}
+                                            <i class="bi bi-flag-fill"></i> <?php echo e($asGuidanceCount); ?>
+
                                         </span>
-                                    @endif
-                                    @php $asSummer = $assessSummerStatus[$as->id] ?? null; @endphp
-                                    @if($asSummer && $asSummer['failed'] > 0)
-                                        @php $asSummerDone = $asSummer['cleared'] >= $asSummer['failed']; @endphp
-                                        <span title="Summer class remediation: {{ $asSummer['cleared'] }} of {{ $asSummer['failed'] }} failing subject(s) cleared — informational only, does not block assessment"
-                                            style="display:inline-flex;align-items:center;gap:3px;background:{{ $asSummerDone ? '#e8f5e9' : '#fff3e0' }};color:{{ $asSummerDone ? '#2e7d32' : '#e65100' }};font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;">
-                                            <i class="bi bi-sun-fill"></i> {{ $asSummer['cleared'] }}/{{ $asSummer['failed'] }}
+                                    <?php endif; ?>
+                                    <?php $asSummer = $assessSummerStatus[$as->id] ?? null; ?>
+                                    <?php if($asSummer && $asSummer['failed'] > 0): ?>
+                                        <?php $asSummerDone = $asSummer['cleared'] >= $asSummer['failed']; ?>
+                                        <span title="Summer class remediation: <?php echo e($asSummer['cleared']); ?> of <?php echo e($asSummer['failed']); ?> failing subject(s) cleared — informational only, does not block assessment"
+                                            style="display:inline-flex;align-items:center;gap:3px;background:<?php echo e($asSummerDone ? '#e8f5e9' : '#fff3e0'); ?>;color:<?php echo e($asSummerDone ? '#2e7d32' : '#e65100'); ?>;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;">
+                                            <i class="bi bi-sun-fill"></i> <?php echo e($asSummer['cleared']); ?>/<?php echo e($asSummer['failed']); ?>
+
                                         </span>
-                                    @endif
+                                    <?php endif; ?>
                                 </div>
-                                <div style="font-size:11px;color:var(--muted);">{{ $as->email }}</div>
+                                <div style="font-size:11px;color:var(--muted);"><?php echo e($as->email); ?></div>
                             </td>
-                            <td><span class="grade-chip">{{ $asGlLbl }}</span></td>
-                            <td style="font-size:13px;">{{ $asSection }}</td>
-                            <td style="font-size:12px;color:var(--muted);">{{ $asType }}</td>
+                            <td><span class="grade-chip"><?php echo e($asGlLbl); ?></span></td>
+                            <td style="font-size:13px;"><?php echo e($asSection); ?></td>
+                            <td style="font-size:12px;color:var(--muted);"><?php echo e($asType); ?></td>
                             <td>
                                 <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;
-                                    background:{{ $isDone ? '#e8f5e9' : '#fff8e1' }};color:{{ $isDone ? '#2e7d32' : '#856404' }};">
-                                    <i class="bi bi-{{ $isDone ? 'check-circle-fill' : 'hourglass-split' }}"></i>
-                                    {{ $isDone ? 'Assessed' : 'Pending' }}
+                                    background:<?php echo e($isDone ? '#e8f5e9' : '#fff8e1'); ?>;color:<?php echo e($isDone ? '#2e7d32' : '#856404'); ?>;">
+                                    <i class="bi bi-<?php echo e($isDone ? 'check-circle-fill' : 'hourglass-split'); ?>"></i>
+                                    <?php echo e($isDone ? 'Assessed' : 'Pending'); ?>
+
                                 </span>
                             </td>
                             <td>
-                                @if($isDone && $asPromo)
-                                    <div style="font-size:12px;font-weight:700;color:{{ $resultColor }};">
-                                        <i class="bi bi-{{ $promoResult==='Promoted'?'arrow-up-circle-fill':($promoResult==='Graduated'?'star-fill':'arrow-repeat') }} me-1"></i>
-                                        {{ $promoResult }}
+                                <?php if($isDone && $asPromo): ?>
+                                    <div style="font-size:12px;font-weight:700;color:<?php echo e($resultColor); ?>;">
+                                        <i class="bi bi-<?php echo e($promoResult==='Promoted'?'arrow-up-circle-fill':($promoResult==='Graduated'?'star-fill':'arrow-repeat')); ?> me-1"></i>
+                                        <?php echo e($promoResult); ?>
+
                                     </div>
-                                    @if($promoResult !== 'Retained' && $promoResult !== 'Graduated')
-                                        <div style="font-size:11px;color:var(--muted);">→ {{ $glMap[$asPromo->to_grade] ?? ucfirst($asPromo->to_grade) }}</div>
-                                    @endif
-                                    <div style="font-size:10px;color:var(--muted);">{{ $asPromo->promoted_at?->format('M d, Y') ?? '' }}</div>
-                                @else
+                                    <?php if($promoResult !== 'Retained' && $promoResult !== 'Graduated'): ?>
+                                        <div style="font-size:11px;color:var(--muted);">→ <?php echo e($glMap[$asPromo->to_grade] ?? ucfirst($asPromo->to_grade)); ?></div>
+                                    <?php endif; ?>
+                                    <div style="font-size:10px;color:var(--muted);"><?php echo e($asPromo->promoted_at?->format('M d, Y') ?? ''); ?></div>
+                                <?php else: ?>
                                     <span style="color:#ccc;font-size:12px;">—</span>
-                                @endif
+                                <?php endif; ?>
                             </td>
-                            @php
+                            <?php
                                 $asTotalFee  = $asEnr ? ($asEnr->total_fee ?? 0) : 0;
                                 $asAmtPaid   = $asEnr ? ($asEnr->payment_amount ?? 0) : 0;
                                 $asBalance   = $asEnr ? ($asEnr->remaining_balance ?? max(0, $asTotalFee - $asAmtPaid)) : 0;
                                 $asPayStatus = $asEnr ? ($asEnr->payment_status ?? 'pending') : 'pending';
                                 $asFromSY    = $asEnr ? ($asEnr->school_year ?? '') : '';
-                            @endphp
+                            ?>
                             <td>
                                 <button type="button" class="action-btn edit"
-                                    title="{{ $isDone ? 'Re-assess' : 'Assess Student' }}"
-                                    onclick="openSmAssessModal({{ $as->id }}, '{{ addslashes($as->name) }}', '{{ $asGl }}', '{{ $asSection }}', {{ $asTotalFee }}, {{ $asAmtPaid }}, {{ $asBalance }}, '{{ $asPayStatus }}', '{{ $asFromSY }}')"
-                                    style="{{ $isDone ? 'background:#e8f5e9;color:#2e7d32;' : '' }}">
+                                    title="<?php echo e($isDone ? 'Re-assess' : 'Assess Student'); ?>"
+                                    onclick="openSmAssessModal(<?php echo e($as->id); ?>, '<?php echo e(addslashes($as->name)); ?>', '<?php echo e($asGl); ?>', '<?php echo e($asSection); ?>', <?php echo e($asTotalFee); ?>, <?php echo e($asAmtPaid); ?>, <?php echo e($asBalance); ?>, '<?php echo e($asPayStatus); ?>', '<?php echo e($asFromSY); ?>')"
+                                    style="<?php echo e($isDone ? 'background:#e8f5e9;color:#2e7d32;' : ''); ?>">
                                     <i class="bi bi-mortarboard-fill"></i>
                                 </button>
                             </td>
                         </tr>
-                        @empty
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                         <tr>
                             <td colspan="7" style="text-align:center;padding:60px;color:var(--muted);">
                                 <i class="bi bi-mortarboard" style="font-size:48px;display:block;margin-bottom:12px;opacity:0.3;"></i>
@@ -9146,13 +9066,13 @@ function openWalkInEnrollmentModal() {
                                 <small>Nursery, Kinder, and Grade 1–6 students (excluding transferees) appear here.</small>
                             </td>
                         </tr>
-                        @endforelse
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        {{-- Assessment History --}}
+        
         <div class="content-card mt-4">
             <div class="content-card-header">
                 <h6><i class="bi bi-clock-history me-2" style="color:var(--gold);"></i>Assessment History</h6>
@@ -9171,39 +9091,39 @@ function openWalkInEnrollmentModal() {
                         </tr>
                     </thead>
                     <tbody>
-                        @php
+                        <?php
                             $allPromos = \App\Models\Promotion::with(['student','promotedBy'])
                                 ->orderByDesc('promoted_at')->limit(50)->get();
-                        @endphp
-                        @forelse($allPromos as $promo)
-                        @php
+                        ?>
+                        <?php $__empty_1 = true; $__currentLoopData = $allPromos; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $promo): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                        <?php
                             $pResult = $promo->to_grade === 'graduated' ? 'Graduated'
                                      : ($promo->from_grade === $promo->to_grade ? 'Retained' : 'Promoted');
                             $pColor  = match($pResult) { 'Promoted'=>'#28a745','Retained'=>'#e67e00','Graduated'=>'#1a3a6c',default=>'#666' };
-                        @endphp
+                        ?>
                         <tr>
-                            <td style="font-weight:600;">{{ $promo->student->name ?? '—' }}</td>
-                            <td><span class="grade-chip">{{ $glMap[$promo->from_grade] ?? ucfirst($promo->from_grade) }}</span></td>
+                            <td style="font-weight:600;"><?php echo e($promo->student->name ?? '—'); ?></td>
+                            <td><span class="grade-chip"><?php echo e($glMap[$promo->from_grade] ?? ucfirst($promo->from_grade)); ?></span></td>
                             <td>
-                                <span style="font-weight:700;color:{{ $pColor }};">{{ $pResult }}</span>
+                                <span style="font-weight:700;color:<?php echo e($pColor); ?>;"><?php echo e($pResult); ?></span>
                             </td>
-                            <td><span class="grade-chip">{{ $glMap[$promo->to_grade] ?? ucfirst($promo->to_grade) }}</span></td>
-                            <td style="font-size:12px;">{{ $promo->from_school_year }} → {{ $promo->to_school_year }}</td>
-                            <td style="font-size:12px;color:var(--muted);">{{ $promo->promotedBy->name ?? 'System' }}</td>
-                            <td style="font-size:12px;color:var(--muted);white-space:nowrap;">{{ $promo->promoted_at?->format('M d, Y') ?? '—' }}</td>
+                            <td><span class="grade-chip"><?php echo e($glMap[$promo->to_grade] ?? ucfirst($promo->to_grade)); ?></span></td>
+                            <td style="font-size:12px;"><?php echo e($promo->from_school_year); ?> → <?php echo e($promo->to_school_year); ?></td>
+                            <td style="font-size:12px;color:var(--muted);"><?php echo e($promo->promotedBy->name ?? 'System'); ?></td>
+                            <td style="font-size:12px;color:var(--muted);white-space:nowrap;"><?php echo e($promo->promoted_at?->format('M d, Y') ?? '—'); ?></td>
                         </tr>
-                        @empty
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                         <tr>
                             <td colspan="7" style="text-align:center;padding:30px;color:var(--muted);">No assessment history yet.</td>
                         </tr>
-                        @endforelse
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    {{-- Mass Promotion section removed — replaced by Assessment & Promotion in Student Management --}}
+    
     <div id="section-promotion" class="dash-section" style="display:none;">
 
         <div class="section-header">
@@ -9217,7 +9137,7 @@ function openWalkInEnrollmentModal() {
             <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px;">Mass Promotion Removed</div>
             <p style="font-size:13px;">Student promotion is now done individually under <strong>Student Management → Assessment &amp; Promotion</strong>. Admin reviews each student's grades and marks them as Promoted or Retained.</p>
         </div>
-        {{-- hidden original content below (kept so JS references don't break) --}}
+        
         <div style="display:none;">
         <div class="content-card mb-4">
 
@@ -9232,13 +9152,13 @@ function openWalkInEnrollmentModal() {
                         <label class="form-lbl">Current School Year</label>
 
                         <select class="form-fld" id="promo-from-sy" onchange="loadPromotionCandidates()">
-                            @php
+                            <?php
                                 $currentSY = now()->month >= 6 ? now()->year : now()->year - 1;
                                 for ($y = $currentSY + 1; $y >= 1994; $y--) {
                                     $sy = $y . '-' . ($y + 1);
                                     echo "<option value=\"$sy\">$sy</option>";
                                 }
-                            @endphp
+                            ?>
                         </select>
 
                     </div>
@@ -9279,11 +9199,11 @@ function openWalkInEnrollmentModal() {
 
                             <option value="">All Sections</option>
 
-                            @foreach($sections ?? [] as $sec)
+                            <?php $__currentLoopData = $sections ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sec): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
 
-                                <option value="{{ $sec->id }}">{{ $sec->name }}</option>
+                                <option value="<?php echo e($sec->id); ?>"><?php echo e($sec->name); ?></option>
 
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
 
                         </select>
 
@@ -9407,14 +9327,14 @@ function openWalkInEnrollmentModal() {
             <div id="promo-history-pagination" style="padding:12px 20px; border-top:1px solid var(--border);"></div>
         </div>
 
-        </div>{{-- /hidden original promotion content --}}
-    </div>{{-- /section-promotion --}}
+        </div>
+    </div>
 
-</div>{{-- /dash-main --}}
+</div>
 
 <!-- Include Enrollment View Modal -->
 
-@include('admin.enrollments.view-modal')
+<?php echo $__env->make('admin.enrollments.view-modal', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
 <!-- Student View Modal -->
 
@@ -9540,7 +9460,7 @@ function openWalkInEnrollmentModal() {
 
                 </div>
 
-                {{-- Documents Section --}}
+                
                 <div class="row g-3 mt-1">
 
                     <div class="col-md-12">
@@ -9588,7 +9508,7 @@ function openWalkInEnrollmentModal() {
     <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content" style="border:0;border-radius:20px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.18);">
 
-            {{-- Header --}}
+            
             <div style="background:linear-gradient(135deg,#1a3a6c 0%,#2563eb 100%);padding:22px 26px;position:relative;">
                 <div style="display:flex;align-items:center;gap:14px;">
                     <div style="width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -9606,7 +9526,7 @@ function openWalkInEnrollmentModal() {
                 <input type="hidden" id="se-id">
             </div>
 
-            {{-- Tab Navigation --}}
+            
             <div style="background:#f8faff;border-bottom:1.5px solid #e2e8f0;padding:0 24px;">
                 <div style="display:flex;gap:2px;overflow-x:auto;" id="se-tab-nav">
                     <button type="button" onclick="seTab('personal')" id="se-tab-btn-personal"
@@ -9628,10 +9548,10 @@ function openWalkInEnrollmentModal() {
                 </div>
             </div>
 
-            {{-- Body --}}
+            
             <div style="padding:24px 26px;background:#fff;max-height:60vh;overflow-y:auto;">
 
-                {{-- Personal Info --}}
+                
                 <div id="se-pane-personal">
                     <div style="background:#f8faff;border:1.5px solid #e2e8f0;border-radius:14px;padding:20px;margin-bottom:16px;">
                         <div style="font-size:11px;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:.7px;margin-bottom:14px;">
@@ -9693,7 +9613,7 @@ function openWalkInEnrollmentModal() {
                     </div>
                 </div>
 
-                {{-- Guardian --}}
+                
                 <div id="se-pane-guardian" style="display:none;">
                     <div style="background:#f8faff;border:1.5px solid #e2e8f0;border-radius:14px;padding:20px;">
                         <div style="font-size:11px;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:.7px;margin-bottom:14px;">
@@ -9728,7 +9648,7 @@ function openWalkInEnrollmentModal() {
                     </div>
                 </div>
 
-                {{-- Enrollment --}}
+                
                 <div id="se-pane-enrollment" style="display:none;">
                     <div style="background:#f8faff;border:1.5px solid #e2e8f0;border-radius:14px;padding:20px;margin-bottom:16px;">
                         <div style="font-size:11px;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:.7px;margin-bottom:14px;">
@@ -9786,7 +9706,7 @@ function openWalkInEnrollmentModal() {
                     </div>
                 </div>
 
-                {{-- Address --}}
+                
                 <div id="se-pane-address" style="display:none;">
                     <div style="background:#f8faff;border:1.5px solid #e2e8f0;border-radius:14px;padding:20px;">
                         <div style="font-size:11px;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:.7px;margin-bottom:14px;">
@@ -9831,7 +9751,7 @@ function openWalkInEnrollmentModal() {
 
             </div>
 
-            {{-- Footer --}}
+            
             <div style="padding:16px 26px;background:#f8faff;border-top:1.5px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;gap:10px;">
                 <button type="button" data-bs-dismiss="modal"
                     style="display:flex;align-items:center;gap:6px;padding:11px 18px;background:#fff;color:#64748b;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">
@@ -9874,14 +9794,14 @@ function openWalkInEnrollmentModal() {
                         <label class="form-lbl">School Year *</label>
 
                         <select id="sc-sy" class="form-fld">
-                            @php
+                            <?php
                                 $currentSY = now()->month >= 6 ? now()->year : now()->year - 1;
                                 for ($y = $currentSY + 1; $y >= 1994; $y--) {
                                     $sy = $y . '-' . ($y + 1);
                                     $selected = $y === $currentSY + 1 ? 'selected' : '';
                                     echo "<option value=\"$sy\" $selected>$sy</option>";
                                 }
-                            @endphp
+                            ?>
                         </select>
 
                     </div>
@@ -9920,15 +9840,15 @@ function openWalkInEnrollmentModal() {
 
                             <option value="">— Select Grade First —</option>
 
-                            @foreach($allActiveSubjects ?? [] as $sub)
+                            <?php $__currentLoopData = $allActiveSubjects ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sub): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
 
-                                @if($sub)
+                                <?php if($sub): ?>
 
-                                <option value="{{ $sub->id }}" data-grade="{{ $sub->grade_level }}" hidden>{{ $sub->code ?? '' }} — {{ $sub->name }}</option>
+                                <option value="<?php echo e($sub->id); ?>" data-grade="<?php echo e($sub->grade_level); ?>" hidden><?php echo e($sub->code ?? ''); ?> — <?php echo e($sub->name); ?></option>
 
-                                @endif
+                                <?php endif; ?>
 
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
 
                         </select>
 
@@ -9942,15 +9862,15 @@ function openWalkInEnrollmentModal() {
 
                             <option value="">— Assign Later —</option>
 
-                            @foreach($allActiveTeachers ?? [] as $t)
+                            <?php $__currentLoopData = $allActiveTeachers ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $t): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
 
-                                @if($t !== null)
+                                <?php if($t !== null): ?>
 
-                                <option value="{{ $t->id }}">{{ $t->name }}</option>
+                                <option value="<?php echo e($t->id); ?>"><?php echo e($t->name); ?></option>
 
-                                @endif
+                                <?php endif; ?>
 
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
 
                         </select>
 
@@ -10065,7 +9985,7 @@ function openWalkInEnrollmentModal() {
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <!-- Payment Flow Modal -->
-@php
+<?php
     $adminGcashNumber = \App\Models\Setting::get('gcash_number', null);
     $adminGcashName   = \App\Models\Setting::get('gcash_account_name', null);
     $adminGcashQr     = \App\Models\Setting::get('gcash_qr_path', null);
@@ -10073,12 +9993,12 @@ function openWalkInEnrollmentModal() {
         ? (str_starts_with($adminGcashQr, '/') || str_starts_with($adminGcashQr, 'http')
             ? asset($adminGcashQr) : asset("storage/{$adminGcashQr}"))
         : null;
-@endphp
+?>
 <div class="modal fade" id="paymentFlowModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered" style="max-width:520px;">
         <div class="modal-content" style="border:0;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.18);">
 
-            {{-- Header --}}
+            
             <div style="background:linear-gradient(135deg,#1a3a6c 0%,#2563eb 100%);padding:20px 24px;position:relative;">
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" style="position:absolute;top:16px;right:16px;"></button>
                 <div style="display:flex;align-items:center;gap:14px;">
@@ -10090,7 +10010,7 @@ function openWalkInEnrollmentModal() {
                         <div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:2px;">Student: <span id="pay-flow-student-name" style="font-weight:600;">—</span></div>
                     </div>
                 </div>
-                {{-- Amount bubble (hidden until plan is selected) --}}
+                
                 <div id="pf-amount-bubble" style="display:none;margin-top:14px;background:rgba(255,255,255,0.15);border-radius:12px;padding:12px 16px;display:none;align-items:center;justify-content:space-between;gap:12px;">
                     <div>
                         <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:.5px;">Amount to Pay</div>
@@ -10098,7 +10018,7 @@ function openWalkInEnrollmentModal() {
                     </div>
                     <div style="font-size:24px;font-weight:800;color:#fff;" id="pf-amount-display">₱—</div>
                 </div>
-                {{-- Step pills --}}
+                
                 <div style="display:flex;align-items:center;gap:8px;margin-top:14px;">
                     <div id="pf-pill-1" style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;background:rgba(255,255,255,0.9);font-size:11px;font-weight:700;color:#1a3a6c;">
                         <span style="width:18px;height:18px;border-radius:50%;background:#1a3a6c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;">1</span> Select Plan
@@ -10110,7 +10030,7 @@ function openWalkInEnrollmentModal() {
                 </div>
             </div>
 
-            {{-- Body --}}
+            
             <div style="padding:22px 24px;background:#f8faff;max-height:72vh;overflow-y:auto;">
                 <input type="hidden" id="pay-flow-enrollment-id">
                 <input type="hidden" id="pay-flow-grade">
@@ -10120,7 +10040,7 @@ function openWalkInEnrollmentModal() {
                 <input type="hidden" id="admin-monthly-amount" value="0">
                 <input type="hidden" id="admin-total-amount" value="0">
 
-                {{-- Step 1: Select Payment Option --}}
+                
                 <div id="pay-flow-step-1">
                     <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;">
                         <i class="bi bi-list-check me-1" style="color:#1d4ed8;"></i> Choose Payment Plan
@@ -10191,10 +10111,10 @@ function openWalkInEnrollmentModal() {
                     </div>
                 </div>
 
-                {{-- Step 2: Method + GCash + Amount --}}
+                
                 <div id="pay-flow-step-2" style="display:none;">
 
-                    {{-- Method cards --}}
+                    
                     <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">
                         <i class="bi bi-1-circle-fill me-1" style="color:#1d4ed8;font-size:13px;"></i> Payment Method
                     </div>
@@ -10217,7 +10137,7 @@ function openWalkInEnrollmentModal() {
                         </button>
                     </div>
 
-                    {{-- GCash Info Panel --}}
+                    
                     <div id="admin-gcash-info" style="display:none;margin-bottom:16px;">
                         <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">
                             <i class="bi bi-2-circle-fill me-1" style="color:#1d4ed8;font-size:13px;"></i> GCash Details
@@ -10234,34 +10154,34 @@ function openWalkInEnrollmentModal() {
                                 </button>
                             </div>
                             <div id="admin-gcash-tab-number" style="padding:18px;text-align:center;">
-                                @if($adminGcashNumber)
-                                    <div style="font-size:22px;font-weight:800;color:#1e3a5f;letter-spacing:4px;margin-bottom:3px;">{{ $adminGcashNumber }}</div>
-                                    @if($adminGcashName)
-                                        <div style="font-size:12px;color:#64748b;margin-bottom:14px;">{{ $adminGcashName }}</div>
-                                    @endif
-                                    <button type="button" onclick="copyAdminGcashNumber('{{ $adminGcashNumber }}')"
+                                <?php if($adminGcashNumber): ?>
+                                    <div style="font-size:22px;font-weight:800;color:#1e3a5f;letter-spacing:4px;margin-bottom:3px;"><?php echo e($adminGcashNumber); ?></div>
+                                    <?php if($adminGcashName): ?>
+                                        <div style="font-size:12px;color:#64748b;margin-bottom:14px;"><?php echo e($adminGcashName); ?></div>
+                                    <?php endif; ?>
+                                    <button type="button" onclick="copyAdminGcashNumber('<?php echo e($adminGcashNumber); ?>')"
                                         style="display:inline-flex;align-items:center;gap:6px;padding:7px 18px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
                                         <i class="bi bi-copy" id="admin-gcash-copy-icon"></i><span id="admin-gcash-copy-label">Copy Number</span>
                                     </button>
-                                @else
+                                <?php else: ?>
                                     <i class="bi bi-telephone-x" style="font-size:28px;display:block;margin-bottom:8px;color:#cbd5e1;"></i>
                                     <div style="font-size:12px;color:#94a3b8;">GCash number not configured in Settings.</div>
-                                @endif
+                                <?php endif; ?>
                             </div>
                             <div id="admin-gcash-tab-qr" style="display:none;padding:18px;text-align:center;">
-                                @if($adminGcashQrUrl)
-                                    <img src="{{ $adminGcashQrUrl }}" alt="GCash QR"
+                                <?php if($adminGcashQrUrl): ?>
+                                    <img src="<?php echo e($adminGcashQrUrl); ?>" alt="GCash QR"
                                         style="max-width:170px;width:100%;border-radius:12px;box-shadow:0 4px 14px rgba(29,78,216,.15);">
                                     <div style="font-size:11px;color:#64748b;margin-top:10px;"><i class="bi bi-phone me-1"></i>Scan with GCash app</div>
-                                @else
+                                <?php else: ?>
                                     <i class="bi bi-qr-code" style="font-size:34px;display:block;margin-bottom:8px;color:#cbd5e1;"></i>
                                     <div style="font-size:12px;color:#94a3b8;">QR code not configured in Settings.</div>
-                                @endif
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
 
-                    {{-- Amount + Reference --}}
+                    
                     <div id="admin-payment-amount-section" style="display:none;">
                         <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;" id="admin-fields-label">
                             <i class="bi bi-2-circle-fill me-1" style="color:#1d4ed8;font-size:13px;"></i> Payment Details
@@ -10289,7 +10209,7 @@ function openWalkInEnrollmentModal() {
                             </div>
                         </div>
 
-                        {{-- Footer buttons --}}
+                        
                         <div style="display:flex;justify-content:space-between;gap:10px;">
                             <button type="button"
                                 onclick="document.getElementById('pay-flow-step-1').style.display='block';document.getElementById('pay-flow-step-2').style.display='none';document.getElementById('pf-pill-1').style.background='rgba(255,255,255,0.9)';document.getElementById('pf-pill-1').style.color='#1a3a6c';document.getElementById('pf-pill-2').style.background='rgba(255,255,255,0.2)';document.getElementById('pf-pill-2').style.color='rgba(255,255,255,0.6)';"
@@ -10443,7 +10363,7 @@ function openWalkInEnrollmentModal() {
     </div>
 </div>
 
-@php
+<?php
     // Non-paginated flat data for schedule modal dropdowns
     $modalSections = \App\Models\Section::with('subjects:id,name,code')
         ->select('id','name','grade_level','school_year','is_active','room_number')
@@ -10516,7 +10436,7 @@ function openWalkInEnrollmentModal() {
     } catch (Exception $e) {
         $allInstallmentData = [];
     }
-@endphp
+?>
 
 <script>
 
@@ -10764,7 +10684,7 @@ function openWalkInEnrollmentModal() {
         var slots    = gradeTimeSlots[grade] || gradeTimeSlots['default'];
         var days     = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
         var schedules = _scheduleCache || [];
-        var logoUrl  = '{{ asset("images/logo.png") }}';
+        var logoUrl  = '<?php echo e(asset("images/logo.png")); ?>';
         var printDate = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
 
         // Build table rows
@@ -12299,7 +12219,7 @@ function openWalkInEnrollmentModal() {
             // SF10 download button — always visible for any student with an ID
             const sf10Btn = document.getElementById('sv-sf10-btn');
             if (sf10Btn) {
-                sf10Btn.href = '{{ url("admin/students") }}/' + studentId + '/sf10';
+                sf10Btn.href = '<?php echo e(url("admin/students")); ?>/' + studentId + '/sf10';
                 sf10Btn.style.display = 'inline-block';
             }
 
@@ -12712,9 +12632,9 @@ function openWalkInEnrollmentModal() {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
     // â”€â”€ Data for schedule modal dropdowns â”€â”€
-    let sectionsList       = {!! $modalSectionsJson !!};
-    let teachersList       = {!! $modalTeachersJson !!};
-    let teacherAssignments = {!! $modalAssignmentsJson !!};
+    let sectionsList       = <?php echo $modalSectionsJson; ?>;
+    let teachersList       = <?php echo $modalTeachersJson; ?>;
+    let teacherAssignments = <?php echo $modalAssignmentsJson; ?>;
 
     // Filter sections by grade level in schedule modal
     function onScheduleGradeLevelChange(gradeLevel) {
@@ -12912,7 +12832,7 @@ function openWalkInEnrollmentModal() {
     }
 
     // â”€â”€ Installment data for modal â”€â”€
-    window.installmentData = @json($allInstallmentData ?? []);
+    window.installmentData = <?php echo json_encode($allInstallmentData ?? [], 15, 512) ?>;
 
     // Subject modal: wire status radio buttons
     document.querySelectorAll('[name="subj-active-radio"]').forEach(function(radio) {
@@ -16639,7 +16559,7 @@ function openWalkInEnrollmentModal() {
         btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Copying…';
         resultEl.style.display = 'none';
 
-        fetch('{{ route("admin.schedules.copy-term") }}', {
+        fetch('<?php echo e(route("admin.schedules.copy-term")); ?>', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -18552,12 +18472,12 @@ function openWalkInEnrollmentModal() {
     }
 
     // Auto-redirect to settings Account tab after photo/password update
-    @if(session('settings_tab') || session('photo_success') || session('password_success') || $errors->has('current_password'))
+    <?php if(session('settings_tab') || session('photo_success') || session('password_success') || $errors->has('current_password')): ?>
     document.addEventListener('DOMContentLoaded', function() {
         showSection('settings');
         showSettingsTab('account');
     });
-    @endif
+    <?php endif; ?>
 
     // Initialize payment filters when page loads
     document.addEventListener('DOMContentLoaded', function() {
@@ -19068,7 +18988,7 @@ function openWalkInEnrollmentModal() {
     // MAINTENANCE MODE TOGGLE
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    let _maintenanceOn = {{ ($maintenanceMode ?? false) ? 'true' : 'false' }};
+    let _maintenanceOn = <?php echo e(($maintenanceMode ?? false) ? 'true' : 'false'); ?>;
 
     function toggleMaintenanceMode() {
         const btn = document.getElementById('maintenance-topbar-btn');
@@ -19114,7 +19034,7 @@ function openWalkInEnrollmentModal() {
     // ENROLLMENT WINDOW TOGGLE
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    let _enrollmentCurrentlyOpen = {{ ($enrollmentOpen ?? true) ? 'true' : 'false' }};
+    let _enrollmentCurrentlyOpen = <?php echo e(($enrollmentOpen ?? true) ? 'true' : 'false'); ?>;
 
     function toggleEnrollmentWindow() {
         const btn = document.getElementById('enrollment-toggle-btn');
@@ -19966,7 +19886,7 @@ function openWalkInEnrollmentModal() {
             </div>
             <div class="modal-body modal-body-styled">
                 <form id="rejectDocForm" method="POST">
-                    @csrf
+                    <?php echo csrf_field(); ?>
                     <input type="hidden" name="_method" value="PUT">
                     <div class="mb-3">
                         <label class="dash-form-label"><i class="bi bi-chat-left-text me-1"></i>Rejection Reason</label>
@@ -19987,7 +19907,7 @@ function openWalkInEnrollmentModal() {
     <div class="modal-dialog modal-dialog-centered" style="max-width:480px;">
         <div class="modal-content" style="border:0;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.18);">
 
-            {{-- Header --}}
+            
             <div style="background:linear-gradient(135deg,#1a3a6c 0%,#2563eb 100%);padding:20px 24px;position:relative;">
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" style="position:absolute;top:16px;right:16px;"></button>
                 <div style="display:flex;align-items:center;gap:14px;">
@@ -19999,7 +19919,7 @@ function openWalkInEnrollmentModal() {
                         <div style="font-size:12px;color:rgba(255,255,255,0.8);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="pu-student-label">—</div>
                     </div>
                 </div>
-                {{-- Balance bubble --}}
+                
                 <div style="margin-top:14px;background:rgba(255,255,255,0.15);border-radius:12px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
                     <div>
                         <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:.5px;">Remaining Balance</div>
@@ -20009,12 +19929,12 @@ function openWalkInEnrollmentModal() {
                 </div>
             </div>
 
-            {{-- Body --}}
+            
             <div style="padding:20px 24px;background:#f8faff;">
                 <input type="hidden" id="pay-enrollment-id">
                 <input type="hidden" id="pay-student-name">
 
-                {{-- Summary Grid --}}
+                
                 <div id="payment-breakdown-section" style="margin-bottom:18px;">
                     <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">
                         <i class="bi bi-receipt-cutoff me-1" style="color:#1d4ed8;"></i> Payment Plan Summary
@@ -20022,7 +19942,7 @@ function openWalkInEnrollmentModal() {
                     <div id="payment-breakdown-content" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
                 </div>
 
-                {{-- Hidden inputs for controller compatibility --}}
+                
                 <input type="hidden" id="pay-amount" value="">
                 <input type="hidden" id="pay-reference" value="">
                 <input type="hidden" id="pay-method" value="">
@@ -20032,7 +19952,7 @@ function openWalkInEnrollmentModal() {
                     <option value="paid">Paid</option>
                 </select>
 
-                {{-- Plan Type Selection --}}
+                
                 <div style="margin-bottom:6px;">
                     <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">
                         <i class="bi bi-ui-checks me-1" style="color:#1d4ed8;"></i> Payment Plan Type
@@ -20061,7 +19981,7 @@ function openWalkInEnrollmentModal() {
                     </div>
                 </div>
 
-                {{-- Footer --}}
+                
                 <div style="display:flex;justify-content:space-between;gap:10px;">
                     <button type="button" data-bs-dismiss="modal"
                         style="display:flex;align-items:center;gap:6px;padding:11px 18px;background:#f0f4ff;color:#1d4ed8;border:1.5px solid #bfdbfe;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">
@@ -20128,7 +20048,7 @@ function openWalkInEnrollmentModal() {
             <div class="modal-footer" style="border-top:1px solid var(--border); padding:14px 20px; gap:8px; flex-wrap:wrap; justify-content:space-between;">
                 <div id="docViewerActions" style="display:flex; gap:8px; flex-wrap:wrap;">
                     <form id="docViewerApproveForm" method="POST" action="" style="display:inline;">
-                        @csrf
+                        <?php echo csrf_field(); ?>
                         <button type="submit" class="btn-dash btn-success" style="display:flex; align-items:center; gap:6px;" onclick="confirmAndSubmit(event, this.closest('form'), 'Approve this document?', {title:'Approve Document', btnText:'Approve', btnClass:'btn btn-success', btnIcon:'bi-check-circle-fill', headerBg:'linear-gradient(135deg,#27ae60,#1e8449)', headerIcon:'bi-check-circle-fill'})">
                             <i class="bi bi-check-lg"></i> Approve
                         </button>
@@ -20415,14 +20335,14 @@ function openWalkInEnrollmentModal() {
                     <div class="col-md-6">
                         <label class="dash-form-label"><i class="bi bi-calendar me-1" style="color:var(--green);"></i>School Year <span class="text-danger">*</span></label>
                         <select id="sec-sy" class="dash-form-control">
-                            @php
+                            <?php
                                 $cSY = now()->month >= 6 ? now()->year : now()->year - 1;
                                 for ($y = 2020; $y <= $cSY + 1; $y++) {
                                     $syOpt = $y . '-' . ($y + 1);
                                     $selOpt = $y === $cSY + 1 ? 'selected' : '';
                                     echo "<option value=\"$syOpt\" $selOpt>$syOpt</option>";
                                 }
-                            @endphp
+                            ?>
                         </select>
                     </div>
                     <div class="col-md-6">
@@ -20462,7 +20382,7 @@ function openWalkInEnrollmentModal() {
             <div class="modal-body modal-body-styled" style="padding:24px;">
                 <input type="hidden" id="sched-id">
 
-                {{-- Grade Level + Section row --}}
+                
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="dash-form-label"><i class="bi bi-layers me-1" style="color:#6f42c1;"></i>Grade Level <span class="text-danger">*</span></label>
@@ -20486,7 +20406,7 @@ function openWalkInEnrollmentModal() {
                     </div>
                 </div>
 
-                {{-- Subject row --}}
+                
                 <div class="mb-3">
                     <label class="dash-form-label"><i class="bi bi-book me-1" style="color:#6f42c1;"></i>Subject <span class="text-danger">*</span></label>
                     <select id="sched-subject" class="dash-form-control" onchange="onScheduleSubjectChange(document.getElementById('sched-section').value, this.value)">
@@ -20494,7 +20414,7 @@ function openWalkInEnrollmentModal() {
                     </select>
                 </div>
 
-                {{-- Teacher row --}}
+                
                 <div class="mb-3">
                     <label class="dash-form-label"><i class="bi bi-person-badge me-1" style="color:#6f42c1;"></i>Teacher <span style="color:var(--muted); font-size:11px;">(optional)</span></label>
                     <select id="sched-teacher" class="dash-form-control">
@@ -20503,15 +20423,15 @@ function openWalkInEnrollmentModal() {
                     <div style="font-size:11px; color:var(--muted); margin-top:4px;"><i class="bi bi-info-circle me-1"></i>All active teachers shown. Advisory/homeroom teachers for this section are marked with ✓.</div>
                 </div>
 
-                {{-- Day + Term row --}}
+                
                 <div class="row g-3 mb-3">
                     <div class="col-md-7">
                         <label class="dash-form-label"><i class="bi bi-calendar-week me-1" style="color:#6f42c1;"></i>Day of Week <span class="text-danger">*</span></label>
                         <div style="display:flex; gap:6px; flex-wrap:wrap;" id="sched-day-btns">
-                            @foreach(['Mon'=>'Monday','Tue'=>'Tuesday','Wed'=>'Wednesday','Thu'=>'Thursday','Fri'=>'Friday'] as $short=>$full)
-                            <button type="button" class="sched-day-btn" data-day="{{ $full }}"
-                                style="padding:7px 12px; border:2px solid #e2e8f0; border-radius:8px; background:#fff; font-size:12px; font-weight:700; cursor:pointer; transition:all .15s; color:var(--muted);">{{ $short }}</button>
-                            @endforeach
+                            <?php $__currentLoopData = ['Mon'=>'Monday','Tue'=>'Tuesday','Wed'=>'Wednesday','Thu'=>'Thursday','Fri'=>'Friday']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $short=>$full): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <button type="button" class="sched-day-btn" data-day="<?php echo e($full); ?>"
+                                style="padding:7px 12px; border:2px solid #e2e8f0; border-radius:8px; background:#fff; font-size:12px; font-weight:700; cursor:pointer; transition:all .15s; color:var(--muted);"><?php echo e($short); ?></button>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </div>
                         <input type="hidden" id="sched-day" value="">
                     </div>
@@ -20526,7 +20446,7 @@ function openWalkInEnrollmentModal() {
                     </div>
                 </div>
 
-                {{-- Time + Room row --}}
+                
                 <div class="row g-3 mb-3">
                     <div class="col-md-4">
                         <label class="dash-form-label"><i class="bi bi-clock me-1" style="color:#6f42c1;"></i>Start Time <span class="text-danger">*</span></label>
@@ -20544,7 +20464,7 @@ function openWalkInEnrollmentModal() {
                     </div>
                 </div>
 
-                {{-- Status --}}
+                
                 <div class="mb-0">
                     <label class="dash-form-label"><i class="bi bi-toggle-on me-1" style="color:#6f42c1;"></i>Status</label>
                     <select id="sched-active" class="dash-form-control">
@@ -20664,7 +20584,7 @@ function openWalkInEnrollmentModal() {
             <div class="modal-body modal-body-styled" style="padding:0;">
                 <input type="hidden" id="viewSectionId">
                 <input type="hidden" id="viewSectionName">
-                {{-- Capacity bar --}}
+                
                 <div id="viewSectionCapacityRow" style="padding:12px 16px; background:var(--pale-bg,#f8fafc); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px;">
                     <span style="font-size:12px; color:var(--muted); font-weight:600;">CAPACITY</span>
                     <div style="flex:1; height:8px; background:#e2e8f0; border-radius:4px; overflow:hidden;">
@@ -20753,19 +20673,19 @@ function openWalkInEnrollmentModal() {
                             </tr>
                         </thead>
                         <tbody>
-                            @php $allSubjectsForAssign = \App\Models\Subject::where('is_active', true)->orderBy('grade_level')->orderBy('name')->get(); @endphp
-                            @forelse($allSubjectsForAssign as $ms)
+                            <?php $allSubjectsForAssign = \App\Models\Subject::where('is_active', true)->orderBy('grade_level')->orderBy('name')->get(); ?>
+                            <?php $__empty_1 = true; $__currentLoopData = $allSubjectsForAssign; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $ms): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                             <tr>
                                 <td style="text-align:center;">
-                                    <input type="checkbox" class="subject-checkbox" value="{{ $ms->id }}" data-name="{{ $ms->name }}" data-code="{{ $ms->code }}">
+                                    <input type="checkbox" class="subject-checkbox" value="<?php echo e($ms->id); ?>" data-name="<?php echo e($ms->name); ?>" data-code="<?php echo e($ms->code); ?>">
                                 </td>
-                                <td style="font-size:12px; font-family:monospace;">{{ $ms->code }}</td>
-                                <td style="font-weight:600;">{{ $ms->name }}</td>
-                                <td><span class="grade-chip" style="font-size:11px;">{{ ucfirst(str_replace(['grade','_'],[' Grade ',''], $ms->grade_level ?? 'All')) }}</span></td>
+                                <td style="font-size:12px; font-family:monospace;"><?php echo e($ms->code); ?></td>
+                                <td style="font-weight:600;"><?php echo e($ms->name); ?></td>
+                                <td><span class="grade-chip" style="font-size:11px;"><?php echo e(ucfirst(str_replace(['grade','_'],[' Grade ',''], $ms->grade_level ?? 'All'))); ?></span></td>
                             </tr>
-                            @empty
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                             <tr><td colspan="4" style="text-align:center; padding:40px; color:var(--muted);">No subjects found. Add subjects first in Subject Management.</td></tr>
-                            @endforelse
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -20847,8 +20767,8 @@ function openWalkInEnrollmentModal() {
         new Chart(el, {
             type:'line',
             data:{
-                labels: @json($chMonths ?? []),
-                datasets:[{label:'Enrollments',data:@json($chEnroll ?? []),
+                labels: <?php echo json_encode($chMonths ?? [], 15, 512) ?>,
+                datasets:[{label:'Enrollments',data:<?php echo json_encode($chEnroll ?? [], 15, 512) ?>,
                     borderColor:_CC.blue,backgroundColor:_CC.bpale,
                     borderWidth:2,pointRadius:4,tension:0.4,fill:true}]
             },
@@ -20865,7 +20785,7 @@ function openWalkInEnrollmentModal() {
         new Chart(el, {
             type:'doughnut',
             data:{labels:['Paid','Partial','Unpaid'],
-                datasets:[{data:[{{$chPaid??0}},{{$chPartial??0}},{{$chUnpaid??0}}],
+                datasets:[{data:[<?php echo e($chPaid??0); ?>,<?php echo e($chPartial??0); ?>,<?php echo e($chUnpaid??0); ?>],
                     backgroundColor:[_CC.green,_CC.gold,_CC.red],borderWidth:0,hoverOffset:4}]},
             options:{responsive:true,maintainAspectRatio:false,cutout:'68%',
                 plugins:{legend:{position:'bottom',labels:{padding:12,font:{size:11}}}}}
@@ -20880,8 +20800,8 @@ function openWalkInEnrollmentModal() {
         const gradeEl = document.getElementById('rptGradeBar');
         if (gradeEl) new Chart(gradeEl,{
             type:'bar',
-            data:{labels:@json($rptChartGradeLabels??[]),
-                datasets:[{label:'Students',data:@json($rptChartGradeData??[]),
+            data:{labels:<?php echo json_encode($rptChartGradeLabels??[], 15, 512) ?>,
+                datasets:[{label:'Students',data:<?php echo json_encode($rptChartGradeData??[], 15, 512) ?>,
                     backgroundColor:_CC.blue,borderRadius:5,borderSkipped:false}]},
             options:{responsive:true,maintainAspectRatio:false,
                 plugins:{legend:{display:false}},
@@ -20892,7 +20812,7 @@ function openWalkInEnrollmentModal() {
         if (enrollEl) new Chart(enrollEl,{
             type:'doughnut',
             data:{labels:['Approved','Pending','Declined','Dropped'],
-                datasets:[{data:[{{$rptEnrollApproved??0}},{{$rptEnrollPending??0}},{{$rptEnrollDeclined??0}},{{$rptEnrollDropped??0}}],
+                datasets:[{data:[<?php echo e($rptEnrollApproved??0); ?>,<?php echo e($rptEnrollPending??0); ?>,<?php echo e($rptEnrollDeclined??0); ?>,<?php echo e($rptEnrollDropped??0); ?>],
                     backgroundColor:[_CC.green,_CC.gold,_CC.red,_CC.gray],borderWidth:0,hoverOffset:4}]},
             options:{responsive:true,maintainAspectRatio:false,cutout:'68%',
                 plugins:{legend:{position:'bottom',labels:{padding:10,font:{size:11}}}}}
@@ -20901,8 +20821,8 @@ function openWalkInEnrollmentModal() {
         const dailyEl = document.getElementById('rptDailyLine');
         if (dailyEl) new Chart(dailyEl,{
             type:'line',
-            data:{labels:@json(collect($rptDailyDays??[])->pluck('label')),
-                datasets:[{label:'Enrollments',data:@json(collect($rptDailyDays??[])->pluck('count')),
+            data:{labels:<?php echo json_encode(collect($rptDailyDays??[])->pluck('label'), 15, 512) ?>,
+                datasets:[{label:'Enrollments',data:<?php echo json_encode(collect($rptDailyDays??[])->pluck('count'), 15, 512) ?>,
                     borderColor:_CC.mid,backgroundColor:_CC.mpale,
                     borderWidth:2,pointRadius:4,tension:0.3,fill:true}]},
             options:{responsive:true,maintainAspectRatio:false,
@@ -20923,3 +20843,4 @@ function openWalkInEnrollmentModal() {
 </body>
 
 </html>
+<?php /**PATH C:\Users\ron28\Desktop\ILC SYSTEM\ilc-website-system\resources\views/adminDashboard.blade.php ENDPATH**/ ?>

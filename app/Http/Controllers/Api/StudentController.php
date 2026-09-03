@@ -39,18 +39,22 @@ class StudentController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
 
-        // 2. Submitted grades for this student/term/school year.
+        // 2. APPROVED grades only for this student/term/school year. A teacher
+        //    submitting a grade is not the final word — the registrar (admin's
+        //    Grade Oversight section) has to approve it first. 'submitted' grades
+        //    are intentionally excluded here; they surface instead as the
+        //    "pending approval" banner below via $pendingCount.
         //    Include records with NULL school_year (migrated from old system before
         //    school_year column existed). Year-specific records take priority via ordering —
         //    keyBy keeps the last item per subject_id, so NULL records must come first.
         $grades = Grade::where('student_id', $user->id)
             ->where('term', $term)
-            ->whereIn('status', ['submitted', 'approved'])
+            ->where('status', 'approved')
             ->when($schoolYear, fn($q) => $q->where(function ($q2) use ($schoolYear) {
                 $q2->where('school_year', $schoolYear)->orWhereNull('school_year');
             }))
-            ->orderByRaw('(school_year IS NULL) DESC') // NULL rows first → keyBy replaces them with year-specific rows
-            ->orderByRaw("FIELD(status,'approved','submitted') ASC") // approved takes priority
+            ->orderByRaw('(school_year IS NULL) DESC') // NULL rows first → year-specific row wins in keyBy()
+            ->orderBy('id') // stable tiebreaker if a stray duplicate row ever exists
             ->get()
             ->keyBy('subject_id');
 
@@ -141,16 +145,47 @@ class StudentController extends Controller
             }))
             ->count();
 
+        // Whole-school-year failing check (independent of the term/quarter filter
+        // above) — same "average across available terms < 75" rule the admin's
+        // assessment/summer-class views use, so this notice and that decision never
+        // disagree. Only counts approved grades, same reasoning as $grades above —
+        // a student shouldn't be told they're failing (or not) off data the
+        // registrar hasn't signed off on yet. Skipped for Nursery/Kinder, which
+        // use descriptive ratings and auto-advance rather than numeric pass/fail.
+        $failingSubjects = [];
+        if (!$isDescriptive) {
+            $yearGrades = Grade::where('student_id', $user->id)
+                ->where('status', 'approved')
+                ->whereNotNull('grade')
+                ->when($schoolYear, fn($q) => $q->where(function ($q2) use ($schoolYear) {
+                    $q2->where('school_year', $schoolYear)->orWhereNull('school_year');
+                }))
+                ->get()
+                ->groupBy('subject_id');
+
+            foreach ($yearGrades as $subjectId => $rows) {
+                $avg = round($rows->avg('grade'), 2);
+                if ($avg < 75) {
+                    $subject = $allSubjects->firstWhere('id', $subjectId);
+                    $failingSubjects[] = [
+                        'subject_name' => $subject->name ?? 'Subject #' . $subjectId,
+                        'average'      => $avg,
+                    ];
+                }
+            }
+        }
+
         return response()->json([
             'success'       => true,
             'pending_count' => $pendingCount,
             'data'          => [
-                'term'          => $term,
-                'grade_level'   => $gradeLevel,
-                'school_year'   => $schoolYear,
-                'is_descriptive'=> $isDescriptive,
-                'has_grades'    => $grades->isNotEmpty(),
-                'subjects'      => $subjects,
+                'term'             => $term,
+                'grade_level'      => $gradeLevel,
+                'school_year'      => $schoolYear,
+                'is_descriptive'   => $isDescriptive,
+                'has_grades'       => $grades->isNotEmpty(),
+                'subjects'         => $subjects,
+                'failing_subjects' => $failingSubjects,
             ],
         ]);
     }

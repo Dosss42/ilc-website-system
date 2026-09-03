@@ -210,10 +210,13 @@ class SummerClassController extends Controller
             'school_year' => 'required|string',
         ]);
 
+        // Approved grades only — a submitted-but-not-yet-approved or rejected
+        // grade isn't official, so it shouldn't make a student eligible here.
         $failingStudents = DB::table('grades')
             ->join('users', 'grades.student_id', '=', 'users.id')
             ->where('grades.subject_id', $request->subject_id)
             ->where('grades.school_year', $request->school_year)
+            ->where('grades.status', 'approved')
             ->where('grades.grade', '<', 75)
             ->whereNotNull('grades.grade')
             ->select('users.id', 'users.name', 'users.email', 'users.lrn', 'grades.grade', 'grades.term')

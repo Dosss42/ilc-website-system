@@ -1340,6 +1340,17 @@
                 <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:#f5f5f5;border:1px solid #bbb;border-radius:2px;display:inline-block;"></span> Not yet encoded</span>
             </div>
 
+            {{-- Failing-subject notice — informational, points the student to admin rather than self-enrolling --}}
+            <div id="gradesFailingNotice" style="display:none;margin:14px 16px 0;padding:12px 16px;background:#fff3e0;border:1px solid #ffcc80;border-radius:10px;font-size:12.5px;color:#7a4a00;">
+                <div style="display:flex;gap:10px;align-items:flex-start;">
+                    <i class="bi bi-exclamation-triangle-fill" style="font-size:16px;color:#e65100;margin-top:1px;flex-shrink:0;"></i>
+                    <div>
+                        <div style="font-weight:700;margin-bottom:2px;">Your grade is below passing in <span id="gradesFailingList"></span> this school year.</div>
+                        <div>Please talk to your adviser or the registrar about summer class options.</div>
+                    </div>
+                </div>
+            </div>
+
             <div style="overflow-x:auto;">
                 <table class="dash-table" id="gradesTable">
                     <thead>
@@ -3755,6 +3766,20 @@
             var hasGrades = res.data.has_grades;
             var termLabel = { 1:'Term 1', 2:'Term 2', 3:'Term 3' }[quarter] || ('Term ' + quarter);
             var syLabel   = res.data.school_year || schoolYear || '';
+
+            // Whole-year failing notice — shown regardless of which term is selected,
+            // since it reflects the year average, not just this quarter.
+            var failingEl  = document.getElementById('gradesFailingNotice');
+            var failingList = res.data.failing_subjects || [];
+            if (failingEl) {
+                if (failingList.length > 0) {
+                    document.getElementById('gradesFailingList').textContent =
+                        failingList.map(function(f) { return f.subject_name + ' (' + f.average + ')'; }).join(', ');
+                    failingEl.style.display = 'block';
+                } else {
+                    failingEl.style.display = 'none';
+                }
+            }
 
             if (subjects.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;"><div style="color:var(--muted);"><i class="bi bi-journal-x" style="font-size:32px;display:block;margin-bottom:8px;opacity:0.3;"></i>No subjects found for your grade level.</div></td></tr>';
