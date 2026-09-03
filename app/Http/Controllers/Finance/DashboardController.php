@@ -1237,8 +1237,34 @@ class DashboardController extends Controller
     /**
      * Delete a payment
      */
-    public function deletePayment(PaymentTransaction $payment)
+    /**
+     * Delete a payment — accepts a raw ID rather than route-model-binding to
+     * PaymentTransaction. Same ID-collision caution as approvePayment()/
+     * rejectPayment(): the admin dashboard's pending-payments list mixes
+     * StudentDocument (payment_screenshot) rows and PaymentTransaction rows,
+     * and their IDs can collide numerically, so this must check both.
+     */
+    public function deletePayment($id)
     {
+        $document = \App\Models\StudentDocument::where('id', $id)
+            ->where('document_type', 'payment_screenshot')
+            ->first();
+
+        if ($document) {
+            // A payment screenshot is an uploaded proof-of-payment, not a
+            // recorded transaction — "delete" just discards the pending upload.
+            if ($document->status !== 'pending') {
+                return redirect()->back()->with('error', 'Only pending payment screenshots can be deleted.');
+            }
+            $document->delete();
+            return redirect()->back()->with('success', 'Payment screenshot deleted successfully.');
+        }
+
+        $payment = PaymentTransaction::find($id);
+        if (!$payment) {
+            return redirect()->back()->with('error', 'Payment not found.');
+        }
+
         // Only allow deletion of pending payments
         if ($payment->status !== 'pending') {
             return redirect()->back()->with('error', 'Only pending payments can be deleted.');
@@ -1281,13 +1307,35 @@ class DashboardController extends Controller
     }
 
     /**
-     * View payment details
+     * View payment details — same dual-lookup as deletePayment()/approvePayment().
+     * Normalizes the differing "who reviewed it" field names (StudentDocument
+     * uses reviewedBy/reviewed_at, PaymentTransaction uses processedBy/
+     * processed_at) into two plain variables so the view doesn't need to know
+     * which model it got.
      */
-    public function paymentDetails(PaymentTransaction $payment)
+    public function paymentDetails($id)
     {
-        $payment->load(['enrollment', 'user', 'processedBy']);
+        $document = \App\Models\StudentDocument::where('id', $id)
+            ->where('document_type', 'payment_screenshot')
+            ->first();
 
-        return view('finance.payment-details', ['document' => $payment]);
+        if ($document) {
+            $document->load(['enrollment', 'user', 'reviewedBy']);
+            $reviewerName = $document->reviewedBy->name ?? 'System';
+            $reviewedAt   = $document->reviewed_at;
+            return view('finance.payment-details', compact('document', 'reviewerName', 'reviewedAt'));
+        }
+
+        $payment = PaymentTransaction::find($id);
+        if (!$payment) {
+            abort(404, 'Payment not found.');
+        }
+        $payment->load(['enrollment', 'user', 'processedBy']);
+        $document     = $payment;
+        $reviewerName = $payment->processedBy->name ?? 'System';
+        $reviewedAt   = $payment->processed_at;
+
+        return view('finance.payment-details', compact('document', 'reviewerName', 'reviewedAt'));
     }
 
     /**
