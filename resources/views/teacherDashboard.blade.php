@@ -2047,10 +2047,23 @@
                 const draftG      = (s.draft_grade !== null && s.draft_grade !== undefined && s.draft_grade !== '') ? String(s.draft_grade) : null;
                 const inputVal    = submittedG !== '' ? submittedG : (draftG !== null ? draftG : '');
                 const isDraftFill = submittedG === '' && draftG !== null;
+                // Posted grades (submitted/approved) can't be re-edited from this table anymore —
+                // 'rejected' stays editable so a returned grade can be corrected and resubmitted.
+                const isLocked = s.grade_status === 'submitted' || s.grade_status === 'approved';
 
                 let inputHtml, remarks;
 
-                if (isDesc) {
+                if (isLocked) {
+                    // ── Locked: already posted, read-only display, not part of the submitted form ──
+                    const lockedDisplay = isDesc
+                        ? (inputVal ? (DESCRIPTIVE_LABELS[inputVal] || inputVal) : '—')
+                        : (inputVal !== '' ? inputVal : '—');
+                    inputHtml = '<div style="padding:6px 8px;font-size:13px;font-weight:600;color:#555;background:#f5f5f5;border-radius:6px;text-align:center;" title="Already posted — no longer editable here.">'
+                        + '<i class="bi bi-lock-fill" style="font-size:10px;color:#999;margin-right:4px;"></i>' + lockedDisplay + '</div>';
+                    remarks = isDesc
+                        ? (inputVal ? (DESCRIPTIVE_LABELS[inputVal] || inputVal) : '')
+                        : (s.remarks || '');
+                } else if (isDesc) {
                     // ── Descriptive dropdown (Nursery / Kinder) ──
                     const opts = DESCRIPTIVE_OPTIONS.map(function(o) {
                         const sel = inputVal === o.value ? ' selected' : '';

@@ -927,6 +927,19 @@ class EnrollmentController extends Controller
             ->get();
         $teachers  = User::where('role', 'teacher')->select('id', 'name', 'email', 'is_active', 'created_at')->orderByDesc('created_at')->paginate(15, ['*'], 'teacher_page');
 
+        // Complete (non-paginated) subject/teacher lists — $subjects and $teachers
+        // above are paginated for the Subject/Teacher Management tables and only
+        // ever carry one page's worth of rows, so dropdowns elsewhere (e.g. the
+        // Summer Class modal) need their own unpaginated source.
+        $allActiveSubjects = \App\Models\Subject::where('is_active', true)
+            ->select('id', 'code', 'name', 'grade_level')
+            ->orderBy('grade_level')->orderBy('name')
+            ->get();
+        $allActiveTeachers = User::where('role', 'teacher')->where('is_active', true)
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get();
+
         // ── 5b. Teacher Assignments – for schedule teacher filtering ──
         $teacherAssignments = TeacherAssignment::with(['teacher:id,name', 'section:id,name,grade_level', 'subject:id,name,code'])
             ->select('id', 'teacher_id', 'section_id', 'subject_id', 'is_advisory', 'school_year')
@@ -1012,6 +1025,45 @@ class EnrollmentController extends Controller
             ->groupBy('student_id')
             ->pluck('c', 'student_id');
 
+        // Summer-class remediation status per student — informational only, does
+        // not block promotion. A subject counts as "failed" when its TERM AVERAGE
+        // is below 75, computed from APPROVED grades only — a registrar-rejected
+        // or still-pending grade isn't official yet, so it shouldn't be able to
+        // flag a student as failing (or clear them) before it's actually approved.
+        // "Cleared" means a SummerClassEnrollment for that same subject has
+        // status = 'passed'.
+        $assessGradeRows = \App\Models\Grade::whereIn('student_id', $assessStudents->pluck('id'))
+            ->where('school_year', $currentSchoolYear)
+            ->where('status', 'approved')
+            ->whereNotNull('grade')
+            ->get(['student_id', 'subject_id', 'grade']);
+
+        $assessFailingSubjectIds = [];
+        foreach ($assessGradeRows->groupBy('student_id') as $studentId => $rows) {
+            $failed = $rows->groupBy('subject_id')
+                ->filter(fn($subjectRows) => $subjectRows->avg('grade') < 75)
+                ->keys();
+            if ($failed->isNotEmpty()) {
+                $assessFailingSubjectIds[$studentId] = $failed;
+            }
+        }
+
+        $assessSummerCleared = \App\Models\SummerClassEnrollment::whereIn('student_id', $assessStudents->pluck('id'))
+            ->where('status', 'passed')
+            ->with('summerClass:id,subject_id')
+            ->get()
+            ->groupBy('student_id')
+            ->map(fn($rows) => $rows->pluck('summerClass.subject_id')->filter()->unique());
+
+        $assessSummerStatus = [];
+        foreach ($assessFailingSubjectIds as $studentId => $failedSubjectIds) {
+            $clearedSubjectIds = $assessSummerCleared[$studentId] ?? collect();
+            $assessSummerStatus[$studentId] = [
+                'failed'  => $failedSubjectIds->count(),
+                'cleared' => $failedSubjectIds->intersect($clearedSubjectIds)->count(),
+            ];
+        }
+
         // Staff who can be logged as the counselor on a guidance record.
         $guidanceCounselors = \App\Models\User::whereIn('role', ['admin', 'superadmin', 'teacher'])
             ->where('is_active', true)
@@ -1035,10 +1087,11 @@ class EnrollmentController extends Controller
             'sort', 'statusFilter', 'gradeFilter',
             'studentSearch', 'studentGradeFilter', 'studentStatusFilter', 'studentPaymentFilter', 'studentSchoolYearFilter', 'archivedStudents',
             'subjects', 'sections', 'schedules', 'teachers', 'teacherAssignments', 'guidanceRecords',
+            'allActiveSubjects', 'allActiveTeachers',
             'guidanceSearch', 'guidanceStatus', 'guidanceConcern', 'guidanceSort',
             'feeBreakdowns', 'feeSettings', 'recentStudents', 'allSchedules',
             'currentSchoolYear', 'enrollmentOpen', 'maintenanceMode', 'assessStudents', 'assessGuidanceCounts',
-            'guidanceCounselors',
+            'assessSummerStatus', 'guidanceCounselors',
             'contactMessages', 'unreadMessagesCount',
             'announcements', 'news'
         ));
@@ -2854,6 +2907,65 @@ class EnrollmentController extends Controller
         return response()->json(['records' => $records]);
     }
 
+    /**
+     * Failing subjects (term average < 75, same rule as the Grades tab) for a
+     * student, and whether each one has been cleared via a passed summer class.
+     * Informational only — shown in the assessment modal, does not block anything.
+     */
+    public function getStudentSummerForAssess(User $user)
+    {
+        $schoolYear = $this->getCurrentSchoolYear();
+
+        // Approved grades only — matches the same registrar gate the student
+        // portal now enforces, so a pending/rejected grade can't flag a subject
+        // as failing here before it's actually official.
+        $grades = \App\Models\Grade::where('student_id', $user->id)
+            ->where('school_year', $schoolYear)
+            ->where('status', 'approved')
+            ->whereNotNull('grade')
+            ->with('subject:id,name')
+            ->get();
+
+        $failing = $grades->groupBy('subject_id')
+            ->map(fn($rows) => [
+                'subject_id'   => $rows->first()->subject_id,
+                'subject_name' => $rows->first()->subject->name ?? 'Subject #' . $rows->first()->subject_id,
+                'average'      => round($rows->avg('grade'), 2),
+            ])
+            ->filter(fn($row) => $row['average'] < 75)
+            ->values();
+
+        $subjects = $failing->map(function ($row) use ($user, $schoolYear) {
+            $enrollment = \App\Models\SummerClassEnrollment::where('student_id', $user->id)
+                ->whereHas('summerClass', fn($q) => $q->where('subject_id', $row['subject_id']))
+                ->with('summerClass:id,subject_id,start_date,end_date')
+                ->latest('id')
+                ->first();
+
+            // Not enrolled anywhere yet — check whether a summer class already
+            // exists for this subject this year that the admin could enroll them
+            // into directly, without leaving this modal.
+            $availableClassId = null;
+            if (!$enrollment) {
+                $availableClassId = \App\Models\SummerClass::where('subject_id', $row['subject_id'])
+                    ->where('school_year', $schoolYear)
+                    ->whereIn('status', ['upcoming', 'ongoing'])
+                    ->value('id');
+            }
+
+            return [
+                'subject_id'         => $row['subject_id'],
+                'subject_name'       => $row['subject_name'],
+                'failing_grade'      => $row['average'],
+                'summer_status'      => $enrollment->status ?? 'not_enrolled', // enrolled, passed, failed, dropped, not_enrolled
+                'summer_grade'       => $enrollment->summer_grade ?? null,
+                'available_class_id' => $availableClassId,
+            ];
+        })->values();
+
+        return response()->json(['subjects' => $subjects]);
+    }
+
     private function nextSchoolYear(string $schoolYear): string
     {
         $parts = explode('-', $schoolYear);
@@ -2977,8 +3089,11 @@ class EnrollmentController extends Controller
             $enr->setRelation('subjects', $section ? $section->subjects()->orderBy('name')->get() : collect());
         }
 
-        // All grades for this student
+        // All grades for this student — approved only. SF10 is the official
+        // Learner's Permanent Academic Record; a draft, still-pending, or
+        // registrar-rejected grade isn't final and shouldn't appear on it.
         $grades = \App\Models\Grade::where('student_id', $user->id)
+            ->where('status', 'approved')
             ->with('subject')
             ->get();
 

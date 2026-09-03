@@ -276,6 +276,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/student/{user}/grades-for-assess',       [EnrollmentController::class, 'getStudentGradesForAssess'])->name('student.grades-for-assess');
     Route::get('/student/{user}/documents-for-assess',    [EnrollmentController::class, 'getStudentDocumentsForAssess'])->name('student.documents-for-assess');
     Route::get('/student/{user}/guidance-for-assess',      [EnrollmentController::class, 'getStudentGuidanceForAssess'])->name('student.guidance-for-assess');
+    Route::get('/student/{user}/summer-for-assess',        [EnrollmentController::class, 'getStudentSummerForAssess'])->name('student.summer-for-assess');
 
     // MASS PROMOTION (kept for legacy, hidden from UI)
     Route::post('/students/mass-promote', [EnrollmentController::class, 'massPromote'])->name('students.mass-promote');
