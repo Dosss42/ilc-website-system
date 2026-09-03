@@ -568,6 +568,28 @@ class CashierController extends Controller
         $data   = $request->all();
         $status = $data['status'] ?? null;
 
+        // An invoice that expired or was explicitly failed will never be paid —
+        // mark the still-pending transaction so it doesn't sit as "Pending"
+        // forever with no visibility to Finance/Cashier or the student. Only
+        // touch it while it's still pending: if it somehow already completed
+        // (e.g. a race with a PAID webhook), leave that alone.
+        if (in_array($status, ['EXPIRED', 'FAILED'])) {
+            return DB::transaction(function () use ($data, $status) {
+                $transaction = PaymentTransaction::where('xendit_invoice_id', $data['id'])
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($transaction && $transaction->status === 'pending') {
+                    $transaction->update([
+                        'status' => 'expired',
+                        'processed_at' => now(),
+                    ]);
+                }
+
+                return response()->json(['message' => 'Handled: ' . $status]);
+            });
+        }
+
         if (!in_array($status, ['PAID', 'SETTLED'])) {
             return response()->json(['message' => 'Ignored: ' . $status]);
         }

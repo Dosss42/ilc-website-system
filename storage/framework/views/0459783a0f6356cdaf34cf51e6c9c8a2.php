@@ -289,46 +289,46 @@
 <body>
     <aside class="sidebar">
         <div class="sidebar-header">
-            <a href="{{ route('finance.dashboard') }}" class="sidebar-brand">
+            <a href="<?php echo e(route('finance.dashboard')); ?>" class="sidebar-brand">
                 <i class="bi bi-wallet2"></i>
                 <span>Finance Portal</span>
             </a>
         </div>
         <nav class="sidebar-menu">
             <div class="menu-section">Main</div>
-            <a href="{{ route('finance.dashboard') }}" class="menu-item">
+            <a href="<?php echo e(route('finance.dashboard')); ?>" class="menu-item">
                 <i class="bi bi-grid-fill"></i>
                 Dashboard
             </a>
             <div class="menu-section">Finance</div>
-            <a href="{{ route('finance.payments.index') }}" class="menu-item active">
+            <a href="<?php echo e(route('finance.payments.index')); ?>" class="menu-item active">
                 <i class="bi bi-credit-card-fill"></i>
                 Payments
             </a>
-            <a href="{{ route('finance.installments.index') }}" class="menu-item">
+            <a href="<?php echo e(route('finance.installments.index')); ?>" class="menu-item">
                 <i class="bi bi-calendar-check-fill"></i>
                 Installments
             </a>
-            <a href="{{ route('finance.fees.index') }}" class="menu-item">
+            <a href="<?php echo e(route('finance.fees.index')); ?>" class="menu-item">
                 <i class="bi bi-cash-stack"></i>
                 Fee Management
             </a>
             <div class="menu-section">Reports</div>
-            <a href="{{ route('finance.reports.index') }}" class="menu-item">
+            <a href="<?php echo e(route('finance.reports.index')); ?>" class="menu-item">
                 <i class="bi bi-graph-up"></i>
                 Financial Reports
             </a>
             <div class="menu-section">Account</div>
-            <a href="{{ route('finance.profile') }}" class="menu-item">
+            <a href="<?php echo e(route('finance.profile')); ?>" class="menu-item">
                 <i class="bi bi-person-circle"></i>
                 My Profile
             </a>
-            <a href="{{ route('finance.change-password') }}" class="menu-item">
+            <a href="<?php echo e(route('finance.change-password')); ?>" class="menu-item">
                 <i class="bi bi-shield-lock"></i>
                 Change Password
             </a>
-            <form method="POST" action="{{ route('finance.logout') }}" style="margin: 0;">
-                @csrf
+            <form method="POST" action="<?php echo e(route('finance.logout')); ?>" style="margin: 0;">
+                <?php echo csrf_field(); ?>
                 <button type="submit" class="menu-item" style="width: 100%; background: none; border: none; cursor: pointer;">
                     <i class="bi bi-box-arrow-left"></i>
                     Logout
@@ -340,26 +340,28 @@
     <main class="main-content">
         <div class="page-header">
             <h1 class="page-title">
-                <a href="{{ route('finance.payments.index') }}" class="btn-back">
+                <a href="<?php echo e(route('finance.payments.index')); ?>" class="btn-back">
                     <i class="bi bi-arrow-left"></i> Back to Payments
                 </a>
                 Payment Details
             </h1>
         </div>
 
-        @if(session('success'))
+        <?php if(session('success')): ?>
             <div class="alert alert-success alert-dismissible fade show" role="alert">
-                {{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        @endif
+                <?php echo e(session('success')); ?>
 
-        @if(session('error'))
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                {{ session('error') }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
-        @endif
+        <?php endif; ?>
+
+        <?php if(session('error')): ?>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <?php echo e(session('error')); ?>
+
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php endif; ?>
 
         <div class="row">
             <!-- Payment Information -->
@@ -370,74 +372,74 @@
                             <i class="bi bi-credit-card" style="color: var(--gold);"></i>
                             Payment Information
                         </h3>
-                        @if($document->status === 'pending')
+                        <?php if($document->status === 'pending'): ?>
                             <span class="status-badge pending">
                                 <i class="bi bi-hourglass-split"></i> Pending Verification
                             </span>
-                        @elseif($document->status === 'approved')
+                        <?php elseif($document->status === 'approved'): ?>
                             <span class="status-badge approved">
                                 <i class="bi bi-check-circle"></i> Approved
                             </span>
-                        @else
+                        <?php else: ?>
                             <span class="status-badge rejected">
                                 <i class="bi bi-x-circle"></i> Rejected
                             </span>
-                        @endif
+                        <?php endif; ?>
                     </div>
                     <div class="card-body">
                         <div class="info-row">
                             <div class="info-label">Payment ID</div>
-                            <div class="info-value">#{{ $document->id }}</div>
+                            <div class="info-value">#<?php echo e($document->id); ?></div>
                         </div>
                         
                         <div class="info-row">
                             <div class="info-label">Student Name</div>
-                            <div class="info-value">{{ $document->user->name ?? 'N/A' }}</div>
+                            <div class="info-value"><?php echo e($document->user->name ?? 'N/A'); ?></div>
                         </div>
                         
                         <div class="info-row">
                             <div class="info-label">Email</div>
-                            <div class="info-value">{{ $document->user->email ?? 'N/A' }}</div>
+                            <div class="info-value"><?php echo e($document->user->email ?? 'N/A'); ?></div>
                         </div>
                         
                         <div class="info-row">
                             <div class="info-label">Grade Level</div>
-                            <div class="info-value">{{ $document->enrollment->grade_level ?? 'N/A' }}</div>
+                            <div class="info-value"><?php echo e($document->enrollment->grade_level ?? 'N/A'); ?></div>
                         </div>
                         
                         <div class="info-row">
                             <div class="info-label">Description</div>
-                            <div class="info-value">{{ $document->description ?? 'Payment' }}</div>
+                            <div class="info-value"><?php echo e($document->description ?? 'Payment'); ?></div>
                         </div>
                         
                         <div class="info-row">
                             <div class="info-label">Submitted On</div>
-                            <div class="info-value">{{ $document->created_at->format('F d, Y h:i A') }}</div>
+                            <div class="info-value"><?php echo e($document->created_at->format('F d, Y h:i A')); ?></div>
                         </div>
                         
-                        @if($document->status !== 'pending')
+                        <?php if($document->status !== 'pending'): ?>
                             <div class="info-row">
                                 <div class="info-label">Reviewed By</div>
-                                <div class="info-value">{{ $reviewerName }}</div>
+                                <div class="info-value"><?php echo e($reviewerName); ?></div>
                             </div>
 
                             <div class="info-row">
                                 <div class="info-label">Reviewed On</div>
-                                <div class="info-value">{{ $reviewedAt ? $reviewedAt->format('F d, Y h:i A') : $document->updated_at->format('F d, Y h:i A') }}</div>
+                                <div class="info-value"><?php echo e($reviewedAt ? $reviewedAt->format('F d, Y h:i A') : $document->updated_at->format('F d, Y h:i A')); ?></div>
                             </div>
-                        @endif
+                        <?php endif; ?>
                         
-                        @if($document->status === 'rejected' && $document->reject_reason)
+                        <?php if($document->status === 'rejected' && $document->reject_reason): ?>
                             <div class="info-row">
                                 <div class="info-label">Rejection Reason</div>
-                                <div class="info-value" style="color: #dc3545;">{{ $document->reject_reason }}</div>
+                                <div class="info-value" style="color: #dc3545;"><?php echo e($document->reject_reason); ?></div>
                             </div>
-                        @endif
+                        <?php endif; ?>
                     </div>
                 </div>
 
                 <!-- Enrollment Info -->
-                @if($document->enrollment)
+                <?php if($document->enrollment): ?>
                     <div class="content-card">
                         <div class="card-header">
                             <h3 class="card-title">
@@ -448,39 +450,39 @@
                         <div class="card-body">
                             <div class="info-row">
                                 <div class="info-label">Payment Plan</div>
-                                <div class="info-value">Option {{ $document->enrollment->payment_option ?? 'N/A' }}</div>
+                                <div class="info-value">Option <?php echo e($document->enrollment->payment_option ?? 'N/A'); ?></div>
                             </div>
                             
                             <div class="info-row">
                                 <div class="info-label">Total Fee</div>
-                                <div class="info-value">₱{{ number_format($document->enrollment->total_fee ?? 0, 2) }}</div>
+                                <div class="info-value">₱<?php echo e(number_format($document->enrollment->total_fee ?? 0, 2)); ?></div>
                             </div>
                             
                             <div class="info-row">
                                 <div class="info-label">Amount Paid</div>
-                                <div class="info-value">₱{{ number_format($document->enrollment->payment_amount ?? 0, 2) }}</div>
+                                <div class="info-value">₱<?php echo e(number_format($document->enrollment->payment_amount ?? 0, 2)); ?></div>
                             </div>
                             
                             <div class="info-row">
                                 <div class="info-label">Remaining Balance</div>
-                                <div class="info-value" style="color: #e65100;">₱{{ number_format($document->enrollment->remaining_balance ?? 0, 2) }}</div>
+                                <div class="info-value" style="color: #e65100;">₱<?php echo e(number_format($document->enrollment->remaining_balance ?? 0, 2)); ?></div>
                             </div>
                             
                             <div class="info-row">
                                 <div class="info-label">Payment Status</div>
                                 <div class="info-value">
-                                    @if($document->enrollment->payment_status === 'paid')
+                                    <?php if($document->enrollment->payment_status === 'paid'): ?>
                                         <span style="color: #28a745;">Fully Paid</span>
-                                    @elseif($document->enrollment->payment_status === 'partial')
+                                    <?php elseif($document->enrollment->payment_status === 'partial'): ?>
                                         <span style="color: #ffc107;">Partially Paid</span>
-                                    @else
+                                    <?php else: ?>
                                         <span style="color: #6c757d;">Pending</span>
-                                    @endif
+                                    <?php endif; ?>
                                 </div>
                             </div>
                         </div>
                     </div>
-                @endif
+                <?php endif; ?>
             </div>
 
             <!-- Payment Screenshot & Actions -->
@@ -493,29 +495,29 @@
                         </h3>
                     </div>
                     <div class="card-body" style="text-align: center;">
-                        @if($document->file_path)
-                            <a href="{{ route('documents.view', $document) }}" target="_blank">
-                                <img src="{{ route('documents.view', $document) }}" alt="Payment Screenshot" class="payment-screenshot">
+                        <?php if($document->file_path): ?>
+                            <a href="<?php echo e(route('documents.view', $document)); ?>" target="_blank">
+                                <img src="<?php echo e(route('documents.view', $document)); ?>" alt="Payment Screenshot" class="payment-screenshot">
                             </a>
                             <div style="margin-top: 16px;">
-                                <a href="{{ route('documents.view', $document) }}" target="_blank" class="btn-back">
+                                <a href="<?php echo e(route('documents.view', $document)); ?>" target="_blank" class="btn-back">
                                     <i class="bi bi-eye"></i> View Full Size
                                 </a>
-                                <a href="{{ route('documents.view', $document) }}" download class="btn-back" style="margin-left: 8px;">
+                                <a href="<?php echo e(route('documents.view', $document)); ?>" download class="btn-back" style="margin-left: 8px;">
                                     <i class="bi bi-download"></i> Download
                                 </a>
                             </div>
-                        @else
+                        <?php else: ?>
                             <div style="padding: 40px; color: #666;">
                                 <i class="bi bi-image" style="font-size: 64px; color: #ddd; display: block; margin-bottom: 16px;"></i>
                                 No screenshot available
                             </div>
-                        @endif
+                        <?php endif; ?>
                     </div>
                 </div>
 
                 <!-- Actions -->
-                @if($document->status === 'pending')
+                <?php if($document->status === 'pending'): ?>
                     <div class="content-card">
                         <div class="card-header">
                             <h3 class="card-title">
@@ -525,8 +527,8 @@
                         </div>
                         <div class="card-body">
                             <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                                <form method="POST" action="{{ route('admin.payments.approve', $document) }}" style="display: inline;">
-                                    @csrf
+                                <form method="POST" action="<?php echo e(route('admin.payments.approve', $document)); ?>" style="display: inline;">
+                                    <?php echo csrf_field(); ?>
                                     <button type="submit" class="btn-approve" onclick="return confirm('Are you sure you want to APPROVE this payment?')">
                                         <i class="bi bi-check-lg"></i> Approve Payment
                                     </button>
@@ -538,7 +540,7 @@
                             </div>
                         </div>
                     </div>
-                @endif
+                <?php endif; ?>
 
                 <!-- Timeline -->
                 <div class="content-card">
@@ -553,30 +555,31 @@
                             <div class="timeline-item">
                                 <div class="timeline-dot" style="background: var(--blue);"></div>
                                 <div class="timeline-content">
-                                    <div class="timeline-time">{{ $document->created_at->format('M d, Y h:i A') }}</div>
+                                    <div class="timeline-time"><?php echo e($document->created_at->format('M d, Y h:i A')); ?></div>
                                     <div class="timeline-title">Payment Submitted</div>
                                     <div class="timeline-desc">Student submitted payment for verification</div>
                                 </div>
                             </div>
                             
-                            @if($document->status !== 'pending')
+                            <?php if($document->status !== 'pending'): ?>
                                 <div class="timeline-item">
-                                    <div class="timeline-dot" style="background: {{ $document->status === 'approved' ? '#28a745' : '#dc3545' }};"></div>
+                                    <div class="timeline-dot" style="background: <?php echo e($document->status === 'approved' ? '#28a745' : '#dc3545'); ?>;"></div>
                                     <div class="timeline-content">
-                                        <div class="timeline-time">{{ $reviewedAt ? $reviewedAt->format('M d, Y h:i A') : $document->updated_at->format('M d, Y h:i A') }}</div>
+                                        <div class="timeline-time"><?php echo e($reviewedAt ? $reviewedAt->format('M d, Y h:i A') : $document->updated_at->format('M d, Y h:i A')); ?></div>
                                         <div class="timeline-title">
-                                            @if($document->status === 'approved')
+                                            <?php if($document->status === 'approved'): ?>
                                                 <span style="color: #28a745;"><i class="bi bi-check-circle"></i> Payment Approved</span>
-                                            @else
+                                            <?php else: ?>
                                                 <span style="color: #dc3545;"><i class="bi bi-x-circle"></i> Payment Rejected</span>
-                                            @endif
+                                            <?php endif; ?>
                                         </div>
                                         <div class="timeline-desc">
-                                            Reviewed by {{ $reviewerName }}
+                                            Reviewed by <?php echo e($reviewerName); ?>
+
                                         </div>
                                     </div>
                                 </div>
-                            @endif
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
@@ -585,7 +588,7 @@
     </main>
 
     <!-- Reject Modal -->
-    @if($document->status === 'pending')
+    <?php if($document->status === 'pending'): ?>
         <div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content" style="border-radius: 12px;">
@@ -595,11 +598,11 @@
                         </h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
-                    <form method="POST" action="{{ route('admin.payments.reject', $document) }}">
-                        @csrf
+                    <form method="POST" action="<?php echo e(route('admin.payments.reject', $document)); ?>">
+                        <?php echo csrf_field(); ?>
                         <div class="modal-body">
                             <p style="color: #666; margin-bottom: 16px;">
-                                You are about to reject payment <strong>#{{ $document->id }}</strong> from <strong>{{ $document->user->name ?? 'N/A' }}</strong>.
+                                You are about to reject payment <strong>#<?php echo e($document->id); ?></strong> from <strong><?php echo e($document->user->name ?? 'N/A'); ?></strong>.
                             </p>
                             <div class="form-group">
                                 <label class="form-label">Rejection Reason <span style="color: #dc3545;">*</span></label>
@@ -615,8 +618,9 @@
                 </div>
             </div>
         </div>
-    @endif
+    <?php endif; ?>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
+<?php /**PATH C:\Users\ron28\Desktop\ILC SYSTEM\ilc-website-system\resources\views\finance\payment-details.blade.php ENDPATH**/ ?>

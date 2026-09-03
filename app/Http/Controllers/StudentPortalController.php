@@ -38,6 +38,12 @@ class StudentPortalController extends Controller
                 ->where('user_id', $user->id)
                 ->first();
         }
+        // 'failed' means Xendit sent the parent back via failure_redirect_url
+        // (declined / cancelled at checkout). The transaction itself may still
+        // show 'pending' at this instant (the EXPIRED webhook can arrive after
+        // the redirect) so the view uses this flag rather than the raw status
+        // to decide whether to show the error state.
+        $paymentOutcome = request()->query('outcome');
 
         // Prefer the newest school year first, then the most-advanced status within that year.
         // This ensures a just-approved re-enrollment for 2027-2028 takes over from 2026-2027 enrolled.
@@ -63,6 +69,7 @@ class StudentPortalController extends Controller
                 'profileComplete' => false,
                 'schedules' => collect([]),
                 'justPaidTransaction' => $justPaidTransaction,
+                'paymentOutcome' => $paymentOutcome,
             ]);
         }
 
@@ -246,7 +253,7 @@ class StudentPortalController extends Controller
             'needsReenrollment', 'reenrollmentOpen', 'suggestedGrade',
             'currentSchoolYear', 'promotionRecord', 'enrollmentWindowOpen',
             'profile', 'address', 'guardian', 'mother', 'father', 'previousSchool',
-            'justPaidTransaction'
+            'justPaidTransaction', 'paymentOutcome'
         ));
     }
 
@@ -1155,7 +1162,10 @@ class StudentPortalController extends Controller
                 'customer'             => ['given_names' => $user->name, 'email' => $user->email],
                 'payment_methods'      => $allowedMethods,
                 'success_redirect_url' => route('student.portal', ['paid_ref' => $externalId]),
-                'failure_redirect_url' => route('student.portal'),
+                // Carry the same reference on failure so the portal can look up
+                // what happened (declined / cancelled / expired) and tell the
+                // student clearly, instead of a bare redirect with zero context.
+                'failure_redirect_url' => route('student.portal', ['paid_ref' => $externalId, 'outcome' => 'failed']),
             ]);
 
         if (!$response->successful()) {

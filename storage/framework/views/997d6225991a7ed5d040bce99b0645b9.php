@@ -1,8 +1,6 @@
-@extends('finance.layout')
+<?php $__env->startSection('title', 'Payments'); ?>
 
-@section('title', 'Payments')
-
-@section('styles')
+<?php $__env->startSection('styles'); ?>
 <style>
     .status-badge { display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600; }
     .status-badge.pending  { background:#fff3e0;color:#e65100; }
@@ -11,9 +9,9 @@
     .nav-tabs .nav-link { font-size:13px;font-weight:600;border-radius:6px 6px 0 0;display:flex;align-items:center;gap:7px; }
     .nav-tabs .nav-link.active { color:var(--blue); }
 </style>
-@endsection
+<?php $__env->stopSection(); ?>
 
-@section('content')
+<?php $__env->startSection('content'); ?>
 <div class="section-header">
     <div>
         <h1><i class="bi bi-credit-card-fill" style="color:var(--gold);"></i> Payments</h1>
@@ -21,32 +19,32 @@
     </div>
 </div>
 
-{{-- Stats --}}
-@php $cps = $combinedPayStats ?? ['total'=>0,'walkin_amount'=>0,'xendit_total'=>0,'xendit_amount'=>0]; @endphp
+
+<?php $cps = $combinedPayStats ?? ['total'=>0,'walkin_amount'=>0,'xendit_total'=>0,'xendit_amount'=>0]; ?>
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;">
     <div class="stat-card">
         <div class="stat-icon blue"><i class="bi bi-receipt"></i></div>
-        <div><div class="stat-value">{{ $cps['total'] }}</div><div class="stat-label">Total Payments</div></div>
+        <div><div class="stat-value"><?php echo e($cps['total']); ?></div><div class="stat-label">Total Payments</div></div>
     </div>
     <div class="stat-card">
         <div class="stat-icon gold"><i class="bi bi-hourglass-split"></i></div>
-        <div><div class="stat-value">{{ $cps['pending'] }}</div><div class="stat-label">Pending Review</div></div>
+        <div><div class="stat-value"><?php echo e($cps['pending']); ?></div><div class="stat-label">Pending Review</div></div>
     </div>
     <div class="stat-card">
         <div class="stat-icon green"><i class="bi bi-check-circle"></i></div>
-        <div><div class="stat-value">{{ $cps['completed'] }}</div><div class="stat-label">Completed</div></div>
+        <div><div class="stat-value"><?php echo e($cps['completed']); ?></div><div class="stat-label">Completed</div></div>
     </div>
     <div class="stat-card">
         <div class="stat-icon red"><i class="bi bi-x-circle"></i></div>
-        <div><div class="stat-value">{{ $cps['rejected'] }}</div><div class="stat-label">Rejected</div></div>
+        <div><div class="stat-value"><?php echo e($cps['rejected']); ?></div><div class="stat-label">Rejected</div></div>
     </div>
 </div>
 
-{{-- Filters --}}
-@php
+
+<?php
     $currentYear = now()->year;
     $schoolYears = $schoolYears ?? [];
-@endphp
+?>
 <div class="content-card mb-4">
     <div class="content-card-header">
         <h6><i class="bi bi-funnel me-2" style="color:var(--gold);"></i>Filter Payments</h6>
@@ -56,9 +54,9 @@
             <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block;">School Year</label>
             <select id="payFilterYear" class="form-select" style="font-size:13px;padding:8px 12px;">
                 <option value="all">All Years</option>
-                @foreach($schoolYears as $year)
-                    <option value="{{ $year }}">{{ $year }}</option>
-                @endforeach
+                <?php $__currentLoopData = $schoolYears; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $year): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <option value="<?php echo e($year); ?>"><?php echo e($year); ?></option>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </select>
         </div>
         <div style="flex:1;min-width:140px;">
@@ -90,31 +88,31 @@
     </div>
 </div>
 
-{{-- Tabbed Payment Tables --}}
+
 <div class="content-card mb-4" style="overflow:hidden;">
-    {{-- Tab nav --}}
+    
     <ul class="nav nav-tabs mb-0" style="padding:0 16px;background:#f8f9fa;border-bottom:1px solid #dee2e6;margin:0;">
         <li class="nav-item">
             <button type="button" id="pmtTab-walkin" class="nav-link active" onclick="switchPmtTab('walkin')"
                 style="font-size:13px;font-weight:600;border-radius:6px 6px 0 0;display:flex;align-items:center;gap:7px;">
                 <i class="bi bi-cash-stack"></i> Cash Transactions
-                <span class="badge bg-primary" style="font-size:10px;">{{ isset($walkInTransactions) ? $walkInTransactions->total() : 0 }}</span>
+                <span class="badge bg-primary" style="font-size:10px;"><?php echo e(isset($walkInTransactions) ? $walkInTransactions->total() : 0); ?></span>
             </button>
         </li>
         <li class="nav-item">
             <button type="button" id="pmtTab-xendit" class="nav-link" onclick="switchPmtTab('xendit')"
                 style="font-size:13px;font-weight:600;border-radius:6px 6px 0 0;display:flex;align-items:center;gap:7px;">
                 <i class="bi bi-credit-card-2-front"></i> Online (Xendit)
-                <span class="badge bg-success" style="font-size:10px;">{{ isset($xenditTransactions) ? $xenditTransactions->total() : 0 }}</span>
+                <span class="badge bg-success" style="font-size:10px;"><?php echo e(isset($xenditTransactions) ? $xenditTransactions->total() : 0); ?></span>
             </button>
         </li>
     </ul>
 
-    @php $walkInTotalAmount = ($walkInTransactions ?? collect())->sum('amount'); @endphp
+    <?php $walkInTotalAmount = ($walkInTransactions ?? collect())->sum('amount'); ?>
     <div id="pmtPanel-walkin">
         <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid #f0f0f0;">
             <h6 style="margin:0;font-size:14px;font-weight:700;"><i class="bi bi-building me-2" style="color:var(--blue);"></i>Walk-in Payment Transactions</h6>
-            <span style="font-size:12px;color:var(--muted);">Total Amount: ₱{{ number_format($walkInTotalAmount, 2) }}</span>
+            <span style="font-size:12px;color:var(--muted);">Total Amount: ₱<?php echo e(number_format($walkInTotalAmount, 2)); ?></span>
         </div>
         <div style="overflow-x:auto;">
             <table class="dash-table" id="walkInPaymentsTable">
@@ -132,81 +130,82 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse(($walkInTransactions ?? collect()) as $walkInTx)
-                    @php $walkInInstallment = $walkInTx->installment; @endphp
-                    <tr data-status="{{ $walkInTx->status }}" data-student="{{ strtolower($walkInTx->user->name ?? '') }}">
-                        <td style="font-weight:600;">#{{ $walkInTx->id }}</td>
+                    <?php $__empty_1 = true; $__currentLoopData = ($walkInTransactions ?? collect()); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $walkInTx): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                    <?php $walkInInstallment = $walkInTx->installment; ?>
+                    <tr data-status="<?php echo e($walkInTx->status); ?>" data-student="<?php echo e(strtolower($walkInTx->user->name ?? '')); ?>">
+                        <td style="font-weight:600;">#<?php echo e($walkInTx->id); ?></td>
                         <td>
-                            <div style="font-weight:600;color:var(--text);">{{ $walkInTx->user->name ?? 'N/A' }}</div>
-                            <div style="font-size:11px;color:var(--muted);">{{ $walkInTx->user->email ?? '' }}</div>
+                            <div style="font-weight:600;color:var(--text);"><?php echo e($walkInTx->user->name ?? 'N/A'); ?></div>
+                            <div style="font-size:11px;color:var(--muted);"><?php echo e($walkInTx->user->email ?? ''); ?></div>
                         </td>
-                        <td><span class="grade-chip">{{ $walkInTx->enrollment->grade_level ?? 'N/A' }}</span></td>
+                        <td><span class="grade-chip"><?php echo e($walkInTx->enrollment->grade_level ?? 'N/A'); ?></span></td>
                         <td>
-                            @if($walkInInstallment)
-                                <div style="font-weight:600;color:var(--blue);">{{ $walkInInstallment->month_name }} Installment</div>
-                                <div style="font-size:12px;color:var(--muted);">₱{{ number_format($walkInInstallment->amount ?? 0, 2) }}</div>
-                                <div style="font-size:11px;color:var(--green);font-weight:600;">Total: ₱{{ number_format($walkInTx->amount, 2) }}</div>
-                            @else
-                                <div style="font-weight:600;color:var(--blue);">{{ $walkInTx->installment_month ?? 'Downpayment' }}</div>
-                                <div style="font-size:11px;color:var(--green);font-weight:600;">₱{{ number_format($walkInTx->amount, 2) }}</div>
-                            @endif
+                            <?php if($walkInInstallment): ?>
+                                <div style="font-weight:600;color:var(--blue);"><?php echo e($walkInInstallment->month_name); ?> Installment</div>
+                                <div style="font-size:12px;color:var(--muted);">₱<?php echo e(number_format($walkInInstallment->amount ?? 0, 2)); ?></div>
+                                <div style="font-size:11px;color:var(--green);font-weight:600;">Total: ₱<?php echo e(number_format($walkInTx->amount, 2)); ?></div>
+                            <?php else: ?>
+                                <div style="font-weight:600;color:var(--blue);"><?php echo e($walkInTx->installment_month ?? 'Downpayment'); ?></div>
+                                <div style="font-size:11px;color:var(--green);font-weight:600;">₱<?php echo e(number_format($walkInTx->amount, 2)); ?></div>
+                            <?php endif; ?>
                         </td>
                         <td>
-                            @if($walkInTx->payment_method === 'gcash')
+                            <?php if($walkInTx->payment_method === 'gcash'): ?>
                                 <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:500;background:#e3f2fd;color:#1565c0;">
                                     <i class="bi bi-phone"></i> GCash
                                 </span>
-                            @else
+                            <?php else: ?>
                                 <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:500;background:#e8f5e9;color:#2e7d32;">
                                     <i class="bi bi-cash-stack"></i> Cash
                                 </span>
-                            @endif
+                            <?php endif; ?>
                         </td>
-                        <td><div style="font-size:12px;color:var(--text);">{{ $walkInTx->processedBy->name ?? 'System' }}</div></td>
+                        <td><div style="font-size:12px;color:var(--text);"><?php echo e($walkInTx->processedBy->name ?? 'System'); ?></div></td>
                         <td style="white-space:nowrap;">
-                            {{ $walkInTx->created_at->format('M d, Y') }}<br>
-                            <span style="font-size:11px;color:var(--muted);">{{ $walkInTx->created_at->format('h:i A') }}</span>
+                            <?php echo e($walkInTx->created_at->format('M d, Y')); ?><br>
+                            <span style="font-size:11px;color:var(--muted);"><?php echo e($walkInTx->created_at->format('h:i A')); ?></span>
                         </td>
                         <td>
-                            @if($walkInTx->status === 'completed')
+                            <?php if($walkInTx->status === 'completed'): ?>
                                 <span style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;background:#e8f5e9;color:#2e7d32;">
                                     <i class="bi bi-check-circle"></i> Completed
                                 </span>
-                            @else
+                            <?php else: ?>
                                 <span style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;background:#fff3e0;color:#e65100;">
-                                    <i class="bi bi-hourglass-split"></i> {{ ucfirst($walkInTx->status) }}
+                                    <i class="bi bi-hourglass-split"></i> <?php echo e(ucfirst($walkInTx->status)); ?>
+
                                 </span>
-                            @endif
-                            @if($walkInTx->payment_type === 'admin')
+                            <?php endif; ?>
+                            <?php if($walkInTx->payment_type === 'admin'): ?>
                                 <br><span style="display:inline-flex;align-items:center;margin-top:3px;padding:2px 6px;border-radius:5px;font-size:10px;background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;">
                                     <i class="bi bi-building me-1"></i>Cashier
                                 </span>
-                            @endif
+                            <?php endif; ?>
                         </td>
                         <td>
-                            @if($walkInTx->status === 'completed')
+                            <?php if($walkInTx->status === 'completed'): ?>
                                 <button type="button" class="action-btn" title="Print Official Receipt" style="background:#e8f5e9;color:#2e7d32;"
                                     onclick="printOfficialReceipt({
-                                        or_no: 'OR-{{ str_pad($walkInTx->id, 6, '0', STR_PAD_LEFT) }}',
-                                        date: '{{ $walkInTx->created_at->format('F d, Y') }}',
-                                        time: '{{ $walkInTx->created_at->format('h:i A') }}',
-                                        student_name: '{{ addslashes($walkInTx->user->name ?? 'N/A') }}',
-                                        grade_level: '{{ $walkInTx->enrollment->grade_level ?? 'N/A' }}',
-                                        school_year: '{{ $walkInTx->enrollment->school_year ?? 'N/A' }}',
-                                        description: '{{ addslashes($walkInInstallment ? ($walkInInstallment->month_name.' Installment') : ($walkInTx->installment_month ?? 'Downpayment')) }}',
-                                        amount: '{{ number_format($walkInTx->amount, 2) }}',
-                                        method: '{{ ucfirst($walkInTx->payment_method ?? 'Cash') }}',
-                                        received_by: '{{ addslashes($walkInTx->processedBy->name ?? 'Admin') }}',
+                                        or_no: 'OR-<?php echo e(str_pad($walkInTx->id, 6, '0', STR_PAD_LEFT)); ?>',
+                                        date: '<?php echo e($walkInTx->created_at->format('F d, Y')); ?>',
+                                        time: '<?php echo e($walkInTx->created_at->format('h:i A')); ?>',
+                                        student_name: '<?php echo e(addslashes($walkInTx->user->name ?? 'N/A')); ?>',
+                                        grade_level: '<?php echo e($walkInTx->enrollment->grade_level ?? 'N/A'); ?>',
+                                        school_year: '<?php echo e($walkInTx->enrollment->school_year ?? 'N/A'); ?>',
+                                        description: '<?php echo e(addslashes($walkInInstallment ? ($walkInInstallment->month_name.' Installment') : ($walkInTx->installment_month ?? 'Downpayment'))); ?>',
+                                        amount: '<?php echo e(number_format($walkInTx->amount, 2)); ?>',
+                                        method: '<?php echo e(ucfirst($walkInTx->payment_method ?? 'Cash')); ?>',
+                                        received_by: '<?php echo e(addslashes($walkInTx->processedBy->name ?? 'Admin')); ?>',
                                         type: 'walkin'
                                     })">
                                     <i class="bi bi-printer-fill"></i>
                                 </button>
-                            @else
+                            <?php else: ?>
                                 <span style="font-size:11px;color:var(--muted);">—</span>
-                            @endif
+                            <?php endif; ?>
                         </td>
                     </tr>
-                    @empty
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                     <tr>
                         <td colspan="9" style="text-align:center;color:var(--muted);padding:60px;">
                             <i class="bi bi-building" style="font-size:48px;display:block;margin-bottom:12px;opacity:0.2;"></i>
@@ -214,24 +213,24 @@
                             <div style="font-size:12px;">Walk-in payment records will appear here once processed at the cashier.</div>
                         </td>
                     </tr>
-                    @endforelse
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
         <div class="p-3 border-top">
-            @if(isset($walkInTransactions)) {{ $walkInTransactions->links() }} @endif
-            @if(isset($walkInTransactions) && $walkInTransactions->count() > 0)
-                <div class="pagination-info">Showing {{ $walkInTransactions->firstItem() }} to {{ $walkInTransactions->lastItem() }} of {{ $walkInTransactions->total() }} walk-in transactions</div>
-            @endif
+            <?php if(isset($walkInTransactions)): ?> <?php echo e($walkInTransactions->links()); ?> <?php endif; ?>
+            <?php if(isset($walkInTransactions) && $walkInTransactions->count() > 0): ?>
+                <div class="pagination-info">Showing <?php echo e($walkInTransactions->firstItem()); ?> to <?php echo e($walkInTransactions->lastItem()); ?> of <?php echo e($walkInTransactions->total()); ?> walk-in transactions</div>
+            <?php endif; ?>
         </div>
-    </div>{{-- /pmtPanel-walkin --}}
+    </div>
 
-    {{-- Panel: Xendit / Online Transactions --}}
-    @php $xenditTotalAmount = ($xenditTransactions ?? collect())->where('status','completed')->sum('amount'); @endphp
+    
+    <?php $xenditTotalAmount = ($xenditTransactions ?? collect())->where('status','completed')->sum('amount'); ?>
     <div id="pmtPanel-xendit" style="display:none;">
         <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid #f0f0f0;">
             <h6 style="margin:0;font-size:14px;font-weight:700;"><i class="bi bi-credit-card-2-front me-2" style="color:var(--green,#28a745);"></i>Xendit / Online Payment Transactions</h6>
-            <span style="font-size:12px;color:var(--muted);">Collected: ₱{{ number_format($combinedPayStats['xendit_amount'] ?? 0, 2) }}</span>
+            <span style="font-size:12px;color:var(--muted);">Collected: ₱<?php echo e(number_format($combinedPayStats['xendit_amount'] ?? 0, 2)); ?></span>
         </div>
         <div style="overflow-x:auto;">
             <table class="dash-table">
@@ -249,57 +248,59 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @forelse(($xenditTransactions ?? collect()) as $xTx)
+                    <?php $__empty_1 = true; $__currentLoopData = ($xenditTransactions ?? collect()); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $xTx): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                     <tr>
-                        <td style="font-weight:600;">#{{ $xTx->id }}</td>
+                        <td style="font-weight:600;">#<?php echo e($xTx->id); ?></td>
                         <td>
-                            <div style="font-weight:600;color:var(--text);">{{ $xTx->user->name ?? 'N/A' }}</div>
-                            <div style="font-size:11px;color:var(--muted);">{{ $xTx->user->email ?? '' }}</div>
+                            <div style="font-weight:600;color:var(--text);"><?php echo e($xTx->user->name ?? 'N/A'); ?></div>
+                            <div style="font-size:11px;color:var(--muted);"><?php echo e($xTx->user->email ?? ''); ?></div>
                         </td>
-                        <td><span class="grade-chip">{{ $xTx->enrollment->grade_level ?? 'N/A' }}</span></td>
+                        <td><span class="grade-chip"><?php echo e($xTx->enrollment->grade_level ?? 'N/A'); ?></span></td>
                         <td>
-                            <div style="font-weight:600;color:var(--blue);">{{ $xTx->description ?? 'Online Payment' }}</div>
-                            <div style="font-size:11px;color:var(--green,#28a745);font-weight:600;">₱{{ number_format($xTx->amount, 2) }}</div>
+                            <div style="font-weight:600;color:var(--blue);"><?php echo e($xTx->description ?? 'Online Payment'); ?></div>
+                            <div style="font-size:11px;color:var(--green,#28a745);font-weight:600;">₱<?php echo e(number_format($xTx->amount, 2)); ?></div>
                         </td>
                         <td>
-                            @php $methodLabels = ['gcash'=>['GCash','bi-phone','#e3f2fd','#1565c0'],'maya'=>['Maya','bi-wallet','#f3e5f5','#6a1b9a'],'grabpay'=>['GrabPay','bi-bag','#e8f5e9','#1b5e20'],'bank'=>['Bank','bi-bank','#fff3e0','#e65100'],'otc'=>['OTC','bi-building','#fce4ec','#880e4f']]; $ml = $methodLabels[$xTx->payment_method] ?? [ucfirst($xTx->payment_method),'bi-credit-card','#f5f5f5','#333']; @endphp
-                            <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:500;background:{{ $ml[2] }};color:{{ $ml[3] }};">
-                                <i class="bi {{ $ml[1] }}"></i> {{ $ml[0] }}
+                            <?php $methodLabels = ['gcash'=>['GCash','bi-phone','#e3f2fd','#1565c0'],'maya'=>['Maya','bi-wallet','#f3e5f5','#6a1b9a'],'grabpay'=>['GrabPay','bi-bag','#e8f5e9','#1b5e20'],'bank'=>['Bank','bi-bank','#fff3e0','#e65100'],'otc'=>['OTC','bi-building','#fce4ec','#880e4f']]; $ml = $methodLabels[$xTx->payment_method] ?? [ucfirst($xTx->payment_method),'bi-credit-card','#f5f5f5','#333']; ?>
+                            <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:500;background:<?php echo e($ml[2]); ?>;color:<?php echo e($ml[3]); ?>;">
+                                <i class="bi <?php echo e($ml[1]); ?>"></i> <?php echo e($ml[0]); ?>
+
                             </span>
                         </td>
-                        <td style="font-size:11px;color:var(--muted);">{{ $xTx->xendit_invoice_id ? Str::limit($xTx->xendit_invoice_id, 20) : '—' }}</td>
+                        <td style="font-size:11px;color:var(--muted);"><?php echo e($xTx->xendit_invoice_id ? Str::limit($xTx->xendit_invoice_id, 20) : '—'); ?></td>
                         <td style="white-space:nowrap;">
-                            {{ $xTx->created_at->format('M d, Y') }}<br>
-                            <span style="font-size:11px;color:var(--muted);">{{ $xTx->created_at->format('h:i A') }}</span>
+                            <?php echo e($xTx->created_at->format('M d, Y')); ?><br>
+                            <span style="font-size:11px;color:var(--muted);"><?php echo e($xTx->created_at->format('h:i A')); ?></span>
                         </td>
                         <td>
-                            @if($xTx->status === 'completed')
+                            <?php if($xTx->status === 'completed'): ?>
                                 <span style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;background:#e8f5e9;color:#2e7d32;">
                                     <i class="bi bi-check-circle"></i> Completed
                                 </span>
-                            @elseif($xTx->status === 'pending')
+                            <?php elseif($xTx->status === 'pending'): ?>
                                 <span style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;background:#fff3e0;color:#e65100;">
                                     <i class="bi bi-hourglass-split"></i> Pending
                                 </span>
-                            @else
+                            <?php else: ?>
                                 <span style="display:inline-flex;align-items:center;gap:4px;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;background:#f5f5f5;color:#666;">
-                                    {{ ucfirst($xTx->status) }}
+                                    <?php echo e(ucfirst($xTx->status)); ?>
+
                                 </span>
-                            @endif
+                            <?php endif; ?>
                         </td>
                         <td>
-                            @if($xTx->xendit_invoice_url)
-                                <a href="{{ $xTx->xendit_invoice_url }}" target="_blank"
+                            <?php if($xTx->xendit_invoice_url): ?>
+                                <a href="<?php echo e($xTx->xendit_invoice_url); ?>" target="_blank"
                                     title="Open Xendit Invoice"
                                     style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:500;background:#e8f5e9;color:#2e7d32;text-decoration:none;">
                                     <i class="bi bi-box-arrow-up-right"></i> Invoice
                                 </a>
-                            @else
+                            <?php else: ?>
                                 <span style="font-size:11px;color:var(--muted);">—</span>
-                            @endif
+                            <?php endif; ?>
                         </td>
                     </tr>
-                    @empty
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                     <tr>
                         <td colspan="9" style="text-align:center;color:var(--muted);padding:60px;">
                             <i class="bi bi-credit-card-2-front" style="font-size:48px;display:block;margin-bottom:12px;opacity:0.2;"></i>
@@ -307,20 +308,20 @@
                             <div style="font-size:12px;">Online payments via GCash, Maya, GrabPay will appear here once processed.</div>
                         </td>
                     </tr>
-                    @endforelse
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>
         <div class="p-3 border-top">
-            @if(isset($xenditTransactions)) {{ $xenditTransactions->links() }} @endif
-            @if(isset($xenditTransactions) && $xenditTransactions->count() > 0)
-                <div class="pagination-info">Showing {{ $xenditTransactions->firstItem() }} to {{ $xenditTransactions->lastItem() }} of {{ $xenditTransactions->total() }} Xendit transactions</div>
-            @endif
+            <?php if(isset($xenditTransactions)): ?> <?php echo e($xenditTransactions->links()); ?> <?php endif; ?>
+            <?php if(isset($xenditTransactions) && $xenditTransactions->count() > 0): ?>
+                <div class="pagination-info">Showing <?php echo e($xenditTransactions->firstItem()); ?> to <?php echo e($xenditTransactions->lastItem()); ?> of <?php echo e($xenditTransactions->total()); ?> Xendit transactions</div>
+            <?php endif; ?>
         </div>
-    </div>{{-- /pmtPanel-xendit --}}
-</div>{{-- /tabbed card --}}
+    </div>
+</div>
 
-{{-- Generic Confirm Modal --}}
+
 <div class="modal fade" id="financeConfirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
         <div class="modal-content" style="border-radius:12px;border:none;box-shadow:0 10px 40px rgba(0,0,0,0.15);">
@@ -339,7 +340,7 @@
     </div>
 </div>
 
-{{-- Payment Details Modal --}}
+
 <div class="modal fade" id="paymentDetailsModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content" style="border-radius:12px;border:none;">
@@ -406,7 +407,7 @@
     </div>
 </div>
 
-{{-- Screenshot Modal --}}
+
 <div class="modal fade" id="screenshotModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content" style="border-radius:12px;border:none;">
@@ -425,9 +426,9 @@
     </div>
 </div>
 
-@endsection
+<?php $__env->stopSection(); ?>
 
-@section('scripts')
+<?php $__env->startSection('scripts'); ?>
 <script>
 /* ── Tab switching ── */
 function switchPmtTab(tab) {
@@ -596,4 +597,6 @@ function printOfficialReceipt(data) {
     w.document.close();
 }
 </script>
-@endsection
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('finance.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Users\ron28\Desktop\ILC SYSTEM\ilc-website-system\resources\views\finance\payments.blade.php ENDPATH**/ ?>

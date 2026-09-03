@@ -477,10 +477,18 @@ Route::middleware([\App\Http\Middleware\FinanceMiddleware::class])->prefix('prom
 // ─────────────────────────────────────────
 // CASHIER PORTAL
 // ─────────────────────────────────────────
-// Xendit webhook — no CSRF (called by Xendit servers)
+// Xendit webhook — no CSRF (called by Xendit servers, which can't supply a
+// CSRF token). Laravel 13 renamed the 'web' group's CSRF middleware from
+// VerifyCsrfToken to PreventRequestForgery; excluding only the old
+// (now-deprecated-subclass) name does NOT exclude the actual middleware the
+// group runs, so real Xendit callbacks were silently rejected with 419.
+// Both are excluded here for safety/back-compat.
 Route::post('/cashier/webhook/xendit', [\App\Http\Controllers\CashierController::class, 'xenditWebhook'])
     ->name('cashier.webhook.xendit')
-    ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class]);
+    ->withoutMiddleware([
+        \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
+        \Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class,
+    ]);
 
 // Root /cashier → redirect to login (or dashboard if already authenticated)
 Route::get('/cashier', function () {
