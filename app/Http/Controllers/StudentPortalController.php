@@ -45,6 +45,16 @@ class StudentPortalController extends Controller
         // to decide whether to show the error state.
         $paymentOutcome = request()->query('outcome');
 
+        // Phase 4 — summer-class visibility: the student's own remediation
+        // history across every school year, read-only (no self-enroll — see
+        // the Phase 2 design decision). Keyed off the user directly, not the
+        // current enrollment, so history from a prior year still shows even
+        // after the student moves on to a new enrollment record.
+        $summerClassEnrollments = \App\Models\SummerClassEnrollment::where('student_id', $user->id)
+            ->with(['summerClass.subject:id,name,code', 'summerClass.teacher:id,name'])
+            ->orderByDesc('id')
+            ->get();
+
         // Prefer the newest school year first, then the most-advanced status within that year.
         // This ensures a just-approved re-enrollment for 2027-2028 takes over from 2026-2027 enrolled.
         $enrollment = $user->enrollments()
@@ -70,6 +80,7 @@ class StudentPortalController extends Controller
                 'schedules' => collect([]),
                 'justPaidTransaction' => $justPaidTransaction,
                 'paymentOutcome' => $paymentOutcome,
+                'summerClassEnrollments' => $summerClassEnrollments,
             ]);
         }
 
@@ -253,7 +264,7 @@ class StudentPortalController extends Controller
             'needsReenrollment', 'reenrollmentOpen', 'suggestedGrade',
             'currentSchoolYear', 'promotionRecord', 'enrollmentWindowOpen',
             'profile', 'address', 'guardian', 'mother', 'father', 'previousSchool',
-            'justPaidTransaction', 'paymentOutcome'
+            'justPaidTransaction', 'paymentOutcome', 'summerClassEnrollments'
         ));
     }
 

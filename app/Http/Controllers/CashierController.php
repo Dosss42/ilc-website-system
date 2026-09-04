@@ -663,8 +663,15 @@ class CashierController extends Controller
                 ]);
             }
         } elseif ($totalPaid > 0) {
+            // total_fee isn't set yet (plan not finalized before this payment), but
+            // remaining_balance was already blindly decremented by the caller — clamp
+            // it back to 0 here instead of leaving it negative forever, same as the
+            // totalFee>0 branch above already does.
             $remaining = (float) ($enrollment->remaining_balance ?? 0);
-            $enrollment->update(['payment_status' => $remaining <= 0 ? 'paid' : 'partial']);
+            $enrollment->update([
+                'payment_status'    => $remaining <= 0 ? 'paid' : 'partial',
+                'remaining_balance' => max(0, $remaining),
+            ]);
         }
 
         // Advance enrollment status to 'enrolled' and assign section (same as Finance)

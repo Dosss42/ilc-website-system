@@ -1458,9 +1458,14 @@ class DashboardController extends Controller
             }
         } elseif ($totalPaid > 0 || $hasApprovedPayments) {
             // total_fee not set — trust remaining_balance already computed by the payment recorder;
-            // do NOT downgrade a 'paid' status that was correctly set when remaining_balance hit 0
+            // do NOT downgrade a 'paid' status that was correctly set when remaining_balance hit 0.
+            // But DO clamp a negative value back to 0 — a payment recorded before the fee plan was
+            // finalized decrements remaining_balance blindly and can drive it negative otherwise.
             $remainingBal = round(floatval($enrollment->remaining_balance ?? 0), 2);
-            $enrollment->update(['payment_status' => $remainingBal <= 0 ? 'paid' : 'partial']);
+            $enrollment->update([
+                'payment_status'    => $remainingBal <= 0 ? 'paid' : 'partial',
+                'remaining_balance' => max(0, $remainingBal),
+            ]);
         }
 
         // If enrollment is 'approved' or 'pending' and any payment has been approved, mark as 'enrolled'

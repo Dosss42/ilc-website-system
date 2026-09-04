@@ -585,42 +585,70 @@
 
 <div class="dash-main" style="padding:0;">
 
+    <?php if(($paymentOutcome ?? null) === 'failed' || $justPaidTransaction): ?>
+    <style>
+        .xendit-modal-overlay {
+            position: fixed; inset: 0; z-index: 10000;
+            background: rgba(15,23,42,.55);
+            backdrop-filter: blur(2px);
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px;
+            animation: xenditFadeIn .18s ease-out;
+        }
+        .xendit-modal-card {
+            width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto;
+            animation: xenditPopIn .28s cubic-bezier(.34,1.56,.64,1);
+        }
+        @keyframes xenditFadeIn { from{opacity:0} to{opacity:1} }
+        @keyframes xenditPopIn { from{opacity:0; transform:scale(.92) translateY(10px);} to{opacity:1; transform:scale(1) translateY(0);} }
+        @media print {
+            .dash-topbar, .dash-sidebar { display:none !important; }
+            .dash-main > *:not(#xendit-receipt-overlay) { display:none !important; }
+            #xendit-receipt-overlay { position:static !important; background:none !important; backdrop-filter:none !important; padding:0 !important; animation:none !important; }
+            #xendit-receipt-card { animation:none !important; max-height:none !important; }
+            #xendit-receipt-card button { display:none !important; }
+        }
+    </style>
+    <?php endif; ?>
+
     <?php if(($paymentOutcome ?? null) === 'failed'): ?>
     
-    <div id="xendit-failed-card" style="max-width:560px;margin:0 auto 20px;background:#fff;border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.12);overflow:hidden;border:1px solid #e5e7eb;">
-        <div style="background:linear-gradient(135deg,#991b1b,#dc2626);padding:22px 24px;color:#fff;position:relative;">
-            <button type="button" onclick="document.getElementById('xendit-failed-card').remove()"
-                aria-label="Dismiss" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,.18);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px;line-height:1;">&times;</button>
-            <div style="display:flex;align-items:center;gap:12px;">
-                <div style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">
-                    <i class="bi bi-x-lg"></i>
+    <div id="xendit-failed-overlay" class="xendit-modal-overlay" onclick="if(event.target===this) this.remove()">
+        <div id="xendit-failed-card" class="xendit-modal-card" style="background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden;border:1px solid #e5e7eb;">
+            <div style="background:linear-gradient(135deg,#991b1b,#dc2626);padding:22px 24px;color:#fff;position:relative;">
+                <button type="button" onclick="document.getElementById('xendit-failed-overlay').remove()"
+                    aria-label="Dismiss" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,.18);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px;line-height:1;">&times;</button>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">
+                        <i class="bi bi-x-lg"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight:700;font-size:17px;">Payment Not Completed</div>
+                        <div style="font-size:12px;opacity:.9;">Your payment was cancelled or declined. No amount was charged.</div>
+                    </div>
                 </div>
-                <div>
-                    <div style="font-weight:700;font-size:17px;">Payment Not Completed</div>
-                    <div style="font-size:12px;opacity:.9;">Your payment was cancelled or declined. No amount was charged.</div>
+            </div>
+            <div style="padding:22px 24px;">
+                <?php if($justPaidTransaction): ?>
+                <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px dashed #e5e7eb;font-size:13px;">
+                    <span style="color:#666;">Amount</span>
+                    <span style="font-weight:700;color:#1a3a6c;font-size:16px;">₱<?php echo e(number_format($justPaidTransaction->amount, 2)); ?></span>
                 </div>
-            </div>
-        </div>
-        <div style="padding:22px 24px;">
-            <?php if($justPaidTransaction): ?>
-            <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px dashed #e5e7eb;font-size:13px;">
-                <span style="color:#666;">Amount</span>
-                <span style="font-weight:700;color:#1a3a6c;font-size:16px;">₱<?php echo e(number_format($justPaidTransaction->amount, 2)); ?></span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:9px 0;font-size:13px;">
-                <span style="color:#666;">Reference No.</span>
-                <span style="font-weight:600;font-family:monospace;"><?php echo e($justPaidTransaction->reference_number); ?></span>
-            </div>
-            <?php else: ?>
-            <p style="color:#666;font-size:13px;margin:0 0 4px;">Nothing was charged to your account. You can try again below, or choose a different payment method.</p>
-            <?php endif; ?>
-            <div style="display:flex;gap:10px;margin-top:18px;">
-                <button type="button" onclick="document.getElementById('xendit-failed-card').remove()" style="flex:1;padding:10px;border-radius:9px;border:1.5px solid #dc2626;background:#fff;color:#dc2626;font-weight:700;font-size:13px;cursor:pointer;">
-                    Dismiss
-                </button>
-                <button type="button" onclick="document.getElementById('xendit-failed-card').remove(); showSection('enrollment');" style="flex:1;padding:10px;border-radius:9px;border:none;background:#1a3a6c;color:#fff;font-weight:700;font-size:13px;cursor:pointer;">
-                    <i class="bi bi-arrow-repeat me-1"></i> Try Again
-                </button>
+                <div style="display:flex;justify-content:space-between;padding:9px 0;font-size:13px;">
+                    <span style="color:#666;">Reference No.</span>
+                    <span style="font-weight:600;font-family:monospace;"><?php echo e($justPaidTransaction->reference_number); ?></span>
+                </div>
+                <?php else: ?>
+                <p style="color:#666;font-size:13px;margin:0 0 4px;">Nothing was charged to your account. You can try again below, or choose a different payment method.</p>
+                <?php endif; ?>
+                <div style="display:flex;gap:10px;margin-top:18px;">
+                    <button type="button" onclick="document.getElementById('xendit-failed-overlay').remove()" style="flex:1;padding:10px;border-radius:9px;border:1.5px solid #dc2626;background:#fff;color:#dc2626;font-weight:700;font-size:13px;cursor:pointer;">
+                        Dismiss
+                    </button>
+                    <button type="button" onclick="document.getElementById('xendit-failed-overlay').remove(); showSection('enrollment');" style="flex:1;padding:10px;border-radius:9px;border:none;background:#1a3a6c;color:#fff;font-weight:700;font-size:13px;cursor:pointer;">
+                        <i class="bi bi-arrow-repeat me-1"></i> Try Again
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -631,54 +659,49 @@
         $jptWhen   = $justPaidTransaction->processed_at ?? $justPaidTransaction->created_at;
         $jptMethod = ['gcash'=>'GCash','maya'=>'Maya','grabpay'=>'GrabPay','bank'=>'Bank Transfer','otc'=>'Over-the-Counter'][$justPaidTransaction->payment_method] ?? ucfirst($justPaidTransaction->payment_method);
     ?>
-    <div id="xendit-receipt-card" style="max-width:560px;margin:0 auto 20px;background:#fff;border-radius:16px;box-shadow:0 8px 28px rgba(0,0,0,.12);overflow:hidden;border:1px solid #e5e7eb;">
-        <div style="background:linear-gradient(135deg,<?php echo e($jptPaid ? '#166534,#16a34a' : '#92400e,#c5a059'); ?>);padding:22px 24px;color:#fff;position:relative;">
-            <button type="button" onclick="document.getElementById('xendit-receipt-card').remove()"
-                aria-label="Dismiss" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,.18);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px;line-height:1;">&times;</button>
-            <div style="display:flex;align-items:center;gap:12px;">
-                <div style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">
-                    <i class="bi bi-<?php echo e($jptPaid ? 'check-lg' : 'hourglass-split'); ?>"></i>
+    <div id="xendit-receipt-overlay" class="xendit-modal-overlay" onclick="if(event.target===this) this.remove()">
+        <div id="xendit-receipt-card" class="xendit-modal-card" style="background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden;border:1px solid #e5e7eb;">
+            <div style="background:linear-gradient(135deg,<?php echo e($jptPaid ? '#166534,#16a34a' : '#92400e,#c5a059'); ?>);padding:22px 24px;color:#fff;position:relative;">
+                <button type="button" onclick="document.getElementById('xendit-receipt-overlay').remove()"
+                    aria-label="Dismiss" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,.18);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:16px;line-height:1;">&times;</button>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">
+                        <i class="bi bi-<?php echo e($jptPaid ? 'check-lg' : 'hourglass-split'); ?>"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight:700;font-size:17px;"><?php echo e($jptPaid ? 'Payment Received' : 'Payment Processing'); ?></div>
+                        <div style="font-size:12px;opacity:.9;"><?php echo e($jptPaid ? 'Your payment was successful.' : "We're confirming your payment — this updates automatically."); ?></div>
+                    </div>
                 </div>
-                <div>
-                    <div style="font-weight:700;font-size:17px;"><?php echo e($jptPaid ? 'Payment Received' : 'Payment Processing'); ?></div>
-                    <div style="font-size:12px;opacity:.9;"><?php echo e($jptPaid ? 'Your payment was successful.' : "We're confirming your payment — this updates automatically."); ?></div>
+            </div>
+            <div style="padding:22px 24px;">
+                <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px dashed #e5e7eb;font-size:13px;">
+                    <span style="color:#666;">Amount</span>
+                    <span style="font-weight:700;color:#1a3a6c;font-size:16px;">₱<?php echo e(number_format($justPaidTransaction->amount, 2)); ?></span>
                 </div>
-            </div>
-        </div>
-        <div style="padding:22px 24px;">
-            <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px dashed #e5e7eb;font-size:13px;">
-                <span style="color:#666;">Amount</span>
-                <span style="font-weight:700;color:#1a3a6c;font-size:16px;">₱<?php echo e(number_format($justPaidTransaction->amount, 2)); ?></span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px dashed #e5e7eb;font-size:13px;">
-                <span style="color:#666;">Reference No.</span>
-                <span style="font-weight:600;font-family:monospace;"><?php echo e($justPaidTransaction->reference_number); ?></span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px dashed #e5e7eb;font-size:13px;">
-                <span style="color:#666;">Method</span>
-                <span style="font-weight:600;"><?php echo e($jptMethod); ?></span>
-            </div>
-            <div style="display:flex;justify-content:space-between;padding:9px 0;font-size:13px;">
-                <span style="color:#666;">Date</span>
-                <span style="font-weight:600;"><?php echo e($jptWhen->format('M d, Y h:i A')); ?></span>
-            </div>
-            <div style="display:flex;gap:10px;margin-top:18px;">
-                <button type="button" onclick="window.print()" style="flex:1;padding:10px;border-radius:9px;border:1.5px solid #1a3a6c;background:#fff;color:#1a3a6c;font-weight:700;font-size:13px;cursor:pointer;">
-                    <i class="bi bi-printer-fill me-1"></i> Print / Save
-                </button>
-                <button type="button" onclick="document.getElementById('xendit-receipt-card').remove()" style="flex:1;padding:10px;border-radius:9px;border:none;background:#1a3a6c;color:#fff;font-weight:700;font-size:13px;cursor:pointer;">
-                    Done
-                </button>
+                <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px dashed #e5e7eb;font-size:13px;">
+                    <span style="color:#666;">Reference No.</span>
+                    <span style="font-weight:600;font-family:monospace;"><?php echo e($justPaidTransaction->reference_number); ?></span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px dashed #e5e7eb;font-size:13px;">
+                    <span style="color:#666;">Method</span>
+                    <span style="font-weight:600;"><?php echo e($jptMethod); ?></span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:9px 0;font-size:13px;">
+                    <span style="color:#666;">Date</span>
+                    <span style="font-weight:600;"><?php echo e($jptWhen->format('M d, Y h:i A')); ?></span>
+                </div>
+                <div style="display:flex;gap:10px;margin-top:18px;">
+                    <button type="button" onclick="window.print()" style="flex:1;padding:10px;border-radius:9px;border:1.5px solid #1a3a6c;background:#fff;color:#1a3a6c;font-weight:700;font-size:13px;cursor:pointer;">
+                        <i class="bi bi-printer-fill me-1"></i> Print / Save
+                    </button>
+                    <button type="button" onclick="document.getElementById('xendit-receipt-overlay').remove()" style="flex:1;padding:10px;border-radius:9px;border:none;background:#1a3a6c;color:#fff;font-weight:700;font-size:13px;cursor:pointer;">
+                        Done
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-    <style>
-        @media print {
-            .dash-topbar, .dash-sidebar, #section-info > *:not(#xendit-receipt-card),
-            .student-info-section > *:not(#xendit-receipt-card) { display:none !important; }
-            #xendit-receipt-card button { display:none !important; }
-        }
-    </style>
     <?php endif; ?>
 
     
@@ -1396,6 +1419,73 @@
                 </table>
             </div>
         </div>
+
+        
+        <?php if($summerClassEnrollments->isNotEmpty()): ?>
+        <div class="content-card" style="margin-top:16px;">
+            <div class="content-card-header">
+                <h6 style="margin:0;"><i class="bi bi-sun-fill me-1" style="color:#f5a623;"></i> My Summer Class</h6>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="dash-table">
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Schedule</th>
+                            <th style="text-align:center;width:110px;">Original Grade</th>
+                            <th style="text-align:center;width:110px;">Summer Grade</th>
+                            <th style="text-align:center;width:110px;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                            $sceStatusMap = [
+                                'enrolled' => ['bg'=>'#e3f2fd','text'=>'#1565c0','label'=>'Enrolled'],
+                                'passed'   => ['bg'=>'#e8f5e9','text'=>'#2e7d32','label'=>'Passed'],
+                                'failed'   => ['bg'=>'#fdecea','text'=>'#c62828','label'=>'Failed'],
+                                'dropped'  => ['bg'=>'#f5f5f5','text'=>'#666','label'=>'Dropped'],
+                            ];
+                        ?>
+                        <?php $__currentLoopData = $summerClassEnrollments; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sce): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <?php
+                                $sc = $sce->summerClass;
+                                $sColor = $sceStatusMap[$sce->status] ?? $sceStatusMap['enrolled'];
+                            ?>
+                            <tr>
+                                <td>
+                                    <?php echo e($sc->subject->name ?? 'N/A'); ?>
+
+                                    <div style="font-size:11px;color:var(--muted);margin-top:2px;">
+                                        <?php echo e($sc->teacher->name ?? 'No teacher assigned'); ?> · S.Y. <?php echo e($sc->school_year ?? '—'); ?>
+
+                                    </div>
+                                </td>
+                                <td style="font-size:12px;">
+                                    <?php if($sc && $sc->start_date && $sc->end_date): ?>
+                                        <?php echo e($sc->start_date->format('M d')); ?> – <?php echo e($sc->end_date->format('M d, Y')); ?>
+
+                                        <?php if($sc->schedule_description): ?>
+                                            <div style="color:var(--muted);"><?php echo e($sc->schedule_description); ?><?php echo e($sc->room ? ' · '.$sc->room : ''); ?></div>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        —
+                                    <?php endif; ?>
+                                </td>
+                                <td style="text-align:center;"><?php echo e($sce->original_grade !== null ? number_format($sce->original_grade, 2) : '—'); ?></td>
+                                <td style="text-align:center;font-weight:700;"><?php echo e($sce->summer_grade !== null ? number_format($sce->summer_grade, 2) : '—'); ?></td>
+                                <td style="text-align:center;">
+                                    <span style="display:inline-flex;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;background:<?php echo e($sColor['bg']); ?>;color:<?php echo e($sColor['text']); ?>;">
+                                        <?php echo e($sColor['label']); ?>
+
+                                    </span>
+                                </td>
+                            </tr>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 
     
