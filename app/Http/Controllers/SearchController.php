@@ -18,16 +18,24 @@ class SearchController extends Controller
      * route normally passes it, just enough to render without error; the
      * values themselves don't matter since only the text is kept.
      */
-    private const PAGE_VIEWS = [
-        ['route' => 'home',       'title' => 'Home',                    'view' => 'home',       'data' => ['enrollmentOpen' => true, 'visitorCount' => 0, 'latestNews' => [], 'latestAnnouncements' => []]],
-        ['route' => 'about',      'title' => 'About Us',                'view' => 'about',      'data' => ['visitorCount' => 0]],
-        ['route' => 'aims',       'title' => 'AIMS',                    'view' => 'aims',       'data' => []],
-        ['route' => 'academics',  'title' => 'Academics',               'view' => 'academics',  'data' => ['visitorCount' => 0]],
-        ['route' => 'admission',  'title' => 'Admission & Enrollment',  'view' => 'admission',  'data' => ['enrollmentOpen' => true, 'visitorCount' => 0]],
-        ['route' => 'contact',    'title' => 'Contact Us',              'view' => 'contact',    'data' => ['visitorCount' => 0]],
-        ['route' => 'terms',      'title' => 'Terms & Conditions',      'view' => 'terms_and_conditions', 'data' => []],
-        ['route' => 'privacy',    'title' => 'Privacy Policy',          'view' => 'privacy_policy',       'data' => []],
-    ];
+    private function pageViews(): array
+    {
+        // A plain empty Collection (not []), since home.blade.php calls
+        // ->isNotEmpty() on latestNews/latestAnnouncements — a const array
+        // can't hold `new` expressions, hence this being a method instead.
+        $emptyCollection = new \Illuminate\Database\Eloquent\Collection();
+
+        return [
+            ['route' => 'home',       'title' => 'Home',                    'view' => 'home',       'data' => ['enrollmentOpen' => true, 'visitorCount' => 0, 'latestNews' => $emptyCollection, 'latestAnnouncements' => $emptyCollection]],
+            ['route' => 'about',      'title' => 'About Us',                'view' => 'about',      'data' => ['visitorCount' => 0]],
+            ['route' => 'aims',       'title' => 'AIMS',                    'view' => 'aims',       'data' => []],
+            ['route' => 'academics',  'title' => 'Academics',               'view' => 'academics',  'data' => ['visitorCount' => 0]],
+            ['route' => 'admission',  'title' => 'Admission & Enrollment',  'view' => 'admission',  'data' => ['enrollmentOpen' => true, 'visitorCount' => 0]],
+            ['route' => 'contact',    'title' => 'Contact Us',              'view' => 'contact',    'data' => ['visitorCount' => 0]],
+            ['route' => 'terms',      'title' => 'Terms & Conditions',      'view' => 'terms_and_conditions', 'data' => []],
+            ['route' => 'privacy',    'title' => 'Privacy Policy',          'view' => 'privacy_policy',       'data' => []],
+        ];
+    }
 
     public function index(Request $request)
     {
@@ -86,7 +94,7 @@ class SearchController extends Controller
     {
         return Cache::remember('public_search_page_index', now()->addHours(6), function () {
             $pages = [];
-            foreach (self::PAGE_VIEWS as $page) {
+            foreach ($this->pageViews() as $page) {
                 try {
                     $html = view($page['view'], $page['data'])->render();
                 } catch (\Throwable $e) {
