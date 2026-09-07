@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $q ? 'Search results for "'.$q.'"' : 'Search' }} &mdash; IEMELIF Learning Center</title>
+    <title><?php echo e($q ? 'Search results for "'.$q.'"' : 'Search'); ?> &mdash; IEMELIF Learning Center</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
 
-    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1780250000">
-    <link rel="stylesheet" href="{{ asset('css/announcements.css') }}?v=1780250000">
-    <link rel="stylesheet" href="{{ asset('css/news.css') }}?v=1780250000">
+    <link rel="stylesheet" href="<?php echo e(asset('css/styles.css')); ?>?v=1780250000">
+    <link rel="stylesheet" href="<?php echo e(asset('css/announcements.css')); ?>?v=1780250000">
+    <link rel="stylesheet" href="<?php echo e(asset('css/news.css')); ?>?v=1780250000">
 <style>
 :root { --bs-font-sans-serif: 'Open Sans', sans-serif; --bs-body-font-family: 'Open Sans', sans-serif; }
 body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, textarea {
@@ -34,13 +34,11 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
 .srch-empty i { font-size:48px; color:#ddd; display:block; margin-bottom:16px; }
 mark.srch-hl { background:#fff3c4; color:inherit; padding:0 2px; border-radius:2px; }
 </style>
-    <link rel="stylesheet" href="{{ asset('css/ilc-typography.css') }}?v=1780250000">
+    <link rel="stylesheet" href="<?php echo e(asset('css/ilc-typography.css')); ?>?v=1780250000">
 </head>
 <body>
 
-{{-- ═══════════════════════════════════════════════
-     TOP HEADER
-═══════════════════════════════════════════════ --}}
+
 <header class="top-header">
     <div class="container">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
@@ -59,8 +57,8 @@ mark.srch-hl { background:#fff3c4; color:inherit; padding:0 2px; border-radius:2
                     <div style="width:1px;height:11px;background:#ccc;"></div>
                     <div style="display:flex;align-items:center;gap:4px;"><i class="bi bi-clock" style="color:var(--ilc-gold);font-size:11px;"></i><span id="topbar-time" style="font-variant-numeric:tabular-nums;min-width:70px;"></span></div>
                 </div>
-                <form class="search-form" action="{{ route('search') }}" method="GET" style="display:flex;flex-direction:row;align-items:center;">
-                    <input type="text" name="q" class="form-control" placeholder="Search..." value="{{ $q }}" style="flex:1;">
+                <form class="search-form" action="<?php echo e(route('search')); ?>" method="GET" style="display:flex;flex-direction:row;align-items:center;">
+                    <input type="text" name="q" class="form-control" placeholder="Search..." value="<?php echo e($q); ?>" style="flex:1;">
                     <button class="btn-search" type="submit" style="flex-shrink:0;"><i class="bi bi-search"></i></button>
                 </form>
             </div>
@@ -68,9 +66,7 @@ mark.srch-hl { background:#fff3c4; color:inherit; padding:0 2px; border-radius:2
     </div>
 </header>
 
-{{-- ═══════════════════════════════════════════════
-     NAVIGATION
-═══════════════════════════════════════════════ --}}
+
 <nav class="main-nav navbar navbar-expand-lg">
     <div class="container">
         <button class="navbar-toggler" type="button"
@@ -79,160 +75,154 @@ mark.srch-hl { background:#fff3c4; color:inherit; padding:0 2px; border-radius:2
         </button>
         <div class="collapse navbar-collapse" id="mainNav">
             <ul class="navbar-nav mx-auto">
-                <li class="nav-item"><a class="nav-link" href="{{ route('home') }}">Home</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ route('about') }}">About</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ route('academics') }}">Academics</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ route('admission') }}">Enrollment</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ route('announcements') }}">Announcements</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ route('news') }}">News</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ route('aims') }}">AIMS</a></li>
-                <li class="nav-item"><a class="nav-link" href="{{ route('contact') }}">Contact</a></li>
+                <li class="nav-item"><a class="nav-link" href="<?php echo e(route('home')); ?>">Home</a></li>
+                <li class="nav-item"><a class="nav-link" href="<?php echo e(route('about')); ?>">About</a></li>
+                <li class="nav-item"><a class="nav-link" href="<?php echo e(route('academics')); ?>">Academics</a></li>
+                <li class="nav-item"><a class="nav-link" href="<?php echo e(route('admission')); ?>">Enrollment</a></li>
+                <li class="nav-item"><a class="nav-link" href="<?php echo e(route('announcements')); ?>">Announcements</a></li>
+                <li class="nav-item"><a class="nav-link" href="<?php echo e(route('news')); ?>">News</a></li>
+                <li class="nav-item"><a class="nav-link" href="<?php echo e(route('aims')); ?>">AIMS</a></li>
+                <li class="nav-item"><a class="nav-link" href="<?php echo e(route('contact')); ?>">Contact</a></li>
             </ul>
 
             <div class="d-flex gap-2">
-                <a href="{{ route('login') }}" class="btn btn-outline-light btn-sm">Log In</a>
+                <a href="<?php echo e(route('login')); ?>" class="btn btn-outline-light btn-sm">Log In</a>
             </div>
         </div>
     </div>
 </nav>
 
-{{-- ═══════════════════════════════════════════════
-     PAGE BANNER
-═══════════════════════════════════════════════ --}}
+
 <div style="background:var(--ilc-blue); padding:30px 0; text-align:center; border-bottom:4px solid var(--ilc-gold);">
     <h2 style="color:#fff; font-size:24px; font-weight:700; text-transform:uppercase; letter-spacing:2px; margin:0;">Search</h2>
     <p style="color:rgba(255,255,255,0.6); font-size:12px; margin:6px 0 0;">
-        <a href="{{ route('home') }}" style="color:rgba(255,255,255,0.5); text-decoration:none;">Home</a>
+        <a href="<?php echo e(route('home')); ?>" style="color:rgba(255,255,255,0.5); text-decoration:none;">Home</a>
         <span style="margin:0 8px; color:rgba(255,255,255,0.4);">&mdash;</span>
         <span style="color:#fff;">Search</span>
     </p>
 </div>
 
-{{-- ═══════════════════════════════════════════════
-     RESULTS
-═══════════════════════════════════════════════ --}}
+
 <section class="ann-page-section">
     <div class="container">
 
         <div class="srch-box">
-            <form action="{{ route('search') }}" method="GET">
-                <input type="text" name="q" value="{{ $q }}" placeholder="Search announcements, news, and school pages...">
+            <form action="<?php echo e(route('search')); ?>" method="GET">
+                <input type="text" name="q" value="<?php echo e($q); ?>" placeholder="Search announcements, news, and school pages...">
                 <button type="submit"><i class="bi bi-search me-1"></i> Search</button>
             </form>
         </div>
 
-        @php
+        <?php
             $totalResults = $pages->count() + $announcements->count() + $news->count();
-        @endphp
+        ?>
 
-        @if($q === '')
+        <?php if($q === ''): ?>
             <div class="srch-empty">
                 <i class="bi bi-search"></i>
                 <p>Type something above to search announcements, news, and school information.</p>
             </div>
-        @elseif($totalResults === 0)
+        <?php elseif($totalResults === 0): ?>
             <div class="srch-empty">
                 <i class="bi bi-emoji-frown"></i>
-                <p>No results found for &ldquo;<strong>{{ $q }}</strong>&rdquo;.</p>
+                <p>No results found for &ldquo;<strong><?php echo e($q); ?></strong>&rdquo;.</p>
                 <p style="font-size:12.5px;">Try a different keyword, or browse
-                    <a href="{{ route('announcements') }}">Announcements</a>,
-                    <a href="{{ route('news') }}">News</a>, or
-                    <a href="{{ route('academics') }}">Academics</a> directly.
+                    <a href="<?php echo e(route('announcements')); ?>">Announcements</a>,
+                    <a href="<?php echo e(route('news')); ?>">News</a>, or
+                    <a href="<?php echo e(route('academics')); ?>">Academics</a> directly.
                 </p>
             </div>
-        @else
+        <?php else: ?>
             <p style="color:#666;font-size:13.5px;margin-bottom:0;">
-                {{ $totalResults }} result{{ $totalResults === 1 ? '' : 's' }} for &ldquo;<strong>{{ $q }}</strong>&rdquo;
+                <?php echo e($totalResults); ?> result<?php echo e($totalResults === 1 ? '' : 's'); ?> for &ldquo;<strong><?php echo e($q); ?></strong>&rdquo;
             </p>
 
-            {{-- ── School Pages ── --}}
-            @if($pages->isNotEmpty())
+            
+            <?php if($pages->isNotEmpty()): ?>
             <div class="srch-group-title"><i class="bi bi-file-earmark-text"></i> School Pages</div>
-            @foreach($pages as $page)
-                <a href="{{ route($page['route']) }}" class="srch-page-card">
+            <?php $__currentLoopData = $pages; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $page): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                <a href="<?php echo e(route($page['route'])); ?>" class="srch-page-card">
                     <i class="bi bi-arrow-right-circle"></i>
                     <div>
-                        <div class="spc-title">{{ $page['title'] }}</div>
-                        <div class="spc-excerpt">{!! $page['excerpt'] !!}</div>
+                        <div class="spc-title"><?php echo e($page['title']); ?></div>
+                        <div class="spc-excerpt"><?php echo $page['excerpt']; ?></div>
                     </div>
                 </a>
-            @endforeach
-            @endif
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+            <?php endif; ?>
 
-            {{-- ── Announcements ── --}}
-            @if($announcements->isNotEmpty())
+            
+            <?php if($announcements->isNotEmpty()): ?>
             <div class="srch-group-title"><i class="bi bi-megaphone"></i> Announcements</div>
             <div class="row g-3">
-                @foreach($announcements as $ann)
+                <?php $__currentLoopData = $announcements; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $ann): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <div class="col-md-6">
-                    <a href="{{ route('announcements.show', $ann) }}" style="text-decoration:none;color:inherit;display:block;height:100%;">
+                    <a href="<?php echo e(route('announcements.show', $ann)); ?>" style="text-decoration:none;color:inherit;display:block;height:100%;">
                     <div class="ann-grid-card" style="cursor:pointer;height:100%;">
-                        @if($ann->image)
+                        <?php if($ann->image): ?>
                         <div style="height:160px;overflow:hidden;border-radius:10px 10px 0 0;margin:-1px -1px 0;background:#f0f6ff;position:relative;">
-                            <img src="{{ asset('storage/'.$ann->image) }}" alt="{{ $ann->title }}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;">
+                            <img src="<?php echo e(asset('storage/'.$ann->image)); ?>" alt="<?php echo e($ann->title); ?>" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;">
                         </div>
-                        @endif
+                        <?php endif; ?>
                         <div class="ann-card-header">
                             <div class="ann-card-date">
-                                <span class="card-day">{{ $ann->created_at->format('d') }}</span>
-                                <span class="card-month">{{ $ann->created_at->format('M') }}</span>
+                                <span class="card-day"><?php echo e($ann->created_at->format('d')); ?></span>
+                                <span class="card-month"><?php echo e($ann->created_at->format('M')); ?></span>
                             </div>
-                            <div class="ann-card-type">{{ ucfirst($ann->category) }}</div>
+                            <div class="ann-card-type"><?php echo e(ucfirst($ann->category)); ?></div>
                         </div>
                         <div class="ann-card-body">
-                            <span class="ann-type-pill {{ $ann->category }}">{{ ucfirst($ann->category) }}</span>
-                            <h5>{{ $ann->title }}</h5>
-                            <p>{{ Str::limit($ann->content, 120) }}</p>
+                            <span class="ann-type-pill <?php echo e($ann->category); ?>"><?php echo e(ucfirst($ann->category)); ?></span>
+                            <h5><?php echo e($ann->title); ?></h5>
+                            <p><?php echo e(Str::limit($ann->content, 120)); ?></p>
                         </div>
                         <div class="ann-card-footer">
-                            <span class="ann-posted"><i class="bi bi-calendar3"></i> {{ $ann->created_at->format('M d, Y') }}</span>
+                            <span class="ann-posted"><i class="bi bi-calendar3"></i> <?php echo e($ann->created_at->format('M d, Y')); ?></span>
                             <span class="btn-ann-sm">Read More <i class="bi bi-chevron-right"></i></span>
                         </div>
                     </div>
                     </a>
                 </div>
-                @endforeach
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </div>
-            @endif
+            <?php endif; ?>
 
-            {{-- ── News ── --}}
-            @if($news->isNotEmpty())
+            
+            <?php if($news->isNotEmpty()): ?>
             <div class="srch-group-title"><i class="bi bi-newspaper"></i> News</div>
             <div class="row g-3">
-                @foreach($news as $article)
+                <?php $__currentLoopData = $news; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $article): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <div class="col-md-6">
-                    <a href="{{ route('news.show', $article) }}" style="text-decoration:none;color:inherit;display:block;height:100%;">
+                    <a href="<?php echo e(route('news.show', $article)); ?>" style="text-decoration:none;color:inherit;display:block;height:100%;">
                     <div class="news-grid-card" style="cursor:pointer;height:100%;">
                         <div class="grid-img">
-                            @if($article->image)
-                                <img src="{{ asset('storage/'.$article->image) }}" alt="{{ $article->title }}">
-                            @else
-                                <div class="img-placeholder"><img src="{{ asset('images/bg'.((($loop->index % 3)+1)).'.jpg') }}" alt="{{ $article->title }}"></div>
-                            @endif
+                            <?php if($article->image): ?>
+                                <img src="<?php echo e(asset('storage/'.$article->image)); ?>" alt="<?php echo e($article->title); ?>">
+                            <?php else: ?>
+                                <div class="img-placeholder"><img src="<?php echo e(asset('images/bg'.((($loop->index % 3)+1)).'.jpg')); ?>" alt="<?php echo e($article->title); ?>"></div>
+                            <?php endif; ?>
                         </div>
                         <div class="grid-body">
-                            <span class="news-category-badge {{ $article->category }}">{{ ucfirst($article->category) }}</span>
-                            <h5>{{ $article->title }}</h5>
-                            <p>{{ Str::limit($article->body, 120) }}</p>
+                            <span class="news-category-badge <?php echo e($article->category); ?>"><?php echo e(ucfirst($article->category)); ?></span>
+                            <h5><?php echo e($article->title); ?></h5>
+                            <p><?php echo e(Str::limit($article->body, 120)); ?></p>
                         </div>
                         <div class="grid-footer">
-                            <span class="news-date"><i class="bi bi-calendar3"></i> {{ $article->created_at->format('M d, Y') }}</span>
+                            <span class="news-date"><i class="bi bi-calendar3"></i> <?php echo e($article->created_at->format('M d, Y')); ?></span>
                             <span class="btn-read-more-sm">Read More <i class="bi bi-chevron-right"></i></span>
                         </div>
                     </div>
                     </a>
                 </div>
-                @endforeach
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </div>
-            @endif
-        @endif
+            <?php endif; ?>
+        <?php endif; ?>
 
     </div>
 </section>
 
-{{-- ═══════════════════════════════════════════════
-     FOOTER
-═══════════════════════════════════════════════ --}}
+
 <footer class="site-footer">
     <div class="container">
         <div class="row g-4">
@@ -254,31 +244,31 @@ mark.srch-hl { background:#fff3c4; color:inherit; padding:0 2px; border-radius:2
                 </div>
                 <div class="footer-logos mt-3">
                     <div class="footer-logo-img">
-                        <img src="{{ asset('images/logo1.png') }}" alt="Logo">
+                        <img src="<?php echo e(asset('images/logo1.png')); ?>" alt="Logo">
                     </div>
                     <div class="footer-logo-img">
-                        <img src="{{ asset('images/logoo.jpg') }}" alt="Logo">
+                        <img src="<?php echo e(asset('images/logoo.jpg')); ?>" alt="Logo">
                     </div>
                 </div>
             </div>
             <div class="col-md-2">
                 <h6>Quick Links</h6>
-                <a href="{{ route('home') }}">Home</a>
-                <a href="{{ route('about') }}">About Us</a>
-                <a href="{{ route('academics') }}">Academics</a>
-                <a href="{{ route('admission') }}">Enrollment</a>
-                <a href="{{ route('announcements') }}">Announcements</a>
-                <a href="{{ route('news') }}">News</a>
-                <a href="{{ route('aims') }}">AIMS</a>
-                <a href="{{ route('contact') }}">Contact Us</a>
-                <a href="{{ route('terms') }}">Terms &amp; Conditions</a>
-                <a href="{{ route('privacy') }}">Privacy Policy</a>
+                <a href="<?php echo e(route('home')); ?>">Home</a>
+                <a href="<?php echo e(route('about')); ?>">About Us</a>
+                <a href="<?php echo e(route('academics')); ?>">Academics</a>
+                <a href="<?php echo e(route('admission')); ?>">Enrollment</a>
+                <a href="<?php echo e(route('announcements')); ?>">Announcements</a>
+                <a href="<?php echo e(route('news')); ?>">News</a>
+                <a href="<?php echo e(route('aims')); ?>">AIMS</a>
+                <a href="<?php echo e(route('contact')); ?>">Contact Us</a>
+                <a href="<?php echo e(route('terms')); ?>">Terms &amp; Conditions</a>
+                <a href="<?php echo e(route('privacy')); ?>">Privacy Policy</a>
             </div>
             <div class="col-md-3">
                 <h6>Latest Articles</h6>
                 <div class="footer-news-item">
                     <div class="footer-news-img">
-                        <img src="{{ asset('images/bg4.jpg') }}" alt="News 1">
+                        <img src="<?php echo e(asset('images/bg4.jpg')); ?>" alt="News 1">
                     </div>
                     <div class="footer-news-text">
                         Celebrating 32 Years of Excellence in Education
@@ -286,7 +276,7 @@ mark.srch-hl { background:#fff3c4; color:inherit; padding:0 2px; border-radius:2
                 </div>
                 <div class="footer-news-item">
                     <div class="footer-news-img">
-                        <img src="{{ asset('images/bg2.jpg') }}" alt="News 1">
+                        <img src="<?php echo e(asset('images/bg2.jpg')); ?>" alt="News 1">
                     </div>
                     <div class="footer-news-text">
                         Science Education Affair 2025 &mdash; A Successful Event
@@ -294,7 +284,7 @@ mark.srch-hl { background:#fff3c4; color:inherit; padding:0 2px; border-radius:2
                 </div>
                 <div class="footer-news-item">
                     <div class="footer-news-img">
-                        <img src="{{ asset('images/bg3.jpg') }}" alt="News 1">
+                        <img src="<?php echo e(asset('images/bg3.jpg')); ?>" alt="News 1">
                     </div>
                     <div class="footer-news-text">
                         Welcome Back to School, ILCians!
@@ -310,7 +300,7 @@ mark.srch-hl { background:#fff3c4; color:inherit; padding:0 2px; border-radius:2
                     <i class="bi bi-people-fill" style="font-size:20px;color:var(--ilc-gold);flex-shrink:0;"></i>
                     <div>
                         <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.8px;">Total Visitors</div>
-                        <div style="font-size:20px;font-weight:800;color:#fff;line-height:1.2;">{{ number_format($visitorCount ?? 0) }}</div>
+                        <div style="font-size:20px;font-weight:800;color:#fff;line-height:1.2;"><?php echo e(number_format($visitorCount ?? 0)); ?></div>
                     </div>
                     <div style="margin-left:auto;display:flex;align-items:center;gap:5px;font-size:10px;color:rgba(255,255,255,.4);">
                         <span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;animation:pulse 1.5s ease-in-out infinite;"></span>Live
@@ -321,7 +311,7 @@ mark.srch-hl { background:#fff3c4; color:inherit; padding:0 2px; border-radius:2
     </div>
 
     <div class="footer-bottom mt-4">
-        &copy; {{ date('Y') }} IEMELIF Learning Center &mdash; General Tinio, Nueva Ecija ILC. All rights reserved.
+        &copy; <?php echo e(date('Y')); ?> IEMELIF Learning Center &mdash; General Tinio, Nueva Ecija ILC. All rights reserved.
     </div>
 </footer>
 
@@ -329,3 +319,4 @@ mark.srch-hl { background:#fff3c4; color:inherit; padding:0 2px; border-radius:2
 <script>(function(){var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],months=['January','February','March','April','May','June','July','August','September','October','November','December'];function pad(n){return n<10?'0'+n:n;}function tick(){var now=new Date(),d=days[now.getDay()]+', '+months[now.getMonth()]+' '+now.getDate()+', '+now.getFullYear(),h=now.getHours(),ampm=h>=12?'PM':'AM';h=h%12||12;var t=h+':'+pad(now.getMinutes())+':'+pad(now.getSeconds())+' '+ampm;var de=document.getElementById('topbar-date'),te=document.getElementById('topbar-time');if(de)de.textContent=d;if(te)te.textContent=t;}tick();setInterval(tick,1000);})();</script>
 </body>
 </html>
+<?php /**PATH C:\Users\ron28\Desktop\ILC SYSTEM\ilc-website-system\resources\views/search.blade.php ENDPATH**/ ?>

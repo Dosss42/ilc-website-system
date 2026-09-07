@@ -91,7 +91,7 @@ Route::get('/announcements/{announcement}', function (\App\Models\Announcement $
 })->name('announcements.show');
 Route::get('/contact',       fn() => view('contact',       ['visitorCount' => (int) \App\Models\Setting::get('visitor_count', 0)]))->name('contact');
 Route::post('/contact/send', [\App\Http\Controllers\ContactController::class, 'send'])->name('contact.send');
-Route::get('/search',        fn() => view('search'))->name('search');
+Route::get('/search',        [\App\Http\Controllers\SearchController::class, 'index'])->name('search');
 Route::get('/terms',         fn() => view('terms_and_conditions'))->name('terms');
 Route::get('/privacy',       fn() => view('privacy_policy'))->name('privacy');
 
