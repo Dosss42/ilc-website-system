@@ -288,7 +288,7 @@
                         <button type="button" class="action-btn"
                             style="background:#fff3e0;color:#e65100;border:1px solid #f5a623;"
                             title="Add Promissory Note"
-                            onclick="openPromissoryModal(<?php echo e($enrollment->id); ?>, '<?php echo e(addslashes($enrollment->user->name ?? '')); ?>', <?php echo e($balance); ?>)">
+                            onclick="openPromissoryModal(<?php echo e($enrollment->id); ?>, '<?php echo e(addslashes($enrollment->user->name ?? '')); ?>', <?php echo e($balance); ?>, '<?php echo e(addslashes($enrollment->user->guardian->name ?? '')); ?>')">
                             <i class="bi bi-file-earmark-text"></i>
                         </button>
                         <?php endif; ?>
@@ -799,15 +799,18 @@ document.getElementById('walkInPayForm').addEventListener('submit', function(e) 
 });
 
 // ── Promissory Note ──
-function openPromissoryModal(enrollmentId, studentName, balance) {
+function openPromissoryModal(enrollmentId, studentName, balance, guardianName) {
     document.getElementById('pn-enrollment-id').value     = enrollmentId;
     document.getElementById('pn-student-name').value      = studentName;
     document.getElementById('pn-student-display').textContent = studentName;
     document.getElementById('pn-amount-overdue').value    = balance;
     document.getElementById('pn-amount-promised').value   = balance;
     document.getElementById('pn-promise-date').value      = '';
-    document.getElementById('pn-guardian').value          = '';
-    document.getElementById('pn-remarks').value           = '';
+    // Pre-fill from the student's registered guardian on file, still editable
+    // for an ad-hoc contact who isn't in the system (DATABASE_NORMALIZATION_PLAN.md
+    // Phase 7 — staff typed this by hand every time before).
+    document.getElementById('pn-guardian').value          = guardianName || '';
+    document.getElementById('pn-remarks').value            = '';
     new bootstrap.Modal(document.getElementById('promissoryModal')).show();
 }
 

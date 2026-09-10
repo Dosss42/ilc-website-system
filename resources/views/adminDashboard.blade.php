@@ -6848,8 +6848,12 @@ function openWalkInEnrollmentModal() {
                 ->sortByDesc('remaining_balance')
                 ->values();
 
-            // Section capacity — full table
-            $rptAllSections  = \App\Models\Section::select('id','name','grade_level','max_students','current_enrollment','school_year')->get();
+            // Section capacity — full table. current_enrollment is overwritten
+            // with the live section_student count below (the stored column can
+            // drift — see Section::getLiveEnrollmentCountAttribute()). select()
+            // must come before withCount() or its subquery column gets wiped out.
+            $rptAllSections  = \App\Models\Section::select('id','name','grade_level','max_students','school_year')->withCount('students')->get();
+            $rptAllSections->each(fn($s) => $s->current_enrollment = $s->students_count);
             $rptTotalCapacity    = $rptAllSections->sum('max_students');
             $rptTotalEnrolledSec = $rptAllSections->sum('current_enrollment');
 

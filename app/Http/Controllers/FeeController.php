@@ -93,124 +93,45 @@ class FeeController extends Controller
     }
 
     /**
-     * Internal method to calculate fee breakdown
+     * Internal method to calculate fee breakdown. Backed by the shared
+     * FeeCalculator (DATABASE_NORMALIZATION_PLAN.md Phase 2) — same source
+     * every other fee-quoting/charging path now uses, so this endpoint's
+     * quote always matches what EnrollmentController actually charges.
      */
     private function calculateFeeBreakdown($gradeLevel, $paymentOption)
     {
         $gradeLevel = strtolower(str_replace(' ', '', $gradeLevel));
-        $fee = FeeSetting::current();
         $months = 9;
 
-        $tuition = (float) $fee->tuition;
-        $misc = (float) $fee->misc;
-        $insurance = (float) $fee->insurance;
-        $electric = (float) $fee->electric;
-
-        // Get books fee based on grade level
-        $booksMap = [
-            'nursery' => (float) $fee->books_nursery,
-            'kindergarten' => (float) $fee->books_nursery,
-            'grade1' => (float) $fee->books_grade1,
-            'grade2' => (float) $fee->books_grade1,
-            'grade3' => (float) $fee->books_grade3,
-            'grade4' => (float) $fee->books_grade4,
-            'grade5' => (float) $fee->books_grade4,
-            'grade6' => (float) $fee->books_grade4,
-        ];
-        $books = $booksMap[$gradeLevel] ?? (float) $fee->books_grade1;
-
-        // Calculate base total
-        $baseTotal = $tuition + $misc + $books + $insurance + $electric;
+        $calc = \App\Services\FeeCalculator::calculate($gradeLevel, $paymentOption);
 
         $result = [
             'grade_level' => $gradeLevel,
             'payment_option' => $paymentOption,
             'components' => [
-                'tuition' => $tuition,
-                'misc' => $misc,
-                'books' => $books,
-                'insurance' => $insurance,
-                'electric' => $electric
+                'tuition' => $calc['tuition'],
+                'misc' => $calc['misc'],
+                'books' => $calc['books'],
+                'insurance' => $calc['insurance'],
+                'electric' => $calc['electric'],
             ],
-            'base_total' => $baseTotal
+            'base_total' => $calc['base_total'],
         ];
 
-        switch ($paymentOption) {
-            case 'A': // Cash Basis - discount
-                $discount = (float) $fee->option_a_discount;
-                $result['discount'] = $discount;
-                $result['discount_description'] = 'Cash Basis Discount';
-                $result['total_payable'] = $baseTotal - $discount;
-                $result['downpayment'] = 0;
-                $result['monthly_payment'] = 0;
-                $result['months'] = 0;
-                break;
-
-            case 'B': // Monthly Payment
-                $dpMap = [
-                    'nursery' => (float) $fee->optb_dp_nursery,
-                    'kindergarten' => (float) $fee->optb_dp_kinder,
-                    'grade1' => (float) $fee->optb_dp_grade1,
-                    'grade2' => (float) $fee->optb_dp_grade1,
-                    'grade3' => (float) $fee->optb_dp_grade3,
-                    'grade4' => (float) $fee->optb_dp_grade4,
-                    'grade5' => (float) $fee->optb_dp_grade4,
-                    'grade6' => (float) $fee->optb_dp_grade4,
-                ];
-                $downpayment = $dpMap[$gradeLevel] ?? (float) $fee->optb_dp_nursery;
-                $tuitionMo = (float) $fee->optb_monthly_tuition;
-                $electricMo = (float) $fee->optb_monthly_electric;
-                $monthly = round($tuitionMo + $electricMo, 2);
-
-                $result['downpayment'] = $downpayment;
-                $result['monthly_payment'] = $monthly;
-                $result['months'] = $months;
-                $result['total_monthly'] = round($monthly * $months, 2);
-                $result['total_payable'] = round($downpayment + ($monthly * $months), 2);
-                $result['discount'] = 0;
-                break;
-
-            case 'C': // Elem. Pupils Only Monthly
-                $dpMap = [
-                    'grade1' => (float) $fee->optc_dp_grade1,
-                    'grade2' => (float) $fee->optc_dp_grade1,
-                    'grade3' => (float) $fee->optc_dp_grade3,
-                    'grade4' => (float) $fee->optc_dp_grade4,
-                    'grade5' => (float) $fee->optc_dp_grade4,
-                    'grade6' => (float) $fee->optc_dp_grade4,
-                ];
-                $downpayment = $dpMap[$gradeLevel] ?? (float) $fee->optc_dp_grade1;
-                $tuitionMo = (float) $fee->optc_monthly_tuition;
-                $miscMo = (float) $fee->optc_monthly_misc;
-                $electricMo = (float) $fee->optc_monthly_electric;
-                $monthly = round($tuitionMo + $miscMo + $electricMo, 2);
-
-                $result['downpayment'] = $downpayment;
-                $result['monthly_payment'] = $monthly;
-                $result['months'] = $months;
-                $result['total_monthly'] = round($monthly * $months, 2);
-                $result['total_payable'] = round($downpayment + ($monthly * $months), 2);
-                $result['discount'] = 0;
-                break;
-
-            case 'D': // Pre-Elem Pupils Only Monthly
-                $dpMap = [
-                    'nursery' => (float) $fee->optd_dp_nursery,
-                    'kindergarten' => (float) $fee->optd_dp_kinder,
-                ];
-                $downpayment = $dpMap[$gradeLevel] ?? (float) $fee->optd_dp_nursery;
-                $tuitionMo = (float) $fee->optd_monthly_tuition;
-                $miscMo = (float) $fee->optd_monthly_misc;
-                $electricMo = (float) $fee->optd_monthly_electric;
-                $monthly = round($tuitionMo + $miscMo + $electricMo, 2);
-
-                $result['downpayment'] = $downpayment;
-                $result['monthly_payment'] = $monthly;
-                $result['months'] = $months;
-                $result['total_monthly'] = round($monthly * $months, 2);
-                $result['total_payable'] = round($downpayment + ($monthly * $months), 2);
-                $result['discount'] = 0;
-                break;
+        if ($paymentOption === 'A') {
+            $result['discount'] = $calc['discount'];
+            $result['discount_description'] = 'Cash Basis Discount';
+            $result['total_payable'] = $calc['total_due'];
+            $result['downpayment'] = 0;
+            $result['monthly_payment'] = 0;
+            $result['months'] = 0;
+        } elseif (in_array($paymentOption, ['B', 'C', 'D'], true)) {
+            $result['downpayment'] = $calc['downpayment'];
+            $result['monthly_payment'] = $calc['monthly_amount'];
+            $result['months'] = $months;
+            $result['total_monthly'] = round($calc['monthly_amount'] * $months, 2);
+            $result['total_payable'] = $calc['total_due'];
+            $result['discount'] = 0;
         }
 
         return $result;

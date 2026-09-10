@@ -29,9 +29,18 @@ class StudentController extends Controller
               ?? $user->latestEnrollment
             : $user->latestEnrollment;
 
-        $gradeLevel  = $enrollment ? ($enrollment->student_data['grade_level'] ?? $enrollment->grade_level) : null;
+        // grade_level is a real enrollments column, never JSON-only — trust it
+        // first (see DATABASE_NORMALIZATION_PLAN.md Phase 6); the JSON snapshot
+        // is only a fallback for legacy rows that predate the column.
+        $gradeLevel  = $enrollment ? ($enrollment->grade_level ?? $enrollment->student_data['grade_level'] ?? null) : null;
         $schoolYear  = $schoolYear ?: ($enrollment ? $enrollment->school_year : null);
-        $sectionName = $enrollment ? $enrollment->section : null;
+        // section_student only tracks CURRENT membership, not history — trust
+        // it only when viewing the student's actual latest enrollment; a
+        // requested past $schoolYear must keep showing that year's real
+        // historical section instead. See DATABASE_NORMALIZATION_PLAN.md Phase 4.
+        $isCurrentEnrollment = $enrollment && $user->latestEnrollment && $enrollment->id === $user->latestEnrollment->id;
+        $sectionName = ($isCurrentEnrollment ? $user->current_section->name ?? null : null)
+            ?? ($enrollment ? $enrollment->section : null);
 
         // 1. All active subjects for this grade level
         $allSubjects = Subject::where('is_active', true)
@@ -205,8 +214,15 @@ class StudentController extends Controller
                ?? $user->latestEnrollment)
             : $user->latestEnrollment;
 
-        $gradeLevel  = $enrollment ? ($enrollment->student_data['grade_level'] ?? $enrollment->grade_level) : null;
-        $sectionName = $enrollment ? $enrollment->section : null;
+        // grade_level is a real enrollments column, never JSON-only — trust it
+        // first (see DATABASE_NORMALIZATION_PLAN.md Phase 6).
+        $gradeLevel  = $enrollment ? ($enrollment->grade_level ?? $enrollment->student_data['grade_level'] ?? null) : null;
+        // section_student only tracks CURRENT membership — trust it only for
+        // the student's actual latest enrollment, not a requested past
+        // $schoolYear (see DATABASE_NORMALIZATION_PLAN.md Phase 4).
+        $isCurrentEnrollment = $enrollment && $user->latestEnrollment && $enrollment->id === $user->latestEnrollment->id;
+        $sectionName = ($isCurrentEnrollment ? $user->current_section->name ?? null : null)
+            ?? ($enrollment ? $enrollment->section : null);
         $currentSY   = $enrollment ? $enrollment->school_year : null;
 
         $glMap = ['nursery'=>'Nursery','kindergarten'=>'Kindergarten','grade1'=>'Grade 1',
@@ -280,17 +296,12 @@ class StudentController extends Controller
         $user = Auth::user();
 
         $enrollment = $user->latestEnrollment;
-        $section = null;
+        // section_student trusted first — see User::getCurrentSectionAttribute()
+        $section = $user->current_section;
 
-        if ($enrollment && $enrollment->section) {
+        if (!$section && $enrollment && $enrollment->section) {
             $section = Section::where('name', $enrollment->section)
                 ->where('is_active', true)->first();
-        }
-
-        if (!$section) {
-            $section = Section::whereHas('students', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
-            })->where('is_active', true)->first();
         }
 
         // Get announcements for all, or for student's section

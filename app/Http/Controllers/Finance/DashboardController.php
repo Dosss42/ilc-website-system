@@ -209,7 +209,10 @@ class DashboardController extends Controller
                 $q->where('payment_type', 'installment')
                     ->orWhereIn('payment_option', ['B', 'C', 'D']);
             })
-            ->with(['user:id,name,email', 'paymentInstallments']);
+            // 'user.guardian' feeds the promissory-note modal's guardian-name
+            // auto-fill (DATABASE_NORMALIZATION_PLAN.md Phase 7) — staff can
+            // still edit it, this just saves them re-typing what's on file.
+            ->with(['user:id,name,email', 'user.guardian', 'paymentInstallments']);
 
         // Filter by school year
         $yearFilter = $request->input('school_year');
@@ -531,6 +534,13 @@ class DashboardController extends Controller
                 FeeSetting::create($validated);
             }
 
+            // Dual-write (DATABASE_NORMALIZATION_PLAN.md Phase 2): keep
+            // fee_components in sync so FeeCalculator — which every real fee
+            // calculation now reads from — picks up this change immediately,
+            // not just the legacy fee_settings columns.
+            $this->syncFeeComponents($validated);
+            \App\Services\FeeCalculator::forgetCache();
+
             if ($request->wantsJson() || $request->ajax()) {
                 return response()->json(['success' => true, 'message' => 'Fee settings updated successfully.']);
             }
@@ -547,6 +557,65 @@ class DashboardController extends Controller
             }
             return redirect()->back()->with('error', 'Failed to save fee settings: ' . $e->getMessage())->withInput();
         }
+    }
+
+    /**
+     * Mirror a fee_settings update into fee_components (Phase 2 dual-write).
+     * Same column-to-row mapping the one-time backfill migration used —
+     * kept as the single place this mapping is defined so both stay
+     * consistent if the mapping ever needs to change.
+     */
+    private function syncFeeComponents(array $v): void
+    {
+        $set = function (?string $option, ?string $gradeLevel, string $feeType, $amount) {
+            \Illuminate\Support\Facades\DB::table('fee_components')->updateOrInsert(
+                ['option' => $option, 'grade_level' => $gradeLevel, 'fee_type' => $feeType],
+                ['amount' => (float) $amount, 'updated_at' => now()]
+            );
+        };
+
+        $set(null, null, 'tuition', $v['tuition']);
+        $set(null, null, 'misc', $v['misc']);
+        $set(null, null, 'insurance', $v['insurance']);
+        $set(null, null, 'electric', $v['electric']);
+
+        $set(null, 'nursery', 'books', $v['books_nursery']);
+        $set(null, 'kindergarten', 'books', $v['books_nursery']);
+        $set(null, 'grade1', 'books', $v['books_grade1']);
+        $set(null, 'grade2', 'books', $v['books_grade1']);
+        $set(null, 'grade3', 'books', $v['books_grade3']);
+        $set(null, 'grade4', 'books', $v['books_grade4']);
+        $set(null, 'grade5', 'books', $v['books_grade4']);
+        $set(null, 'grade6', 'books', $v['books_grade4']);
+
+        $set('A', null, 'discount', $v['option_a_discount']);
+
+        $set('B', 'nursery', 'downpayment', $v['optb_dp_nursery']);
+        $set('B', 'kindergarten', 'downpayment', $v['optb_dp_kinder']);
+        $set('B', 'grade1', 'downpayment', $v['optb_dp_grade1']);
+        $set('B', 'grade2', 'downpayment', $v['optb_dp_grade1']);
+        $set('B', 'grade3', 'downpayment', $v['optb_dp_grade3']);
+        $set('B', 'grade4', 'downpayment', $v['optb_dp_grade4']);
+        $set('B', 'grade5', 'downpayment', $v['optb_dp_grade4']);
+        $set('B', 'grade6', 'downpayment', $v['optb_dp_grade4']);
+        $set('B', null, 'monthly_tuition', $v['optb_monthly_tuition']);
+        $set('B', null, 'monthly_electric', $v['optb_monthly_electric']);
+
+        $set('C', 'grade1', 'downpayment', $v['optc_dp_grade1']);
+        $set('C', 'grade2', 'downpayment', $v['optc_dp_grade1']);
+        $set('C', 'grade3', 'downpayment', $v['optc_dp_grade3']);
+        $set('C', 'grade4', 'downpayment', $v['optc_dp_grade4']);
+        $set('C', 'grade5', 'downpayment', $v['optc_dp_grade4']);
+        $set('C', 'grade6', 'downpayment', $v['optc_dp_grade4']);
+        $set('C', null, 'monthly_tuition', $v['optc_monthly_tuition']);
+        $set('C', null, 'monthly_misc', $v['optc_monthly_misc']);
+        $set('C', null, 'monthly_electric', $v['optc_monthly_electric']);
+
+        $set('D', 'nursery', 'downpayment', $v['optd_dp_nursery']);
+        $set('D', 'kindergarten', 'downpayment', $v['optd_dp_kinder']);
+        $set('D', null, 'monthly_tuition', $v['optd_monthly_tuition']);
+        $set('D', null, 'monthly_misc', $v['optd_monthly_misc']);
+        $set('D', null, 'monthly_electric', $v['optd_monthly_electric']);
     }
 
     /**
@@ -1047,12 +1116,14 @@ class DashboardController extends Controller
                 $isDownpayment     = $downpaymentAmount > 0 && $alreadyPaid < $downpaymentAmount;
 
                 $installmentMonth = '';
+                $resolvedInstallmentId = null;
 
                 // If specific installment ID provided, process that installment
                 if ($request->installment_id) {
                     $installment = PaymentInstallment::find($request->installment_id);
                     if ($installment && $installment->enrollment_id === $enrollment->id) {
                         $installmentMonth = $installment->month_name ?? '';
+                        $resolvedInstallmentId = $installment->id;
                         $installment->update([
                             'status'           => 'paid',
                             'paid_at'          => now(),
@@ -1071,6 +1142,7 @@ class DashboardController extends Controller
                         ->first();
                     if ($nextInstallment) {
                         $installmentMonth = $nextInstallment->month_name ?? '';
+                        $resolvedInstallmentId = $nextInstallment->id;
                         $nextInstallment->update([
                             'status'           => 'paid',
                             'paid_at'          => now(),
@@ -1084,11 +1156,16 @@ class DashboardController extends Controller
                 // If $isDownpayment && no installment_id, do NOT mark any installment as paid.
                 // The downpayment is a separate payment from the 9 monthly installments.
 
-                // Update payment description with installment month
+                // Update payment description with installment month. installment_id is
+                // stored alongside it (DATABASE_NORMALIZATION_PLAN.md Phase 7) so this
+                // transaction stays linkable to its installment via the real relation —
+                // installment_month itself stays, since it also has to carry the
+                // "Downpayment" case below, which has no installment row to link to.
                 if ($installmentMonth) {
                     $payment->update([
                         'description' => 'Admin payment via ' . $methodLabel . ' - ' . $installmentMonth . ' - ₱' . number_format($amountPaid, 2) . ($request->payment_reference ? ' (Ref: ' . $request->payment_reference . ')' : ''),
                         'installment_month' => $installmentMonth,
+                        'installment_id' => $resolvedInstallmentId,
                     ]);
                 }
 
@@ -1376,37 +1453,21 @@ class DashboardController extends Controller
     }
 
     /**
-     * Helper: Calculate fee breakdown
+     * Helper: Calculate fee breakdown (display only, Fee Management page).
+     * Backed by the shared FeeCalculator (DATABASE_NORMALIZATION_PLAN.md
+     * Phase 2) so this page always shows the same numbers every other
+     * fee-quoting path does. $feeSettings param kept for call-site
+     * compatibility but no longer read directly.
      */
     private function calculateFeeBreakdown($gradeLevel, $feeSettings)
     {
-        // Get correct book fee based on grade
-        $bookFee = 0;
-        if (in_array($gradeLevel, ['nursery'])) {
-            $bookFee = $feeSettings->books_nursery ?? 0;
-        } elseif (in_array($gradeLevel, ['kindergarten'])) {
-            $bookFee = $feeSettings->books_nursery ?? 0;
-        } elseif (in_array($gradeLevel, ['grade1', 'grade2'])) {
-            $bookFee = $feeSettings->books_grade1 ?? 0;
-        } elseif (in_array($gradeLevel, ['grade3'])) {
-            $bookFee = $feeSettings->books_grade3 ?? 0;
-        } elseif (in_array($gradeLevel, ['grade4', 'grade5', 'grade6'])) {
-            $bookFee = $feeSettings->books_grade4 ?? 0;
-        }
-
-        $baseTotal = ($feeSettings->tuition ?? 0) + 
-                     ($feeSettings->misc ?? 0) + 
-                     ($feeSettings->insurance ?? 0) + 
-                     ($feeSettings->electric ?? 0) + 
-                     $bookFee;
-
         return [
-            'tuition' => $feeSettings->tuition ?? 0,
-            'misc' => $feeSettings->misc ?? 0,
-            'insurance' => $feeSettings->insurance ?? 0,
-            'electric' => $feeSettings->electric ?? 0,
-            'books' => $bookFee,
-            'base_total' => $baseTotal,
+            'tuition' => \App\Services\FeeCalculator::base('tuition'),
+            'misc' => \App\Services\FeeCalculator::base('misc'),
+            'insurance' => \App\Services\FeeCalculator::base('insurance'),
+            'electric' => \App\Services\FeeCalculator::base('electric'),
+            'books' => \App\Services\FeeCalculator::books($gradeLevel),
+            'base_total' => \App\Services\FeeCalculator::baseTotal($gradeLevel),
         ];
     }
 
@@ -1504,7 +1565,6 @@ class DashboardController extends Controller
                                     'created_at' => now(),
                                     'updated_at' => now(),
                                 ]);
-                                $section->increment('current_enrollment');
                             }
                         }
                     }

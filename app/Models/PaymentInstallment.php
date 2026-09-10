@@ -5,6 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * `user_id` is a deliberate transitive denormalization — already reachable
+ * via enrollment_id -> enrollments.user_id, kept directly here for cheap
+ * reads (DATABASE_NORMALIZATION_PLAN.md Phase 5, Option B). Don't remove it
+ * in favor of a join; `php artisan db:verify-normalization` is what guards
+ * against it silently drifting from the enrollment's real owner instead.
+ */
 class PaymentInstallment extends Model
 {
     use HasFactory;

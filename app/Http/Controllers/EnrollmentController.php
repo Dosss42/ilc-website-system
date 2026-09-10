@@ -249,13 +249,20 @@ class EnrollmentController extends Controller
                 ]
             );
 
-            // Create or update student address
+            // Create or update student address. 'street' was never a real
+            // column (street_address is) so this silently wrote nothing for
+            // it, and 'city' was never populated at all — only its twin
+            // 'municipality' column — confirmed via real student data showing
+            // both empty. Both address-shaped columns are set here now so
+            // any existing reader of either name gets the real value. See
+            // DATABASE_NORMALIZATION_PLAN.md Phase 6.
             StudentAddress::updateOrCreate(
                 ['user_id' => $user->id],
                 [
-                    'street' => $validated['street_address'],
+                    'street_address' => $validated['street_address'],
                     'barangay' => $validated['barangay'],
                     'municipality' => $validated['city'],
+                    'city' => $validated['city'],
                     'province' => $validated['province'],
                     'zip_code' => $validated['zip_code'],
                 ]
@@ -355,68 +362,42 @@ class EnrollmentController extends Controller
     }
 
     /**
-     * Calculate payment breakdown based on grade level and payment option
+     * Calculate payment breakdown based on grade level and payment option.
+     *
+     * Used to hardcode every rate directly in this method, completely
+     * ignoring fee_settings — meaning an admin editing Fee Management had
+     * zero effect on what a real enrollment was actually charged, even
+     * though FeeController's quote APIs (shown to admins/students before
+     * they submit) DID read the DB and would show a different number. A
+     * live ₱1 discrepancy on the Option A discount (DB said 1500, this
+     * method charged 1501) was found this way. Now backed by the same
+     * FeeCalculator (DATABASE_NORMALIZATION_PLAN.md Phase 2) every other
+     * fee-quoting endpoint uses, so the number a parent is quoted always
+     * matches what they're actually charged.
      */
     public function calculatePaymentBreakdown($gradeLevel, $paymentOption)
     {
-        $paymentRates = [
-            'nursery' => ['total' => 16005, 'tuition' => 7505, 'misc' => 2800, 'books' => 3550, 'insurance' => 150, 'electric' => 2000],
-            'kindergarten' => ['total' => 16005, 'tuition' => 7505, 'misc' => 2800, 'books' => 3550, 'insurance' => 150, 'electric' => 2000],
-            'grade1' => ['total' => 17005, 'tuition' => 7505, 'misc' => 2800, 'books' => 4550, 'insurance' => 150, 'electric' => 2000],
-            'grade2' => ['total' => 17005, 'tuition' => 7505, 'misc' => 2800, 'books' => 4550, 'insurance' => 150, 'electric' => 2000],
-            'grade3' => ['total' => 17505, 'tuition' => 7505, 'misc' => 2800, 'books' => 5050, 'insurance' => 150, 'electric' => 2000],
-            'grade4' => ['total' => 18005, 'tuition' => 7505, 'misc' => 2800, 'books' => 5550, 'insurance' => 150, 'electric' => 2000],
-            'grade5' => ['total' => 18005, 'tuition' => 7505, 'misc' => 2800, 'books' => 5550, 'insurance' => 150, 'electric' => 2000],
-            'grade6' => ['total' => 18005, 'tuition' => 7505, 'misc' => 2800, 'books' => 5550, 'insurance' => 150, 'electric' => 2000],
-        ];
+        $calc = \App\Services\FeeCalculator::calculate($gradeLevel, $paymentOption);
 
-        $rates = $paymentRates[$gradeLevel] ?? $paymentRates['grade1'];
         $breakdown = [
-            'tuition_fee' => $rates['tuition'],
-            'misc_reg_pta' => $rates['misc'],
-            'books' => $rates['books'],
-            'insurance' => $rates['insurance'],
-            'electric_bill' => $rates['electric'],
-            'base_total' => $rates['total'],
+            'tuition_fee' => $calc['tuition'],
+            'misc_reg_pta' => $calc['misc'],
+            'books' => $calc['books'],
+            'insurance' => $calc['insurance'],
+            'electric_bill' => $calc['electric'],
+            'base_total' => $calc['base_total'],
         ];
 
-        switch ($paymentOption) {
-            case 'A': // Cash Basis
-                $breakdown['discount'] = 1501;
-                $breakdown['total_due'] = $rates['total'] - 1501;
-                $breakdown['payment_type'] = 'full';
-                break;
-            case 'B': // Monthly Payment
-                $downpayments = [
-                    'nursery' => 6500, 'kindergarten' => 6500,
-                    'grade1' => 7500, 'grade2' => 7500, 'grade3' => 8000,
-                    'grade4' => 8500, 'grade5' => 8500, 'grade6' => 8500
-                ];
-                $breakdown['downpayment'] = $downpayments[$gradeLevel] ?? 6500;
-                $breakdown['monthly_amount'] = 1056.10;
-                $breakdown['duration_months'] = 9;
-                $breakdown['total_due'] = $breakdown['downpayment'] + (1056.10 * 9);
-                $breakdown['payment_type'] = 'installment';
-                break;
-            case 'C': // Elementary Monthly
-                $downpayments = [
-                    'grade1' => 5500, 'grade2' => 5500, 'grade3' => 6000,
-                    'grade4' => 6500, 'grade5' => 6500, 'grade6' => 6500
-                ];
-                $breakdown['downpayment'] = $downpayments[$gradeLevel] ?? 5500;
-                $breakdown['monthly_amount'] = 1278.32;
-                $breakdown['duration_months'] = 9;
-                $breakdown['total_due'] = $breakdown['downpayment'] + (1278.32 * 9);
-                $breakdown['payment_type'] = 'installment';
-                break;
-            case 'D': // Nursery Monthly
-                $downpayments = ['nursery' => 4505, 'kindergarten' => 4505];
-                $breakdown['downpayment'] = $downpayments[$gradeLevel] ?? 4505;
-                $breakdown['monthly_amount'] = 1278.32;
-                $breakdown['duration_months'] = 9;
-                $breakdown['total_due'] = $breakdown['downpayment'] + (1278.32 * 9);
-                $breakdown['payment_type'] = 'installment';
-                break;
+        if ($paymentOption === 'A') {
+            $breakdown['discount'] = $calc['discount'];
+            $breakdown['total_due'] = $calc['total_due'];
+            $breakdown['payment_type'] = $calc['payment_type'];
+        } elseif (in_array($paymentOption, ['B', 'C', 'D'], true)) {
+            $breakdown['downpayment'] = $calc['downpayment'];
+            $breakdown['monthly_amount'] = $calc['monthly_amount'];
+            $breakdown['duration_months'] = $calc['duration_months'];
+            $breakdown['total_due'] = $calc['total_due'];
+            $breakdown['payment_type'] = $calc['payment_type'];
         }
 
         return $breakdown;
@@ -522,13 +503,20 @@ class EnrollmentController extends Controller
                 ]
             );
 
-            // Create or update student address
+            // Create or update student address. 'street' was never a real
+            // column (street_address is) so this silently wrote nothing for
+            // it, and 'city' was never populated at all — only its twin
+            // 'municipality' column — confirmed via real student data showing
+            // both empty. Both address-shaped columns are set here now so
+            // any existing reader of either name gets the real value. See
+            // DATABASE_NORMALIZATION_PLAN.md Phase 6.
             StudentAddress::updateOrCreate(
                 ['user_id' => $user->id],
                 [
-                    'street' => $validated['street_address'],
+                    'street_address' => $validated['street_address'],
                     'barangay' => $validated['barangay'],
                     'municipality' => $validated['city'],
+                    'city' => $validated['city'],
                     'province' => $validated['province'],
                     'zip_code' => $validated['zip_code'],
                 ]
@@ -910,10 +898,24 @@ class EnrollmentController extends Controller
 
         $subjects = $subjectsQuery->paginate(15, ['*'], 'subject_page');
 
-        $sectionsQuery = \App\Models\Section::with(['teacher:id,name', 'subjects:id,name,code'])->select('id', 'name', 'grade_level', 'teacher_id', 'room_number', 'current_enrollment', 'max_students', 'school_year', 'is_active')
+        // select() MUST come before withCount() here — withCount() appends a
+        // subquery column, but select() called afterward would wipe it out
+        // (Eloquent's select() replaces the whole column list unconditionally).
+        // 'teacher' relation (sections.teacher_id) intentionally not eager-loaded
+        // here — confirmed unused by this page; advisory teacher display reads
+        // TeacherAssignment directly instead (see $secAdvisory below in the blade).
+        $sectionsQuery = \App\Models\Section::with(['subjects:id,name,code'])->select('id', 'name', 'grade_level', 'teacher_id', 'room_number', 'max_students', 'school_year', 'is_active')
+            ->withCount('students')
             ->orderBy('name', 'asc');
-        
+
         $sections = $sectionsQuery->paginate(15, ['*'], 'section_page');
+        // current_enrollment is a virtual, in-memory-only attribute here (the
+        // column itself was dropped in Phase 1's Contract step — see
+        // DATABASE_NORMALIZATION_PLAN.md) fed from the live section_student
+        // count, so existing blade/JS reading $sec->current_enrollment keeps working.
+        foreach ($sections as $sec) {
+            $sec->current_enrollment = $sec->students_count;
+        }
         $schedules = \App\Models\Schedule::with(['section:id,name', 'subject:id,name,code', 'teacher:id,name'])
             ->select('id', 'section_id', 'subject_id', 'teacher_id', 'day_of_week', 'start_time', 'end_time', 'room', 'is_active')
             ->where('is_active', true)
@@ -1230,12 +1232,15 @@ class EnrollmentController extends Controller
                 ]
             );
 
+            // Same 'street' -> street_address / city-not-populated fix as the
+            // other two dual-write sites — see DATABASE_NORMALIZATION_PLAN.md Phase 6.
             \App\Models\StudentAddress::updateOrCreate(
                 ['user_id' => $user->id],
                 [
-                    'street' => $studentData['street_address'] ?? '',
+                    'street_address' => $studentData['street_address'] ?? '',
                     'barangay' => $studentData['barangay'] ?? '',
                     'municipality' => $studentData['city'] ?? '',
+                    'city' => $studentData['city'] ?? '',
                     'province' => $studentData['province'] ?? '',
                     'zip_code' => $studentData['zip_code'] ?? null,
                 ]
@@ -1406,12 +1411,17 @@ class EnrollmentController extends Controller
             $gradeLevel = $enrollment->grade_level;
             $schoolYear = $enrollment->school_year ?? (now()->year . '-' . (now()->year + 1));
 
-            // Find the least-filled active section with available capacity
+            // Find the least-filled active section with available capacity.
+            // Uses the live section_student count (via withCount), not the
+            // current_enrollment column, which can drift — see Section::
+            // getLiveEnrollmentCountAttribute() / DATABASE_NORMALIZATION_PLAN.md Phase 1.
             $section = \App\Models\Section::where('grade_level', $gradeLevel)
                 ->where('school_year', $schoolYear)
                 ->where('is_active', true)
-                ->whereRaw('current_enrollment < max_students')
-                ->orderBy('current_enrollment', 'asc')
+                ->withCount('students')
+                ->get()
+                ->filter(fn ($s) => $s->students_count < ($s->max_students ?? 30))
+                ->sortBy('students_count')
                 ->first();
 
             if ($section) {
@@ -1434,9 +1444,6 @@ class EnrollmentController extends Controller
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
-
-                    // Update section's current enrollment count
-                    $section->increment('current_enrollment');
                 }
 
                 Log::info("Student {$user->id} assigned to section {$section->name} (Grade: {$gradeLevel})");
@@ -1712,8 +1719,9 @@ class EnrollmentController extends Controller
                 ], 400);
             }
 
-            // Check if section has available capacity
-            if ($section->current_enrollment >= $section->max_students) {
+            // Check if section has available capacity (live count, not the
+            // denormalized column — see Section::getLiveEnrollmentCountAttribute())
+            if ($section->live_enrollment_count >= $section->max_students) {
                 return response()->json([
                     'success' => false,
                     'message' => "Section {$section->name} is already full ({$section->max_students} students max)."
@@ -1740,18 +1748,6 @@ class EnrollmentController extends Controller
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
-
-                // Update old section's enrollment count (decrement)
-                // We need to find the old section first
-                $oldSection = \App\Models\Section::where('name', $enrollment->getOriginal('section'))
-                    ->where('grade_level', $enrollment->grade_level)
-                    ->first();
-                if ($oldSection) {
-                    $oldSection->decrement('current_enrollment');
-                }
-
-                // Update new section's enrollment count (increment)
-                $section->increment('current_enrollment');
             }
 
             return response()->json([
@@ -2172,7 +2168,18 @@ class EnrollmentController extends Controller
             ->get()
             ->keyBy('id');
 
-        $data = $enrollments->map(function($enrollment) use ($users) {
+        // Real current section per student, from section_student (the actual
+        // membership — DATABASE_NORMALIZATION_PLAN.md Phase 4), batched in one
+        // query rather than resolved per-row. enrollments.section is a
+        // denormalized copy that isn't guaranteed to stay in sync, so it's
+        // used only as a fallback for students section_student hasn't caught up on yet.
+        $realSectionByUser = DB::table('section_student')
+            ->join('sections', 'sections.id', '=', 'section_student.section_id')
+            ->where('sections.is_active', true)
+            ->whereIn('section_student.user_id', $userIds)
+            ->pluck('sections.name', 'section_student.user_id');
+
+        $data = $enrollments->map(function($enrollment) use ($users, $realSectionByUser) {
             $user = $users->get($enrollment->user_id);
             if (!$user) return null;
 
@@ -2186,7 +2193,7 @@ class EnrollmentController extends Controller
                 'status' => $enrollment->status,
                 'payment_status' => $enrollment->payment_status,
                 'grade_level' => $sd['grade_level'] ?? $enrollment->grade_level,
-                'section' => $enrollment->section,
+                'section' => $realSectionByUser->get($user->id) ?? $enrollment->section,
             ];
         })->filter()->values();
 
@@ -2268,20 +2275,10 @@ class EnrollmentController extends Controller
      */
     private function removeStudentFromSections(int $userId): void
     {
-        $sectionIds = DB::table('section_student')->where('user_id', $userId)->pluck('section_id');
-        if ($sectionIds->isEmpty()) return;
-
+        // No longer resyncs sections.current_enrollment here — every read path
+        // now derives enrollment count live from section_student (Phase 1 of
+        // DATABASE_NORMALIZATION_PLAN.md), so there's nothing left to keep in sync.
         DB::table('section_student')->where('user_id', $userId)->delete();
-
-        // Recalculate each affected section's live count (only non-deleted users)
-        foreach ($sectionIds as $sectionId) {
-            $liveCount = DB::table('section_student')
-                ->join('users', 'users.id', '=', 'section_student.user_id')
-                ->whereNull('users.deleted_at')
-                ->where('section_student.section_id', $sectionId)
-                ->count();
-            \App\Models\Section::where('id', $sectionId)->update(['current_enrollment' => $liveCount]);
-        }
     }
 
     /**
@@ -2438,17 +2435,18 @@ class EnrollmentController extends Controller
                             ->first();
                         if ($oldSection) {
                             $oldSection->students()->detach($user->id);
-                            $oldSection->current_enrollment = $oldSection->students()->count();
-                            $oldSection->save();
                         }
                     }
                 }
 
-                // Find default section in new grade for new school year (lowest enrollment)
+                // Find default section in new grade for new school year (lowest
+                // live enrollment — see Section::getLiveEnrollmentCountAttribute())
                 $defaultSection = Section::where('grade_level', $nextGrade)
                     ->where('school_year', $toSchoolYear)
                     ->where('is_active', true)
-                    ->orderBy('current_enrollment', 'asc')
+                    ->withCount('students')
+                    ->get()
+                    ->sortBy('students_count')
                     ->first();
 
                 $sectionName = $defaultSection ? $defaultSection->name : null;
@@ -2470,8 +2468,6 @@ class EnrollmentController extends Controller
                 // Assign to new section if found
                 if ($defaultSection) {
                     $defaultSection->students()->attach($user->id);
-                    $defaultSection->current_enrollment = $defaultSection->students()->count();
-                    $defaultSection->save();
                 }
 
                 // Record promotion in promotions table
@@ -2664,10 +2660,13 @@ class EnrollmentController extends Controller
             if ($toSectionId) {
                 $toSection = Section::find($toSectionId);
             } else {
+                // Lowest live enrollment — see Section::getLiveEnrollmentCountAttribute()
                 $toSection = Section::where('grade_level', $toGrade)
                     ->where('school_year', $toSchoolYear)
                     ->where('is_active', true)
-                    ->orderBy('current_enrollment', 'asc')
+                    ->withCount('students')
+                    ->get()
+                    ->sortBy('students_count')
                     ->first();
             }
 
@@ -2683,8 +2682,6 @@ class EnrollmentController extends Controller
                 : null;
             if ($oldSection) {
                 $oldSection->students()->detach($user->id);
-                $oldSection->current_enrollment = $oldSection->students()->count();
-                $oldSection->save();
             }
 
             // Create new pending enrollment
@@ -2709,8 +2706,6 @@ class EnrollmentController extends Controller
             // Attach to new section
             if ($toSection) {
                 $toSection->students()->attach($user->id);
-                $toSection->current_enrollment = $toSection->students()->count();
-                $toSection->save();
             }
 
             // Record promotion
@@ -2750,11 +2745,20 @@ class EnrollmentController extends Controller
      */
     public function sectionsForGrade(Request $request)
     {
+        // current_enrollment in the response is the live section_student count,
+        // not the denormalized column — see Section::getLiveEnrollmentCountAttribute()
         $sections = Section::where('grade_level', $request->grade)
             ->where('school_year', $request->school_year)
             ->where('is_active', true)
+            ->withCount('students')
             ->orderBy('name')
-            ->get(['id', 'name', 'current_enrollment', 'max_students']);
+            ->get(['id', 'name', 'max_students'])
+            ->map(fn ($s) => [
+                'id' => $s->id,
+                'name' => $s->name,
+                'current_enrollment' => $s->students_count,
+                'max_students' => $s->max_students,
+            ]);
 
         return response()->json(['success' => true, 'data' => $sections]);
     }
@@ -3081,11 +3085,19 @@ class EnrollmentController extends Controller
             ->orderBy('school_year')
             ->get();
 
-        // Load subjects per enrollment via section relationship
+        // Load subjects per enrollment via section relationship. This walks
+        // every school year the student was ever enrolled in — section_student
+        // only tracks CURRENT membership, so it can only be trusted for
+        // whichever one of these rows is the actual latest enrollment; every
+        // other (past) row must keep using its own historical enrollments.section
+        // string, which is the only record of where they were that year. See
+        // DATABASE_NORMALIZATION_PLAN.md Phase 4.
+        $latestEnrollmentId = $user->latestEnrollment?->id;
         foreach ($enrollments as $enr) {
-            $section = \App\Models\Section::where('name', $enr->section)
-                ->where('grade_level', $enr->grade_level)
-                ->first();
+            $section = ($enr->id === $latestEnrollmentId ? $user->current_section : null)
+                ?? \App\Models\Section::where('name', $enr->section)
+                    ->where('grade_level', $enr->grade_level)
+                    ->first();
             $enr->setRelation('subjects', $section ? $section->subjects()->orderBy('name')->get() : collect());
         }
 

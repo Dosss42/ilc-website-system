@@ -1123,7 +1123,7 @@
                         ['Reference No.',$enrollment->reference_number??'—','col-md-6'],
                         ['School Year',$enrollment->school_year??'—','col-md-6'],
                         ['Grade Level',$gradeDisp,'col-md-6'],
-                        ['Section',$enrollment->section??'Not yet assigned','col-md-6'],
+                        ['Section',$section->name??'Not yet assigned','col-md-6'],
                         ['Student Type',ucfirst($d['student_type']??'—'),'col-md-6'],
                         ['Enrollment Status',ucfirst($enrollment->status??'—'),'col-md-6'],
                         ['Date Enrolled',$enrollment->created_at->format('F d, Y'),'col-md-6'],
@@ -2060,7 +2060,7 @@
                     ['bi-hash',           'Reference',    $enrollment->reference_number ?? '—'],
                     ['bi-person-badge',   'Student Type', $envType],
                     ['bi-calendar3',      'Date Enrolled',$envDate],
-                    ['bi-people-fill',    'Section',      $enrollment->section ?? 'Not yet assigned'],
+                    ['bi-people-fill',    'Section',      $section->name ?? 'Not yet assigned'],
                 ] as [$icon, $label, $value])
                 <div style="flex:1;min-width:160px;padding:12px 16px;border-right:1px solid #f0f4f8;display:flex;align-items:center;gap:10px;">
                     <i class="bi {{ $icon }}" style="font-size:16px;color:#2471a3;flex-shrink:0;"></i>
@@ -2484,7 +2484,7 @@
                             <div class="mb-3">
                                 <label class="dash-form-label">Section</label>
                                 <div class="form-field" style="display:flex; align-items:center; gap:8px;">
-                                    <input type="text" id="currentSectionDisplay" value="{{ $enrollment->section ?? 'Not yet assigned' }}" readonly style="flex:1;">
+                                    <input type="text" id="currentSectionDisplay" value="{{ $section->name ?? 'Not yet assigned' }}" readonly style="flex:1;">
                                 </div>
                             </div>
                             <div class="mb-3">
@@ -3228,7 +3228,7 @@
                             </div>
                             <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;">
                                 <span style="font-size:12px;color:var(--muted);">Section</span>
-                                <span style="font-size:12px;font-weight:600;">{{ $enrollment->section ?? '—' }}</span>
+                                <span style="font-size:12px;font-weight:600;">{{ $section->name ?? '—' }}</span>
                             </div>
                             @endif
                         </div>
@@ -3507,7 +3507,7 @@
                 <div id="sectionCards" style="display:flex; flex-direction:column; gap:12px;">
                     @foreach($availableSections as $sec)
                     @php $isFull = $sec->current_enrollment >= $sec->max_students; @endphp
-                    @php $isCurrent = $enrollment->section === $sec->name; @endphp
+                    @php $isCurrent = ($section->name ?? null) === $sec->name; @endphp
                     <div class="section-pick-card {{ $isCurrent ? 'current' : '' }} {{ $isFull ? 'full' : '' }}"
                          onclick="{{ (!$isFull && !$isCurrent) ? 'confirmSectionChange(' . $sec->id . ', \'' . addslashes($sec->name) . '\')' : '' }}"
                          style="border:2px solid {{ $isCurrent ? 'var(--blue)' : ($isFull ? '#dee2e6' : '#e2e8f0') }}; border-radius:12px; padding:16px; cursor:{{ ($isFull || $isCurrent) ? 'default' : 'pointer' }}; background:{{ $isCurrent ? '#f0f4ff' : ($isFull ? '#f8f9fa' : '#fff') }}; transition:all .2s;">
@@ -3518,7 +3518,7 @@
                                 </div>
                                 <div style="font-size:12px; color:#888; margin-top:3px;">
                                     {{ $sec->grade_level }}
-                                    @if($sec->teacher) &nbsp;·&nbsp; Adviser: {{ $sec->teacher->name }} @endif
+                                    @if($sec->advisory_teacher) &nbsp;·&nbsp; Adviser: {{ $sec->advisory_teacher->name }} @endif
                                     @if($sec->room_number) &nbsp;·&nbsp; Room {{ $sec->room_number }} @endif
                                 </div>
                             </div>

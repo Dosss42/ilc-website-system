@@ -102,6 +102,19 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->belongsToMany(Section::class, 'section_student', 'user_id', 'section_id');
     }
 
+    /**
+     * This student's actual current section, sourced from section_student —
+     * the real relational source of truth (DATABASE_NORMALIZATION_PLAN.md
+     * Phase 4). enrollments.section is a denormalized string copy of this
+     * same fact, kept in sync by writes in SectionController/EnrollmentController
+     * but never guaranteed to agree — this accessor is what read paths
+     * should use instead of trusting that column directly.
+     */
+    public function getCurrentSectionAttribute(): ?Section
+    {
+        return $this->sections()->where('sections.is_active', true)->first();
+    }
+
     public function grades(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(Grade::class, 'student_id');

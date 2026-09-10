@@ -52,23 +52,35 @@ class DashboardController extends Controller
         $allSections = $teacherSchedules->pluck('section')->filter()->unique('id')->values();
         $sections = $allSections->map(fn($section) => $this->loadSectionStudents($section));
 
-        // Grade entry rows come from Schedule (section + specific subject).
-        $teacherAssignments = $teacherSchedules
-            ->filter(fn($s) => $s->section && $s->subject)
-            ->groupBy(fn($s) => $s->section_id . '-' . $s->subject_id)
-            ->map(function ($rows) {
-                $first = $rows->first();
-                return (object)[
-                    'section'    => $first->section,
-                    'subject'    => $first->subject,
-                    'section_id' => $first->section_id,
-                    'subject_id' => $first->subject_id,
-                    'is_advisory'=> false,
-                ];
-            })->values();
+        // Grade entry rows come from teacher_assignments directly
+        // (DATABASE_NORMALIZATION_PLAN.md Phase 3) — that table now has real,
+        // complete coverage for every teacher+subject+section relationship,
+        // backfilled from real schedule data plus the Nursery/Kinder
+        // advisory-covers-everything case (confirmed against every real
+        // teacher in the system: zero discrepancies vs. the old
+        // schedule-reconstruction logic before this was switched over).
+        $teacherAssignments = TeacherAssignment::where('teacher_id', $teacher->id)
+            ->whereNotNull('subject_id')
+            ->whereHas('section', fn($q) => $q->where('is_active', true))
+            ->with(['section', 'subject'])
+            ->get()
+            ->filter(fn($a) => $a->section && $a->subject)
+            ->map(fn($a) => (object)[
+                'section'     => $a->section,
+                'subject'     => $a->subject,
+                'section_id'  => $a->section_id,
+                'subject_id'  => $a->subject_id,
+                'is_advisory' => (bool) $a->is_advisory,
+            ])
+            ->values();
 
-        // Nursery/Kinder: advisory teacher handles ALL subjects for their section.
-        // Auto-add all active subjects for those sections without needing individual schedules.
+        // Nursery/Kinder: kept as a belt-and-suspenders safety net — if a
+        // section's subjects were ever missing from teacher_assignments
+        // (e.g. a new active subject added after the backfill ran), this
+        // still fills the gap live, same as it always has. Also still
+        // responsible for making sure the section itself appears in
+        // $sections below, which is derived from $teacherSchedules, not
+        // teacher_assignments.
         foreach ($adviserSections as $advSection) {
             if (!\App\Models\Grade::isNurseryKinder($advSection->grade_level ?? '')) continue;
 
@@ -1937,8 +1949,18 @@ class DashboardController extends Controller
             ->latest('id')->first()
             ?? $student->latestEnrollment;
 
-        $gradeLevel  = $enrollment ? ($enrollment->student_data['grade_level'] ?? $enrollment->grade_level) : null;
-        $sectionName = $enrollment ? $enrollment->section : '—';
+        // grade_level is a real enrollments column, never JSON-only — trust it
+        // first (see DATABASE_NORMALIZATION_PLAN.md Phase 6).
+        $gradeLevel  = $enrollment ? ($enrollment->grade_level ?? $enrollment->student_data['grade_level'] ?? null) : null;
+        // section_student only tracks CURRENT membership, not history — trust
+        // it only when this SF9 is actually for the student's current/latest
+        // enrollment. For a past school year (this endpoint accepts an explicit
+        // ?school_year=), section_student would incorrectly show today's section
+        // on an old report card, so the historical enrollments.section string
+        // is the correct source there — see DATABASE_NORMALIZATION_PLAN.md Phase 4.
+        $isCurrentEnrollment = $enrollment && $student->latestEnrollment && $enrollment->id === $student->latestEnrollment->id;
+        $sectionName = ($isCurrentEnrollment ? $student->current_section->name ?? null : null)
+            ?? ($enrollment ? $enrollment->section : '—');
 
         $glMap = [
             'nursery'      => 'Nursery',

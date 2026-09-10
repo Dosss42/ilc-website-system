@@ -4,6 +4,19 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * `user_id` is a deliberate transitive denormalization — it's already
+ * reachable via enrollment_id -> enrollments.user_id, but stored directly
+ * here anyway so payment queries (which run often, and often need the
+ * student without caring about the enrollment) don't need an extra join.
+ *
+ * This is DATABASE_NORMALIZATION_PLAN.md Phase 5's Option B: the schema
+ * stays as-is on purpose — do NOT "fix" this into a join instead. What
+ * closes the actual risk (this drifting from the enrollment's real owner)
+ * is `php artisan db:verify-normalization`, which checks it automatically.
+ * If that check ever reports a mismatch here, that's a real bug to fix in
+ * whatever wrote the wrong user_id — not a reason to remove the column.
+ */
 class PaymentTransaction extends Model
 {
     protected $fillable = [

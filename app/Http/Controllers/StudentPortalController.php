@@ -111,33 +111,49 @@ class StudentPortalController extends Controller
             ? in_array($enrollment->payment_status ?? 'pending', ['partial', 'paid'])
             : ($enrollment->payment_status ?? 'pending') === 'paid';
 
-        $profileComplete = !empty($d['first_name']) && !empty($d['last_name']) && !empty($d['birthdate']) && !empty($d['gender'])
-            && !empty($d['province']) && !empty($d['city']) && !empty($d['barangay']) && !empty($d['street_address'])
-            && !empty($d['guardian_name']) && !empty($d['relationship']) && !empty($d['guardian_phone'])
-            && !empty($d['last_school']) && !empty($d['grade_level'])
-            && !empty($d['student_type'])
+        // Falls back to the normalized tables (kept current by ProfileController's
+        // edit forms, which never write back to student_data) for every field
+        // that has one — student_data can go stale after a real profile edit.
+        // grade_level has no normalized-table equivalent, so it's JSON-only.
+        // See DATABASE_NORMALIZATION_PLAN.md Phase 6.
+        $profile = $user->profile;
+        $address = $user->address;
+        $guardian = $user->guardian;
+        $previousSchool = $user->previousSchool;
+        $has = fn ($jsonVal, $normalizedVal) => !empty($jsonVal) || !empty($normalizedVal);
+
+        $profileComplete = $has($d['first_name'] ?? null, $profile?->first_name)
+            && $has($d['last_name'] ?? null, $profile?->last_name)
+            && $has($d['birthdate'] ?? null, $profile?->birthdate)
+            && $has($d['gender'] ?? null, $profile?->gender)
+            && $has($d['province'] ?? null, $address?->province)
+            && $has($d['city'] ?? null, $address?->city)
+            && $has($d['barangay'] ?? null, $address?->barangay)
+            && $has($d['street_address'] ?? null, $address?->street_address)
+            && $has($d['guardian_name'] ?? null, $guardian?->name)
+            && $has($d['relationship'] ?? null, $guardian?->relationship)
+            && $has($d['guardian_phone'] ?? null, $guardian?->contact)
+            && $has($d['last_school'] ?? null, $previousSchool?->school_name ?? $profile?->last_school)
+            && !empty($d['grade_level'])
+            && $has($d['student_type'] ?? null, $profile?->student_type)
             && $paymentDone
             && $hasRequiredDocuments;
 
         $documents = collect([]);
 
-        // Get student's section from enrollment or pivot table
-        $sectionName = $enrollment->section ?? null;
-        $section = null;
+        // Section resolution: section_student (the real membership — Database
+        // NORMALIZATION_PLAN.md Phase 4) is trusted first via User::current_section;
+        // enrollments.section (a denormalized string copy that isn't guaranteed to
+        // stay in sync) is only a fallback for the rare case section_student hasn't
+        // been populated yet.
         $schedules = collect([]);
+        $section = $user->current_section;
 
-        if ($sectionName) {
-            $section = Section::where('name', $sectionName)
+        if (!$section && $enrollment->section) {
+            $section = Section::where('name', $enrollment->section)
                 ->where('grade_level', $d['grade_level'] ?? null)
                 ->where('is_active', true)
                 ->first();
-        }
-
-        // Fallback: find section via section_student pivot table
-        if (!$section) {
-            $section = Section::whereHas('students', function ($q) use ($user) {
-                $q->where('user_id', $user->id);
-            })->where('is_active', true)->first();
         }
 
         if ($section) {
@@ -168,11 +184,19 @@ class StudentPortalController extends Controller
         $availableSections = collect();
         if ($enrollment && $enrollment->status === 'enrolled' && $enrollment->grade_level) {
             $schoolYear = $enrollment->school_year ?? (now()->year . '-' . (now()->year + 1));
+            // current_enrollment is overwritten with the live section_student
+            // count below (the stored column can drift — see Section::
+            // getLiveEnrollmentCountAttribute()), so the "slots left" shown to
+            // the student is always accurate.
+            // Advisory teacher is resolved via Section::getAdvisoryTeacherAttribute()
+            // (teacher_assignments) below, not the eager-loaded relation — see
+            // DATABASE_NORMALIZATION_PLAN.md Phase 3.
             $availableSections = Section::where('grade_level', $enrollment->grade_level)
                 ->where('school_year', $schoolYear)
                 ->where('is_active', true)
-                ->with('teacher:id,name')
+                ->withCount('students')
                 ->get();
+            $availableSections->each(fn($s) => $s->current_enrollment = $s->students_count);
         }
 
         // ── Re-enrollment detection ──
@@ -922,7 +946,14 @@ class StudentPortalController extends Controller
     private function getCompletionProgress(Enrollment $enrollment)
     {
         $studentData = $enrollment->student_data ?? [];
-        
+        // ProfileController's edit forms write ONLY to the normalized tables,
+        // never back to student_data — so this JSON snapshot goes stale the
+        // moment a student edits their profile after enrolling. Each check*
+        // Complete() call below now also accepts the user so it can fall back
+        // to the normalized tables, same fix as ProfileController::
+        // checkCompletionStatus(). See DATABASE_NORMALIZATION_PLAN.md Phase 6.
+        $user = $enrollment->user;
+
         // Check if required documents are uploaded
         $requiredDocTypes = ['birth_certificate', 'form_137', 'report_card', 'two_by_two_picture'];
         $uploadedDocTypes = StudentDocument::where(function($q) use ($enrollment) {
@@ -944,9 +975,9 @@ class StudentPortalController extends Controller
             : ($enrollment->payment_status ?? 'pending') === 'paid';
 
         $progress = [
-            'personal_info'    => $this->checkPersonalInfoComplete($studentData),
-            'address_info'     => $this->checkAddressInfoComplete($studentData),
-            'guardian_info'    => $this->checkGuardianInfoComplete($studentData),
+            'personal_info'    => $this->checkPersonalInfoComplete($studentData, $user),
+            'address_info'     => $this->checkAddressInfoComplete($studentData, $user),
+            'guardian_info'    => $this->checkGuardianInfoComplete($studentData, $user),
             'enrollment_status' => in_array($enrollment->status, ['approved', 'enrolled']),
             'payment_status'   => $paymentDone,
             'required_documents' => $hasRequiredDocuments,
@@ -969,25 +1000,49 @@ class StudentPortalController extends Controller
     /**
      * Check if personal information is complete
      */
-    private function checkPersonalInfoComplete($data)
+    private function checkPersonalInfoComplete($data, $user = null)
     {
-        $required = ['first_name', 'last_name', 'gender', 'birthdate', 'place_of_birth', 'grade_level'];
-        foreach ($required as $field) {
-            if (empty($data[$field])) {
+        // Falls back to the normalized student_profiles row (kept current by
+        // ProfileController::updatePersonal()) for every field it actually
+        // has — student_data may be stale. grade_level has no normalized
+        // profile equivalent (it's an enrollment-level fact), so it's checked
+        // from the JSON only, same as before.
+        $profile = $user?->profile;
+        $required = [
+            'first_name' => $profile?->first_name,
+            'last_name' => $profile?->last_name,
+            'gender' => $profile?->gender,
+            'birthdate' => $profile?->birthdate,
+            'place_of_birth' => $profile?->place_of_birth,
+        ];
+        foreach ($required as $field => $normalizedValue) {
+            if (empty($data[$field]) && empty($normalizedValue)) {
                 return false;
             }
         }
-        return true;
+        return !empty($data['grade_level']);
     }
 
     /**
      * Check if address information is complete
      */
-    private function checkAddressInfoComplete($data)
+    private function checkAddressInfoComplete($data, $user = null)
     {
-        $required = ['region', 'province', 'city', 'barangay', 'street_address'];
-        foreach ($required as $field) {
-            if (empty($data[$field])) {
+        // Falls back to the normalized student_addresses row (kept current by
+        // ProfileController::updateAddress()) — student_data may be stale.
+        // 'region' has no normalized column, so it's checked from JSON only.
+        $address = $user?->address;
+        if (empty($data['region'])) {
+            return false;
+        }
+        $required = [
+            'province' => $address?->province,
+            'city' => $address?->city,
+            'barangay' => $address?->barangay,
+            'street_address' => $address?->street_address,
+        ];
+        foreach ($required as $field => $normalizedValue) {
+            if (empty($data[$field]) && empty($normalizedValue)) {
                 return false;
             }
         }
@@ -997,11 +1052,18 @@ class StudentPortalController extends Controller
     /**
      * Check if guardian information is complete
      */
-    private function checkGuardianInfoComplete($data)
+    private function checkGuardianInfoComplete($data, $user = null)
     {
-        $required = ['guardian_name', 'relationship', 'guardian_phone'];
-        foreach ($required as $field) {
-            if (empty($data[$field])) {
+        // Falls back to the normalized guardians row (kept current by
+        // ProfileController::updateGuardian()) — student_data may be stale.
+        $guardian = $user?->guardian;
+        $required = [
+            'guardian_name' => $guardian?->name,
+            'relationship' => $guardian?->relationship,
+            'guardian_phone' => $guardian?->contact,
+        ];
+        foreach ($required as $field => $normalizedValue) {
+            if (empty($data[$field]) && empty($normalizedValue)) {
                 return false;
             }
         }
@@ -1046,22 +1108,16 @@ class StudentPortalController extends Controller
             return response()->json(['success' => false, 'message' => 'Section does not match your grade level.'], 422);
         }
 
-        if ($newSection->current_enrollment >= $newSection->max_students) {
+        // Live count, not the denormalized column (see
+        // Section::getLiveEnrollmentCountAttribute())
+        if ($newSection->live_enrollment_count >= $newSection->max_students) {
             return response()->json(['success' => false, 'message' => "Section {$newSection->name} is full ({$newSection->max_students} max)."], 422);
         }
 
         // Remove from old section in pivot table
-        $oldSection = Section::where('name', $enrollment->section)
-            ->where('grade_level', $enrollment->grade_level)
-            ->first();
-
         \Illuminate\Support\Facades\DB::table('section_student')
             ->where('user_id', $user->id)
             ->delete();
-
-        if ($oldSection && $oldSection->id !== $newSection->id) {
-            $oldSection->decrement('current_enrollment');
-        }
 
         // Add to new section
         \Illuminate\Support\Facades\DB::table('section_student')->insert([
@@ -1071,7 +1127,6 @@ class StudentPortalController extends Controller
             'updated_at' => now(),
         ]);
 
-        $newSection->increment('current_enrollment');
         $enrollment->update(['section' => $newSection->name]);
 
         Log::info("Student {$user->id} changed section to {$newSection->name}");

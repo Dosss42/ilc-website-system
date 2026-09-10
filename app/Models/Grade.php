@@ -5,6 +5,17 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * `student_id` is a deliberate transitive denormalization where enrollment_id
+ * is set — already reachable via enrollment_id -> enrollments.user_id, kept
+ * directly here for cheap reads (DATABASE_NORMALIZATION_PLAN.md Phase 5,
+ * Option B). Unlike the other tables carrying this same trade-off,
+ * enrollment_id here is nullable — some grade rows have no enrollment at
+ * all — so student_id can't simply be replaced by a join even under the
+ * "purist" Option A; it stays either way. `php artisan db:verify-normalization`
+ * guards against student_id drifting from the enrollment's real owner on
+ * rows that do have one.
+ */
 class Grade extends Model
 {
     use HasFactory;

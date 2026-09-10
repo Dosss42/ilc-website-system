@@ -274,6 +274,16 @@ class ProfileController extends Controller
     {
         $user = Auth::user();
         $profile = $user->profile;
+        // updatePersonal/updateAddress/updateGuardian/updatePreviousSchool
+        // (this same controller) write ONLY to these normalized tables, never
+        // back to student_data — so once a student edits their profile after
+        // enrolling, the JSON snapshot goes stale. Each completion check below
+        // now falls back to the normalized table (already the case for
+        // 'health'), so editing a profile can never make a completed section
+        // look incomplete again. See DATABASE_NORMALIZATION_PLAN.md Phase 6.
+        $address = $user->address;
+        $guardian = $user->guardian;
+        $previousSchool = $user->previousSchool;
 
         // Always pick the most-advanced enrollment so a newer pending record
         // (e.g. from mass promotion) never hides an existing approved/enrolled one.
@@ -302,12 +312,17 @@ class ProfileController extends Controller
 
         // Documents are tracked in the student portal separately — not counted here
         $completion = [
-            'personal'   => !empty($d['first_name']) && !empty($d['last_name']) && !empty($d['birthdate']) && !empty($d['gender']),
+            'personal'   => (!empty($d['first_name']) && !empty($d['last_name']) && !empty($d['birthdate']) && !empty($d['gender']))
+                            || ($profile && !empty($profile->first_name) && !empty($profile->last_name) && !empty($profile->birthdate) && !empty($profile->gender)),
             'health'     => !empty($d['blood_type']) || !empty($d['allergies']) || !empty($d['medical_conditions'])
                             || ($profile && (!empty($profile->blood_type) || !empty($profile->allergies) || !empty($profile->medical_conditions))),
-            'address'    => !empty($d['province']) && !empty($d['city']) && !empty($d['barangay']) && !empty($d['street_address']),
-            'guardian'   => !empty($d['guardian_name']) && !empty($d['relationship']) && !empty($d['guardian_phone']),
-            'school'     => !empty($d['last_school']) && !empty($d['grade_level']),
+            'address'    => (!empty($d['province']) && !empty($d['city']) && !empty($d['barangay']) && !empty($d['street_address']))
+                            || ($address && !empty($address->province) && !empty($address->city) && !empty($address->barangay) && !empty($address->street_address)),
+            'guardian'   => (!empty($d['guardian_name']) && !empty($d['relationship']) && !empty($d['guardian_phone']))
+                            || ($guardian && !empty($guardian->name) && !empty($guardian->relationship) && !empty($guardian->contact)),
+            // grade_level is a real enrollments column, never JSON-only — trust it directly.
+            'school'     => (!empty($d['last_school']) || ($previousSchool && !empty($previousSchool->school_name)))
+                            && !empty($enrollment->grade_level ?? $d['grade_level'] ?? null),
             'enrollment' => $enrollment && in_array($enrollment->status, ['approved', 'enrolled']),
             'payment'    => $paymentDone,
         ];

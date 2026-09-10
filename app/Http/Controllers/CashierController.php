@@ -700,7 +700,6 @@ class CashierController extends Controller
                             'created_at' => now(),
                             'updated_at' => now(),
                         ]);
-                        $section->increment('current_enrollment');
                     }
                 }
             }

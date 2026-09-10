@@ -267,9 +267,10 @@ class SectionController extends Controller
             'student_id' => 'required|exists:users,id,role,student'
         ]);
 
-        // Check capacity
+        // Check capacity — live count, not the denormalized column
+        // (see Section::getLiveEnrollmentCountAttribute())
         $maxStudents = $section->max_students ?? 30;
-        if ($section->current_enrollment >= $maxStudents) {
+        if ($section->live_enrollment_count >= $maxStudents) {
             return response()->json(['error' => "Section {$section->name} is already full ({$maxStudents} students max)."], 422);
         }
 
@@ -288,8 +289,6 @@ class SectionController extends Controller
         }
 
         $section->students()->attach($validated['student_id']);
-        $section->current_enrollment = $section->students()->count();
-        $section->save();
 
         // Also update the enrollment's section field and status
         $user = User::find($validated['student_id']);
@@ -310,7 +309,7 @@ class SectionController extends Controller
         $section->refresh();
         return response()->json([
             'success' => true,
-            'current_enrollment' => $section->current_enrollment,
+            'current_enrollment' => $section->live_enrollment_count,
             'students' => $section->students
         ]);
     }
@@ -322,8 +321,6 @@ class SectionController extends Controller
         ]);
 
         $section->students()->detach($validated['student_id']);
-        $section->current_enrollment = $section->students()->count();
-        $section->save();
 
         // Clear the enrollment section field
         $user = User::find($validated['student_id']);
@@ -333,7 +330,7 @@ class SectionController extends Controller
             $enrollment->save();
         }
 
-        return response()->json(['success' => true, 'current_enrollment' => $section->current_enrollment]);
+        return response()->json(['success' => true, 'current_enrollment' => $section->live_enrollment_count]);
     }
 
     public function transferStudent(Request $request, Section $section)
@@ -349,20 +346,18 @@ class SectionController extends Controller
 
         $target = Section::findOrFail($validated['target_section_id']);
 
+        // Live count, not the denormalized column (see
+        // Section::getLiveEnrollmentCountAttribute())
         $max = $target->max_students ?? 30;
-        if ($target->current_enrollment >= $max) {
+        if ($target->live_enrollment_count >= $max) {
             return response()->json(['error' => "Section {$target->name} is already full ({$max} students max)."], 422);
         }
 
         // Remove from current section
         $section->students()->detach($validated['student_id']);
-        $section->current_enrollment = $section->students()->count();
-        $section->save();
 
         // Add to target section
         $target->students()->syncWithoutDetaching([$validated['student_id']]);
-        $target->current_enrollment = $target->students()->count();
-        $target->save();
 
         // Update enrollment record
         $user = User::find($validated['student_id']);
@@ -375,7 +370,7 @@ class SectionController extends Controller
         return response()->json([
             'success'            => true,
             'new_section'        => $target->name,
-            'current_enrollment' => $target->current_enrollment,
+            'current_enrollment' => $target->live_enrollment_count,
         ]);
     }
 
@@ -383,10 +378,15 @@ class SectionController extends Controller
     {
         $gradeLevel = $request->input('grade_level');
 
-        // All active sections (optionally filtered by grade)
+        // All active sections (optionally filtered by grade). current_enrollment
+        // is initialized from the live section_student count below (the stored
+        // column can drift — see Section::getLiveEnrollmentCountAttribute());
+        // the loop further down keeps it in sync in-memory as students are added.
         $sections = Section::where('is_active', true)
             ->when($gradeLevel, fn($q) => $q->where('grade_level', $gradeLevel))
+            ->withCount('students')
             ->get();
+        $sections->each(fn($s) => $s->current_enrollment = $s->students_count);
 
         // Student IDs already in any section
         $assignedIds = DB::table('section_student')->pluck('user_id')->toArray();
@@ -420,8 +420,10 @@ class SectionController extends Controller
             if (!$target) { $skipped++; continue; }
 
             $target->students()->syncWithoutDetaching([$student->id]);
+            // In-memory only — current_enrollment isn't a real column anymore
+            // (dropped in Phase 1's Contract step), this just keeps the running
+            // tally correct for the next iteration's capacity check above.
             $target->current_enrollment = $target->students()->count();
-            $target->save();
 
             // Refresh in collection so next iteration sees updated count
             $sections = $sections->map(fn($s) => $s->id === $target->id ? $target : $s);

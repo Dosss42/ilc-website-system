@@ -1100,7 +1100,7 @@
                         ['Reference No.',$enrollment->reference_number??'—','col-md-6'],
                         ['School Year',$enrollment->school_year??'—','col-md-6'],
                         ['Grade Level',$gradeDisp,'col-md-6'],
-                        ['Section',$enrollment->section??'Not yet assigned','col-md-6'],
+                        ['Section',$section->name??'Not yet assigned','col-md-6'],
                         ['Student Type',ucfirst($d['student_type']??'—'),'col-md-6'],
                         ['Enrollment Status',ucfirst($enrollment->status??'—'),'col-md-6'],
                         ['Date Enrolled',$enrollment->created_at->format('F d, Y'),'col-md-6'],
@@ -2031,7 +2031,7 @@
                     ['bi-hash',           'Reference',    $enrollment->reference_number ?? '—'],
                     ['bi-person-badge',   'Student Type', $envType],
                     ['bi-calendar3',      'Date Enrolled',$envDate],
-                    ['bi-people-fill',    'Section',      $enrollment->section ?? 'Not yet assigned'],
+                    ['bi-people-fill',    'Section',      $section->name ?? 'Not yet assigned'],
                 ]; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as [$icon, $label, $value]): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                 <div style="flex:1;min-width:160px;padding:12px 16px;border-right:1px solid #f0f4f8;display:flex;align-items:center;gap:10px;">
                     <i class="bi <?php echo e($icon); ?>" style="font-size:16px;color:#2471a3;flex-shrink:0;"></i>
@@ -2464,7 +2464,7 @@
                             <div class="mb-3">
                                 <label class="dash-form-label">Section</label>
                                 <div class="form-field" style="display:flex; align-items:center; gap:8px;">
-                                    <input type="text" id="currentSectionDisplay" value="<?php echo e($enrollment->section ?? 'Not yet assigned'); ?>" readonly style="flex:1;">
+                                    <input type="text" id="currentSectionDisplay" value="<?php echo e($section->name ?? 'Not yet assigned'); ?>" readonly style="flex:1;">
                                 </div>
                             </div>
                             <div class="mb-3">
@@ -3209,7 +3209,7 @@
                             </div>
                             <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;">
                                 <span style="font-size:12px;color:var(--muted);">Section</span>
-                                <span style="font-size:12px;font-weight:600;"><?php echo e($enrollment->section ?? '—'); ?></span>
+                                <span style="font-size:12px;font-weight:600;"><?php echo e($section->name ?? '—'); ?></span>
                             </div>
                             <?php endif; ?>
                         </div>
@@ -3490,7 +3490,7 @@
                 <div id="sectionCards" style="display:flex; flex-direction:column; gap:12px;">
                     <?php $__currentLoopData = $availableSections; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sec): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                     <?php $isFull = $sec->current_enrollment >= $sec->max_students; ?>
-                    <?php $isCurrent = $enrollment->section === $sec->name; ?>
+                    <?php $isCurrent = ($section->name ?? null) === $sec->name; ?>
                     <div class="section-pick-card <?php echo e($isCurrent ? 'current' : ''); ?> <?php echo e($isFull ? 'full' : ''); ?>"
                          onclick="<?php echo e((!$isFull && !$isCurrent) ? 'confirmSectionChange(' . $sec->id . ', \'' . addslashes($sec->name) . '\')' : ''); ?>"
                          style="border:2px solid <?php echo e($isCurrent ? 'var(--blue)' : ($isFull ? '#dee2e6' : '#e2e8f0')); ?>; border-radius:12px; padding:16px; cursor:<?php echo e(($isFull || $isCurrent) ? 'default' : 'pointer'); ?>; background:<?php echo e($isCurrent ? '#f0f4ff' : ($isFull ? '#f8f9fa' : '#fff')); ?>; transition:all .2s;">
@@ -3503,7 +3503,7 @@
                                 <div style="font-size:12px; color:#888; margin-top:3px;">
                                     <?php echo e($sec->grade_level); ?>
 
-                                    <?php if($sec->teacher): ?> &nbsp;·&nbsp; Adviser: <?php echo e($sec->teacher->name); ?> <?php endif; ?>
+                                    <?php if($sec->advisory_teacher): ?> &nbsp;·&nbsp; Adviser: <?php echo e($sec->advisory_teacher->name); ?> <?php endif; ?>
                                     <?php if($sec->room_number): ?> &nbsp;·&nbsp; Room <?php echo e($sec->room_number); ?> <?php endif; ?>
                                 </div>
                             </div>

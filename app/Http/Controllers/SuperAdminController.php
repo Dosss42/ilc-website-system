@@ -450,10 +450,10 @@ class SuperAdminController extends Controller
     {
         $status = $request->get('status', 'all');
         $query  = \App\Models\Enrollment::select(
-            'id','user_id','reference_number','status',
+            'id','user_id','reference_number','status','grade_level',
             'student_data','payment_status','payment_amount','total_fee',
             'created_at','updated_at'
-        );
+        )->with('user.profile');
         if ($status !== 'all') {
             $query->where('status', $status);
         }
@@ -461,6 +461,12 @@ class SuperAdminController extends Controller
             $data = is_string($e->student_data)
                 ? json_decode($e->student_data, true)
                 : (array) $e->student_data;
+            // A student can edit their name/grade after enrolling (ProfileController
+            // writes only to normalized tables — see DATABASE_NORMALIZATION_PLAN.md
+            // Phase 6), which leaves this student_data snapshot stale. Prefer the
+            // normalized profile / real enrollments.grade_level column, falling
+            // back to the JSON snapshot only when a field hasn't been normalized yet.
+            $profile = $e->user?->profile;
             return [
                 'id'               => $e->id,
                 'reference_number' => $e->reference_number,
@@ -469,9 +475,9 @@ class SuperAdminController extends Controller
                 'payment_amount'   => $e->payment_amount,
                 'total_fee'        => $e->total_fee,
                 'created_at'       => $e->created_at?->format('M d, Y'),
-                'first_name'       => $data['first_name']  ?? '',
-                'last_name'        => $data['last_name']   ?? '',
-                'grade_level'      => $data['grade_level'] ?? '',
+                'first_name'       => $profile?->first_name ?: ($data['first_name']  ?? ''),
+                'last_name'        => $profile?->last_name  ?: ($data['last_name']   ?? ''),
+                'grade_level'      => $e->grade_level ?: ($data['grade_level'] ?? ''),
             ];
         });
 
