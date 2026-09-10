@@ -11593,15 +11593,19 @@ function openWalkInEnrollmentModal() {
     function approveEnrollment(enrollmentId) {
         console.log('approveEnrollment called with ID:', enrollmentId);
 
-        // Hide the enrollment view modal if it's open to avoid Bootstrap nested-modal conflicts.
-        // Wait for it to actually finish closing before opening the next one — opening a second
-        // modal while the first is still mid-transition can leave a stray backdrop behind that
-        // silently blocks clicks on everything underneath, including the new modal's own buttons.
+        // Hide the enrollment view modal if it's actually open right now, to avoid
+        // Bootstrap nested-modal conflicts — wait for it to actually finish closing
+        // before opening the next one. Checking the 'show' class (not just whether a
+        // bootstrap.Modal instance exists) matters: this button is also reachable
+        // directly from the table row, so once the view modal has been opened and
+        // closed even once earlier in the session, getInstance() keeps returning
+        // that same (now-hidden) instance. Calling .hide() on an already-hidden
+        // Bootstrap modal is a silent no-op — 'hidden.bs.modal' never fires — which
+        // left the confirm dialog never appearing on the very next click.
         const viewModalEl = document.getElementById('enrollmentViewModal');
-        const viewModalInstance = viewModalEl ? bootstrap.Modal.getInstance(viewModalEl) : null;
-        if (viewModalInstance) {
+        if (viewModalEl && viewModalEl.classList.contains('show')) {
             viewModalEl.addEventListener('hidden.bs.modal', () => openApproveConfirm(enrollmentId), { once: true });
-            viewModalInstance.hide();
+            bootstrap.Modal.getInstance(viewModalEl).hide();
         } else {
             openApproveConfirm(enrollmentId);
         }
@@ -11883,13 +11887,14 @@ function openWalkInEnrollmentModal() {
 
     function declineEnrollment(enrollmentId) {
 
-        // Hide the enrollment view modal if it's open to avoid Bootstrap nested-modal conflicts —
-        // wait for it to actually finish closing first (see the same fix in approveEnrollment).
+        // See the identical fix (and the reason it's needed) in approveEnrollment
+        // just above — must check the 'show' class, not just whether a
+        // bootstrap.Modal instance exists, since this button is also reachable
+        // directly from the table row.
         const viewModalEl = document.getElementById('enrollmentViewModal');
-        const viewModalInstance = viewModalEl ? bootstrap.Modal.getInstance(viewModalEl) : null;
-        if (viewModalInstance) {
+        if (viewModalEl && viewModalEl.classList.contains('show')) {
             viewModalEl.addEventListener('hidden.bs.modal', () => openDeclineModal(enrollmentId), { once: true });
-            viewModalInstance.hide();
+            bootstrap.Modal.getInstance(viewModalEl).hide();
         } else {
             openDeclineModal(enrollmentId);
         }
