@@ -34,6 +34,8 @@ class VerifyDatabaseNormalization extends Command
             'user_id/student_id vs enrollments.user_id' => fn () => $this->checkTransitiveUserIdDrift(),
             'student_data JSON vs normalized profile tables' => fn () => $this->checkStudentDataDrift(),
             'payment_transactions.installment_month vs installment_id' => fn () => $this->checkInstallmentMonthDrift(),
+            'sections.teacher_id vs teacher_assignments' => fn () => $this->checkSectionTeacherIdDrift(),
+            'promotions.lrn vs users.lrn' => fn () => $this->checkPromotionLrnDrift(),
             // ...and so on, one entry per phase, never removed once added
             // so this command keeps growing into a full regression check.
         ];
@@ -445,6 +447,65 @@ class VerifyDatabaseNormalization extends Command
                     $issues[] = "PaymentTransaction #{$txn->id}: installment_month=\"{$txn->installment_month}\" but installment_id is NULL — FK link was dropped when this row was written";
                 }
             });
+
+        return $issues;
+    }
+
+    /**
+     * Found during a general 2NF/3NF re-audit (not part of the original
+     * phase plan): sections.teacher_id duplicates the advisory teacher
+     * already derivable from teacher_assignments (is_advisory = true), and
+     * TeacherAssignmentController re-syncs it on every advisory add/update/
+     * remove — but until now nothing checked that sync actually stayed
+     * correct. Mirrors that controller's own "first advisory by id, scoped
+     * to this section's school_year" resolution exactly, so a clean result
+     * here means the cache is trustworthy for any raw-SQL reader.
+     */
+    private function checkSectionTeacherIdDrift(): array
+    {
+        $issues = [];
+
+        Section::all(['id', 'name', 'school_year', 'teacher_id'])->each(function (Section $section) use (&$issues) {
+            $firstAdvisory = \App\Models\TeacherAssignment::where('section_id', $section->id)
+                ->where('school_year', $section->school_year)
+                ->where('is_advisory', true)
+                ->orderBy('id')
+                ->first();
+
+            $expectedTeacherId = $firstAdvisory?->teacher_id;
+
+            if ($section->teacher_id !== $expectedTeacherId) {
+                $issues[] = "Section #{$section->id} ({$section->name}): stored teacher_id=" . ($section->teacher_id ?? 'NULL') . ', expected (from teacher_assignments)=' . ($expectedTeacherId ?? 'NULL');
+            }
+        });
+
+        return $issues;
+    }
+
+    /**
+     * Found during the same re-audit: promotions.lrn is copied from
+     * users.lrn at the moment a promotion record is created — a textbook
+     * transitive dependency. Real-world drift risk is low (a DepEd LRN is
+     * assigned once and essentially never changes) and a mismatch here
+     * could legitimately mean the user's LRN was corrected after the
+     * promotion happened, not necessarily a bug — but it's worth surfacing
+     * either way since, unlike the app's other deliberate denormalizations,
+     * this one was previously undocumented and unchecked.
+     */
+    private function checkPromotionLrnDrift(): array
+    {
+        $issues = [];
+
+        \App\Models\Promotion::whereNotNull('lrn')->get(['id', 'student_id', 'lrn'])->each(function ($promotion) use (&$issues) {
+            $user = \App\Models\User::find($promotion->student_id);
+            if (!$user) {
+                return;
+            }
+
+            if ($promotion->lrn !== $user->lrn) {
+                $issues[] = "Promotion #{$promotion->id} (student {$promotion->student_id}): stored lrn=\"{$promotion->lrn}\", user's current lrn=\"" . ($user->lrn ?? 'NULL') . '" (may be a legitimate later correction, not necessarily a bug)';
+            }
+        });
 
         return $issues;
     }

@@ -4,6 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * `teacher_id` is a deliberate denormalization — the real source of truth
+ * for the advisory (homeroom) teacher is `teacher_assignments` (is_advisory
+ * = true), see DATABASE_NORMALIZATION_PLAN.md Phase 3. This column is kept
+ * in sync as a cache so raw-SQL queries and older code that filter/sort by
+ * `sections.teacher_id` directly don't need a join; TeacherAssignmentController
+ * re-writes it every time an advisory assignment is added, changed, or
+ * removed. Do NOT stop syncing it or "fix" it into a join without also
+ * updating every direct reader. `php artisan db:verify-normalization` guards
+ * against this drifting from the real teacher_assignments row.
+ */
 class Section extends Model
 {
     protected $fillable = [

@@ -6207,9 +6207,14 @@ function openWalkInEnrollmentModal() {
         <div id="scheduleGridContainer" class="content-card" style="display:none;">
             <div class="content-card-header">
                 <h6 id="scheduleInfoText">Schedule</h6>
-                <button class="btn-dash btn-primary" onclick="downloadScheduleAdminPDF()" style="display:inline-flex;align-items:center;gap:7px;">
-                    <i class="bi bi-file-earmark-pdf-fill"></i> Download PDF
-                </button>
+                <div style="display:flex;gap:8px;">
+                    <button class="btn-dash btn-secondary" onclick="exportSchedule()" style="display:inline-flex;align-items:center;gap:7px;">
+                        <i class="bi bi-file-earmark-spreadsheet-fill"></i> Export CSV
+                    </button>
+                    <button class="btn-dash btn-primary" onclick="downloadScheduleAdminPDF()" style="display:inline-flex;align-items:center;gap:7px;">
+                        <i class="bi bi-file-earmark-pdf-fill"></i> Download PDF
+                    </button>
+                </div>
             </div>
             <div style="overflow-x:auto;">
                 <table class="schedule-grid-table">
@@ -10865,6 +10870,11 @@ function openWalkInEnrollmentModal() {
 
     // â”€â”€ Export Schedule â”€â”€
 
+    function csvEscape(value) {
+        const s = value === null || value === undefined ? '' : String(value);
+        return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    }
+
     function exportSchedule() {
 
         const grade = document.getElementById('scheduleGradeFilter').value;
@@ -10877,10 +10887,48 @@ function openWalkInEnrollmentModal() {
 
         }
 
-        // TODO: Implement CSV export
+        const rows = _scheduleCache || [];
 
-        showCustomAlert('info', 'Export Feature', 'Export functionality will be implemented soon.');
+        if (!rows.length) {
+            showCustomAlert('warning', 'Nothing to Export', 'Load a schedule first, then export it.');
+            return;
+        }
 
+        const dayOrder = { 'Monday':1, 'Tuesday':2, 'Wednesday':3, 'Thursday':4, 'Friday':5, 'Saturday':6, 'Sunday':7 };
+        const sorted = [...rows].sort((a, b) => {
+            const d = (dayOrder[a.day_of_week] || 99) - (dayOrder[b.day_of_week] || 99);
+            return d !== 0 ? d : (a.start_time || '').localeCompare(b.start_time || '');
+        });
+
+        const header = ['Day', 'Start Time', 'End Time', 'Section', 'Subject Code', 'Subject Name', 'Teacher', 'Room'];
+        const lines = [header.map(csvEscape).join(',')];
+
+        sorted.forEach(s => {
+            lines.push([
+                s.day_of_week || '',
+                (s.start_time || '').substring(0, 5),
+                (s.end_time || '').substring(0, 5),
+                s.section ? s.section.name : '',
+                s.subject ? (s.subject.code || '') : '',
+                s.subject ? s.subject.name : '',
+                s.teacher ? s.teacher.name : '',
+                s.room || '',
+            ].map(csvEscape).join(','));
+        });
+
+        const sectionSel = document.getElementById('scheduleSectionFilter');
+        const sectionLabel = sectionSel && sectionSel.selectedIndex > 0 ? sectionSel.options[sectionSel.selectedIndex].text : 'all-sections';
+        const filename = `schedule-${grade}-${sectionLabel}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '.csv';
+
+        const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 
     // â”€â”€ Populate Section Filter based on Grade â”€â”€

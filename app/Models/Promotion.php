@@ -5,6 +5,18 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
+/**
+ * `lrn` is a transitive dependency, copied from `users.lrn` at the moment a
+ * promotion record is created (see EnrollmentController's promotion logic).
+ * Real-world drift risk is low — a DepEd LRN is assigned once and normally
+ * never changes — but unlike the app's other deliberate denormalizations
+ * (see PaymentTransaction, PaymentInstallment, PromissoryNote, Grade) this
+ * one wasn't previously documented or guarded. Treat it the same way: if
+ * `php artisan db:verify-normalization` ever reports a mismatch here, that's
+ * a real bug in whatever wrote the stale lrn — not a reason to remove the
+ * column, since a promotion record should still show the LRN as it was at
+ * promotion time even if it were ever corrected afterward.
+ */
 class Promotion extends Model
 {
     use HasFactory;

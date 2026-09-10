@@ -523,11 +523,13 @@
     <button class="sidebar-link" id="nav-reports" onclick="showSection('reports')">
         <i class="bi bi-printer-fill"></i> Grade Reports
     </button>
-    {{--  
     <div class="sidebar-section-lbl">Communication</div>
-    <button class="sidebar-link" id="nav-announcements" onclick="showSection('announcements')">
+    <button class="sidebar-link" id="nav-announcements" onclick="showSection('announcements'); loadAnnouncements();">
         <i class="bi bi-megaphone-fill"></i> Announcements
-    </button>--}}
+    </button>
+    <button class="sidebar-link" id="nav-ptc" onclick="showSection('ptc'); loadPtcMeetings();">
+        <i class="bi bi-people-fill"></i> Parent-Teacher Conf.
+    </button>
 
     <div class="sidebar-divider"></div>
     <button class="sidebar-link" id="nav-settings" onclick="showSection('settings')">
@@ -1408,39 +1410,45 @@
         <div class="content-card mb-4">
             <div class="content-card-header"><h6>Post New Announcement</h6></div>
             <div class="p-4">
-                {{-- CHANGE: action="{{ route('teacher.announcements.store') }}" --}}
-                <form method="POST" action="#">
-                    @csrf
+                <form id="ann-form" onsubmit="return submitAnnouncement(event);">
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-lbl">Title *</label>
-                            <input type="text" name="title" class="form-fld" placeholder="Announcement title">
+                            <input type="text" id="ann-title" class="form-fld" placeholder="Announcement title" required maxlength="255">
                         </div>
                         <div class="col-md-3">
                             <label class="form-lbl">Target Audience</label>
-                            <select name="audience" class="form-fld">
+                            <select id="ann-audience" class="form-fld" onchange="onAnnAudienceChange()">
                                 <option value="all">All My Students</option>
-                                <option value="gr7">Grade 7 – Sampaguita</option>
-                                <option value="gr8">Grade 8 – Rosal</option>
-                                <option value="gr10">Grade 10 – Ilang-ilang</option>
+                                <option value="section">Specific Section</option>
                                 <option value="parents">Parents Only</option>
+                                <option value="teachers">Teachers Only</option>
                             </select>
                         </div>
                         <div class="col-md-3">
                             <label class="form-lbl">Category</label>
-                            <select name="category" class="form-fld">
-                                <option>Academic</option>
-                                <option>Reminder</option>
-                                <option>Activity</option>
-                                <option>General</option>
+                            <select id="ann-category" class="form-fld">
+                                <option value="academic">Academic</option>
+                                <option value="reminder">Reminder</option>
+                                <option value="activity">Activity</option>
+                                <option value="general" selected>General</option>
+                                <option value="enrollment">Enrollment</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6" id="ann-section-wrap" style="display:none;">
+                            <label class="form-lbl">Section</label>
+                            <select id="ann-section" class="form-fld">
+                                @foreach($sections as $sec)
+                                    <option value="{{ $sec->id }}">{{ $sec->name }} &mdash; {{ $gradeLabels[$sec->grade_level] ?? $sec->grade_level }}</option>
+                                @endforeach
                             </select>
                         </div>
                         <div class="col-12">
                             <label class="form-lbl">Content *</label>
-                            <textarea name="content" class="form-fld" placeholder="Write your announcement here..."></textarea>
+                            <textarea id="ann-content" class="form-fld" placeholder="Write your announcement here..." required></textarea>
                         </div>
                         <div class="col-12">
-                            <button type="submit" class="btn-dash btn-primary">
+                            <button type="submit" class="btn-dash btn-primary" id="ann-submit-btn">
                                 <i class="bi bi-send-fill"></i> Post Announcement
                             </button>
                         </div>
@@ -1451,9 +1459,8 @@
 
         <div class="content-card">
             <div class="content-card-header"><h6>My Posted Announcements</h6></div>
-            <div style="padding:40px;text-align:center;color:var(--muted);">
+            <div id="ann-list" style="padding:40px;text-align:center;color:var(--muted);">
                 <i class="bi bi-megaphone" style="font-size:36px;display:block;margin-bottom:8px;opacity:0.3;"></i>
-                {{-- CHANGE: Replace with @foreach($announcements as $ann) --}}
                 No announcements posted yet.
             </div>
         </div>
@@ -1468,7 +1475,7 @@
                 <h1>Parent-Teacher Conference</h1>
                 <p>Schedule and manage parent-teacher meetings.</p>
             </div>
-            <a href="#" class="btn-dash btn-primary">
+            <a href="#" onclick="document.getElementById('ptc-student').focus(); return false;" class="btn-dash btn-primary">
                 <i class="bi bi-plus-lg"></i> Schedule Meeting
             </a>
         </div>
@@ -1476,42 +1483,51 @@
         <div class="content-card mb-4">
             <div class="content-card-header"><h6>Schedule a Parent-Teacher Meeting</h6></div>
             <div class="p-4">
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <label class="form-lbl">Student</label>
-                        <select class="form-fld">
-                            <option value="">Select Student</option>
-                            <option>Juan Dela Cruz</option>
-                            <option>Maria Santos</option>
-                            <option>Ramon Lopez</option>
-                        </select>
+                <form id="ptc-form" onsubmit="return submitPtc(event);">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-lbl">Student *</label>
+                            <select id="ptc-student" class="form-fld" required>
+                                <option value="">Select Student</option>
+                                @foreach($sections as $sec)
+                                    @foreach($sec->students as $stu)
+                                        <option value="{{ $stu->id }}">{{ $stu->name }} &mdash; {{ $sec->name }}</option>
+                                    @endforeach
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-lbl">Parent / Guardian Name</label>
+                            <input type="text" id="ptc-guardian" class="form-fld" placeholder="e.g. Maria Dela Cruz">
+                        </div>
+                        <div class="col-md-4"></div>
+                        <div class="col-md-4">
+                            <label class="form-lbl">Date *</label>
+                            <input type="date" id="ptc-date" class="form-fld" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-lbl">Time *</label>
+                            <input type="time" id="ptc-time" class="form-fld" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-lbl">Venue</label>
+                            <input type="text" id="ptc-venue" class="form-fld" placeholder="e.g., Room 101, Principal's Office">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-lbl">Purpose / Concern</label>
+                            <input type="text" id="ptc-purpose" class="form-fld" placeholder="e.g., Academic performance, Behavior concern">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-lbl">Notes</label>
+                            <textarea id="ptc-notes" class="form-fld" placeholder="Additional notes for the parent..."></textarea>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn-dash btn-primary" id="ptc-submit-btn">
+                                <i class="bi bi-calendar-plus-fill"></i> Schedule Meeting
+                            </button>
+                        </div>
                     </div>
-                    <div class="col-md-4">
-                        <label class="form-lbl">Date</label>
-                        <input type="date" class="form-fld">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="form-lbl">Time</label>
-                        <input type="time" class="form-fld">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-lbl">Purpose / Concern</label>
-                        <input type="text" class="form-fld" placeholder="e.g., Academic performance, Behavior concern">
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-lbl">Venue</label>
-                        <input type="text" class="form-fld" placeholder="e.g., Room 101, Principal's Office">
-                    </div>
-                    <div class="col-12">
-                        <label class="form-lbl">Notes</label>
-                        <textarea class="form-fld" placeholder="Additional notes for the parent..."></textarea>
-                    </div>
-                    <div class="col-12">
-                        <button class="btn-dash btn-primary">
-                            <i class="bi bi-calendar-plus-fill"></i> Schedule Meeting
-                        </button>
-                    </div>
-                </div>
+                </form>
             </div>
         </div>
 
@@ -1530,8 +1546,7 @@
                             <th>Actions</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {{-- CHANGE: Replace with @foreach($ptcMeetings as $m) --}}
+                    <tbody id="ptc-tbody">
                         <tr>
                             <td colspan="7" style="text-align:center;color:var(--muted);padding:40px;">
                                 <i class="bi bi-calendar-event" style="font-size:36px;display:block;margin-bottom:8px;opacity:0.3;"></i>
@@ -2386,6 +2401,202 @@
         t.textContent = msg;
         document.body.appendChild(t);
         setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 3000);
+    }
+
+    function escHtml(str) {
+        const d = document.createElement('div');
+        d.textContent = str == null ? '' : String(str);
+        return d.innerHTML;
+    }
+
+    // ═══════════════════════════════
+    // ANNOUNCEMENTS
+    // ═══════════════════════════════
+    var _announcementsLoaded = false;
+
+    function onAnnAudienceChange() {
+        document.getElementById('ann-section-wrap').style.display =
+            document.getElementById('ann-audience').value === 'section' ? '' : 'none';
+    }
+
+    function submitAnnouncement(e) {
+        e.preventDefault();
+        const btn = document.getElementById('ann-submit-btn');
+        const audience = document.getElementById('ann-audience').value;
+        const payload = {
+            title: document.getElementById('ann-title').value,
+            content: document.getElementById('ann-content').value,
+            audience: audience,
+            category: document.getElementById('ann-category').value,
+            section_id: audience === 'section' ? document.getElementById('ann-section').value : null,
+        };
+        btn.disabled = true;
+        fetch('/teacher/announcements', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+            body: JSON.stringify(payload),
+        })
+        .then(r => r.json().then(data => ({ ok: r.ok, data })))
+        .then(({ ok, data }) => {
+            if (!ok) throw new Error(data.message || 'Failed to post announcement.');
+            document.getElementById('ann-form').reset();
+            onAnnAudienceChange();
+            showToast('Announcement posted.', 'success');
+            loadAnnouncements();
+        })
+        .catch(err => showToast(err.message || 'Failed to post announcement.', 'error'))
+        .finally(() => { btn.disabled = false; });
+        return false;
+    }
+
+    function loadAnnouncements() {
+        if (_announcementsLoaded) return;
+        _announcementsLoaded = true;
+        const list = document.getElementById('ann-list');
+        fetch('/teacher/announcements', { headers: { 'Accept': 'application/json' } })
+            .then(r => r.json())
+            .then(res => renderAnnouncements(res.data || []))
+            .catch(() => {
+                _announcementsLoaded = false;
+                list.innerHTML = '<div style="padding:40px;text-align:center;color:var(--red);">Failed to load announcements.</div>';
+            });
+    }
+
+    function renderAnnouncements(rows) {
+        const list = document.getElementById('ann-list');
+        if (!rows.length) {
+            list.innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted);"><i class="bi bi-megaphone" style="font-size:36px;display:block;margin-bottom:8px;opacity:0.3;"></i>No announcements posted yet.</div>';
+            return;
+        }
+        const audienceLabels = { all: 'All My Students', section: 'Specific Section', parents: 'Parents Only', teachers: 'Teachers Only' };
+        list.innerHTML = rows.map(a => `
+            <div class="content-card mb-3" style="box-shadow:none;border:1px solid var(--border);">
+                <div style="padding:18px 20px;">
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;">
+                        <div>
+                            <span class="status-badge active" style="text-transform:capitalize;">${escHtml(a.category)}</span>
+                            <span style="font-size:12px;color:var(--muted);margin-left:8px;">${escHtml(audienceLabels[a.audience] || a.audience)}${a.section ? ' &mdash; ' + escHtml(a.section.name) : ''}</span>
+                        </div>
+                        <button onclick="deleteAnnouncement(${a.id})" class="btn-dash btn-secondary" style="padding:4px 10px;font-size:12px;color:var(--red);">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                    <h6 style="font-weight:700;color:var(--blue);margin-bottom:6px;">${escHtml(a.title)}</h6>
+                    <p style="font-size:13px;color:#555;line-height:1.6;margin:0;">${escHtml(a.content)}</p>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function deleteAnnouncement(id) {
+        if (!confirm('Delete this announcement?')) return;
+        fetch('/teacher/announcements/' + id, {
+            method: 'DELETE',
+            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (!res.success) throw new Error();
+            showToast('Announcement deleted.', 'success');
+            _announcementsLoaded = false;
+            loadAnnouncements();
+        })
+        .catch(() => showToast('Failed to delete announcement.', 'error'));
+    }
+
+    // ═══════════════════════════════
+    // PARENT-TEACHER CONFERENCE
+    // ═══════════════════════════════
+    var _ptcLoaded = false;
+
+    function submitPtc(e) {
+        e.preventDefault();
+        const btn = document.getElementById('ptc-submit-btn');
+        const studentId = document.getElementById('ptc-student').value;
+        if (!studentId) { showToast('Please select a student.', 'error'); return false; }
+        const payload = {
+            student_id: studentId,
+            guardian_name: document.getElementById('ptc-guardian').value,
+            meeting_date: document.getElementById('ptc-date').value,
+            meeting_time: document.getElementById('ptc-time').value,
+            purpose: document.getElementById('ptc-purpose').value,
+            venue: document.getElementById('ptc-venue').value,
+            notes: document.getElementById('ptc-notes').value,
+        };
+        btn.disabled = true;
+        fetch('/teacher/ptc', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+            body: JSON.stringify(payload),
+        })
+        .then(r => r.json().then(data => ({ ok: r.ok, data })))
+        .then(({ ok, data }) => {
+            if (!ok) throw new Error(data.message || 'Failed to schedule meeting.');
+            document.getElementById('ptc-form').reset();
+            showToast('Meeting scheduled.', 'success');
+            _ptcLoaded = false;
+            loadPtcMeetings();
+        })
+        .catch(err => showToast(err.message || 'Failed to schedule meeting.', 'error'))
+        .finally(() => { btn.disabled = false; });
+        return false;
+    }
+
+    function loadPtcMeetings() {
+        if (_ptcLoaded) return;
+        _ptcLoaded = true;
+        fetch('/teacher/ptc', { headers: { 'Accept': 'application/json' } })
+            .then(r => r.json())
+            .then(res => renderPtcMeetings(res.data || []))
+            .catch(() => {
+                _ptcLoaded = false;
+                document.getElementById('ptc-tbody').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--red);padding:30px;">Failed to load meetings.</td></tr>';
+            });
+    }
+
+    function renderPtcMeetings(rows) {
+        const tbody = document.getElementById('ptc-tbody');
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:40px;"><i class="bi bi-calendar-event" style="font-size:36px;display:block;margin-bottom:8px;opacity:0.3;"></i>No meetings scheduled yet.</td></tr>';
+            return;
+        }
+        const statusBadge = { scheduled: 'pending', completed: 'active', cancelled: 'inactive', rescheduled: 'pending' };
+        tbody.innerHTML = rows.map(m => `
+            <tr>
+                <td>${escHtml(m.student ? m.student.name : 'Unknown')}</td>
+                <td>${escHtml(m.guardian_name || '—')}</td>
+                <td>${escHtml(m.meeting_date)} ${escHtml((m.meeting_time || '').substring(0,5))}</td>
+                <td>${escHtml(m.purpose || '—')}</td>
+                <td>${escHtml(m.venue || '—')}</td>
+                <td><span class="status-badge ${statusBadge[m.status] || 'pending'}" style="text-transform:capitalize;">${escHtml(m.status)}</span></td>
+                <td>
+                    <select onchange="updatePtcStatusRow(${m.id}, this.value)" class="form-fld" style="padding:4px 8px;font-size:12px;width:auto;">
+                        <option value="">Update status&hellip;</option>
+                        <option value="scheduled" ${m.status==='scheduled'?'disabled':''}>Scheduled</option>
+                        <option value="completed" ${m.status==='completed'?'disabled':''}>Completed</option>
+                        <option value="rescheduled" ${m.status==='rescheduled'?'disabled':''}>Rescheduled</option>
+                        <option value="cancelled" ${m.status==='cancelled'?'disabled':''}>Cancelled</option>
+                    </select>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function updatePtcStatusRow(id, status) {
+        if (!status) return;
+        fetch('/teacher/ptc/' + id + '/status', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+            body: JSON.stringify({ status: status }),
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (!res.success) throw new Error();
+            showToast('Meeting status updated.', 'success');
+            _ptcLoaded = false;
+            loadPtcMeetings();
+        })
+        .catch(() => showToast('Failed to update meeting status.', 'error'));
     }
 
     // Attendance toggle
