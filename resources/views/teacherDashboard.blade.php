@@ -520,9 +520,6 @@
     <button class="sidebar-link" id="nav-schedule" onclick="showSection('schedule')">
         <i class="bi bi-calendar3"></i> My Schedule
     </button>
-    <button class="sidebar-link" id="nav-reports" onclick="showSection('reports')">
-        <i class="bi bi-printer-fill"></i> Grade Reports
-    </button>
     <div class="sidebar-section-lbl">Communication</div>
     <button class="sidebar-link" id="nav-announcements" onclick="showSection('announcements'); loadAnnouncements();">
         <i class="bi bi-megaphone-fill"></i> Announcements
@@ -1190,8 +1187,8 @@
 
                     <div style="width:1px;height:36px;background:var(--border);"></div>
 
-                    <button class="btn-dash" style="background:#c0392b;color:#fff;" onclick="exportSF5()" title="Download SF5 — Report on Promotions (Excel)">
-                        <i class="bi bi-file-earmark-spreadsheet"></i> SF5
+                    <button class="btn-dash" style="background:#c0392b;color:#fff;" onclick="exportSF5()" title="Download SF5 — Report on Promotions (PDF)">
+                        <i class="bi bi-file-earmark-pdf-fill"></i> SF5
                     </button>
 
                 </div>
@@ -1560,50 +1557,6 @@
     </div><!-- /section-ptc -->
 
     <!-- ═══════════════════════════
-         SECTION: GRADE REPORTS
-    ═══════════════════════════ -->
-    <div id="section-reports" class="dash-section" style="display:none;">
-        <div class="section-header">
-            <div>
-                <h1>Grade Reports</h1>
-                <p>Generate and print grade reports for submission.</p>
-            </div>
-        </div>
-        <div class="row g-3">
-            <div class="col-md-4">
-                <div class="content-card">
-                    <div class="p-4 text-center">
-                        <i class="bi bi-file-earmark-text-fill" style="font-size:36px;color:var(--blue);display:block;margin-bottom:12px;"></i>
-                        <h6 style="font-weight:700;color:var(--text);margin-bottom:6px;">Class Grade Report</h6>
-                        <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Full grade report for a section and subject.</p>
-                        <a href="#" class="btn-dash btn-primary" style="width:100%;justify-content:center;"><i class="bi bi-download"></i> Download</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="content-card">
-                    <div class="p-4 text-center">
-                        <i class="bi bi-person-lines-fill" style="font-size:36px;color:var(--green);display:block;margin-bottom:12px;"></i>
-                        <h6 style="font-weight:700;color:var(--text);margin-bottom:6px;">Individual Report Card</h6>
-                        <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Per-student grade report for parents/registrar.</p>
-                        <a href="#" class="btn-dash btn-success" style="width:100%;justify-content:center;"><i class="bi bi-download"></i> Download</a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="content-card">
-                    <div class="p-4 text-center">
-                        <i class="bi bi-bar-chart-fill" style="font-size:36px;color:var(--gold);display:block;margin-bottom:12px;"></i>
-                        <h6 style="font-weight:700;color:var(--text);margin-bottom:6px;">Class Performance Summary</h6>
-                        <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Analytics and performance overview per quarter.</p>
-                        <a href="#" class="btn-dash btn-gold" style="width:100%;justify-content:center;"><i class="bi bi-download"></i> Download</a>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div><!-- /section-reports -->
-
-    <!-- ═══════════════════════════
          SECTION: SETTINGS
     ═══════════════════════════ -->
     <div id="section-settings" class="dash-section" style="display:none;">
@@ -1822,7 +1775,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    const sections = ['dashboard','schedule','students','attendance','announcements','ptc','reports','settings'];
+    const sections = ['dashboard','schedule','students','attendance','announcements','ptc','settings'];
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
 
     function showSection(name) {

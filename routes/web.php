@@ -559,10 +559,6 @@ Route::middleware(['auth', 'maintenance'])->prefix('teacher')->name('teacher.')-
     Route::post('/ptc',              [\App\Http\Controllers\Teacher\DashboardController::class, 'storePtc'])->name('ptc.store');
     Route::put('/ptc/{ptc}/status',  [\App\Http\Controllers\Teacher\DashboardController::class, 'updatePtcStatus'])->name('ptc.updateStatus');
 
-    // Reports
-    Route::get('/reports/class-grades',        [\App\Http\Controllers\Teacher\DashboardController::class, 'getClassGradeReport'])->name('reports.classGrades');
-    Route::get('/reports/student-report-card', [\App\Http\Controllers\Teacher\DashboardController::class, 'getStudentReportCard'])->name('reports.studentReportCard');
-
     // DepEd Forms
     Route::get('/sf9/{student}',  [\App\Http\Controllers\Teacher\DashboardController::class, 'printSF9'])->name('sf9');
     Route::get('/sf5',            [\App\Http\Controllers\Teacher\DashboardController::class, 'exportSF5'])->name('sf5');

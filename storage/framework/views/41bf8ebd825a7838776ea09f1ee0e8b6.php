@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <title>SF9 — <?php echo e($student->name); ?> — <?php echo e($schoolYear); ?></title>
 <style>
+    /* dompdf applies its own default page margin on top of whatever CSS
+       specifies — leaving that unset here made the full-page-sized .page
+       box below overflow onto a wasted, entirely blank second page on
+       every single generated SF9. Zeroing it here and letting .page's own
+       padding provide the visual margin instead is the fix. */
+    @page { margin: 0; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
         font-family: Arial, sans-serif;
@@ -14,7 +20,10 @@
 
     .page {
         width: 215.9mm;
-        min-height: 279.4mm;
+        /* No min-height: a box asked to be exactly one physical page tall
+           overflows by a hair under dompdf's own rounding and pushes an
+           entirely blank extra page onto every PDF. Content naturally
+           fills the page anyway. */
         margin: 0 auto;
         padding: 10mm 12mm;
     }

@@ -1874,68 +1874,6 @@ class DashboardController extends Controller
         return response()->json(['success' => true, 'data' => $ptc]);
     }
 
-    // ── REPORTS ──
-
-    public function getClassGradeReport(Request $request)
-    {
-        $teacher = Auth::user();
-
-        $request->validate([
-            'section_id' => 'required|exists:sections,id',
-            'subject_id' => 'nullable|exists:subjects,id',
-            'term'       => 'nullable|integer|min:1|max:3',
-        ]);
-
-        $section = Section::findOrFail($request->section_id);
-        $section = $this->loadSectionStudents($section);
-        $schoolYear = $this->getCurrentSchoolYear();
-
-        $gradeQuery = Grade::where('teacher_id', $teacher->id)
-            ->where('school_year', $schoolYear)
-            ->where('status', 'submitted')
-            ->when($request->subject_id, fn($q) => $q->where('subject_id', $request->subject_id))
-            ->when($request->term, fn($q) => $q->where('term', $request->term))
-            ->whereIn('student_id', $section->students->pluck('id'));
-
-        $grades = $gradeQuery->get()->groupBy('student_id');
-
-        $report = $section->students->map(fn($student) => [
-            'student_id' => $student->id,
-            'name'       => $student->name,
-            'lrn'        => $student->lrn ?? '',
-            'grades'     => ($grades->get($student->id) ?? collect())->map(fn($g) => [
-                'term'    => $g->term,
-                'grade'   => $g->grade,
-                'remarks' => $g->remarks,
-            ])->values(),
-        ]);
-
-        return response()->json(['success' => true, 'data' => $report, 'section' => $section->name]);
-    }
-
-    public function getStudentReportCard(Request $request)
-    {
-        $teacher = Auth::user();
-        $request->validate(['student_id' => 'required|exists:users,id']);
-
-        $student = User::select('id', 'name', 'lrn')->findOrFail($request->student_id);
-        $schoolYear = $this->getCurrentSchoolYear();
-
-        $grades = Grade::where('student_id', $student->id)
-            ->where('teacher_id', $teacher->id)
-            ->where('school_year', $schoolYear)
-            ->where('status', 'submitted')
-            ->with('subject:id,name,code')
-            ->orderBy('term')
-            ->get()
-            ->groupBy('term');
-
-        return response()->json([
-            'success' => true,
-            'data'    => ['student' => $student, 'grades_by_term' => $grades],
-        ]);
-    }
-
     // ── SF9: Learner's Progress Report Card (PDF) ──
     public function printSF9(Request $request, User $student)
     {
@@ -2070,7 +2008,7 @@ class DashboardController extends Controller
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html)
             ->setPaper('letter', 'portrait')
-            ->setOptions(['defaultFont' => 'Arial', 'isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true]);
+            ->setOptions(['defaultFont' => 'Arial', 'isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true, 'defaultMediaType' => 'print']);
 
         $filename = 'SF9_' . str_replace(' ', '_', $student->name) . '_' . str_replace('-', '_', $schoolYear) . '.pdf';
 
@@ -2116,221 +2054,85 @@ class DashboardController extends Controller
             ->get()
             ->groupBy('student_id');
 
-        // ── Build Excel ──
-        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
-        $spreadsheet->getProperties()
-            ->setTitle('SF5')
-            ->setSubject("SF5 — {$section->name} — {$schoolYear}")
-            ->setCreator($teacher->name);
+        // ── Build per-student rows (PDF via teacher.sf5 view + dompdf, same
+        // pattern as printSF9) ──
+        $rows = [];
+        $promotedCount = 0;
+        $retainedCount = 0;
+        $graduatedCount = 0;
 
-        $ws = $spreadsheet->getActiveSheet();
-        $ws->setTitle('SF5');
-
-        $blue      = '1a3a6c';
-        $white     = 'FFFFFF';
-        $lightBlue = 'd9e1f2';
-        $gold      = 'F5A623';
-
-        $thin = ['borders' => ['allBorders' => [
-            'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN,
-            'color'       => ['rgb' => '000000'],
-        ]]];
-
-        // Logo
-        $logoPath = public_path('images/logo.png');
-        if (file_exists($logoPath)) {
-            $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
-            $drawing->setName('ILC Logo')->setPath($logoPath)->setHeight(55)
-                ->setCoordinates('A1')->setOffsetX(4)->setOffsetY(4)->setWorksheet($ws);
-        }
-
-        $subjectCount = $subjects->count();
-        $lastDataCol  = 4 + ($subjectCount * 3); // No + LRN + Name + Sex + (T1,T2,Final)*subjects + Avg + Action
-        $lastColLetter = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($lastDataCol + 2);
-
-        // Row 1 - School name
-        $ws->mergeCells("B1:{$lastColLetter}1");
-        $ws->setCellValue('B1', 'IEMELIF LEARNING CENTER');
-        $ws->getStyle('B1')->applyFromArray(['font' => ['bold'=>true,'size'=>14,'color'=>['rgb'=>$blue]],'alignment'=>['horizontal'=>'center','vertical'=>'center']]);
-        $ws->getRowDimension(1)->setRowHeight(28);
-
-        // Row 2 - Address
-        $ws->mergeCells("B2:{$lastColLetter}2");
-        $ws->setCellValue('B2', 'General Tinio, Nueva Ecija | Schools Division of Nueva Ecija, Region III');
-        $ws->getStyle('B2')->applyFromArray(['font' => ['size'=>9,'italic'=>true,'color'=>['rgb'=>'555555']],'alignment'=>['horizontal'=>'center']]);
-
-        // Row 3 - Form title
-        $ws->mergeCells("A3:{$lastColLetter}3");
-        $ws->setCellValue('A3', 'School Form 5 (SF5) — Report on Promotions and Level of Proficiency');
-        $ws->getStyle("A3:{$lastColLetter}3")->applyFromArray([
-            'font'      => ['bold'=>true,'size'=>11,'color'=>['rgb'=>$white]],
-            'fill'      => ['fillType'=>'solid','startColor'=>['rgb'=>$blue]],
-            'alignment' => ['horizontal'=>'center','vertical'=>'center'],
-        ]);
-        $ws->getRowDimension(3)->setRowHeight(20);
-
-        // Row 4 - Divider
-        $ws->mergeCells("A4:{$lastColLetter}4");
-        $ws->getStyle("A4:{$lastColLetter}4")->applyFromArray(['fill'=>['fillType'=>'solid','startColor'=>['rgb'=>$gold]]]);
-        $ws->getRowDimension(4)->setRowHeight(4);
-
-        // Rows 5-7 - Meta
-        $r = 5;
-        foreach ([
-            ['School Year', $schoolYear, 'Grade Level', $gradeLabel],
-            ['Section', $section->name, 'Adviser', $teacher->name],
-            ['Generated', now()->format('F d, Y'), 'Total Learners', $students->count()],
-        ] as [$l1,$v1,$l2,$v2]) {
-            $ws->setCellValue("A{$r}", $l1 . ':');
-            $ws->setCellValue("B{$r}", $v1);
-            $ws->setCellValue("D{$r}", $l2 . ':');
-            $ws->setCellValue("E{$r}", $v2);
-            $ws->getStyle("A{$r}")->applyFromArray(['font'=>['bold'=>true,'color'=>['rgb'=>$blue]],'fill'=>['fillType'=>'solid','startColor'=>['rgb'=>$lightBlue]]]);
-            $r++;
-        }
-        $r++;
-
-        // Column headers
-        $colIdx = 1;
-        $headerRow = $r;
-        $hStyle = ['font'=>['bold'=>true,'size'=>8,'color'=>['rgb'=>$white]],'fill'=>['fillType'=>'solid','startColor'=>['rgb'=>$blue]],'alignment'=>['horizontal'=>'center','vertical'=>'center','wrapText'=>true],'borders'=>['allBorders'=>['borderStyle'=>'thin','color'=>['rgb'=>'000000']]]];
-
-        foreach ([['No.','A'],['LRN','B'],['Learner\'s Name','C'],['Sex','D']] as [$hdr, $col]) {
-            $ws->setCellValue("{$col}{$headerRow}", $hdr);
-            $ws->getStyle("{$col}{$headerRow}")->applyFromArray($hStyle);
-        }
-        $ws->getColumnDimension('A')->setWidth(5);
-        $ws->getColumnDimension('B')->setWidth(16);
-        $ws->getColumnDimension('C')->setWidth(28);
-        $ws->getColumnDimension('D')->setWidth(6);
-        $ws->getRowDimension($headerRow)->setRowHeight(30);
-
-        $subColStart = 5;
-        foreach ($subjects as $sub) {
-            // Merge 3 columns for subject name
-            $c1 = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($subColStart);
-            $c3 = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($subColStart + 2);
-            $ws->mergeCells("{$c1}{$headerRow}:{$c3}{$headerRow}");
-            $ws->setCellValue("{$c1}{$headerRow}", $sub->name);
-            $ws->getStyle("{$c1}{$headerRow}:{$c3}{$headerRow}")->applyFromArray($hStyle);
-
-            // Sub-headers on next row
-            $subHeaderRow = $headerRow + 1;
-            foreach (['T1','T2','T3'] as $ti => $tlabel) {
-                $tc = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($subColStart + $ti);
-                $ws->setCellValue("{$tc}{$subHeaderRow}", $tlabel);
-                $ws->getStyle("{$tc}{$subHeaderRow}")->applyFromArray([
-                    'font'=>['bold'=>true,'size'=>7,'color'=>['rgb'=>$white]],'fill'=>['fillType'=>'solid','startColor'=>['rgb'=>'2c5282']],
-                    'alignment'=>['horizontal'=>'center'],'borders'=>['allBorders'=>['borderStyle'=>'thin','color'=>['rgb'=>'000000']]],
-                ]);
-                $ws->getColumnDimension($tc)->setWidth(7);
-            }
-            $subColStart += 3;
-        }
-
-        // Average + Action Taken headers
-        $avgCol    = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($subColStart);
-        $actionCol = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($subColStart + 1);
-        $ws->setCellValue("{$avgCol}{$headerRow}", 'Final Avg');
-        $ws->setCellValue("{$actionCol}{$headerRow}", 'Action Taken');
-        $ws->getStyle("{$avgCol}{$headerRow}")->applyFromArray($hStyle);
-        $ws->getStyle("{$actionCol}{$headerRow}")->applyFromArray($hStyle);
-        $ws->getColumnDimension($avgCol)->setWidth(9);
-        $ws->getColumnDimension($actionCol)->setWidth(14);
-
-        // Merge static header cols across sub-header row
-        $subHeaderRow = $headerRow + 1;
-        foreach (['A','B','C','D'] as $col) {
-            $ws->mergeCells("{$col}{$headerRow}:{$col}{$subHeaderRow}");
-        }
-        $ws->mergeCells("{$avgCol}{$headerRow}:{$avgCol}{$subHeaderRow}");
-        $ws->mergeCells("{$actionCol}{$headerRow}:{$actionCol}{$subHeaderRow}");
-
-        $r = $subHeaderRow + 1;
-
-        // Data rows
-        $rowNum = 1;
         foreach ($students as $stu) {
             $stuGrades = $allGrades->get($stu->id) ?? collect();
+            $profile   = $stu->profile;
 
-            $ws->setCellValue("A{$r}", $rowNum++);
-            $ws->setCellValue("B{$r}", $stu->lrn ?? '');
-            $ws->setCellValue("C{$r}", $stu->name);
-            $profile = $stu->profile;
-            $ws->setCellValue("D{$r}", $profile ? strtoupper(substr($profile->gender ?? '', 0, 1)) : '');
-
-            $termAvgs = [];
-            $subCol   = 5;
+            $subjectCells = [];
+            $termAvgs     = [];
             foreach ($subjects as $sub) {
-                foreach ([1,2,3] as $term) {
-                    $g = $stuGrades->where('subject_id', $sub->id)->where('term', $term)->first();
-                    $tc = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($subCol + $term - 1);
-                    if ($isDescriptive) {
-                        $ws->setCellValue("{$tc}{$r}", $g?->descriptive_grade ?? '');
-                    } else {
-                        $ws->setCellValue("{$tc}{$r}", $g?->grade ?? '');
+                $subGrades = $stuGrades->where('subject_id', $sub->id);
+                $terms = [];
+                foreach ([1, 2, 3] as $term) {
+                    $g = $subGrades->where('term', $term)->first();
+                    $terms[$term] = $isDescriptive ? ($g?->descriptive_grade ?? '') : ($g?->grade ?? '');
+                }
+                $subjectCells[] = $terms;
+
+                if (!$isDescriptive) {
+                    $numericGrades = $subGrades->pluck('grade')->filter(fn ($v) => $v !== null)->values();
+                    if ($numericGrades->count()) {
+                        $termAvgs[] = $numericGrades->sum() / $numericGrades->count();
                     }
                 }
-                // Per-subject average (T1+T2+T3)/3 for avg column
-                $subGrades = $stuGrades->where('subject_id', $sub->id)->pluck('grade')->filter()->values();
-                if ($subGrades->count()) $termAvgs[] = $subGrades->sum() / $subGrades->count();
-                $subCol += 3;
             }
 
-            // Final average
-            $avg = count($termAvgs) ? round(array_sum($termAvgs) / count($termAvgs)) : null;
-            $ws->setCellValue("{$avgCol}{$r}", $avg ?? '');
-            if ($avg !== null) {
-                $ws->getStyle("{$avgCol}{$r}")->applyFromArray(['font'=>['bold'=>true,'color'=>['rgb'=> $avg >= 75 ? '155724' : '721c24']]]);
-            }
+            $avg = ($termAvgs && !$isDescriptive) ? round(array_sum($termAvgs) / count($termAvgs)) : null;
 
-            // Action taken
             $action = '';
             if (!$isDescriptive && $avg !== null) {
-                if ($section->grade_level === 'grade6') {
+                if ($gradeLevel === 'grade6') {
                     $action = $avg >= 75 ? 'Graduated' : 'Retained';
                 } else {
                     $action = $avg >= 75 ? 'Promoted' : 'Retained';
                 }
+                match ($action) {
+                    'Promoted'  => $promotedCount++,
+                    'Graduated' => $graduatedCount++,
+                    'Retained'  => $retainedCount++,
+                    default     => null,
+                };
             }
-            $ws->setCellValue("{$actionCol}{$r}", $action);
 
-            // Row style
-            $rowBg = ($rowNum % 2 === 0) ? 'f7f8fc' : 'FFFFFF';
-            $ws->getStyle("A{$r}:{$actionCol}{$r}")->applyFromArray([
-                'fill'    => ['fillType'=>'solid','startColor'=>['rgb'=>$rowBg]],
-                'borders' => ['allBorders'=>['borderStyle'=>'thin','color'=>['rgb'=>'cccccc']]],
-                'font'    => ['size'=>8],
-            ]);
-            $ws->getStyle("C{$r}")->applyFromArray(['alignment'=>['horizontal'=>'left']]);
-            $ws->getStyle("A{$r}:{$actionCol}{$r}")->getAlignment()->setVertical('center');
-            $ws->getRowDimension($r)->setRowHeight(15);
-            $r++;
+            $rows[] = [
+                'lrn'     => $stu->lrn ?? '',
+                'name'    => $stu->name,
+                'sex'     => $profile ? strtoupper(substr($profile->gender ?? '', 0, 1)) : '',
+                'subjects'=> $subjectCells,
+                'avg'     => $avg,
+                'action'  => $action,
+            ];
         }
 
-        // Summary row
-        $r++;
-        $ws->mergeCells("A{$r}:C{$r}");
-        $ws->setCellValue("A{$r}", 'SUMMARY:');
-        $ws->getStyle("A{$r}")->applyFromArray(['font'=>['bold'=>true,'size'=>9,'color'=>['rgb'=>$blue]]]);
+        $data = [
+            'section'        => $section,
+            'teacher'        => $teacher,
+            'schoolYear'     => $schoolYear,
+            'gradeLabel'     => $gradeLabel,
+            'isDescriptive'  => $isDescriptive,
+            'subjects'       => $subjects,
+            'rows'           => $rows,
+            'promotedCount'  => $promotedCount,
+            'retainedCount'  => $retainedCount,
+            'graduatedCount' => $graduatedCount,
+        ];
 
-        $promoted  = $students->filter(fn($s) => !$isDescriptive)->count(); // simplified
-        $ws->setCellValue("D{$r}", "Total: {$students->count()} learners");
-        $ws->getStyle("A{$r}:D{$r}")->applyFromArray(['fill'=>['fillType'=>'solid','startColor'=>['rgb'=>$lightBlue]]]);
+        $html = view('teacher.sf5', $data)->render();
 
-        // Freeze panes
-        $ws->freezePane('C' . ($subHeaderRow + 1));
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html)
+            ->setPaper('legal', 'landscape')
+            ->setOptions(['defaultFont' => 'Arial', 'isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true, 'defaultMediaType' => 'print']);
 
-        $filename = 'SF5_' . preg_replace('/[^A-Za-z0-9\-]/', '-', $section->name) . '_' . str_replace('-', '_', $schoolYear) . '.xlsx';
-        $writer   = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+        $filename = 'SF5_' . preg_replace('/[^A-Za-z0-9\-]/', '-', $section->name) . '_' . str_replace('-', '_', $schoolYear) . '.pdf';
 
-        return response()->streamDownload(function () use ($writer) {
-            $writer->save('php://output');
-        }, $filename, [
-            'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'Cache-Control'       => 'no-cache, no-store, must-revalidate',
-            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-        ]);
+        return $pdf->download($filename);
     }
 
     public function sendPasswordOtp(Request $request)

@@ -565,8 +565,6 @@
     <a href="#" class="sidebar-link" id="nav-payment" onclick="showSection('payment');return false;">
         <i class="bi bi-credit-card-fill"></i> Payment
     </a>
-    
-
     <div class="sidebar-divider"></div>
     <a href="#" class="sidebar-link" id="nav-settings" onclick="showSection('settings');return false;">
         <i class="bi bi-gear-fill"></i> Settings
@@ -3107,38 +3105,6 @@
     <?php endif; ?>
 
     
-    <div id="section-announcements" class="student-info-section" style="display:none;">
-        <div class="info-section-title">Announcements</div>
-
-        
-        <div class="content-card mb-3">
-            <div style="padding:20px;">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
-                    <span class="status-badge active">General</span>
-                    <span style="font-size:12px;color:var(--muted);">June 15, 2026</span>
-                </div>
-                <h6 style="font-weight:700;color:var(--blue);margin-bottom:8px;">School Opening Day — S.Y. 2026–2027</h6>
-                <p style="font-size:13px;color:#555;line-height:1.7;margin:0;">
-                    The IEMELIF Learning Center warmly welcomes all students to the first day of classes.
-                    Please ensure all requirements are submitted. Attendance is required for all grade levels.
-                </p>
-            </div>
-        </div>
-        <div class="content-card mb-3">
-            <div style="padding:20px;">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
-                    <span class="status-badge pending">Enrollment</span>
-                    <span style="font-size:12px;color:var(--muted);">June 10, 2026</span>
-                </div>
-                <h6 style="font-weight:700;color:var(--blue);margin-bottom:8px;">Enrollment Period for S.Y. 2026–2027 is Now Open</h6>
-                <p style="font-size:13px;color:#555;line-height:1.7;margin:0;">
-                    Enrollment is officially open. Bring all required documents to the registrar's office during office hours.
-                </p>
-            </div>
-        </div>
-    </div>
-
-    
     <div id="section-settings" class="student-info-section" style="display:none;">
         <div class="info-section-title">Account Settings</div>
 
@@ -3717,7 +3683,7 @@
     }
 
     // ── Switch sections via sidebar links ──
-    const sections = ['info', 'grades', 'schedule', 'enrollment', 'payment', 'announcements', 'settings'];
+    const sections = ['info', 'grades', 'schedule', 'enrollment', 'payment', 'settings'];
     // ... rest of the code remains the same ...
     // ── Auto-capitalize: first letter of every word in text inputs ──
     (function() {
@@ -5666,7 +5632,7 @@ document.getElementById('spDocViewerModal').addEventListener('hidden.bs.modal', 
 
         // Find which section is currently active
         var activeSection = null;
-        ['info','grades','schedule','announcements','enrollment','payment','settings'].forEach(function(s) {
+        ['info','grades','schedule','enrollment','payment','settings'].forEach(function(s) {
             var el = document.getElementById('section-' + s);
             if (el && el.style.display !== 'none') activeSection = s;
         });
@@ -5677,8 +5643,6 @@ document.getElementById('spDocViewerModal').addEventListener('hidden.bs.modal', 
             loadGWA();
         } else if (activeSection === 'schedule') {
             if (typeof loadSchedule === 'function') loadSchedule();
-        } else if (activeSection === 'announcements') {
-            if (typeof loadAnnouncements === 'function') loadAnnouncements();
         }
         // info / enrollment / payment are server-rendered — no silent refresh needed
     });
