@@ -10406,15 +10406,7 @@ function openWalkInEnrollmentModal() {
     $modalTeachers = \App\Models\User::where('role','teacher')->where('is_active',true)
         ->select('id','name')->orderBy('name')->get();
     $modalAssignments = \App\Models\TeacherAssignment::select('teacher_id','section_id','subject_id','is_advisory')->get();
-    $modalSectionsJson     = $modalSections->toJson() ?? '[]';
-    $modalTeachersJson     = $modalTeachers->toJson() ?? '[]';
-    $modalAssignmentsJson  = $modalAssignments->toJson() ?? '[]';
-    
-    // Ensure JSON variables are safe
-    if (empty($modalSectionsJson)) $modalSectionsJson = '[]';
-    if (empty($modalTeachersJson)) $modalTeachersJson = '[]';
-    if (empty($modalAssignmentsJson)) $modalAssignmentsJson = '[]';
-    
+
     // â”€â”€ Initialize installment data â”€â”€
     $allInstallmentData = [];
     try {
@@ -12747,9 +12739,14 @@ function openWalkInEnrollmentModal() {
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
     // â”€â”€ Data for schedule modal dropdowns â”€â”€
-    let sectionsList       = <?php echo $modalSectionsJson; ?>;
-    let teachersList       = <?php echo $modalTeachersJson; ?>;
-    let teacherAssignments = <?php echo $modalAssignmentsJson; ?>;
+    // Js::from() HTML-encodes the output for safe embedding in a script tag,
+    // unlike a raw ->toJson() call would — section/subject/teacher names are
+    // free-text fields admins type in, and a name containing a closing
+    // script tag followed by another script tag would otherwise execute as
+    // real page JavaScript for every admin who opens this dashboard.
+    let sectionsList       = <?php echo \Illuminate\Support\Js::from($modalSections); ?>;
+    let teachersList       = <?php echo \Illuminate\Support\Js::from($modalTeachers); ?>;
+    let teacherAssignments = <?php echo \Illuminate\Support\Js::from($modalAssignments); ?>;
 
     // Filter sections by grade level in schedule modal
     function onScheduleGradeLevelChange(gradeLevel) {

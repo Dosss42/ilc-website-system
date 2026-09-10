@@ -90,7 +90,11 @@ Route::get('/announcements/{announcement}', function (\App\Models\Announcement $
     return view('announcements-show', compact('announcement', 'relatedAnns', 'visitorCount'));
 })->name('announcements.show');
 Route::get('/contact',       fn() => view('contact',       ['visitorCount' => (int) \App\Models\Setting::get('visitor_count', 0)]))->name('contact');
-Route::post('/contact/send', [\App\Http\Controllers\ContactController::class, 'send'])->name('contact.send');
+// Rate limited (5/hour per IP) — the form had solid validation but nothing
+// stopping a bot from spamming submissions into the inbox.
+Route::post('/contact/send', [\App\Http\Controllers\ContactController::class, 'send'])
+    ->middleware('throttle:5,60')
+    ->name('contact.send');
 Route::get('/search',        [\App\Http\Controllers\SearchController::class, 'index'])->name('search');
 Route::get('/terms',         fn() => view('terms_and_conditions'))->name('terms');
 Route::get('/privacy',       fn() => view('privacy_policy'))->name('privacy');
@@ -389,8 +393,12 @@ Route::middleware(['auth'])->prefix('admin/payments')->name('admin.payments.')->
     Route::delete('/{payment}', [\App\Http\Controllers\Finance\DashboardController::class, 'deletePayment'])->name('destroy');
 });
 
-// Secure document viewing route
-Route::middleware(['auth'])->get('/documents/{document}/view', [\App\Http\Controllers\Finance\DashboardController::class, 'viewDocument'])->name('documents.view');
+// Secure document viewing route — 'auth' alone only checks the default 'web'
+// guard, which finance/cashier staff never authenticate on (they use their
+// own guards), so their own payment-screenshot review links were silently
+// redirecting them to /login. Listing all three lets Laravel accept whichever
+// one is actually signed in; ownership/role is enforced in the controller.
+Route::middleware(['auth:web,finance,cashier'])->get('/documents/{document}/view', [\App\Http\Controllers\Finance\DashboardController::class, 'viewDocument'])->name('documents.view');
 
 // ─────────────────────────────────────────
 // PAYMENT APPROVAL ROUTES (Auth only - for admin dashboard)

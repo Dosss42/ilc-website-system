@@ -329,6 +329,17 @@ class SuperAdminController extends Controller
         return $dir;
     }
 
+    /**
+     * basename() already blocks path traversal in the three methods below,
+     * but on its own still lets a request name literally any file inside
+     * the backups directory. Belt-and-suspenders: only ever operate on
+     * something matching the exact pattern createBackup() itself generates.
+     */
+    private function isValidBackupFilename(string $file): bool
+    {
+        return (bool) preg_match('/^backup_\d{4}-\d{2}-\d{2}_\d{6}\.sql$/', basename($file));
+    }
+
     private function listBackups(): array
     {
         $dir   = $this->backupDir();
@@ -388,6 +399,9 @@ class SuperAdminController extends Controller
 
     public function downloadBackup(string $file)
     {
+        if (!$this->isValidBackupFilename($file)) {
+            abort(404, 'Backup file not found.');
+        }
         $path = $this->backupDir() . DIRECTORY_SEPARATOR . basename($file);
         if (!File::exists($path)) {
             abort(404, 'Backup file not found.');
@@ -398,6 +412,9 @@ class SuperAdminController extends Controller
 
     public function deleteBackup(string $file)
     {
+        if (!$this->isValidBackupFilename($file)) {
+            return response()->json(['success' => false, 'message' => 'File not found.']);
+        }
         $path = $this->backupDir() . DIRECTORY_SEPARATOR . basename($file);
         if (!File::exists($path)) {
             return response()->json(['success' => false, 'message' => 'File not found.']);
@@ -410,6 +427,9 @@ class SuperAdminController extends Controller
     public function restoreBackup(Request $request, string $file)
     {
         try {
+            if (!$this->isValidBackupFilename($file)) {
+                return response()->json(['success' => false, 'message' => 'Backup file not found.']);
+            }
             $path = $this->backupDir() . DIRECTORY_SEPARATOR . basename($file);
             if (!File::exists($path)) {
                 return response()->json(['success' => false, 'message' => 'Backup file not found.']);

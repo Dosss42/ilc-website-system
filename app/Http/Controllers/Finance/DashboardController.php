@@ -1599,9 +1599,25 @@ class DashboardController extends Controller
 
     /**
      * Securely serve a student document file.
+     *
+     * Was previously not actually secure at all — the route only checked that
+     * *someone* was logged in (default 'web' guard), never that they owned
+     * this document or had a staff reason to see it. Any authenticated
+     * student could view any other student's uploaded documents (birth
+     * certificates, report cards, etc.) just by changing the numeric id in
+     * the URL. Fixed to require the document's own owner or staff.
      */
     public function viewDocument(StudentDocument $document)
     {
+        $user = Auth::user();
+
+        $isOwner = $user && $document->user_id === $user->id;
+        $isStaff = $user && in_array($user->role, ['admin', 'superadmin', 'finance', 'cashier']);
+
+        if (!$isOwner && !$isStaff) {
+            abort(403, 'You are not authorized to view this document.');
+        }
+
         if (!$document->file_path) {
             abort(404, 'File not found.');
         }

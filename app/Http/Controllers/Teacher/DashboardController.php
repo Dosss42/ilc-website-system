@@ -1900,6 +1900,21 @@ class DashboardController extends Controller
         $sectionName = ($isCurrentEnrollment ? $student->current_section->name ?? null : null)
             ?? ($enrollment ? $enrollment->section : '—');
 
+        // A logged-in teacher could otherwise print any student's SF9 —
+        // grades, birthdate, address, guardian contact — just by changing the
+        // {student} id in the URL, with none of the teacherOwnsSection()
+        // checks every other method in this controller already enforces.
+        if (!in_array($teacher->role, ['admin', 'superadmin'])) {
+            $section = Section::where('name', $sectionName)
+                ->where('grade_level', $gradeLevel)
+                ->where('school_year', $schoolYear)
+                ->first();
+
+            if (!$section || !$this->teacherOwnsSection($teacher->id, $section->id)) {
+                abort(403, 'You are not authorized to view this student\'s report card.');
+            }
+        }
+
         $glMap = [
             'nursery'      => 'Nursery',
             'kindergarten' => 'Kindergarten',

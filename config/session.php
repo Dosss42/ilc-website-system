@@ -169,7 +169,10 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    // Defaults to true automatically once APP_ENV=production, rather than
+    // relying on someone remembering to set SESSION_SECURE_COOKIE by hand
+    // at deploy time — .env can still override this explicitly either way.
+    'secure' => env('SESSION_SECURE_COOKIE', env('APP_ENV') === 'production'),
 
     /*
     |--------------------------------------------------------------------------
