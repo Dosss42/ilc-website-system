@@ -1,0 +1,11 @@
+* [33m16beaf9[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m 4 need to polish done, 60working.
+[31m|[m * [33mda90fb4[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Delete ilc_system.sql
+[31m|[m * [33m0b02389[m Delete ilc_system backup.sql
+[31m|[m * [33m7511ead[m Add files via upload
+[31m|[m[31m/[m  
+* [33mbb8a417[m database noramalized phase - to 7 complete.
+* [33m0c0a51e[m[33m ([m[1;32mbackup-before-email-fix[m[33m)[m Update project
+* [33md208414[m Fixing bug in searchbar
+* [33m1587df5[m fixing search bar at home page
+* [33m55dea3d[m fix enrollment xendit webhook payment confirmation at student portal.
+* [33m1c66741[m fix the 5 bugs at payment, xendit expired link, route- ordering bug, dead reject modal finance, payment.blade.

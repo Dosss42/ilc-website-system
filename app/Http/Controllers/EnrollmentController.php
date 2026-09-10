@@ -971,6 +971,22 @@ class EnrollmentController extends Controller
 
         $guidanceRecords = $guidanceQuery->paginate(15, ['*'], 'guidance_page');
 
+        // Stat cards for the Guidance Records tab — global counts, not scoped to
+        // the current search/filter, matching how every other module's stat row
+        // (e.g. Subject Management) always shows the full picture regardless of
+        // what's currently filtered in the table below it.
+        $guidanceTotalCount    = \App\Models\GuidanceRecord::count();
+        $guidanceOpenCount     = \App\Models\GuidanceRecord::where('status', 'open')->count();
+        $guidanceResolvedCount = \App\Models\GuidanceRecord::whereIn('status', ['resolved', 'closed'])->count();
+
+        // Same reasoning for Summer Class Management's stat cards — the table
+        // rows themselves load client-side (loadSummerClasses()), but the
+        // headline counts are computed once here at page load like every
+        // other module's stat row.
+        $summerTotalCount     = \App\Models\SummerClass::count();
+        $summerOngoingCount   = \App\Models\SummerClass::where('status', 'ongoing')->count();
+        $summerCompletedCount = \App\Models\SummerClass::where('status', 'completed')->count();
+
         // ── 7. Fee Breakdown Preview ──
         $feeSettings = FeeSetting::first() ?? new FeeSetting();
         $feeBreakdowns = [];
@@ -1091,6 +1107,8 @@ class EnrollmentController extends Controller
             'subjects', 'sections', 'schedules', 'teachers', 'teacherAssignments', 'guidanceRecords',
             'allActiveSubjects', 'allActiveTeachers',
             'guidanceSearch', 'guidanceStatus', 'guidanceConcern', 'guidanceSort',
+            'guidanceTotalCount', 'guidanceOpenCount', 'guidanceResolvedCount',
+            'summerTotalCount', 'summerOngoingCount', 'summerCompletedCount',
             'feeBreakdowns', 'feeSettings', 'recentStudents', 'allSchedules',
             'currentSchoolYear', 'enrollmentOpen', 'maintenanceMode', 'assessStudents', 'assessGuidanceCounts',
             'assessSummerStatus', 'guidanceCounselors',

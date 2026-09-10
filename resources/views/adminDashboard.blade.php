@@ -6260,56 +6260,80 @@ function openWalkInEnrollmentModal() {
 
         </div>
 
-        {{-- Guidance Filter Bar --}}
-        <div class="content-card mb-4">
-            <div class="p-3">
-                <form method="GET" action="{{ url()->current() }}" class="row g-3" id="guidance-filter-form">
-                    <input type="hidden" name="section" value="guidance">
-                    <div class="col-md-4">
-                        <input type="text" name="guidance_search" class="form-fld" placeholder="Search student name..." value="{{ $guidanceSearch ?? '' }}" onchange="this.form.submit()">
+        <div class="row g-3 mb-4">
+            <div class="col-md-4 col-sm-6">
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="bi bi-journal-medical"></i></div>
+                    <div>
+                        <div class="stat-value">{{ $guidanceTotalCount ?? 0 }}</div>
+                        <div class="stat-label">Total Records</div>
                     </div>
-                    <div class="col-md-2">
-                        <select name="guidance_concern" class="form-fld" onchange="this.form.submit()">
-                            <option value="">All Concerns</option>
-                            <option value="Behavioral" {{ ($guidanceConcern ?? '') === 'Behavioral' ? 'selected' : '' }}>Behavioral</option>
-                            <option value="Academic" {{ ($guidanceConcern ?? '') === 'Academic' ? 'selected' : '' }}>Academic</option>
-                            <option value="Emotional" {{ ($guidanceConcern ?? '') === 'Emotional' ? 'selected' : '' }}>Emotional</option>
-                            <option value="Family" {{ ($guidanceConcern ?? '') === 'Family' ? 'selected' : '' }}>Family</option>
-                            <option value="Social" {{ ($guidanceConcern ?? '') === 'Social' ? 'selected' : '' }}>Social</option>
-                            <option value="Health" {{ ($guidanceConcern ?? '') === 'Health' ? 'selected' : '' }}>Health</option>
-                            <option value="Other" {{ ($guidanceConcern ?? '') === 'Other' ? 'selected' : '' }}>Other</option>
-                        </select>
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-6">
+                <div class="stat-card">
+                    <div class="stat-icon gold"><i class="bi bi-exclamation-circle-fill"></i></div>
+                    <div>
+                        <div class="stat-value">{{ $guidanceOpenCount ?? 0 }}</div>
+                        <div class="stat-label">Open</div>
                     </div>
-                    <div class="col-md-2">
-                        <select name="guidance_status" class="form-fld" onchange="this.form.submit()">
-                            <option value="">All Status</option>
-                            <option value="open" {{ ($guidanceStatus ?? '') === 'open' ? 'selected' : '' }}>Open</option>
-                            <option value="in_progress" {{ ($guidanceStatus ?? '') === 'in_progress' ? 'selected' : '' }}>In Progress</option>
-                            <option value="resolved" {{ ($guidanceStatus ?? '') === 'resolved' ? 'selected' : '' }}>Resolved</option>
-                            <option value="closed" {{ ($guidanceStatus ?? '') === 'closed' ? 'selected' : '' }}>Closed</option>
-                        </select>
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-6">
+                <div class="stat-card">
+                    <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
+                    <div>
+                        <div class="stat-value">{{ $guidanceResolvedCount ?? 0 }}</div>
+                        <div class="stat-label">Resolved / Closed</div>
                     </div>
-                    <div class="col-md-2">
-                        <select name="guidance_sort" class="form-fld" onchange="this.form.submit()">
-                            <option value="date_desc" {{ ($guidanceSort ?? 'date_desc') === 'date_desc' ? 'selected' : '' }}>Newest First</option>
-                            <option value="date_asc" {{ ($guidanceSort ?? 'date_desc') === 'date_asc' ? 'selected' : '' }}>Oldest First</option>
-                        </select>
-                    </div>
-                    @if(($guidanceSearch ?? '') || ($guidanceConcern ?? '') || ($guidanceStatus ?? ''))
-                    <div class="col-md-2">
-                        <a href="{{ url()->current() }}?section=guidance" class="btn-dash btn-secondary" style="width:100%;text-align:center;">
-                            <i class="bi bi-x-circle me-1"></i>Clear
-                        </a>
-                    </div>
-                    @endif
-                </form>
+                </div>
             </div>
         </div>
+
+        {{-- Guidance Filter Bar --}}
+        <form method="GET" action="{{ url()->current() }}" id="guidance-filter-form">
+            <input type="hidden" name="section" value="guidance">
+            <div class="module-toolbar">
+                <div class="toolbar-search">
+                    <i class="bi bi-search"></i>
+                    <input type="text" name="guidance_search" placeholder="Search student name..." value="{{ $guidanceSearch ?? '' }}" onchange="this.form.submit()">
+                </div>
+                <div class="toolbar-filter">
+                    <select name="guidance_concern" onchange="this.form.submit()">
+                        <option value="">All Concerns</option>
+                        <option value="Behavioral" {{ ($guidanceConcern ?? '') === 'Behavioral' ? 'selected' : '' }}>Behavioral</option>
+                        <option value="Academic" {{ ($guidanceConcern ?? '') === 'Academic' ? 'selected' : '' }}>Academic</option>
+                        <option value="Emotional" {{ ($guidanceConcern ?? '') === 'Emotional' ? 'selected' : '' }}>Emotional</option>
+                        <option value="Family" {{ ($guidanceConcern ?? '') === 'Family' ? 'selected' : '' }}>Family</option>
+                        <option value="Social" {{ ($guidanceConcern ?? '') === 'Social' ? 'selected' : '' }}>Social</option>
+                        <option value="Health" {{ ($guidanceConcern ?? '') === 'Health' ? 'selected' : '' }}>Health</option>
+                        <option value="Other" {{ ($guidanceConcern ?? '') === 'Other' ? 'selected' : '' }}>Other</option>
+                    </select>
+                    <select name="guidance_status" onchange="this.form.submit()">
+                        <option value="">All Status</option>
+                        <option value="open" {{ ($guidanceStatus ?? '') === 'open' ? 'selected' : '' }}>Open</option>
+                        <option value="in_progress" {{ ($guidanceStatus ?? '') === 'in_progress' ? 'selected' : '' }}>In Progress</option>
+                        <option value="resolved" {{ ($guidanceStatus ?? '') === 'resolved' ? 'selected' : '' }}>Resolved</option>
+                        <option value="closed" {{ ($guidanceStatus ?? '') === 'closed' ? 'selected' : '' }}>Closed</option>
+                    </select>
+                    <select name="guidance_sort" onchange="this.form.submit()">
+                        <option value="date_desc" {{ ($guidanceSort ?? 'date_desc') === 'date_desc' ? 'selected' : '' }}>Newest First</option>
+                        <option value="date_asc" {{ ($guidanceSort ?? 'date_desc') === 'date_asc' ? 'selected' : '' }}>Oldest First</option>
+                    </select>
+                    @if(($guidanceSearch ?? '') || ($guidanceConcern ?? '') || ($guidanceStatus ?? ''))
+                    <a href="{{ url()->current() }}?section=guidance" class="btn-dash btn-secondary" style="padding:8px 14px;">
+                        <i class="bi bi-x-circle me-1"></i>Clear
+                    </a>
+                    @endif
+                </div>
+                <span class="toolbar-count">{{ $guidanceRecords->total() ?? 0 }} record(s)</span>
+            </div>
+        </form>
 
         <div class="content-card">
 
             <div class="content-card-header">
-                <h6>All Guidance Records</h6>
+                <h6><i class="bi bi-list-ul me-2" style="color:var(--blue);"></i>All Guidance Records</h6>
             </div>
 
             <div style="overflow-x:auto;">
@@ -6350,21 +6374,21 @@ function openWalkInEnrollmentModal() {
                                 </td>
                                 <td>{{ $g->date->format('M d, Y') }}</td>
                                 <td>
-                                    <span class="badge bg-info text-dark">{{ $g->concern_type }}</span>
-                                    <div class="small text-muted mt-1">{{ Str::limit($g->concern_description, 50) }}</div>
+                                    <span class="grade-chip">{{ $g->concern_type }}</span>
+                                    <div style="font-size:11px; color:var(--muted); margin-top:4px;">{{ Str::limit($g->concern_description, 50) }}</div>
                                 </td>
                                 <td>{{ $g->counselor->name ?? 'Unassigned' }}</td>
                                 <td>
                                     @php
-                                        $statusClass = match($g->status) {
-                                            'open' => 'bg-warning',
-                                            'in_progress' => 'bg-primary',
-                                            'resolved' => 'bg-success',
-                                            'closed' => 'bg-secondary',
-                                            default => 'bg-light'
+                                        $statusBadge = match($g->status) {
+                                            'open' => 'pending',
+                                            'in_progress' => 'approved',
+                                            'resolved' => 'enrolled',
+                                            'closed' => 'inactive',
+                                            default => 'inactive'
                                         };
                                     @endphp
-                                    <span class="badge {{ $statusClass }}">{{ ucfirst(str_replace('_', ' ', $g->status)) }}</span>
+                                    <span class="status-badge {{ $statusBadge }}">{{ ucfirst(str_replace('_', ' ', $g->status)) }}</span>
                                 </td>
                                 <td>
                                     <button class="action-btn view js-guidance-view" title="View" data-id="{{ $g->id }}">
@@ -6497,12 +6521,12 @@ function openWalkInEnrollmentModal() {
                     </form>
                 </div>
                 <div class="modal-footer" style="border-top:1px solid var(--border); padding:16px 24px;">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="saveGuidanceRecord()" style="background:var(--blue); border-color:var(--blue);">
-                        <i class="bi bi-check-lg me-1"></i> Save Record
-                    </button>
-                    <button type="button" id="guidance-delete-btn" class="btn btn-outline-danger" onclick="deleteGuidanceRecordFromModal()" style="display:none;">
+                    <button type="button" id="guidance-delete-btn" class="btn-dash btn-secondary" onclick="deleteGuidanceRecordFromModal()" style="display:none; color:var(--red); margin-right:auto;">
                         <i class="bi bi-trash me-1"></i> Delete
+                    </button>
+                    <button type="button" class="btn-dash btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn-dash btn-primary" onclick="saveGuidanceRecord()">
+                        <i class="bi bi-check-lg me-1"></i> Save Record
                     </button>
                 </div>
             </div>
@@ -8821,70 +8845,63 @@ function openWalkInEnrollmentModal() {
 
         </div>
 
-        <div class="content-card mb-4">
-
-            <div class="p-3">
-
-                <div class="row g-3 align-items-end">
-
-                    <div class="col-md-3">
-
-                        <label class="form-lbl">School Year</label>
-
-                        <select class="form-fld" id="summer-sy-filter">
-                            <option value="">All School Years</option>
-                            @php
-                                $currentSY = now()->month >= 6 ? now()->year : now()->year - 1;
-                                for ($y = $currentSY + 1; $y >= 1994; $y--) {
-                                    $sy = $y . '-' . ($y + 1);
-                                    echo "<option value=\"$sy\">$sy</option>";
-                                }
-                            @endphp
-                        </select>
-
+        <div class="row g-3 mb-4">
+            <div class="col-md-4 col-sm-6">
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="bi bi-sun-fill"></i></div>
+                    <div>
+                        <div class="stat-value">{{ $summerTotalCount ?? 0 }}</div>
+                        <div class="stat-label">Total Classes</div>
                     </div>
-
-                    <div class="col-md-3">
-
-                        <label class="form-lbl">Status</label>
-
-                        <select class="form-fld" id="summer-status-filter">
-
-                            <option value="">All Status</option>
-
-                            <option value="upcoming">Upcoming</option>
-
-                            <option value="ongoing">Ongoing</option>
-
-                            <option value="completed">Completed</option>
-
-                            <option value="cancelled">Cancelled</option>
-
-                        </select>
-
-                    </div>
-
-                    <div class="col-md-3">
-
-                        <button class="btn-dash btn-primary" style="width:100%;" onclick="loadSummerClasses()">
-
-                            <i class="bi bi-search"></i> Filter
-
-                        </button>
-
-                    </div>
-
                 </div>
-
             </div>
+            <div class="col-md-4 col-sm-6">
+                <div class="stat-card">
+                    <div class="stat-icon gold"><i class="bi bi-hourglass-split"></i></div>
+                    <div>
+                        <div class="stat-value">{{ $summerOngoingCount ?? 0 }}</div>
+                        <div class="stat-label">Ongoing</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 col-sm-6">
+                <div class="stat-card">
+                    <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
+                    <div>
+                        <div class="stat-value">{{ $summerCompletedCount ?? 0 }}</div>
+                        <div class="stat-label">Completed</div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
+        <div class="module-toolbar">
+            <div class="toolbar-filter">
+                <select id="summer-sy-filter" onchange="loadSummerClasses()">
+                    <option value="">All School Years</option>
+                    @php
+                        $currentSY = now()->month >= 6 ? now()->year : now()->year - 1;
+                        for ($y = $currentSY + 1; $y >= 1994; $y--) {
+                            $sy = $y . '-' . ($y + 1);
+                            echo "<option value=\"$sy\">$sy</option>";
+                        }
+                    @endphp
+                </select>
+                <select id="summer-status-filter" onchange="loadSummerClasses()">
+                    <option value="">All Status</option>
+                    <option value="upcoming">Upcoming</option>
+                    <option value="ongoing">Ongoing</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+            </div>
         </div>
 
         <div class="content-card">
 
             <div class="content-card-header">
 
-                <h6>Summer Classes</h6>
+                <h6><i class="bi bi-list-ul me-2" style="color:var(--blue);"></i>Summer Classes</h6>
 
             </div>
 
@@ -11405,12 +11422,21 @@ function openWalkInEnrollmentModal() {
     const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
     if (confirmDeleteBtn) {
         confirmDeleteBtn.addEventListener('click', function() {
-        bootstrap.Modal.getInstance(document.getElementById('deleteConfirmModal')).hide();
-        if (typeof deleteConfirmCallback === 'function') {
-            deleteConfirmCallback();
-            deleteConfirmCallback = null;
-        }
-    });
+            const modalEl = document.getElementById('deleteConfirmModal');
+            // Run the callback only after the modal has actually finished closing
+            // (its hide transition + backdrop teardown) rather than immediately —
+            // when this confirm modal is opened on top of another already-open
+            // modal (e.g. an edit form), firing the callback synchronously can
+            // leave a stray backdrop behind that silently blocks every click on
+            // the page underneath, including that other modal's own close button.
+            modalEl.addEventListener('hidden.bs.modal', function() {
+                if (typeof deleteConfirmCallback === 'function') {
+                    deleteConfirmCallback();
+                    deleteConfirmCallback = null;
+                }
+            }, { once: true });
+            bootstrap.Modal.getInstance(modalEl).hide();
+        });
     }
 
     // â”€â”€ Promotion Confirmation System â”€â”€
@@ -11429,11 +11455,14 @@ function openWalkInEnrollmentModal() {
     const confirmPromoteBtn = document.getElementById('confirmPromoteBtn');
     if (confirmPromoteBtn) {
         confirmPromoteBtn.addEventListener('click', function() {
-            bootstrap.Modal.getInstance(document.getElementById('promoteConfirmModal')).hide();
-            if (typeof promoteConfirmCallback === 'function') {
-                promoteConfirmCallback();
-                promoteConfirmCallback = null;
-            }
+            const modalEl = document.getElementById('promoteConfirmModal');
+            modalEl.addEventListener('hidden.bs.modal', function() {
+                if (typeof promoteConfirmCallback === 'function') {
+                    promoteConfirmCallback();
+                    promoteConfirmCallback = null;
+                }
+            }, { once: true });
+            bootstrap.Modal.getInstance(modalEl).hide();
         });
     }
 
@@ -11486,11 +11515,14 @@ function openWalkInEnrollmentModal() {
     const genericConfirmBtnEl = document.getElementById('genericConfirmBtn');
     if (genericConfirmBtnEl) {
         genericConfirmBtnEl.addEventListener('click', function() {
-            bootstrap.Modal.getInstance(document.getElementById('genericConfirmModal')).hide();
-            if (typeof genericConfirmCallback === 'function') {
-                genericConfirmCallback();
-                genericConfirmCallback = null;
-            }
+            const modalEl = document.getElementById('genericConfirmModal');
+            modalEl.addEventListener('hidden.bs.modal', function() {
+                if (typeof genericConfirmCallback === 'function') {
+                    genericConfirmCallback();
+                    genericConfirmCallback = null;
+                }
+            }, { once: true });
+            bootstrap.Modal.getInstance(modalEl).hide();
         });
     }
 
@@ -11569,11 +11601,21 @@ function openWalkInEnrollmentModal() {
     function approveEnrollment(enrollmentId) {
         console.log('approveEnrollment called with ID:', enrollmentId);
 
-        // Hide the enrollment view modal if it's open to avoid Bootstrap nested-modal conflicts
+        // Hide the enrollment view modal if it's open to avoid Bootstrap nested-modal conflicts.
+        // Wait for it to actually finish closing before opening the next one — opening a second
+        // modal while the first is still mid-transition can leave a stray backdrop behind that
+        // silently blocks clicks on everything underneath, including the new modal's own buttons.
         const viewModalEl = document.getElementById('enrollmentViewModal');
         const viewModalInstance = viewModalEl ? bootstrap.Modal.getInstance(viewModalEl) : null;
-        if (viewModalInstance) viewModalInstance.hide();
+        if (viewModalInstance) {
+            viewModalEl.addEventListener('hidden.bs.modal', () => openApproveConfirm(enrollmentId), { once: true });
+            viewModalInstance.hide();
+        } else {
+            openApproveConfirm(enrollmentId);
+        }
+    }
 
+    function openApproveConfirm(enrollmentId) {
         // Enhanced confirmation dialog
 
         const confirmDialog = document.createElement('div');
@@ -11672,9 +11714,12 @@ function openWalkInEnrollmentModal() {
 
             const notes = document.getElementById('approvalNotes').value;
 
-            
 
-            // Show loading state on button
+
+            // Show loading state — both on the button and as a page-level indicator,
+            // since approval also creates the student account and sends an email,
+            // which can take a moment longer than the button alone makes obvious.
+            showLoading('Approving enrollment…');
 
             this.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Processing...';
 
@@ -11717,6 +11762,7 @@ function openWalkInEnrollmentModal() {
             })
 
             .then(data => {
+                hideLoading();
 
                 if (data.success) {
 
@@ -11811,6 +11857,7 @@ function openWalkInEnrollmentModal() {
             })
 
             .catch(error => {
+                hideLoading();
 
                 // Reset button and show error
 
@@ -11844,11 +11891,19 @@ function openWalkInEnrollmentModal() {
 
     function declineEnrollment(enrollmentId) {
 
-        // Hide the enrollment view modal if it's open to avoid Bootstrap nested-modal conflicts
+        // Hide the enrollment view modal if it's open to avoid Bootstrap nested-modal conflicts —
+        // wait for it to actually finish closing first (see the same fix in approveEnrollment).
         const viewModalEl = document.getElementById('enrollmentViewModal');
         const viewModalInstance = viewModalEl ? bootstrap.Modal.getInstance(viewModalEl) : null;
-        if (viewModalInstance) viewModalInstance.hide();
+        if (viewModalInstance) {
+            viewModalEl.addEventListener('hidden.bs.modal', () => openDeclineModal(enrollmentId), { once: true });
+            viewModalInstance.hide();
+        } else {
+            openDeclineModal(enrollmentId);
+        }
+    }
 
+    function openDeclineModal(enrollmentId) {
         // Create custom modal for decline reason
 
         const declineModal = document.createElement('div');
@@ -11903,7 +11958,7 @@ function openWalkInEnrollmentModal() {
 
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
 
-                        <button type="button" class="btn btn-danger" onclick="confirmDecline('${enrollmentId}')">
+                        <button type="button" class="btn btn-danger" onclick="confirmDecline('${enrollmentId}', this)">
 
                             <i class="bi bi-x"></i> Decline Enrollment
 
@@ -11939,13 +11994,13 @@ function openWalkInEnrollmentModal() {
 
     // Confirm Decline
 
-    function confirmDecline(enrollmentId) {
+    function confirmDecline(enrollmentId, btn) {
 
         const reason = document.getElementById('declineReason').value.trim();
 
         const storage = document.getElementById('declineStorage').value;
 
-        
+
 
         if (reason === '') {
 
@@ -11961,7 +12016,12 @@ function openWalkInEnrollmentModal() {
 
         console.log('Declining enrollment:', enrollmentId, 'Reason:', reason, 'Storage:', storage);
 
-        
+        showLoading('Declining enrollment…');
+        if (btn) {
+            btn.disabled = true;
+            btn.dataset.originalHtml = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Declining...';
+        }
 
         fetch(`/admin/enrollments/${enrollmentId}/decline`, {
 
@@ -11996,7 +12056,7 @@ function openWalkInEnrollmentModal() {
         })
 
         .then(data => {
-
+            hideLoading();
             console.log('Response data:', data);
 
             if (data.success) {
@@ -12010,12 +12070,15 @@ function openWalkInEnrollmentModal() {
             } else {
 
                 showCustomAlert('error', 'Error!', 'Error: ' + (data.message || 'Unknown error occurred'));
+                if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.originalHtml; }
 
             }
 
         })
 
         .catch(error => {
+            hideLoading();
+            if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.originalHtml; }
 
             console.error('Error:', error);
 
@@ -18158,10 +18221,10 @@ function openWalkInEnrollmentModal() {
                 }
 
                 const statusStyle = {
-                    upcoming:  { bg: '#e3f2fd', color: '#1565c0', label: 'Upcoming' },
-                    ongoing:   { bg: '#fff3e0', color: '#e65100', label: 'Ongoing' },
-                    completed: { bg: '#e8f5e9', color: '#2e7d32', label: 'Completed' },
-                    cancelled: { bg: '#ffebee', color: '#c62828', label: 'Cancelled' },
+                    upcoming:  { badge: 'pending',  label: 'Upcoming' },
+                    ongoing:   { badge: 'active',   label: 'Ongoing' },
+                    completed: { badge: 'enrolled', label: 'Completed' },
+                    cancelled: { badge: 'declined', label: 'Cancelled' },
                 };
                 const summerGradeLabels = { nursery:'Nursery', kindergarten:'Kindergarten', grade1:'Grade 1', grade2:'Grade 2', grade3:'Grade 3', grade4:'Grade 4', grade5:'Grade 5', grade6:'Grade 6' };
 
@@ -18169,12 +18232,12 @@ function openWalkInEnrollmentModal() {
                     const st = statusStyle[sc.status] || statusStyle.upcoming;
                     return `<tr>
                         <td>${sc.subject ? (sc.subject.code ? sc.subject.code + ' — ' : '') + sc.subject.name : '—'}</td>
-                        <td>${summerGradeLabels[sc.grade_level] || sc.grade_level}</td>
+                        <td><span class="grade-chip">${summerGradeLabels[sc.grade_level] || sc.grade_level}</span></td>
                         <td>${sc.teacher ? sc.teacher.name : '<span style="color:var(--muted);">Unassigned</span>'}</td>
                         <td style="font-size:12px;">${sc.schedule_description || '—'}<br><span style="color:var(--muted);">${sc.room || ''}</span></td>
                         <td style="font-size:12px;white-space:nowrap;">${(sc.start_date || '').slice(0,10)} to ${(sc.end_date || '').slice(0,10)}</td>
                         <td>${sc.enrollments_count ?? 0} / ${sc.max_slots}</td>
-                        <td><span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;background:${st.bg};color:${st.color};">${st.label}</span></td>
+                        <td><span class="status-badge ${st.badge}">${st.label}</span></td>
                         <td style="white-space:nowrap;">
                             <button class="action-btn view" title="Manage Students" onclick="openSummerStudentsModal(${sc.id}, ${sc.subject_id}, '${escJs(sc.school_year)}', '${escJs(sc.subject ? sc.subject.name : 'Subject')}', '${escJs(summerGradeLabels[sc.grade_level] || sc.grade_level)}')"><i class="bi bi-people-fill"></i></button>
                             <button class="action-btn edit" title="Edit" onclick="editSummerClass(${sc.id})"><i class="bi bi-pencil-fill"></i></button>
