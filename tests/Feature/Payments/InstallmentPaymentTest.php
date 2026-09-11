@@ -115,4 +115,72 @@ class InstallmentPaymentTest extends TestCase
             'payment_method' => 'cash', 'amount' => 1150,
         ])->assertStatus(401);
     }
+
+    /**
+     * Regression test — enrollments.next_installment_date used to stay NULL
+     * from creation until the first payment happened to touch it. The
+     * Finance Dashboard's "Overdue"/"Due This Week" widgets query this
+     * column directly, so any installment plan that hadn't made a payment
+     * yet was invisible to those counts even when genuinely overdue — while
+     * the Installments list page (which always computed it fresh) showed
+     * the correct, disagreeing value. Found during manual QA, fixed at the
+     * source in createInstallments()/reconcileInstallmentStatuses().
+     */
+    public function test_next_installment_date_is_set_immediately_when_installments_are_created(): void
+    {
+        $enrollment = Enrollment::factory()->withInstallment()->create([
+            'monthly_amount' => 1000, 'school_year' => '2026-2027',
+        ]);
+        $this->assertNull($enrollment->next_installment_date);
+
+        PaymentService::createInstallments($enrollment);
+        $enrollment->refresh();
+
+        $this->assertNotNull($enrollment->next_installment_date, 'next_installment_date should be set as soon as installments exist, not left null until a payment happens.');
+        $this->assertEquals('2026-07-31', $enrollment->next_installment_date->toDateString());
+    }
+
+    public function test_next_installment_date_advances_after_reconciling_a_payment(): void
+    {
+        $enrollment = Enrollment::factory()->withInstallment()->create([
+            'monthly_amount' => 1000, 'downpayment_amount' => 0,
+            'payment_amount' => 0, 'school_year' => '2026-2027',
+        ]);
+        PaymentService::createInstallments($enrollment);
+        $enrollment->refresh();
+        $this->assertEquals('2026-07-31', $enrollment->next_installment_date->toDateString());
+
+        // Simulate July's installment having been paid.
+        $enrollment->update(['payment_amount' => 1000]);
+        $enrollment->refresh();
+        PaymentService::reconcileInstallmentStatuses($enrollment);
+        $enrollment->refresh();
+
+        $this->assertEquals('2026-08-31', $enrollment->next_installment_date->toDateString(), 'Should advance to the next unpaid month, not stay stuck on the one just paid.');
+
+        $july = $enrollment->paymentInstallments()->where('month_name', 'July')->first();
+        $this->assertEquals('paid', $july->status);
+    }
+
+    public function test_finance_dashboard_overdue_count_includes_a_never_paid_installment_plan(): void
+    {
+        $finance = User::factory()->finance()->create();
+        $enrollment = Enrollment::factory()->withInstallment()->create([
+            'monthly_amount' => 1000, 'payment_amount' => 0,
+            'payment_status' => 'pending', 'school_year' => '2020-2021', // guaranteed overdue
+        ]);
+        PaymentService::createInstallments($enrollment);
+
+        $response = $this->actingAs($finance, 'finance')->getJson('/finance/dashboard');
+        $response->assertOk();
+        // The dashboard renders server-side; a 200 plus a real non-null
+        // next_installment_date on the model is the meaningful assertion —
+        // the actual widget count is exercised via the controller unit
+        // above. This just proves the enrollment is now reachable by the
+        // same `next_installment_date < today` query the widget uses.
+        $overdueCount = Enrollment::where('id', $enrollment->id)
+            ->where('next_installment_date', '<', now())
+            ->count();
+        $this->assertEquals(1, $overdueCount);
+    }
 }

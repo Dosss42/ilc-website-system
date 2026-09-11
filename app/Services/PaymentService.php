@@ -74,13 +74,15 @@ class PaymentService
         $startYear = intval(explode('-', $schoolYear)[0]) ?? now()->year;
 
         // Create 9 monthly installments (July - March)
+        $firstDueDate = null;
         foreach (self::MONTHS as $index => $monthName) {
             // Determine year: July-Dec = startYear, Jan-Mar = startYear+1
             $year = $index < 6 ? $startYear : $startYear + 1;
             $monthNum = $index < 6 ? (7 + $index) : ($index - 5); // 7-12, 1-3
-            
+
             // Due date is last day of the month
             $dueDate = Carbon::create($year, $monthNum, 1)->endOfMonth();
+            $firstDueDate ??= $dueDate;
 
             PaymentInstallment::create([
                 'enrollment_id' => $enrollment->id,
@@ -93,6 +95,18 @@ class PaymentService
                 'status' => 'pending',
                 'weeks_overdue' => 0,
             ]);
+        }
+
+        // Without this, enrollments.next_installment_date stays NULL until
+        // the first payment happens to touch it — and the Finance Dashboard's
+        // "Overdue"/"Due This Week" widgets query this column directly, so
+        // any enrollment that hasn't made a payment yet was silently
+        // invisible to those counts even when genuinely overdue. The
+        // Installments list page itself was unaffected (it always computed
+        // this fresh from the installment rows), which is what made the two
+        // disagree.
+        if ($firstDueDate) {
+            $enrollment->update(['next_installment_date' => $firstDueDate]);
         }
     }
 
@@ -425,6 +439,7 @@ class PaymentService
         $totalPaid   = (float) ($enrollment->payment_amount ?? 0);
 
         if ($monthly <= 0 || $totalPaid <= 0) {
+            self::syncNextInstallmentDate($enrollment);
             return;
         }
 
@@ -437,26 +452,54 @@ class PaymentService
         $actualPaidMonths  = $installments->where('status', 'paid')->count();
         $toMark            = $expectedPaidMonths - $actualPaidMonths;
 
-        if ($toMark <= 0) {
-            return;
+        if ($toMark > 0) {
+            // Mark the oldest unpaid installments as paid (skip pending_approval — those await finance action)
+            $unpaid = $installments
+                ->whereIn('status', ['pending', 'overdue'])
+                ->sortBy('due_date')
+                ->take($toMark);
+
+            foreach ($unpaid as $inst) {
+                $inst->update([
+                    'status'     => 'paid',
+                    'paid_at'    => $inst->paid_at ?? now(),
+                    'amount_paid'=> $inst->amount + $inst->late_fee,
+                ]);
+            }
+
+            // Refresh relationship so callers see updated statuses
+            $enrollment->load('paymentInstallments');
         }
 
-        // Mark the oldest unpaid installments as paid (skip pending_approval — those await finance action)
-        $unpaid = $installments
-            ->whereIn('status', ['pending', 'overdue'])
+        self::syncNextInstallmentDate($enrollment);
+    }
+
+    /**
+     * Keep enrollments.next_installment_date in agreement with the actual
+     * earliest not-yet-paid installment row. This column is what the Finance
+     * Dashboard's "Overdue"/"Due This Week" widgets query directly (a plain
+     * WHERE on the enrollments table, not a live subquery), so letting it
+     * drift out of sync with the real installment rows silently breaks those
+     * counts — exactly what happened before createInstallments() and this
+     * method both started calling this.
+     */
+    private static function syncNextInstallmentDate(Enrollment $enrollment): void
+    {
+        $nextPending = $enrollment->paymentInstallments
+            ->whereIn('status', ['pending', 'overdue', 'pending_approval'])
             ->sortBy('due_date')
-            ->take($toMark);
+            ->first();
 
-        foreach ($unpaid as $inst) {
-            $inst->update([
-                'status'     => 'paid',
-                'paid_at'    => $inst->paid_at ?? now(),
-                'amount_paid'=> $inst->amount + $inst->late_fee,
-            ]);
+        $correctDate = $nextPending?->due_date;
+        $currentDate = $enrollment->next_installment_date;
+
+        $datesMatch = $correctDate && $currentDate
+            ? $correctDate->isSameDay($currentDate)
+            : ($correctDate === null && $currentDate === null);
+
+        if (!$datesMatch) {
+            $enrollment->update(['next_installment_date' => $correctDate]);
         }
-
-        // Refresh relationship so callers see updated statuses
-        $enrollment->load('paymentInstallments');
     }
 
     /**

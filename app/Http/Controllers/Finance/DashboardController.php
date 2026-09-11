@@ -1518,13 +1518,10 @@ class DashboardController extends Controller
      */
     private function getSchoolYears(): array
     {
-        $configured = \App\Models\Setting::where('key', 'current_school_year')->value('value') ?? '2026-2027';
-        $base = (int) substr($configured, 0, 4);
-        $years = [];
-        for ($y = $base; $y <= $base + 10; $y++) {
-            $years[] = $y . '-' . ($y + 1);
-        }
-        return $years;
+        // Used to only look forward (current year to +10) — there was no
+        // way to filter into a past school year's finance records even
+        // though the data exists. See Setting::schoolYearOptions().
+        return \App\Models\Setting::schoolYearOptions();
     }
 
     /**

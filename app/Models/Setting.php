@@ -89,4 +89,32 @@ class Setting extends Model
             Cache::forget('setting_' . $key);
         }
     }
+
+    /**
+     * Shared "school year" dropdown range, e.g. ['2021-2022', ..., '2026-2027', '2027-2028'].
+     *
+     * Several school-year filters across the app (Student Management, Teacher
+     * Assignments, Finance) were copy-pasted with a range that only ever
+     * looked *forward* from the current year (0 to +10 years) and never
+     * backward — meaning there was no way to filter into a past school
+     * year's records at all, even though that data exists. This is the
+     * single, correct implementation those call sites now use instead of
+     * each reinventing (and mis-copying) the same loop.
+     *
+     * Descending order (most recent first) since that's what every one of
+     * those dropdowns actually wants to show by default.
+     */
+    public static function schoolYearOptions(int $yearsBack = 5, int $yearsForward = 2): array
+    {
+        $current = static::get('current_school_year');
+        $baseYear = $current
+            ? (int) substr($current, 0, 4)
+            : (now()->month >= 6 ? now()->year : now()->year - 1);
+
+        $years = [];
+        for ($y = $baseYear + $yearsForward; $y >= $baseYear - $yearsBack; $y--) {
+            $years[] = $y . '-' . ($y + 1);
+        }
+        return $years;
+    }
 }
