@@ -1267,6 +1267,42 @@ class StudentPortalController extends Controller
         ]);
     }
 
+    /**
+     * Polled from the student portal tab that generated a Xendit link, since
+     * the checkout opens in a *new* tab (window.open) and Xendit's own
+     * success/failure redirect only ever lands there — the original tab has
+     * no other way to find out the payment went through. Scoped to the
+     * logged-in student's own transaction only, so this can't be used to
+     * peek at another student's payment status by guessing an invoice id.
+     */
+    public function checkXenditStatus(Request $request)
+    {
+        $request->validate(['invoice_id' => 'required|string']);
+
+        $transaction = \App\Models\PaymentTransaction::where('xendit_invoice_id', $request->invoice_id)
+            ->where('user_id', Auth::id())
+            ->first();
+
+        if (!$transaction) {
+            return response()->json(['status' => 'not_found'], 404);
+        }
+
+        // Actively reconciles against Xendit's own API when still "pending" —
+        // see the long comment on PaymentService::reconcileXenditInvoice()
+        // for why the webhook alone can't be relied on here (it requires
+        // Xendit's servers to be able to reach this app publicly, which a
+        // local dev environment never allows without a tunnel).
+        $status = \App\Services\PaymentService::reconcileXenditInvoice($transaction);
+        $transaction->refresh();
+
+        return response()->json([
+            'status'         => $status,
+            'amount'         => $transaction->amount,
+            'reference'      => $transaction->reference_number,
+            'processed_at'   => $transaction->processed_at?->toIso8601String(),
+        ]);
+    }
+
     public function sendPasswordOtp(Request $request)
     {
         $request->validate([

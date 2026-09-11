@@ -9,8 +9,10 @@ use App\Models\User;
 use App\Mail\PaymentReminderMail;
 use App\Mail\LateFeeAppliedMail;
 use App\Mail\PortalBlockedMail;
+use App\Models\PaymentTransaction;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
@@ -498,5 +500,173 @@ class PaymentService
         if (!$hasOverdue) {
             $enrollment->update(['account_blocked' => false]);
         }
+    }
+
+    /**
+     * Advance an enrollment's payment_status / status / section assignment
+     * after ANY payment lands on it, however it arrived. Moved here from
+     * CashierController (which still has its own private wrapper used by
+     * the cash-payment path) so the Xendit webhook and the live-status
+     * fallback below share the exact same logic instead of two copies
+     * quietly drifting apart over time.
+     */
+    public static function advanceEnrollmentAfterPayment(Enrollment $enrollment): void
+    {
+        $totalPaid = (float) ($enrollment->payment_amount ?? 0);
+        $totalFee  = (float) ($enrollment->total_fee ?? 0);
+
+        if ($totalFee > 0) {
+            if ($totalPaid >= $totalFee) {
+                $enrollment->update(['payment_status' => 'paid', 'remaining_balance' => 0]);
+            } elseif ($totalPaid > 0) {
+                $enrollment->update([
+                    'payment_status'    => 'partial',
+                    'remaining_balance' => max(0, $totalFee - $totalPaid),
+                ]);
+            }
+        } elseif ($totalPaid > 0) {
+            $remaining = (float) ($enrollment->remaining_balance ?? 0);
+            $enrollment->update([
+                'payment_status'    => $remaining <= 0 ? 'paid' : 'partial',
+                'remaining_balance' => max(0, $remaining),
+            ]);
+        }
+
+        if (in_array($enrollment->status, ['approved', 'pending']) && $totalPaid > 0) {
+            $enrollment->update(['status' => 'enrolled', 'enrolled_at' => now()]);
+
+            $gradeLevel = $enrollment->grade_level ?? ($enrollment->student_data['grade_level'] ?? null);
+            $schoolYear = $enrollment->school_year ?? (now()->year . '-' . (now()->year + 1));
+
+            if ($gradeLevel && $enrollment->user_id) {
+                $section = \App\Models\Section::where('grade_level', $gradeLevel)
+                    ->where('school_year', $schoolYear)
+                    ->where('is_active', true)
+                    ->first();
+
+                if ($section) {
+                    $enrollment->update(['section' => $section->name]);
+                    $exists = DB::table('section_student')
+                        ->where('section_id', $section->id)
+                        ->where('user_id', $enrollment->user_id)
+                        ->exists();
+                    if (!$exists) {
+                        DB::table('section_student')->insert([
+                            'section_id' => $section->id,
+                            'user_id'    => $enrollment->user_id,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Everything that needs to happen once a Xendit transaction is confirmed
+     * paid — shared by the real webhook (CashierController::xenditWebhook)
+     * and reconcileXenditInvoice() below, so there is exactly one place this
+     * logic lives rather than two copies that could disagree.
+     */
+    public static function completeXenditPayment(PaymentTransaction $transaction): void
+    {
+        // Idempotency guard — Xendit can and does redeliver the same "paid"
+        // webhook more than once, and the live-status fallback could also
+        // race with a webhook arriving at the same time.
+        if ($transaction->status === 'completed') {
+            return;
+        }
+
+        $transaction->update(['status' => 'completed', 'processed_at' => now()]);
+
+        \App\Services\ActivityLogger::log(
+            'xendit_payment_completed',
+            'Xendit payment of ₱' . number_format($transaction->amount, 2) . ' confirmed (Invoice: ' . $transaction->xendit_invoice_id . ')',
+            'PaymentTransaction',
+            $transaction->id
+        );
+
+        $enrollment = $transaction->enrollment;
+        if (!$enrollment) {
+            return;
+        }
+
+        $enrollment->decrement('remaining_balance', $transaction->amount);
+        $enrollment->increment('payment_amount', $transaction->amount);
+        $fresh = $enrollment->fresh();
+
+        if (in_array($fresh->payment_option, ['B', 'C', 'D']) || $fresh->payment_type === 'installment') {
+            self::createInstallments($fresh);
+            self::reconcileInstallmentStatuses($fresh);
+        }
+
+        self::advanceEnrollmentAfterPayment($fresh->fresh());
+    }
+
+    /**
+     * Actively asks Xendit for an invoice's real status instead of only
+     * trusting our own database — which the webhook alone updates, and the
+     * webhook can only ever arrive if Xendit's servers can reach this one
+     * over the public internet. On local development (APP_URL pointing at
+     * 127.0.0.1, no tunnel) that delivery is simply impossible no matter how
+     * correct the webhook code is, so a transaction can sit as "pending"
+     * forever even though Xendit's own dashboard already shows it paid.
+     * Called from the student portal and cashier "check status" endpoints
+     * that the browser polls after opening a payment link, so the page can
+     * self-heal regardless of whether the webhook ever gets delivered.
+     *
+     * Safe to call on an already-resolved transaction (returns immediately)
+     * and safe to call repeatedly (locks the row and re-checks before
+     * writing, so a webhook that arrives in between wins the race cleanly).
+     */
+    public static function reconcileXenditInvoice(PaymentTransaction $transaction): string
+    {
+        if ($transaction->status !== 'pending' || !$transaction->xendit_invoice_id) {
+            return $transaction->status;
+        }
+
+        $apiKey = config('services.xendit.secret_key');
+        if (empty($apiKey)) {
+            return $transaction->status;
+        }
+
+        try {
+            $response = Http::withBasicAuth($apiKey, '')
+                ->get('https://api.xendit.co/v2/invoices/' . $transaction->xendit_invoice_id);
+        } catch (\Throwable $e) {
+            Log::warning('Xendit live status check failed', [
+                'invoice_id' => $transaction->xendit_invoice_id,
+                'error'      => $e->getMessage(),
+            ]);
+            return $transaction->status;
+        }
+
+        if (!$response->successful()) {
+            return $transaction->status;
+        }
+
+        $liveStatus = $response->json('status');
+
+        return DB::transaction(function () use ($transaction, $liveStatus) {
+            $locked = PaymentTransaction::where('id', $transaction->id)->lockForUpdate()->first();
+            if (!$locked || $locked->status !== 'pending') {
+                // Already resolved (e.g. a webhook that did get through, or
+                // another status check) between our read above and this lock.
+                return $locked->status ?? $transaction->status;
+            }
+
+            if (in_array($liveStatus, ['PAID', 'SETTLED'])) {
+                self::completeXenditPayment($locked);
+                return 'completed';
+            }
+
+            if (in_array($liveStatus, ['EXPIRED', 'FAILED'])) {
+                $locked->update(['status' => 'expired', 'processed_at' => now()]);
+                return 'expired';
+            }
+
+            return 'pending';
+        });
     }
 }

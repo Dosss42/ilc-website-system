@@ -1415,11 +1415,8 @@
                         </div>
                         <div class="col-md-3">
                             <label class="form-lbl">Target Audience</label>
-                            <select id="ann-audience" class="form-fld" onchange="onAnnAudienceChange()">
-                                <option value="all">All My Students</option>
-                                <option value="section">Specific Section</option>
-                                <option value="parents">Parents Only</option>
-                                <option value="teachers">Teachers Only</option>
+                            <select id="ann-audience" class="form-fld" disabled>
+                                <option value="all" selected>All My Students</option>
                             </select>
                         </div>
                         <div class="col-md-3">
@@ -1430,14 +1427,6 @@
                                 <option value="activity">Activity</option>
                                 <option value="general" selected>General</option>
                                 <option value="enrollment">Enrollment</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6" id="ann-section-wrap" style="display:none;">
-                            <label class="form-lbl">Section</label>
-                            <select id="ann-section" class="form-fld">
-                                @foreach($sections as $sec)
-                                    <option value="{{ $sec->id }}">{{ $sec->name }} &mdash; {{ $gradeLabels[$sec->grade_level] ?? $sec->grade_level }}</option>
-                                @endforeach
                             </select>
                         </div>
                         <div class="col-12">
@@ -2367,21 +2356,15 @@
     // ═══════════════════════════════
     var _announcementsLoaded = false;
 
-    function onAnnAudienceChange() {
-        document.getElementById('ann-section-wrap').style.display =
-            document.getElementById('ann-audience').value === 'section' ? '' : 'none';
-    }
-
     function submitAnnouncement(e) {
         e.preventDefault();
         const btn = document.getElementById('ann-submit-btn');
-        const audience = document.getElementById('ann-audience').value;
         const payload = {
             title: document.getElementById('ann-title').value,
             content: document.getElementById('ann-content').value,
-            audience: audience,
+            audience: 'all',
             category: document.getElementById('ann-category').value,
-            section_id: audience === 'section' ? document.getElementById('ann-section').value : null,
+            section_id: null,
         };
         btn.disabled = true;
         fetch('/teacher/announcements', {
@@ -2393,7 +2376,6 @@
         .then(({ ok, data }) => {
             if (!ok) throw new Error(data.message || 'Failed to post announcement.');
             document.getElementById('ann-form').reset();
-            onAnnAudienceChange();
             showToast('Announcement posted.', 'success');
             loadAnnouncements();
         })

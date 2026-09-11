@@ -143,6 +143,15 @@ Route::post('/register', fn() => redirect()->route('admission'))->name('register
 Route::post('/logout',   [AuthController::class, 'logout'])->name('logout');
 
 // ─────────────────────────────────────────
+// FORGOT / RESET PASSWORD (shared by every portal — main login,
+// Finance, and Cashier all resolve through the same 'users' table)
+// ─────────────────────────────────────────
+Route::get('/forgot-password',  [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
+Route::post('/forgot-password', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
+Route::get('/reset-password/{token}', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'showResetForm'])->name('password.reset');
+Route::post('/reset-password',  [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'reset'])->name('password.update');
+
+// ─────────────────────────────────────────
 // EMAIL VERIFICATION ROUTES
 // ─────────────────────────────────────────
 
@@ -469,6 +478,9 @@ Route::middleware([\App\Http\Middleware\FinanceMiddleware::class])->prefix('fina
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Finance\DashboardController::class, 'reports'])->name('index');
     });
+
+    // Audit Trail — own actions only, see controller for why
+    Route::get('/audit-trail', [\App\Http\Controllers\Finance\DashboardController::class, 'auditTrail'])->name('audit-trail');
 });
 
 // ─────────────────────────────────────────
@@ -522,8 +534,10 @@ Route::prefix('cashier')->name('cashier.')->group(function () {
         Route::post('/enrollment/set-plan', [\App\Http\Controllers\CashierController::class, 'setEnrollmentPlan'])->name('enrollment.set-plan');
         Route::get('/daily-report', [\App\Http\Controllers\CashierController::class, 'dailyReport'])->name('daily.report');
         Route::get('/receipts', [\App\Http\Controllers\CashierController::class, 'receiptsList'])->name('receipts.list');
+        Route::get('/audit-trail', [\App\Http\Controllers\CashierController::class, 'auditTrail'])->name('audit-trail');
         Route::post('/payment/cash', [\App\Http\Controllers\CashierController::class, 'processCash'])->name('payment.cash');
         Route::post('/payment/xendit-link', [\App\Http\Controllers\CashierController::class, 'generateXenditLink'])->name('payment.xendit-link');
+        Route::get('/payment/xendit-status', [\App\Http\Controllers\CashierController::class, 'checkXenditStatus'])->name('payment.xendit-status');
         Route::post('/change-password', [\App\Http\Controllers\CashierController::class, 'changePassword'])->name('change-password');
     });
 });
@@ -596,6 +610,11 @@ Route::middleware(['auth', 'student', 'maintenance'])->prefix('student')->name('
     Route::post('/photo',            [StudentPortalController::class, 'uploadPhoto'])->name('photo.upload');
     // Xendit online payment link
     Route::post('/payment/xendit-link', [StudentPortalController::class, 'generateXenditLink'])->name('payment.xendit-link');
+    // Polled from the portal tab after the Xendit checkout opens in a new
+    // tab — Xendit's own redirect only ever lands in that new tab, so
+    // without this the original tab has no way to notice the payment went
+    // through and just sits there until the student manually reloads it.
+    Route::get('/payment/xendit-status', [StudentPortalController::class, 'checkXenditStatus'])->name('payment.xendit-status');
     // Settings — password (OTP-protected)
     Route::post('/settings/password/send-otp', [StudentPortalController::class, 'sendPasswordOtp'])->name('settings.password.otp');
     Route::put('/settings/password', [StudentPortalController::class, 'updatePassword'])->name('settings.password');

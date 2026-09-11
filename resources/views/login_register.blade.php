@@ -234,6 +234,17 @@
 
         .btn-eye:hover { color: #1a3a6c; background: #fff; }
 
+        /* ── REMEMBER ME ── */
+        .remember-row {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            margin-bottom: 10px;
+            margin-top: -4px;
+        }
+        .remember-row input[type=checkbox] { accent-color: #1a3a6c; width: 15px; height: 15px; cursor: pointer; }
+        .remember-row label { font-size: 12px; color: #6b7280; cursor: pointer; }
+
         /* ── FORGOT ── */
         .forgot-link {
             font-size: 11.5px;
@@ -407,7 +418,12 @@
                     </div>
                 </div>
 
-                <a href="#" class="forgot-link">Forgot password?</a>
+                <div class="remember-row">
+                    <input type="checkbox" name="remember" id="rememberMe" value="1">
+                    <label for="rememberMe">Remember me</label>
+                </div>
+
+                <a href="{{ route('password.request') }}" class="forgot-link">Forgot password?</a>
 
                 @if(config('services.recaptcha.site_key') && config('services.recaptcha.site_key') !== 'your_site_key_here')
                 <div class="recaptcha-wrap">

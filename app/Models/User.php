@@ -51,6 +51,24 @@ class User extends Authenticatable implements MustVerifyEmail
     public function isTeacher(): bool    { return $this->role === 'teacher'; }
     public function isStudent(): bool    { return $this->role === 'student'; }
 
+    /**
+     * Send the password reset notification using our own branded Mailable
+     * instead of Laravel's default ResetPassword notification, so the email
+     * matches the look of every other system email (OTP, enrollment, etc.).
+     * Laravel still handles all the security-sensitive plumbing (hashed
+     * token generation/expiry/verification) via the Password broker.
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $resetUrl = url(route('password.reset', [
+            'token' => $token,
+            'email' => $this->getEmailForPasswordReset(),
+        ], false));
+
+        \Illuminate\Support\Facades\Mail::to($this->getEmailForPasswordReset())
+            ->send(new \App\Mail\ForgotPasswordMail($this, $resetUrl));
+    }
+
     // ── Relationships ──
     public function profile(): \Illuminate\Database\Eloquent\Relations\HasOne
     {

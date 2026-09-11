@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
     <title>Super Admin Dashboard — ILC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
@@ -474,11 +474,7 @@
 <div class="dash-topbar">
     <div class="topbar-brand">
         <div class="brand-logos">
-            {{--  
-            <div class="brand-logo-circle">
-                <img src="/images/logo1.png" alt=""
-                     onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\'bi bi-building\'></i>'">
-            </div>--}}
+            
             <div class="brand-logo-circle">
                 <img src="/images/logo.png" alt=""
                      onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\'bi bi-shield-fill\'></i>'">
@@ -506,14 +502,15 @@
         <div class="dropdown">
             <div class="user-chip" data-bs-toggle="dropdown" aria-expanded="false">
                 <div class="user-avatar">
-                    @if(Auth::user()->profile_photo)
-                        <img src="{{ asset('storage/' . Auth::user()->profile_photo) }}" alt="Avatar">
-                    @else
-                        {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
-                    @endif
+                    <?php if(Auth::user()->profile_photo): ?>
+                        <img src="<?php echo e(asset('storage/' . Auth::user()->profile_photo)); ?>" alt="Avatar">
+                    <?php else: ?>
+                        <?php echo e(strtoupper(substr(Auth::user()->name, 0, 1))); ?>
+
+                    <?php endif; ?>
                 </div>
                 <div>
-                    <div class="user-chip-name">{{ Auth::user()->name }}</div>
+                    <div class="user-chip-name"><?php echo e(Auth::user()->name); ?></div>
                     <div class="user-chip-role">Super Admin</div>
                 </div>
                 <i class="bi bi-chevron-down user-chip-caret"></i>
@@ -521,15 +518,16 @@
             <div class="dropdown-menu dropdown-menu-end user-chip-dropdown">
                 <div class="ucd-header">
                     <div class="ucd-avatar">
-                        @if(Auth::user()->profile_photo)
-                            <img src="{{ asset('storage/' . Auth::user()->profile_photo) }}" alt="Avatar">
-                        @else
-                            {{ strtoupper(substr(Auth::user()->name, 0, 2)) }}
-                        @endif
+                        <?php if(Auth::user()->profile_photo): ?>
+                            <img src="<?php echo e(asset('storage/' . Auth::user()->profile_photo)); ?>" alt="Avatar">
+                        <?php else: ?>
+                            <?php echo e(strtoupper(substr(Auth::user()->name, 0, 2))); ?>
+
+                        <?php endif; ?>
                     </div>
                     <div class="ucd-info">
-                        <div class="ucd-name">{{ Auth::user()->name }}</div>
-                        <div class="ucd-email">{{ Auth::user()->email }}</div>
+                        <div class="ucd-name"><?php echo e(Auth::user()->name); ?></div>
+                        <div class="ucd-email"><?php echo e(Auth::user()->email); ?></div>
                         <span class="ucd-badge">Super Admin</span>
                     </div>
                 </div>
@@ -539,8 +537,8 @@
                 </div>
                 <div class="ucd-divider"></div>
                 <div class="ucd-footer">
-                    <form method="POST" action="{{ route('logout') }}">
-                        @csrf
+                    <form method="POST" action="<?php echo e(route('logout')); ?>">
+                        <?php echo csrf_field(); ?>
                         <button type="submit" class="ucd-item ucd-logout">
                             <i class="bi bi-box-arrow-left"></i> Logout
                         </button>
@@ -554,71 +552,71 @@
 <!-- SIDEBAR -->
 <div class="dash-sidebar">
     <div class="sidebar-section-lbl">Main</div>
-    <button class="sidebar-link {{ $section === 'dashboard' ? 'active' : '' }}" id="nav-dashboard" onclick="showSection('dashboard')">
+    <button class="sidebar-link <?php echo e($section === 'dashboard' ? 'active' : ''); ?>" id="nav-dashboard" onclick="showSection('dashboard')">
         <i class="bi bi-grid-1x2-fill"></i> Dashboard
     </button>
 
     <div class="sidebar-section-lbl">System Management</div>
-    <button class="sidebar-link {{ $section === 'users' ? 'active' : '' }}" id="nav-users" onclick="showSection('users')">
+    <button class="sidebar-link <?php echo e($section === 'users' ? 'active' : ''); ?>" id="nav-users" onclick="showSection('users')">
         <i class="bi bi-people-fill"></i> User Management
-        <span class="sidebar-badge">{{ $stats['total_users'] }}</span>
+        <span class="sidebar-badge"><?php echo e($stats['total_users']); ?></span>
     </button>
-    <button class="sidebar-link {{ $section === 'roles' ? 'active' : '' }}" id="nav-roles" onclick="showSection('roles')">
+    <button class="sidebar-link <?php echo e($section === 'roles' ? 'active' : ''); ?>" id="nav-roles" onclick="showSection('roles')">
         <i class="bi bi-shield-lock-fill"></i> Roles &amp; Permissions
     </button>
-    <button class="sidebar-link {{ $section === 'logs' ? 'active' : '' }}" id="nav-logs" onclick="showSection('logs')">
+    <button class="sidebar-link <?php echo e($section === 'logs' ? 'active' : ''); ?>" id="nav-logs" onclick="showSection('logs')">
         <i class="bi bi-journal-text"></i> System Logs
     </button>
-    <button class="sidebar-link {{ $section === 'backup' ? 'active' : '' }}" id="nav-backup" onclick="showSection('backup')">
+    <button class="sidebar-link <?php echo e($section === 'backup' ? 'active' : ''); ?>" id="nav-backup" onclick="showSection('backup')">
         <i class="bi bi-database-fill"></i> Backup &amp; Restore
     </button>
 
     <div class="sidebar-section-lbl">Academic Management</div>
-    <button class="sidebar-link {{ $section === 'enrollments' ? 'active' : '' }}" id="nav-enrollments" onclick="showSection('enrollments')">
+    <button class="sidebar-link <?php echo e($section === 'enrollments' ? 'active' : ''); ?>" id="nav-enrollments" onclick="showSection('enrollments')">
         <i class="bi bi-clipboard-check-fill"></i> Enrollments
     </button>
-    <button class="sidebar-link {{ $section === 'teachers' ? 'active' : '' }}" id="nav-teachers" onclick="showSection('teachers')">
+    <button class="sidebar-link <?php echo e($section === 'teachers' ? 'active' : ''); ?>" id="nav-teachers" onclick="showSection('teachers')">
         <i class="bi bi-person-video3"></i> Teachers
     </button>
-    <button class="sidebar-link {{ $section === 'subjects' ? 'active' : '' }}" id="nav-subjects" onclick="showSection('subjects')">
+    <button class="sidebar-link <?php echo e($section === 'subjects' ? 'active' : ''); ?>" id="nav-subjects" onclick="showSection('subjects')">
         <i class="bi bi-book-fill"></i> Subjects
     </button>
-    <button class="sidebar-link {{ $section === 'sections-mgmt' ? 'active' : '' }}" id="nav-sections-mgmt" onclick="showSection('sections-mgmt')">
+    <button class="sidebar-link <?php echo e($section === 'sections-mgmt' ? 'active' : ''); ?>" id="nav-sections-mgmt" onclick="showSection('sections-mgmt')">
         <i class="bi bi-diagram-3-fill"></i> Sections
     </button>
-    <button class="sidebar-link {{ $section === 'schedules' ? 'active' : '' }}" id="nav-schedules" onclick="showSection('schedules')">
+    <button class="sidebar-link <?php echo e($section === 'schedules' ? 'active' : ''); ?>" id="nav-schedules" onclick="showSection('schedules')">
         <i class="bi bi-calendar3-week-fill"></i> Schedules
     </button>
 
     <div class="sidebar-section-lbl">Content</div>
-    <button class="sidebar-link {{ $section === 'announcements' ? 'active' : '' }}" id="nav-announcements" onclick="showSection('announcements')">
+    <button class="sidebar-link <?php echo e($section === 'announcements' ? 'active' : ''); ?>" id="nav-announcements" onclick="showSection('announcements')">
         <i class="bi bi-megaphone-fill"></i> Announcements
-        <span class="sidebar-badge">{{ $announcements->total() }}</span>
+        <span class="sidebar-badge"><?php echo e($announcements->total()); ?></span>
     </button>
-    <button class="sidebar-link {{ $section === 'news' ? 'active' : '' }}" id="nav-news" onclick="showSection('news')">
+    <button class="sidebar-link <?php echo e($section === 'news' ? 'active' : ''); ?>" id="nav-news" onclick="showSection('news')">
         <i class="bi bi-newspaper"></i> News
-        <span class="sidebar-badge">{{ $newsArticles->total() }}</span>
+        <span class="sidebar-badge"><?php echo e($newsArticles->total()); ?></span>
     </button>
 
     <div class="sidebar-section-lbl">System</div>
-    <button class="sidebar-link {{ $section === 'sys-settings' ? 'active' : '' }}" id="nav-sys-settings" onclick="showSection('sys-settings')">
+    <button class="sidebar-link <?php echo e($section === 'sys-settings' ? 'active' : ''); ?>" id="nav-sys-settings" onclick="showSection('sys-settings')">
         <i class="bi bi-sliders"></i> System Settings
     </button>
 
     <div class="sidebar-section-lbl">Overview</div>
-    <button class="sidebar-link {{ $section === 'reports' ? 'active' : '' }}" id="nav-reports" onclick="showSection('reports')">
+    <button class="sidebar-link <?php echo e($section === 'reports' ? 'active' : ''); ?>" id="nav-reports" onclick="showSection('reports')">
         <i class="bi bi-bar-chart-fill"></i> Reports
     </button>
 
     <div class="sidebar-divider"></div>
-    <button class="sidebar-link {{ $section === 'settings' ? 'active' : '' }}" id="nav-settings" onclick="showSection('settings')">
+    <button class="sidebar-link <?php echo e($section === 'settings' ? 'active' : ''); ?>" id="nav-settings" onclick="showSection('settings')">
         <i class="bi bi-gear-fill"></i> Settings
     </button>
 
     <div class="sidebar-bottom">
-        {{-- CHANGE: action="{{ route('logout') }}" --}}
+        
         <form method="POST" action="/logout">
-            @csrf
+            <?php echo csrf_field(); ?>
             <button type="submit" class="sidebar-link" style="color:rgba(255,255,255,0.7);">
                 <i class="bi bi-box-arrow-left"></i> Logout
             </button>
@@ -632,11 +630,11 @@
     <!-- ═══════════════════════════
          SECTION: DASHBOARD
     ═══════════════════════════ -->
-    <div id="section-dashboard" class="dash-section" {{ $section !== 'dashboard' ? 'style="display:none;"' : '' }}>
+    <div id="section-dashboard" class="dash-section" <?php echo e($section !== 'dashboard' ? 'style="display:none;"' : ''); ?>>
         <div class="section-header">
             <div>
                 <h1>Super Admin Dashboard</h1>
-                {{-- CHANGE: {{ now()->format('l, F d, Y') }} --}}
+                
                 <p>Thursday, March 26, 2026 — System Overview</p>
             </div>
             <a href="#" onclick="showSection('users')" class="btn-dash btn-primary">
@@ -650,7 +648,7 @@
                 <div class="stat-card">
                     <div class="stat-icon blue"><i class="bi bi-people-fill"></i></div>
                     <div>
-                        <div class="stat-value">{{ $stats['total_users'] }}</div>
+                        <div class="stat-value"><?php echo e($stats['total_users']); ?></div>
                         <div class="stat-label">Total Users</div>
                     </div>
                 </div>
@@ -659,7 +657,7 @@
                 <div class="stat-card">
                     <div class="stat-icon purple"><i class="bi bi-person-badge-fill"></i></div>
                     <div>
-                        <div class="stat-value">{{ $stats['admins'] + $stats['superadmins'] }}</div>
+                        <div class="stat-value"><?php echo e($stats['admins'] + $stats['superadmins']); ?></div>
                         <div class="stat-label">Admins</div>
                     </div>
                 </div>
@@ -668,7 +666,7 @@
                 <div class="stat-card">
                     <div class="stat-icon gold"><i class="bi bi-easel-fill"></i></div>
                     <div>
-                        <div class="stat-value">{{ $stats['total_teachers'] }}</div>
+                        <div class="stat-value"><?php echo e($stats['total_teachers']); ?></div>
                         <div class="stat-label">Teachers</div>
                     </div>
                 </div>
@@ -677,7 +675,7 @@
                 <div class="stat-card">
                     <div class="stat-icon green"><i class="bi bi-mortarboard-fill"></i></div>
                     <div>
-                        <div class="stat-value">{{ $stats['total_students'] }}</div>
+                        <div class="stat-value"><?php echo e($stats['total_students']); ?></div>
                         <div class="stat-label">Students</div>
                     </div>
                 </div>
@@ -686,7 +684,7 @@
                 <div class="stat-card">
                     <div class="stat-icon red"><i class="bi bi-exclamation-triangle-fill"></i></div>
                     <div>
-                        <div class="stat-value">{{ $stats['inactive_users'] }}</div>
+                        <div class="stat-value"><?php echo e($stats['inactive_users']); ?></div>
                         <div class="stat-label">Inactive</div>
                     </div>
                 </div>
@@ -695,7 +693,7 @@
                 <div class="stat-card">
                     <div class="stat-icon orange"><i class="bi bi-database-fill"></i></div>
                     <div>
-                        <div class="stat-value">{{ $stats['active_users'] }}</div>
+                        <div class="stat-value"><?php echo e($stats['active_users']); ?></div>
                         <div class="stat-label">Active</div>
                     </div>
                 </div>
@@ -703,14 +701,14 @@
         </div>
 
         <!-- Overview Charts -->
-        @php
+        <?php
             $saChMonths=[]; $saChEnroll=[];
             for($i=5;$i>=0;$i--){
                 $m=now()->subMonths($i);
                 $saChMonths[]=$m->format('M Y');
                 $saChEnroll[]=\App\Models\Enrollment::whereYear('created_at',$m->year)->whereMonth('created_at',$m->month)->count();
             }
-        @endphp
+        ?>
         <div class="row g-3 mb-4">
             <div class="col-lg-8">
                 <div class="content-card">
@@ -751,8 +749,8 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($dashboardUsers as $user)
-                                @php
+                                <?php $__currentLoopData = $dashboardUsers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $user): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <?php
                                     $db_badge = match($user->role) {
                                         'superadmin' => ['cls'=>'superadmin','label'=>'Super Admin'],
                                         'admin'      => ['cls'=>'admin',     'label'=>'Admin'],
@@ -761,58 +759,60 @@
                                         'teacher'    => ['cls'=>'teacher',   'label'=>'Teacher'],
                                         default      => ['cls'=>'student',   'label'=>ucfirst($user->role)],
                                     };
-                                @endphp
-                                <tr data-user-id="{{ $user->id }}" data-user-name="{{ $user->name }}" data-user-email="{{ $user->email }}" data-user-role="{{ $user->role }}" data-user-active="{{ $user->is_active ? '1' : '0' }}">
+                                ?>
+                                <tr data-user-id="<?php echo e($user->id); ?>" data-user-name="<?php echo e($user->name); ?>" data-user-email="<?php echo e($user->email); ?>" data-user-role="<?php echo e($user->role); ?>" data-user-active="<?php echo e($user->is_active ? '1' : '0'); ?>">
                                     <td>
                                         <div class="user-row-name">
-                                            <div class="user-row-avatar" style="background:linear-gradient(135deg,#1a3a6c,#2563eb);color:#fff;">{{ strtoupper(substr($user->name, 0, 2)) }}</div>
+                                            <div class="user-row-avatar" style="background:linear-gradient(135deg,#1a3a6c,#2563eb);color:#fff;"><?php echo e(strtoupper(substr($user->name, 0, 2))); ?></div>
                                             <div>
-                                                <div style="font-weight:600;">{{ $user->name }}</div>
-                                                <div class="user-row-sub">{{ $user->email }}</div>
+                                                <div style="font-weight:600;"><?php echo e($user->name); ?></div>
+                                                <div class="user-row-sub"><?php echo e($user->email); ?></div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td><span class="role-badge {{ $db_badge['cls'] }}">{{ $db_badge['label'] }}</span></td>
+                                    <td><span class="role-badge <?php echo e($db_badge['cls']); ?>"><?php echo e($db_badge['label']); ?></span></td>
                                     <td>
-                                        <span class="status-badge {{ $user->is_active ? 'active' : 'inactive' }}">
-                                            {{ $user->is_active ? 'Active' : 'Inactive' }}
+                                        <span class="status-badge <?php echo e($user->is_active ? 'active' : 'inactive'); ?>">
+                                            <?php echo e($user->is_active ? 'Active' : 'Inactive'); ?>
+
                                         </span>
                                     </td>
-                                    <td style="font-size:12px;color:var(--muted);">{{ $user->created_at?->format('M d, Y') ?? '—' }}</td>
+                                    <td style="font-size:12px;color:var(--muted);"><?php echo e($user->created_at?->format('M d, Y') ?? '—'); ?></td>
                                     <td>
                                         <div style="display:flex;gap:5px;">
                                             <button class="action-btn edit" title="Edit"
-                                                onclick="openEditUserModal({{ $user->id }},'{{ addslashes($user->name) }}','{{ $user->email }}','{{ $user->role }}',{{ $user->is_active ? 'true' : 'false' }})">
+                                                onclick="openEditUserModal(<?php echo e($user->id); ?>,'<?php echo e(addslashes($user->name)); ?>','<?php echo e($user->email); ?>','<?php echo e($user->role); ?>',<?php echo e($user->is_active ? 'true' : 'false'); ?>)">
                                                 <i class="bi bi-pencil-fill"></i>
                                             </button>
                                             <button class="action-btn lock" title="Reset Password"
-                                                onclick="openResetPasswordModal({{ $user->id }},'{{ addslashes($user->name) }}')">
+                                                onclick="openResetPasswordModal(<?php echo e($user->id); ?>,'<?php echo e(addslashes($user->name)); ?>')">
                                                 <i class="bi bi-key-fill"></i>
                                             </button>
-                                            @if($user->id !== auth()->id())
-                                            <button class="action-btn {{ $user->is_active ? 'delete' : 'view' }}" title="{{ $user->is_active ? 'Deactivate' : 'Activate' }}"
-                                                onclick="confirmToggleStatus({{ $user->id }},'{{ addslashes($user->name) }}',{{ $user->is_active ? 'true' : 'false' }})">
-                                                <i class="bi bi-person-{{ $user->is_active ? 'x' : 'check' }}-fill"></i>
+                                            <?php if($user->id !== auth()->id()): ?>
+                                            <button class="action-btn <?php echo e($user->is_active ? 'delete' : 'view'); ?>" title="<?php echo e($user->is_active ? 'Deactivate' : 'Activate'); ?>"
+                                                onclick="confirmToggleStatus(<?php echo e($user->id); ?>,'<?php echo e(addslashes($user->name)); ?>',<?php echo e($user->is_active ? 'true' : 'false'); ?>)">
+                                                <i class="bi bi-person-<?php echo e($user->is_active ? 'x' : 'check'); ?>-fill"></i>
                                             </button>
                                             <button class="action-btn delete" title="Delete"
-                                                onclick="confirmDeleteUser({{ $user->id }},'{{ addslashes($user->name) }}')">
+                                                onclick="confirmDeleteUser(<?php echo e($user->id); ?>,'<?php echo e(addslashes($user->name)); ?>')">
                                                 <i class="bi bi-trash-fill"></i>
                                             </button>
-                                            @endif
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                 </tr>
-                                @endforeach
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                             </tbody>
                         </table>
 
-                        {{-- Dashboard Pagination --}}
+                        
                         <div class="p-3 border-top" style="border-color:var(--border);">
                             <nav>
-                                {{ $dashboardUsers->appends(['sort' => $sort, 'role' => $roleFilter, 'section' => 'dashboard'])->links() }}
+                                <?php echo e($dashboardUsers->appends(['sort' => $sort, 'role' => $roleFilter, 'section' => 'dashboard'])->links()); ?>
+
                             </nav>
                             <div class="pagination-info">
-                                Showing {{ $dashboardUsers->firstItem() }} to {{ $dashboardUsers->lastItem() }} of {{ $dashboardUsers->total() }} results
+                                Showing <?php echo e($dashboardUsers->firstItem()); ?> to <?php echo e($dashboardUsers->lastItem()); ?> of <?php echo e($dashboardUsers->total()); ?> results
                             </div>
                         </div>
                     </div>
@@ -825,8 +825,8 @@
                         <h6>Recent System Logs</h6>
                         <a href="#" onclick="showSection('logs')">View All</a>
                     </div>
-                    @forelse($logs->take(5) as $log)
-                    @php
+                    <?php $__empty_1 = true; $__currentLoopData = $logs->take(5); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $log): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                    <?php
                         $recentIcon = match($log->event_type) {
                             'login'        => ['icon' => 'bi-box-arrow-in-right', 'cls' => 'success'],
                             'logout'       => ['icon' => 'bi-box-arrow-right',    'cls' => 'info'],
@@ -836,24 +836,26 @@
                             'delete'       => ['icon' => 'bi-trash-fill',         'cls' => 'danger'],
                             default        => ['icon' => 'bi-info-circle-fill',   'cls' => 'info'],
                         };
-                    @endphp
+                    ?>
                     <div class="log-item">
-                        <div class="log-icon {{ $recentIcon['cls'] }}"><i class="bi {{ $recentIcon['icon'] }}"></i></div>
+                        <div class="log-icon <?php echo e($recentIcon['cls']); ?>"><i class="bi <?php echo e($recentIcon['icon']); ?>"></i></div>
                         <div>
-                            <div class="log-title">{{ Str::limit($log->description, 80) }}</div>
+                            <div class="log-title"><?php echo e(Str::limit($log->description, 80)); ?></div>
                             <div class="log-meta">
-                                {{ $log->user_name ?? 'System' }}
-                                @if($log->user_role) · {{ $log->user_role }} @endif
-                                · {{ $log->created_at?->diffForHumans() }}
+                                <?php echo e($log->user_name ?? 'System'); ?>
+
+                                <?php if($log->user_role): ?> · <?php echo e($log->user_role); ?> <?php endif; ?>
+                                · <?php echo e($log->created_at?->diffForHumans()); ?>
+
                             </div>
                         </div>
                     </div>
-                    @empty
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                     <div style="padding:24px;text-align:center;color:var(--muted);">
                         <i class="bi bi-journal-x" style="font-size:32px;display:block;margin-bottom:8px;"></i>
                         No activity logged yet
                     </div>
-                    @endforelse
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -862,7 +864,7 @@
     <!-- ═══════════════════════════
          SECTION: USER MANAGEMENT
     ═══════════════════════════ -->
-    <div id="section-users" class="dash-section" {{ $section !== 'users' ? 'style="display:none;"' : '' }}>
+    <div id="section-users" class="dash-section" <?php echo e($section !== 'users' ? 'style="display:none;"' : ''); ?>>
         <div class="section-header">
             <div>
                 <h1>User Management</h1>
@@ -874,9 +876,9 @@
         </div>
 
         <!-- Search & Filter -->
-        {{-- Role filter tabs --}}
+        
         <div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;">
-            @php
+            <?php
                 $roleTabs = [
                     'all'        => 'All',
                     'superadmin' => 'Super Admin',
@@ -895,24 +897,25 @@
                     'teacher'    => $stats['total_teachers'],
                     'student'    => $stats['total_students'],
                 ];
-            @endphp
-            @foreach($roleTabs as $key => $label)
-            <a href="?role={{ $key }}&sort={{ $sort }}&section=users"
-                style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:20px;font-size:12px;font-weight:700;text-decoration:none;border:1.5px solid {{ $roleFilter === $key ? 'var(--blue)' : 'var(--border)' }};background:{{ $roleFilter === $key ? 'var(--blue)' : '#fff' }};color:{{ $roleFilter === $key ? '#fff' : 'var(--text)' }};transition:all .15s;">
-                {{ $label }}
-                <span style="background:{{ $roleFilter === $key ? 'rgba(255,255,255,.25)' : 'var(--blue-pale)' }};color:{{ $roleFilter === $key ? '#fff' : 'var(--blue)' }};padding:1px 7px;border-radius:20px;font-size:10px;">{{ $roleCounts[$key] }}</span>
+            ?>
+            <?php $__currentLoopData = $roleTabs; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $key => $label): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+            <a href="?role=<?php echo e($key); ?>&sort=<?php echo e($sort); ?>&section=users"
+                style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:20px;font-size:12px;font-weight:700;text-decoration:none;border:1.5px solid <?php echo e($roleFilter === $key ? 'var(--blue)' : 'var(--border)'); ?>;background:<?php echo e($roleFilter === $key ? 'var(--blue)' : '#fff'); ?>;color:<?php echo e($roleFilter === $key ? '#fff' : 'var(--text)'); ?>;transition:all .15s;">
+                <?php echo e($label); ?>
+
+                <span style="background:<?php echo e($roleFilter === $key ? 'rgba(255,255,255,.25)' : 'var(--blue-pale)'); ?>;color:<?php echo e($roleFilter === $key ? '#fff' : 'var(--blue)'); ?>;padding:1px 7px;border-radius:20px;font-size:10px;"><?php echo e($roleCounts[$key]); ?></span>
             </a>
-            @endforeach
+            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
                 <div class="dash-search">
                     <i class="bi bi-search"></i>
                     <input type="text" id="userSearchInput" placeholder="Search name or email…" oninput="filterUsersTable(this.value)">
                 </div>
-                <select class="form-fld" style="width:auto;padding:7px 10px;font-size:12px;" onchange="window.location.href='?sort='+this.value+'&role={{ $roleFilter }}&section=users'">
-                    <option value="newest" {{ $sort==='newest'?'selected':'' }}>Newest</option>
-                    <option value="oldest" {{ $sort==='oldest'?'selected':'' }}>Oldest</option>
-                    <option value="name_asc" {{ $sort==='name_asc'?'selected':'' }}>A–Z</option>
-                    <option value="name_desc" {{ $sort==='name_desc'?'selected':'' }}>Z–A</option>
+                <select class="form-fld" style="width:auto;padding:7px 10px;font-size:12px;" onchange="window.location.href='?sort='+this.value+'&role=<?php echo e($roleFilter); ?>&section=users'">
+                    <option value="newest" <?php echo e($sort==='newest'?'selected':''); ?>>Newest</option>
+                    <option value="oldest" <?php echo e($sort==='oldest'?'selected':''); ?>>Oldest</option>
+                    <option value="name_asc" <?php echo e($sort==='name_asc'?'selected':''); ?>>A–Z</option>
+                    <option value="name_desc" <?php echo e($sort==='name_desc'?'selected':''); ?>>Z–A</option>
                 </select>
             </div>
         </div>
@@ -920,7 +923,7 @@
         <div class="content-card">
             <div class="content-card-header">
                 <h6>All User Accounts</h6>
-                <span style="font-size:12px;color:var(--muted);" id="userCountLabel">{{ $userManagementUsers->total() }} account(s)</span>
+                <span style="font-size:12px;color:var(--muted);" id="userCountLabel"><?php echo e($userManagementUsers->total()); ?> account(s)</span>
             </div>
             <div style="overflow-x:auto;">
                 <table class="dash-table">
@@ -935,8 +938,8 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($users as $user)
-                        @php
+                        <?php $__currentLoopData = $users; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $user): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <?php
                             $roleBadge = match($user->role) {
                                 'superadmin' => ['cls'=>'superadmin','label'=>'Super Admin'],
                                 'admin'      => ['cls'=>'admin',      'label'=>'Admin'],
@@ -944,70 +947,71 @@
                                 'cashier'    => ['cls'=>'teacher',    'label'=>'Cashier'],
                                 default      => ['cls'=>'student',    'label'=>ucfirst($user->role)],
                             };
-                        @endphp
-                        <tr data-user-id="{{ $user->id }}" data-user-name="{{ $user->name }}" data-user-email="{{ $user->email }}" data-user-role="{{ $user->role }}" data-user-active="{{ $user->is_active ? '1' : '0' }}">
+                        ?>
+                        <tr data-user-id="<?php echo e($user->id); ?>" data-user-name="<?php echo e($user->name); ?>" data-user-email="<?php echo e($user->email); ?>" data-user-role="<?php echo e($user->role); ?>" data-user-active="<?php echo e($user->is_active ? '1' : '0'); ?>">
                             <td>
                                 <div class="user-row-name">
-                                    <div class="user-row-avatar" style="background:linear-gradient(135deg,#1a3a6c,#2563eb);color:#fff;">{{ strtoupper(substr($user->name,0,2)) }}</div>
+                                    <div class="user-row-avatar" style="background:linear-gradient(135deg,#1a3a6c,#2563eb);color:#fff;"><?php echo e(strtoupper(substr($user->name,0,2))); ?></div>
                                     <div>
-                                        <div style="font-weight:600;">{{ $user->name }}</div>
-                                        <div class="user-row-sub">{{ $user->email }}</div>
+                                        <div style="font-weight:600;"><?php echo e($user->name); ?></div>
+                                        <div class="user-row-sub"><?php echo e($user->email); ?></div>
                                     </div>
                                 </div>
                             </td>
-                            <td><span class="role-badge {{ $roleBadge['cls'] }}">{{ $roleBadge['label'] }}</span></td>
+                            <td><span class="role-badge <?php echo e($roleBadge['cls']); ?>"><?php echo e($roleBadge['label']); ?></span></td>
                             <td>
-                                @if($user->is_active)
+                                <?php if($user->is_active): ?>
                                     <span class="status-badge active">Active</span>
-                                @else
+                                <?php else: ?>
                                     <span class="status-badge inactive">Inactive</span>
-                                @endif
+                                <?php endif; ?>
                             </td>
-                            <td style="font-size:12px;color:var(--muted);">{{ $user->created_at?->format('M d, Y') ?? '—' }}</td>
-                            <td style="font-size:12px;color:var(--muted);">{{ $user->last_login_at ? $user->last_login_at->diffForHumans() : 'Never' }}</td>
+                            <td style="font-size:12px;color:var(--muted);"><?php echo e($user->created_at?->format('M d, Y') ?? '—'); ?></td>
+                            <td style="font-size:12px;color:var(--muted);"><?php echo e($user->last_login_at ? $user->last_login_at->diffForHumans() : 'Never'); ?></td>
                             <td>
                                 <div style="display:flex;gap:6px;flex-wrap:wrap;">
                                     <button class="action-btn edit" title="Edit User"
-                                        onclick="openEditUserModal({{ $user->id }},'{{ addslashes($user->name) }}','{{ $user->email }}','{{ $user->role }}',{{ $user->is_active ? 'true' : 'false' }})">
+                                        onclick="openEditUserModal(<?php echo e($user->id); ?>,'<?php echo e(addslashes($user->name)); ?>','<?php echo e($user->email); ?>','<?php echo e($user->role); ?>',<?php echo e($user->is_active ? 'true' : 'false'); ?>)">
                                         <i class="bi bi-pencil-fill"></i>
                                     </button>
                                     <button class="action-btn lock" title="Reset Password"
-                                        onclick="openResetPasswordModal({{ $user->id }},'{{ addslashes($user->name) }}')">
+                                        onclick="openResetPasswordModal(<?php echo e($user->id); ?>,'<?php echo e(addslashes($user->name)); ?>')">
                                         <i class="bi bi-key-fill"></i>
                                     </button>
-                                    <button class="action-btn {{ $user->is_active ? 'delete' : 'view' }}" title="{{ $user->is_active ? 'Deactivate' : 'Activate' }} User"
-                                        onclick="confirmToggleStatus({{ $user->id }},'{{ addslashes($user->name) }}',{{ $user->is_active ? 'true' : 'false' }})">
-                                        <i class="bi {{ $user->is_active ? 'bi-person-x-fill' : 'bi-person-check-fill' }}"></i>
+                                    <button class="action-btn <?php echo e($user->is_active ? 'delete' : 'view'); ?>" title="<?php echo e($user->is_active ? 'Deactivate' : 'Activate'); ?> User"
+                                        onclick="confirmToggleStatus(<?php echo e($user->id); ?>,'<?php echo e(addslashes($user->name)); ?>',<?php echo e($user->is_active ? 'true' : 'false'); ?>)">
+                                        <i class="bi <?php echo e($user->is_active ? 'bi-person-x-fill' : 'bi-person-check-fill'); ?>"></i>
                                     </button>
-                                    @if($user->id !== auth()->id())
+                                    <?php if($user->id !== auth()->id()): ?>
                                     <button class="action-btn delete" title="Delete User"
-                                        onclick="confirmDeleteUser({{ $user->id }},'{{ addslashes($user->name) }}')">
+                                        onclick="confirmDeleteUser(<?php echo e($user->id); ?>,'<?php echo e(addslashes($user->name)); ?>')">
                                         <i class="bi bi-trash-fill"></i>
                                     </button>
-                                    @endif
+                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
-                        @endforeach
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     </tbody>
                 </table>
 
-                {{-- User Management Pagination --}}
-                @if($userManagementUsers->hasPages())
+                
+                <?php if($userManagementUsers->hasPages()): ?>
                 <div class="p-3 border-top" style="border-color:var(--border);">
                     <nav>
-                        {{ $userManagementUsers->appends(['sort' => $sort, 'role' => $roleFilter, 'section' => 'users'])->links() }}
+                        <?php echo e($userManagementUsers->appends(['sort' => $sort, 'role' => $roleFilter, 'section' => 'users'])->links()); ?>
+
                     </nav>
                     <div class="pagination-info">
-                        Showing {{ $userManagementUsers->firstItem() }} to {{ $userManagementUsers->lastItem() }} of {{ $userManagementUsers->total() }} users
+                        Showing <?php echo e($userManagementUsers->firstItem()); ?> to <?php echo e($userManagementUsers->lastItem()); ?> of <?php echo e($userManagementUsers->total()); ?> users
                     </div>
                 </div>
-                @endif
+                <?php endif; ?>
             </div>
         </div>
     </div>
     <!-- ═══════════════════════════ -->
-    <div id="section-roles" class="dash-section" {{ $section !== 'roles' ? 'style="display:none;"' : '' }}>
+    <div id="section-roles" class="dash-section" <?php echo e($section !== 'roles' ? 'style="display:none;"' : ''); ?>>
         <div class="section-header">
             <div>
                 <h1>Roles &amp; Permissions</h1>
@@ -1140,7 +1144,7 @@
     <!-- ═══════════════════════════
          SECTION: SYSTEM LOGS
     ═══════════════════════════ -->
-    <div id="section-logs" class="dash-section" {{ $section !== 'logs' ? 'style="display:none;"' : '' }}>
+    <div id="section-logs" class="dash-section" <?php echo e($section !== 'logs' ? 'style="display:none;"' : ''); ?>>
         <div class="section-header">
             <div>
                 <h1>System Logs</h1>
@@ -1209,8 +1213,8 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($logs as $log)
-                        @php
+                        <?php $__empty_1 = true; $__currentLoopData = $logs; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $log): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                        <?php
                             $badgeClass = match($log->event_type) {
                                 'login'        => 'success',
                                 'logout'       => 'active',
@@ -1231,35 +1235,36 @@
                                 'error'        => 'Error',
                                 default        => ucfirst($log->event_type),
                             };
-                        @endphp
+                        ?>
                         <tr class="log-row"
-                            data-type="{{ $log->event_type }}"
-                            data-desc="{{ strtolower($log->description . ' ' . $log->user_name) }}"
-                            data-ts="{{ $log->created_at?->toDateString() }}"
-                            data-role="{{ $log->user_role }}">
-                            <td><span class="status-badge {{ $badgeClass }}">{{ $badgeLabel }}</span></td>
-                            <td style="max-width:420px;word-break:break-word;">{{ $log->description }}</td>
+                            data-type="<?php echo e($log->event_type); ?>"
+                            data-desc="<?php echo e(strtolower($log->description . ' ' . $log->user_name)); ?>"
+                            data-ts="<?php echo e($log->created_at?->toDateString()); ?>"
+                            data-role="<?php echo e($log->user_role); ?>">
+                            <td><span class="status-badge <?php echo e($badgeClass); ?>"><?php echo e($badgeLabel); ?></span></td>
+                            <td style="max-width:420px;word-break:break-word;"><?php echo e($log->description); ?></td>
                             <td>
-                                @if($log->user_name)
-                                <div style="font-size:13px;font-weight:600;">{{ $log->user_name }}</div>
-                                <div style="font-size:11px;color:var(--muted);">{{ $log->user_role ?? '' }}</div>
-                                @else
+                                <?php if($log->user_name): ?>
+                                <div style="font-size:13px;font-weight:600;"><?php echo e($log->user_name); ?></div>
+                                <div style="font-size:11px;color:var(--muted);"><?php echo e($log->user_role ?? ''); ?></div>
+                                <?php else: ?>
                                 <span style="color:var(--muted);font-size:12px;">System</span>
-                                @endif
+                                <?php endif; ?>
                             </td>
-                            <td style="font-size:12px;color:var(--muted);">{{ $log->ip_address ?? '—' }}</td>
+                            <td style="font-size:12px;color:var(--muted);"><?php echo e($log->ip_address ?? '—'); ?></td>
                             <td style="font-size:12px;color:var(--muted);white-space:nowrap;">
-                                {{ $log->created_at?->format('M d, Y h:i A') }}
+                                <?php echo e($log->created_at?->format('M d, Y h:i A')); ?>
+
                             </td>
                         </tr>
-                        @empty
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                         <tr>
                             <td colspan="5" style="text-align:center;padding:48px;color:var(--muted);">
                                 <i class="bi bi-journal-x" style="font-size:40px;display:block;margin-bottom:12px;"></i>
                                 No activity logs yet. Events will appear here after users log in.
                             </td>
                         </tr>
-                        @endforelse
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
@@ -1269,7 +1274,7 @@
     <!-- ═══════════════════════════
          SECTION: BACKUP & RESTORE
     ═══════════════════════════ -->
-    <div id="section-backup" class="dash-section" {{ $section !== 'backup' ? 'style="display:none;"' : '' }}>
+    <div id="section-backup" class="dash-section" <?php echo e($section !== 'backup' ? 'style="display:none;"' : ''); ?>>
         <div class="section-header">
             <div>
                 <h1>Backup &amp; Restore</h1>
@@ -1314,40 +1319,41 @@
             <div class="col-md-8">
                 <div class="content-card">
                     <div class="content-card-header">
-                        <h6>Backup History ({{ count($backups) }} file{{ count($backups) !== 1 ? 's' : '' }})</h6>
+                        <h6>Backup History (<?php echo e(count($backups)); ?> file<?php echo e(count($backups) !== 1 ? 's' : ''); ?>)</h6>
                         <button class="btn-dash btn-primary" style="padding:7px 16px;font-size:12px;" onclick="runBackup()" id="btnCreateBackup">
                             <i class="bi bi-database-add"></i> Create Backup Now
                         </button>
                     </div>
                     <div class="p-3">
-                        @forelse($backups as $bk)
-                        <div class="backup-card" id="bk-{{ Str::slug($bk['name']) }}">
+                        <?php $__empty_1 = true; $__currentLoopData = $backups; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $bk): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                        <div class="backup-card" id="bk-<?php echo e(Str::slug($bk['name'])); ?>">
                             <div style="flex:1;min-width:0;">
-                                <div class="backup-info-name" style="font-size:13px;font-weight:700;color:var(--text);word-break:break-all;">{{ $bk['name'] }}</div>
+                                <div class="backup-info-name" style="font-size:13px;font-weight:700;color:var(--text);word-break:break-all;"><?php echo e($bk['name']); ?></div>
                                 <div class="backup-info-meta" style="font-size:11px;color:var(--muted);margin-top:3px;">
-                                    <i class="bi bi-clock me-1"></i>{{ $bk['created'] }} &nbsp;·&nbsp;
-                                    <i class="bi bi-hdd me-1"></i>{{ $bk['size'] }}
+                                    <i class="bi bi-clock me-1"></i><?php echo e($bk['created']); ?> &nbsp;·&nbsp;
+                                    <i class="bi bi-hdd me-1"></i><?php echo e($bk['size']); ?>
+
                                 </div>
                             </div>
                             <div style="display:flex;gap:6px;flex-shrink:0;">
-                                <a href="{{ route('superadmin.backup.download', $bk['name']) }}" class="action-btn view" title="Download">
+                                <a href="<?php echo e(route('superadmin.backup.download', $bk['name'])); ?>" class="action-btn view" title="Download">
                                     <i class="bi bi-download"></i>
                                 </a>
-                                <button class="action-btn edit" title="Restore Database" onclick="restoreBackup('{{ $bk['name'] }}')">
+                                <button class="action-btn edit" title="Restore Database" onclick="restoreBackup('<?php echo e($bk['name']); ?>')">
                                     <i class="bi bi-arrow-counterclockwise"></i>
                                 </button>
-                                <button class="action-btn delete" title="Delete Backup" onclick="deleteBackup('{{ $bk['name'] }}')">
+                                <button class="action-btn delete" title="Delete Backup" onclick="deleteBackup('<?php echo e($bk['name']); ?>')">
                                     <i class="bi bi-trash-fill"></i>
                                 </button>
                             </div>
                         </div>
-                        @empty
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                         <div style="text-align:center;padding:40px;color:var(--muted);">
                             <i class="bi bi-database" style="font-size:36px;display:block;margin-bottom:10px;opacity:0.25;"></i>
                             <div style="font-weight:600;margin-bottom:6px;">No backups yet</div>
                             <div style="font-size:12px;">Click <strong>Create Backup Now</strong> to generate your first backup.</div>
                         </div>
-                        @endforelse
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -1357,16 +1363,16 @@
                     <div class="p-3" style="font-size:13px;">
                         <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
                             <span style="color:var(--muted);">Total Backups</span>
-                            <strong>{{ count($backups) }}</strong>
+                            <strong><?php echo e(count($backups)); ?></strong>
                         </div>
                         <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
                             <span style="color:var(--muted);">Latest Backup</span>
-                            <strong>{{ count($backups) ? $backups[0]['created'] : '—' }}</strong>
+                            <strong><?php echo e(count($backups) ? $backups[0]['created'] : '—'); ?></strong>
                         </div>
                         <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
                             <span style="color:var(--muted);">Storage Used</span>
-                            @php $totalSize = array_sum(array_column($backups,'size_raw')); @endphp
-                            <strong>{{ $totalSize >= 1048576 ? round($totalSize/1048576,2).' MB' : round($totalSize/1024,1).' KB' }}</strong>
+                            <?php $totalSize = array_sum(array_column($backups,'size_raw')); ?>
+                            <strong><?php echo e($totalSize >= 1048576 ? round($totalSize/1048576,2).' MB' : round($totalSize/1024,1).' KB'); ?></strong>
                         </div>
                         <div style="background:#fff8ec;border:1px solid #fde68a;border-radius:8px;padding:10px;font-size:12px;color:#92400e;margin-top:6px;">
                             <i class="bi bi-exclamation-triangle-fill me-1"></i>
@@ -1390,7 +1396,7 @@
     <!-- ══════════════════════════
          SECTION: ANNOUNCEMENTS
     ══════════════════════════ -->
-    <div id="section-announcements" class="dash-section" {{ $section !== 'announcements' ? 'style="display:none;"' : '' }}>
+    <div id="section-announcements" class="dash-section" <?php echo e($section !== 'announcements' ? 'style="display:none;"' : ''); ?>>
         <div class="section-header">
             <div>
                 <h1><i class="bi bi-megaphone-fill me-2" style="color:var(--blue);"></i>Announcements</h1>
@@ -1398,16 +1404,16 @@
             </div>
         </div>
 
-        @if(session('sa_success') && session('sa_section') === 'announcements')
-            <div class="alert-success-bar"><i class="bi bi-check-circle-fill me-2"></i>{{ session('sa_success') }}</div>
-        @endif
+        <?php if(session('sa_success') && session('sa_section') === 'announcements'): ?>
+            <div class="alert-success-bar"><i class="bi bi-check-circle-fill me-2"></i><?php echo e(session('sa_success')); ?></div>
+        <?php endif; ?>
 
-        {{-- Post New Announcement --}}
+        
         <div class="content-card mb-4">
             <div class="content-card-header"><h6><i class="bi bi-plus-circle me-2" style="color:var(--blue);"></i>Post New Announcement</h6></div>
             <div class="p-4">
-                <form method="POST" action="{{ route('superadmin.announcements.store') }}" enctype="multipart/form-data">
-                    @csrf
+                <form method="POST" action="<?php echo e(route('superadmin.announcements.store')); ?>" enctype="multipart/form-data">
+                    <?php echo csrf_field(); ?>
                     <div class="row g-3">
                         <div class="col-12">
                             <label class="form-lbl-sm">Title <span style="color:#e53935;">*</span></label>
@@ -1449,9 +1455,9 @@
             </div>
         </div>
 
-        {{-- Announcements List --}}
+        
         <div class="content-card">
-            <div class="content-card-header"><h6>All Announcements ({{ $announcements->total() }})</h6></div>
+            <div class="content-card-header"><h6>All Announcements (<?php echo e($announcements->total()); ?>)</h6></div>
             <div style="overflow-x:auto;">
                 <table class="dash-table">
                     <thead>
@@ -1467,60 +1473,61 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($announcements as $ann)
+                        <?php $__empty_1 = true; $__currentLoopData = $announcements; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $ann): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                         <tr>
-                            <td style="font-weight:600;max-width:260px;">{{ Str::limit($ann->title, 60) }}</td>
-                            <td><span class="role-badge teacher">{{ ucfirst($ann->category) }}</span></td>
+                            <td style="font-weight:600;max-width:260px;"><?php echo e(Str::limit($ann->title, 60)); ?></td>
+                            <td><span class="role-badge teacher"><?php echo e(ucfirst($ann->category)); ?></span></td>
                             <td>
-                                @if($ann->image)
-                                    <img src="{{ asset('storage/'.$ann->image) }}" alt="" style="width:48px;height:36px;object-fit:cover;border-radius:6px;">
-                                @else
+                                <?php if($ann->image): ?>
+                                    <img src="<?php echo e(asset('storage/'.$ann->image)); ?>" alt="" style="width:48px;height:36px;object-fit:cover;border-radius:6px;">
+                                <?php else: ?>
                                     <span style="font-size:11px;color:var(--muted);">None</span>
-                                @endif
+                                <?php endif; ?>
                             </td>
-                            <td>{{ ucfirst($ann->audience) }}</td>
-                            <td style="font-size:12px;color:var(--muted);">{{ $ann->teacher?->name ?? 'Superadmin' }}</td>
-                            <td style="font-size:12px;color:var(--muted);">{{ $ann->created_at->format('M d, Y') }}</td>
+                            <td><?php echo e(ucfirst($ann->audience)); ?></td>
+                            <td style="font-size:12px;color:var(--muted);"><?php echo e($ann->teacher?->name ?? 'Superadmin'); ?></td>
+                            <td style="font-size:12px;color:var(--muted);"><?php echo e($ann->created_at->format('M d, Y')); ?></td>
                             <td>
-                                <span class="status-badge {{ $ann->is_active ? 'active' : 'inactive' }}">
-                                    {{ $ann->is_active ? 'Active' : 'Hidden' }}
+                                <span class="status-badge <?php echo e($ann->is_active ? 'active' : 'inactive'); ?>">
+                                    <?php echo e($ann->is_active ? 'Active' : 'Hidden'); ?>
+
                                 </span>
                             </td>
                             <td>
                                 <div style="display:flex;gap:6px;">
-                                    <form method="POST" action="{{ route('superadmin.announcements.toggle', $ann) }}" style="margin:0;">
-                                        @csrf
-                                        <button type="submit" class="action-btn {{ $ann->is_active ? 'edit' : 'view' }}" title="{{ $ann->is_active ? 'Hide' : 'Show' }}">
-                                            <i class="bi bi-{{ $ann->is_active ? 'eye-slash' : 'eye' }}-fill"></i>
+                                    <form method="POST" action="<?php echo e(route('superadmin.announcements.toggle', $ann)); ?>" style="margin:0;">
+                                        <?php echo csrf_field(); ?>
+                                        <button type="submit" class="action-btn <?php echo e($ann->is_active ? 'edit' : 'view'); ?>" title="<?php echo e($ann->is_active ? 'Hide' : 'Show'); ?>">
+                                            <i class="bi bi-<?php echo e($ann->is_active ? 'eye-slash' : 'eye'); ?>-fill"></i>
                                         </button>
                                     </form>
-                                    <form method="POST" action="{{ route('superadmin.announcements.destroy', $ann) }}" style="margin:0;"
+                                    <form method="POST" action="<?php echo e(route('superadmin.announcements.destroy', $ann)); ?>" style="margin:0;"
                                           onsubmit="return confirm('Delete this announcement?')">
-                                        @csrf @method('DELETE')
+                                        <?php echo csrf_field(); ?> <?php echo method_field('DELETE'); ?>
                                         <button type="submit" class="action-btn delete" title="Delete"><i class="bi bi-trash3-fill"></i></button>
                                     </form>
                                 </div>
                             </td>
                         </tr>
-                        @empty
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                         <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted);">
                             <i class="bi bi-megaphone" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3;"></i>
                             No announcements yet.
                         </td></tr>
-                        @endforelse
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
-            @if($announcements->hasPages())
-            <div style="padding:16px;display:flex;justify-content:center;">{{ $announcements->links() }}</div>
-            @endif
+            <?php if($announcements->hasPages()): ?>
+            <div style="padding:16px;display:flex;justify-content:center;"><?php echo e($announcements->links()); ?></div>
+            <?php endif; ?>
         </div>
     </div><!-- /section-announcements -->
 
     <!-- ══════════════════════════
          SECTION: NEWS
     ══════════════════════════ -->
-    <div id="section-news" class="dash-section" {{ $section !== 'news' ? 'style="display:none;"' : '' }}>
+    <div id="section-news" class="dash-section" <?php echo e($section !== 'news' ? 'style="display:none;"' : ''); ?>>
         <div class="section-header">
             <div>
                 <h1><i class="bi bi-newspaper me-2" style="color:var(--blue);"></i>News</h1>
@@ -1528,16 +1535,16 @@
             </div>
         </div>
 
-        @if(session('sa_success') && session('sa_section') === 'news')
-            <div class="alert-success-bar"><i class="bi bi-check-circle-fill me-2"></i>{{ session('sa_success') }}</div>
-        @endif
+        <?php if(session('sa_success') && session('sa_section') === 'news'): ?>
+            <div class="alert-success-bar"><i class="bi bi-check-circle-fill me-2"></i><?php echo e(session('sa_success')); ?></div>
+        <?php endif; ?>
 
-        {{-- Post New Article --}}
+        
         <div class="content-card mb-4">
             <div class="content-card-header"><h6><i class="bi bi-plus-circle me-2" style="color:var(--blue);"></i>Publish News Article</h6></div>
             <div class="p-4">
-                <form method="POST" action="{{ route('superadmin.news.store') }}" enctype="multipart/form-data">
-                    @csrf
+                <form method="POST" action="<?php echo e(route('superadmin.news.store')); ?>" enctype="multipart/form-data">
+                    <?php echo csrf_field(); ?>
                     <div class="row g-3">
                         <div class="col-12">
                             <label class="form-lbl-sm">Headline <span style="color:#e53935;">*</span></label>
@@ -1571,9 +1578,9 @@
             </div>
         </div>
 
-        {{-- News List --}}
+        
         <div class="content-card">
-            <div class="content-card-header"><h6>All News Articles ({{ $newsArticles->total() }})</h6></div>
+            <div class="content-card-header"><h6>All News Articles (<?php echo e($newsArticles->total()); ?>)</h6></div>
             <div style="overflow-x:auto;">
                 <table class="dash-table">
                     <thead>
@@ -1588,56 +1595,57 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($newsArticles as $article)
+                        <?php $__empty_1 = true; $__currentLoopData = $newsArticles; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $article): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                         <tr>
-                            <td style="font-weight:600;max-width:280px;">{{ Str::limit($article->title, 60) }}</td>
-                            <td><span class="role-badge student">{{ ucfirst($article->category) }}</span></td>
+                            <td style="font-weight:600;max-width:280px;"><?php echo e(Str::limit($article->title, 60)); ?></td>
+                            <td><span class="role-badge student"><?php echo e(ucfirst($article->category)); ?></span></td>
                             <td>
-                                @if($article->image)
-                                    <img src="{{ asset('storage/'.$article->image) }}" alt="" style="width:48px;height:36px;object-fit:cover;border-radius:6px;">
-                                @else
+                                <?php if($article->image): ?>
+                                    <img src="<?php echo e(asset('storage/'.$article->image)); ?>" alt="" style="width:48px;height:36px;object-fit:cover;border-radius:6px;">
+                                <?php else: ?>
                                     <span style="font-size:11px;color:var(--muted);">No image</span>
-                                @endif
+                                <?php endif; ?>
                             </td>
-                            <td style="font-size:12px;color:var(--muted);">{{ $article->author?->name ?? 'Superadmin' }}</td>
-                            <td style="font-size:12px;color:var(--muted);">{{ $article->created_at->format('M d, Y') }}</td>
+                            <td style="font-size:12px;color:var(--muted);"><?php echo e($article->author?->name ?? 'Superadmin'); ?></td>
+                            <td style="font-size:12px;color:var(--muted);"><?php echo e($article->created_at->format('M d, Y')); ?></td>
                             <td>
-                                <span class="status-badge {{ $article->is_active ? 'active' : 'inactive' }}">
-                                    {{ $article->is_active ? 'Published' : 'Hidden' }}
+                                <span class="status-badge <?php echo e($article->is_active ? 'active' : 'inactive'); ?>">
+                                    <?php echo e($article->is_active ? 'Published' : 'Hidden'); ?>
+
                                 </span>
                             </td>
                             <td>
                                 <div style="display:flex;gap:6px;">
-                                    <form method="POST" action="{{ route('superadmin.news.toggle', $article) }}" style="margin:0;">
-                                        @csrf
-                                        <button type="submit" class="action-btn {{ $article->is_active ? 'edit' : 'view' }}" title="{{ $article->is_active ? 'Hide' : 'Show' }}">
-                                            <i class="bi bi-{{ $article->is_active ? 'eye-slash' : 'eye' }}-fill"></i>
+                                    <form method="POST" action="<?php echo e(route('superadmin.news.toggle', $article)); ?>" style="margin:0;">
+                                        <?php echo csrf_field(); ?>
+                                        <button type="submit" class="action-btn <?php echo e($article->is_active ? 'edit' : 'view'); ?>" title="<?php echo e($article->is_active ? 'Hide' : 'Show'); ?>">
+                                            <i class="bi bi-<?php echo e($article->is_active ? 'eye-slash' : 'eye'); ?>-fill"></i>
                                         </button>
                                     </form>
-                                    <form method="POST" action="{{ route('superadmin.news.destroy', $article) }}" style="margin:0;"
+                                    <form method="POST" action="<?php echo e(route('superadmin.news.destroy', $article)); ?>" style="margin:0;"
                                           onsubmit="return confirm('Delete this news article?')">
-                                        @csrf @method('DELETE')
+                                        <?php echo csrf_field(); ?> <?php echo method_field('DELETE'); ?>
                                         <button type="submit" class="action-btn delete" title="Delete"><i class="bi bi-trash3-fill"></i></button>
                                     </form>
                                 </div>
                             </td>
                         </tr>
-                        @empty
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                         <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted);">
                             <i class="bi bi-newspaper" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3;"></i>
                             No news articles yet.
                         </td></tr>
-                        @endforelse
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
-            @if($newsArticles->hasPages())
-            <div style="padding:16px;display:flex;justify-content:center;">{{ $newsArticles->links() }}</div>
-            @endif
+            <?php if($newsArticles->hasPages()): ?>
+            <div style="padding:16px;display:flex;justify-content:center;"><?php echo e($newsArticles->links()); ?></div>
+            <?php endif; ?>
         </div>
     </div><!-- /section-news -->
 
-    <div id="section-reports" class="dash-section" {{ $section !== 'reports' ? 'style="display:none;"' : '' }}>
+    <div id="section-reports" class="dash-section" <?php echo e($section !== 'reports' ? 'style="display:none;"' : ''); ?>>
         <div class="section-header">
             <div>
                 <h1>Reports</h1>
@@ -1645,14 +1653,14 @@
             </div>
         </div>
         <!-- Report Charts -->
-        @php
+        <?php
             $saRptMonths=[]; $saRptEnroll=[];
             for($i=5;$i>=0;$i--){
                 $m=now()->subMonths($i);
                 $saRptMonths[]=$m->format('M Y');
                 $saRptEnroll[]=\App\Models\Enrollment::whereYear('created_at',$m->year)->whereMonth('created_at',$m->month)->count();
             }
-        @endphp
+        ?>
         <div class="row g-3 mb-4">
             <div class="col-lg-6">
                 <div class="content-card">
@@ -1709,7 +1717,7 @@
     <!-- ═══════════════════════════
          SECTION: SETTINGS
     ═══════════════════════════ -->
-    <div id="section-settings" class="dash-section" {{ $section !== 'settings' ? 'style="display:none;"' : '' }}>
+    <div id="section-settings" class="dash-section" <?php echo e($section !== 'settings' ? 'style="display:none;"' : ''); ?>>
         <div class="section-header">
             <div>
                 <h1>Settings</h1>
@@ -1718,7 +1726,7 @@
         </div>
 
         <div class="row g-4">
-            {{-- Account Info --}}
+            
             <div class="col-md-5">
                 <div class="content-card">
                     <div class="content-card-header">
@@ -1726,26 +1734,27 @@
                     </div>
                     <div class="p-4">
 
-                        @if(session('photo_success'))
+                        <?php if(session('photo_success')): ?>
                             <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#2e7d32;display:flex;align-items:center;gap:8px;">
-                                <i class="bi bi-check-circle-fill"></i> {{ session('photo_success') }}
-                            </div>
-                        @endif
+                                <i class="bi bi-check-circle-fill"></i> <?php echo e(session('photo_success')); ?>
 
-                        <form method="POST" action="{{ route('superadmin.settings.photo') }}" enctype="multipart/form-data" id="sa-photo-form">
-                            @csrf
+                            </div>
+                        <?php endif; ?>
+
+                        <form method="POST" action="<?php echo e(route('superadmin.settings.photo')); ?>" enctype="multipart/form-data" id="sa-photo-form">
+                            <?php echo csrf_field(); ?>
                             <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
                                 <div style="position:relative;flex-shrink:0;width:72px;height:72px;">
-                                    @if(Auth::user()->profile_photo)
-                                        <img id="sa-avatar-img" src="{{ asset('storage/' . Auth::user()->profile_photo) }}" alt="Profile"
+                                    <?php if(Auth::user()->profile_photo): ?>
+                                        <img id="sa-avatar-img" src="<?php echo e(asset('storage/' . Auth::user()->profile_photo)); ?>" alt="Profile"
                                              style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid var(--border);">
-                                    @else
+                                    <?php else: ?>
                                         <div id="sa-avatar-placeholder" style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--blue-light));display:flex;align-items:center;justify-content:center;">
                                             <i class="bi bi-person-fill" style="font-size:30px;color:#fff;"></i>
                                         </div>
                                         <img id="sa-avatar-img" src="" alt="Profile"
                                              style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid var(--border);display:none;">
-                                    @endif
+                                    <?php endif; ?>
                                     <label for="sa-photo-input" title="Change photo"
                                            style="position:absolute;bottom:0;right:0;width:24px;height:24px;border-radius:50%;background:var(--blue);border:2px solid #fff;display:flex;align-items:center;justify-content:center;cursor:pointer;">
                                         <i class="bi bi-camera-fill" style="font-size:11px;color:#fff;"></i>
@@ -1754,8 +1763,8 @@
                                            style="display:none;" onchange="previewSAPhoto(this)">
                                 </div>
                                 <div>
-                                    <div style="font-size:16px;font-weight:700;color:var(--text);">{{ Auth::user()->name }}</div>
-                                    <div style="font-size:12px;color:var(--muted);margin-top:2px;">{{ Auth::user()->email }}</div>
+                                    <div style="font-size:16px;font-weight:700;color:var(--text);"><?php echo e(Auth::user()->name); ?></div>
+                                    <div style="font-size:12px;color:var(--muted);margin-top:2px;"><?php echo e(Auth::user()->email); ?></div>
                                     <span style="display:inline-block;background:#fdecea;color:#c0392b;border:1px solid #f5c6cb;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:600;margin-top:5px;">Super Admin</span>
                                 </div>
                             </div>
@@ -1765,11 +1774,11 @@
                         <div style="border-top:1px solid var(--border);padding-top:16px;display:flex;flex-direction:column;gap:0;">
                             <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0f0;">
                                 <span style="font-size:12px;color:var(--muted);">Full Name</span>
-                                <span style="font-size:12px;font-weight:600;">{{ Auth::user()->name }}</span>
+                                <span style="font-size:12px;font-weight:600;"><?php echo e(Auth::user()->name); ?></span>
                             </div>
                             <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0f0;">
                                 <span style="font-size:12px;color:var(--muted);">Email</span>
-                                <span style="font-size:12px;font-weight:600;">{{ Auth::user()->email }}</span>
+                                <span style="font-size:12px;font-weight:600;"><?php echo e(Auth::user()->email); ?></span>
                             </div>
                             <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;">
                                 <span style="font-size:12px;color:var(--muted);">Role</span>
@@ -1780,26 +1789,28 @@
                 </div>
             </div>
 
-            {{-- Change Password --}}
+            
             <div class="col-md-7">
                 <div class="content-card">
                     <div class="content-card-header">
                         <h6><i class="bi bi-lock-fill me-2" style="color:var(--blue);"></i>Change Password</h6>
                     </div>
                     <div class="p-4">
-                        @if(session('password_success'))
+                        <?php if(session('password_success')): ?>
                             <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#2e7d32;display:flex;align-items:center;gap:8px;">
-                                <i class="bi bi-check-circle-fill"></i> {{ session('password_success') }}
+                                <i class="bi bi-check-circle-fill"></i> <?php echo e(session('password_success')); ?>
+
                             </div>
-                        @endif
-                        @if($errors->has('current_password'))
+                        <?php endif; ?>
+                        <?php if($errors->has('current_password')): ?>
                             <div style="background:#fdecea;border:1px solid #f5c6cb;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#c0392b;display:flex;align-items:center;gap:8px;">
-                                <i class="bi bi-exclamation-circle-fill"></i> {{ $errors->first('current_password') }}
+                                <i class="bi bi-exclamation-circle-fill"></i> <?php echo e($errors->first('current_password')); ?>
+
                             </div>
-                        @endif
-                        <form method="POST" action="{{ route('superadmin.settings.password') }}">
-                            @csrf
-                            @method('PUT')
+                        <?php endif; ?>
+                        <form method="POST" action="<?php echo e(route('superadmin.settings.password')); ?>">
+                            <?php echo csrf_field(); ?>
+                            <?php echo method_field('PUT'); ?>
                             <div class="mb-3">
                                 <label class="form-lbl">Current Password <span style="color:var(--red);">*</span></label>
                                 <input type="password" name="current_password" class="form-fld" placeholder="Enter your current password" required>
@@ -2163,7 +2174,7 @@
             </div>
             <div style="padding:22px 24px;background:#fff;">
                 <form id="createUserForm">
-                    @csrf
+                    <?php echo csrf_field(); ?>
                     <div class="mb-3">
                         <label class="form-lbl">Full Name</label>
                         <input type="text" id="user-name" name="name" class="form-fld" placeholder="Enter full name" required>
@@ -2247,7 +2258,7 @@
             </div>
             <div style="padding:20px 24px;background:#fff;">
                 <form id="editUserForm">
-                    @csrf
+                    <?php echo csrf_field(); ?>
                     <input type="hidden" id="edit-user-id" name="id">
                     <div class="mb-3">
                         <label class="form-lbl">Full Name</label>
@@ -2313,7 +2324,7 @@
             </div>
             <div style="padding:20px 24px;background:#fff;">
                 <form id="resetPasswordForm">
-                    @csrf
+                    <?php echo csrf_field(); ?>
                     <input type="hidden" id="reset-user-id">
                     <div class="mb-3">
                         <label class="form-lbl">New Password</label>
@@ -2447,15 +2458,15 @@
 
     // On page load, show section from URL parameter (preserves section across pagination/filtering)
     document.addEventListener('DOMContentLoaded', function() {
-        @if(session('settings_tab') || session('photo_success') || session('password_success') || $errors->has('current_password'))
+        <?php if(session('settings_tab') || session('photo_success') || session('password_success') || $errors->has('current_password')): ?>
         showSection('settings');
-        @else
+        <?php else: ?>
         const urlParams = new URLSearchParams(window.location.search);
-        const section = urlParams.get('section') || '{{ $section }}';
+        const section = urlParams.get('section') || '<?php echo e($section); ?>';
         if (section && sections.includes(section)) {
             showSection(section);
         }
-        @endif
+        <?php endif; ?>
     });
 
     function previewSAPhoto(input) {
@@ -2802,7 +2813,7 @@
         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creating…';
         backupLog('Starting database backup…');
         try {
-            var r = await fetch('{{ route("superadmin.backup.create") }}', {
+            var r = await fetch('<?php echo e(route("superadmin.backup.create")); ?>', {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
             });
@@ -3374,8 +3385,8 @@
         const el = document.getElementById('saEnrollTrend');
         if (!el) return;
         new Chart(el,{type:'line',
-            data:{labels:@json($saChMonths??[]),
-                datasets:[{label:'Enrollments',data:@json($saChEnroll??[]),
+            data:{labels:<?php echo json_encode($saChMonths??[], 15, 512) ?>,
+                datasets:[{label:'Enrollments',data:<?php echo json_encode($saChEnroll??[], 15, 512) ?>,
                     borderColor:_SAC.blue,backgroundColor:'rgba(26,58,108,.08)',
                     borderWidth:2,pointRadius:4,tension:0.4,fill:true}]},
             options:{responsive:true,maintainAspectRatio:false,
@@ -3391,11 +3402,12 @@
         new Chart(el,{type:'doughnut',
             data:{labels:['Students','Teachers','Admins','Finance','Cashier'],
                 datasets:[{data:[
-                    {{$stats['total_students']??0}},
-                    {{$stats['total_teachers']??0}},
-                    {{($stats['admins']??0)+($stats['superadmins']??0)}},
-                    {{\App\Models\User::where('role','finance')->count()}},
-                    {{\App\Models\User::where('role','cashier')->count()}}
+                    <?php echo e($stats['total_students']??0); ?>,
+                    <?php echo e($stats['total_teachers']??0); ?>,
+                    <?php echo e(($stats['admins']??0)+($stats['superadmins']??0)); ?>,
+                    <?php echo e(\App\Models\User::where('role','finance')->count()); ?>,
+                    <?php echo e(\App\Models\User::where('role','cashier')->count()); ?>
+
                 ],backgroundColor:[_SAC.blue,_SAC.gold,_SAC.mid,_SAC.green,_SAC.purple],borderWidth:0,hoverOffset:4}]},
             options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
                 plugins:{legend:{position:'bottom',labels:{padding:10,font:{size:11}}}}}
@@ -3408,8 +3420,8 @@
 
         const lineEl = document.getElementById('saRptEnrollLine');
         if (lineEl) new Chart(lineEl,{type:'line',
-            data:{labels:@json($saRptMonths??[]),
-                datasets:[{label:'Enrollments',data:@json($saRptEnroll??[]),
+            data:{labels:<?php echo json_encode($saRptMonths??[], 15, 512) ?>,
+                datasets:[{label:'Enrollments',data:<?php echo json_encode($saRptEnroll??[], 15, 512) ?>,
                     borderColor:_SAC.blue,backgroundColor:'rgba(26,58,108,.08)',
                     borderWidth:2,pointRadius:4,tension:0.4,fill:true}]},
             options:{responsive:true,maintainAspectRatio:false,
@@ -3421,7 +3433,7 @@
         if (barEl) new Chart(barEl,{type:'bar',
             data:{labels:['Students','Teachers','Admins','Finance','Cashier'],
                 datasets:[{label:'Users',
-                    data:[{{$stats['total_students']??0}},{{$stats['total_teachers']??0}},{{($stats['admins']??0)+($stats['superadmins']??0)}},{{\App\Models\User::where('role','finance')->count()}},{{\App\Models\User::where('role','cashier')->count()}}],
+                    data:[<?php echo e($stats['total_students']??0); ?>,<?php echo e($stats['total_teachers']??0); ?>,<?php echo e(($stats['admins']??0)+($stats['superadmins']??0)); ?>,<?php echo e(\App\Models\User::where('role','finance')->count()); ?>,<?php echo e(\App\Models\User::where('role','cashier')->count()); ?>],
                     backgroundColor:[_SAC.blue,_SAC.gold,_SAC.mid,_SAC.green,_SAC.purple],
                     borderRadius:5,borderSkipped:false}]},
             options:{responsive:true,maintainAspectRatio:false,
@@ -3431,4 +3443,4 @@
     }
 </script>
 </body>
-</html>
+</html><?php /**PATH C:\Users\ron28\Desktop\ILC SYSTEM\ilc-website-system\resources\views/superadmin_dashboard.blade.php ENDPATH**/ ?>

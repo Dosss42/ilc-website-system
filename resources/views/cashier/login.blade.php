@@ -177,6 +177,17 @@
             margin-bottom: 18px;
         }
 
+        .remember-row {
+            display: flex; align-items: center; gap: 7px;
+            margin-bottom: 18px;
+        }
+        .remember-row input[type=checkbox] { accent-color: #1a3a6c; width: 16px; height: 16px; cursor: pointer; }
+        .remember-row label { font-size: 13px; color: #64748b; cursor: pointer; }
+        .forgot-link {
+            font-size: 12px; color: #2471a3; text-decoration: none; font-weight: 600;
+        }
+        .forgot-link:hover { text-decoration: underline; }
+
         .footer-note {
             text-align: center;
             color: rgba(255,255,255,.35);
@@ -243,6 +254,14 @@
                     @error('password')
                         <div style="font-size:12px;color:#dc2626;margin-top:4px;">{{ $message }}</div>
                     @enderror
+                </div>
+
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div class="remember-row">
+                        <input type="checkbox" name="remember" id="rememberMe" value="1">
+                        <label for="rememberMe">Remember me</label>
+                    </div>
+                    <a href="{{ route('password.request') }}" class="forgot-link">Forgot password?</a>
                 </div>
 
                 {{-- reCAPTCHA --}}

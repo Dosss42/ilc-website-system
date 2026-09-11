@@ -19,7 +19,7 @@ class SuperAdminController extends Controller
     /**
      * Display the superadmin dashboard with user statistics and user list.
      */
-    private const ALL_ROLES = ['superadmin', 'admin', 'finance', 'teacher', 'student'];
+    private const ALL_ROLES = ['superadmin', 'admin', 'finance', 'cashier', 'teacher', 'student'];
 
     public function dashboard(Request $request)
     {
@@ -49,6 +49,7 @@ class SuperAdminController extends Controller
             'superadmins'    => $allUsers->where('role', 'superadmin')->count(),
             'admins'         => $allUsers->where('role', 'admin')->count(),
             'finance'        => $allUsers->where('role', 'finance')->count(),
+            'cashiers'       => $allUsers->where('role', 'cashier')->count(),
             'total_teachers' => $allUsers->where('role', 'teacher')->count(),
             'total_students' => $allUsers->where('role', 'student')->count(),
             'active_users'   => $allUsers->where('is_active', true)->count(),
@@ -91,6 +92,9 @@ class SuperAdminController extends Controller
         if (!empty($filters['date'])) {
             $query->whereDate('created_at', $filters['date']);
         }
+        if (!empty($filters['role'])) {
+            $query->where('user_role', $filters['role']);
+        }
 
         return $query->limit(200)->get();
     }
@@ -104,7 +108,7 @@ class SuperAdminController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|in:superadmin,admin,finance,teacher,student',
+            'role' => 'required|in:superadmin,admin,finance,cashier,teacher,student',
             'is_active' => 'boolean',
         ]);
 
@@ -130,7 +134,7 @@ class SuperAdminController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-            'role' => 'required|in:superadmin,admin,finance,teacher,student',
+            'role' => 'required|in:superadmin,admin,finance,cashier,teacher,student',
             'is_active' => 'boolean',
         ]);
 
@@ -320,24 +324,18 @@ class SuperAdminController extends Controller
     // BACKUP & RESTORE
     // ──────────────────────────────────────────
 
+    // backupDir()/isValidBackupFilename() moved to BackupService so the
+    // manual button here and the scheduled command (backup:run) share
+    // identical logic — kept as thin wrappers so every other call site in
+    // this controller doesn't need to change.
     private function backupDir(): string
     {
-        $dir = storage_path('app/backups');
-        if (!File::exists($dir)) {
-            File::makeDirectory($dir, 0755, true);
-        }
-        return $dir;
+        return \App\Services\BackupService::backupDir();
     }
 
-    /**
-     * basename() already blocks path traversal in the three methods below,
-     * but on its own still lets a request name literally any file inside
-     * the backups directory. Belt-and-suspenders: only ever operate on
-     * something matching the exact pattern createBackup() itself generates.
-     */
     private function isValidBackupFilename(string $file): bool
     {
-        return (bool) preg_match('/^backup_\d{4}-\d{2}-\d{2}_\d{6}\.sql$/', basename($file));
+        return \App\Services\BackupService::isValidBackupFilename($file);
     }
 
     private function listBackups(): array
@@ -362,39 +360,18 @@ class SuperAdminController extends Controller
 
     public function createBackup(Request $request)
     {
-        try {
-            $db       = config('database.connections.' . config('database.default'));
-            $host     = $db['host']     ?? '127.0.0.1';
-            $port     = $db['port']     ?? 3306;
-            $user     = $db['username'] ?? 'root';
-            $pass     = $db['password'] ?? '';
-            $name     = $db['database'] ?? '';
-            $filename = 'backup_' . now()->format('Y-m-d_His') . '.sql';
-            $path     = $this->backupDir() . DIRECTORY_SEPARATOR . $filename;
+        // Delegates to BackupService so a manually-triggered backup gets the
+        // exact same secondary-drive / Google Drive copy + retention as the
+        // automatic scheduled one (backup:run) — see BACKUP_SETUP.md.
+        $result = \App\Services\BackupService::runFull();
 
-            $passPart = $pass ? '-p' . escapeshellarg($pass) : '';
-            $cmd = sprintf(
-                'mysqldump --host=%s --port=%s -u%s %s %s > %s 2>&1',
-                escapeshellarg($host),
-                escapeshellarg((string) $port),
-                escapeshellarg($user),
-                $passPart,
-                escapeshellarg($name),
-                escapeshellarg($path)
-            );
-
-            exec($cmd, $output, $code);
-
-            if ($code !== 0 || !File::exists($path) || File::size($path) < 100) {
-                File::delete($path);
-                return response()->json(['success' => false, 'message' => 'Backup failed. Check that mysqldump is available on the server.']);
-            }
-
-            ActivityLogger::log('create', 'Database backup created: ' . $filename, 'Backup');
-            return response()->json(['success' => true, 'message' => 'Backup created: ' . $filename, 'filename' => $filename]);
-        } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
-        }
+        return response()->json([
+            'success'   => $result['success'],
+            'message'   => $result['message'],
+            'filename'  => $result['filename'],
+            'secondary' => $result['secondary'],
+            'drive'     => $result['drive'],
+        ]);
     }
 
     public function downloadBackup(string $file)
@@ -444,7 +421,8 @@ class SuperAdminController extends Controller
 
             $passPart = $pass ? '-p' . escapeshellarg($pass) : '';
             $cmd = sprintf(
-                'mysql --host=%s --port=%s -u%s %s %s < %s 2>&1',
+                '%s --host=%s --port=%s -u%s %s %s < %s 2>&1',
+                escapeshellarg(\App\Services\BackupService::mysqlBin()),
                 escapeshellarg($host),
                 escapeshellarg((string) $port),
                 escapeshellarg($user),

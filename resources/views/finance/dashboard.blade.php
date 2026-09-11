@@ -147,7 +147,7 @@
 <script>
 (function(){
     const _FC={blue:'#1a3a6c',mid:'#2471a3',gold:'#c5a059',green:'#16a34a',red:'#dc2626'};
-    Chart.defaults.font.family="'Poppins',sans-serif";
+    Chart.defaults.font.family="'Open Sans',sans-serif";
     Chart.defaults.font.size=11;
 
     // Monthly collection line

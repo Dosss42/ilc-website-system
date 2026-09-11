@@ -2917,6 +2917,9 @@
                                     style="display:inline-flex;align-items:center;gap:8px;padding:12px 24px;background:#16a34a;color:#fff;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;transition:background .2s;">
                                     <i class="bi bi-box-arrow-up-right"></i> Open Payment Page
                                 </a>
+                                {{-- Filled in by pollXenditStatus() while waiting for the
+                                     payment made in the other tab to actually go through. --}}
+                                <div id="xendit-poll-status" style="display:none;margin-top:12px;padding:10px 14px;border-radius:10px;font-size:12px;font-weight:600;"></div>
                             </div>
 
                             {{-- Action buttons --}}
@@ -4617,6 +4620,7 @@
                 resultEl.style.display = 'block';
                 resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 window.open(d.invoice_url, '_blank');
+                pollXenditStatus(d.invoice_id);
             } else {
                 if (errText) errText.textContent = d.message || 'Failed to generate payment link. Please try again.';
                 errEl.style.display = 'flex';
@@ -4630,6 +4634,61 @@
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-shield-lock me-2"></i> Generate Secure Link';
         });
+    }
+
+    // ── Poll for payment completion ──
+    // The Xendit checkout opens in a brand new tab (window.open above), and
+    // Xendit's own success/failure redirect only ever lands *in that new
+    // tab* — this original tab has no built-in way to learn the payment
+    // went through. Without this, the only way to see the update is a
+    // manual reload, even though the payment already succeeded on Xendit's
+    // side and our webhook already recorded it. Poll every 5s for up to 15
+    // minutes, then give up quietly (the student can still just reload).
+    let _xenditPollTimer = null;
+    function pollXenditStatus(invoiceId) {
+        if (_xenditPollTimer) clearInterval(_xenditPollTimer);
+        const statusEl = document.getElementById('xendit-poll-status');
+        let attempts = 0;
+        const maxAttempts = 180; // 180 * 5s = 15 minutes
+
+        const tick = () => {
+            attempts++;
+            fetch('{{ route("student.payment.xendit-status") }}?invoice_id=' + encodeURIComponent(invoiceId), {
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.status === 'completed') {
+                    clearInterval(_xenditPollTimer);
+                    statusEl.style.display = 'block';
+                    statusEl.style.background = '#dcfce7';
+                    statusEl.style.color = '#166534';
+                    statusEl.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Payment confirmed! Refreshing your account…';
+                    setTimeout(() => window.location.reload(), 1800);
+                } else if (d.status === 'expired' || d.status === 'failed') {
+                    clearInterval(_xenditPollTimer);
+                    statusEl.style.display = 'block';
+                    statusEl.style.background = '#fee2e2';
+                    statusEl.style.color = '#991b1b';
+                    statusEl.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> This payment link expired or was not completed. Generate a new one if you still need to pay.';
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(_xenditPollTimer);
+                    statusEl.style.display = 'block';
+                    statusEl.style.background = '#fef3c7';
+                    statusEl.style.color = '#92400e';
+                    statusEl.innerHTML = '<i class="bi bi-clock-history me-1"></i> Still waiting on this payment — reload the page once you\'ve completed it on the other tab.';
+                } else {
+                    statusEl.style.display = 'block';
+                    statusEl.style.background = '#e0f2fe';
+                    statusEl.style.color = '#075985';
+                    statusEl.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Waiting for payment confirmation…';
+                }
+            })
+            .catch(() => { /* transient network hiccup — just try again next tick */ });
+        };
+
+        tick();
+        _xenditPollTimer = setInterval(tick, 5000);
     }
 
     function copyXenditStudentLink() {

@@ -1786,11 +1786,16 @@ class DashboardController extends Controller
     {
         $teacher = Auth::user();
 
+        // Audience is deliberately locked to 'all' — 'section'/'parents'/'teachers'
+        // were selectable here but nothing on the receiving end ever actually
+        // filtered by them (the only surface that did was an unreachable, unrouted
+        // React student portal), so offering them was a false promise of targeted
+        // delivery. Narrowed the form to match; kept broader here defensively in
+        // case any historical row still holds one of the old values.
         $request->validate([
             'title'      => 'required|string|max:255',
             'content'    => 'required|string',
-            'audience'   => 'required|in:all,section,parents,teachers',
-            'section_id' => 'nullable|exists:sections,id',
+            'audience'   => 'required|in:all',
             'category'   => 'required|in:academic,reminder,activity,general,enrollment',
         ]);
 
@@ -1799,7 +1804,7 @@ class DashboardController extends Controller
             'title'      => $request->title,
             'content'    => $request->content,
             'audience'   => $request->audience,
-            'section_id' => $request->section_id,
+            'section_id' => null,
             'category'   => $request->category,
         ]);
 

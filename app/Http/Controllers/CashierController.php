@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use App\Services\ActivityLogger;
 
 class CashierController extends Controller
 {
@@ -71,6 +72,7 @@ class CashierController extends Controller
             cache()->forget($lockKey);
             cache()->forget($unlockKey);
             Log::info('Cashier login', ['user_id' => $user->id, 'ip' => $request->ip()]);
+            ActivityLogger::log('login', $user->name . ' logged in', 'User', $user->id);
             return redirect()->intended(route('cashier.dashboard'));
         }
 
@@ -82,6 +84,9 @@ class CashierController extends Controller
     public function logout(Request $request)
     {
         $user = Auth::guard('cashier')->user();
+        if ($user) {
+            ActivityLogger::log('logout', $user->name . ' logged out', 'User', $user->id);
+        }
         Auth::guard('cashier')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
@@ -117,6 +122,8 @@ class CashierController extends Controller
         }
 
         $user->update(['password' => Hash::make($request->new_password)]);
+
+        ActivityLogger::log('password_change', $user->name . ' changed their password', 'User', $user->id);
 
         return back()->with('password_success', 'Password changed successfully!');
     }
@@ -244,6 +251,30 @@ class CashierController extends Controller
         return response()->json($txs);
     }
 
+    // ── Audit Trail (own activity only) ────────────────
+    // Deliberately scoped to the signed-in cashier's own actions, not every
+    // cashier/admin's — this is their personal accountability record, not a
+    // system-wide log (that stays a Super Admin-only view).
+    public function auditTrail(Request $request)
+    {
+        $userId = Auth::guard('cashier')->id();
+
+        $logs = \App\Models\ActivityLog::where('user_id', $userId)
+            ->latest('created_at')
+            ->limit(200)
+            ->get()
+            ->map(function ($log) {
+                return [
+                    'event_type'  => $log->event_type,
+                    'description' => $log->description,
+                    'date'        => $log->created_at?->format('M d, Y'),
+                    'time'        => $log->created_at?->format('h:i A'),
+                ];
+            });
+
+        return response()->json($logs);
+    }
+
     // ── Student Search ────────────────────────────────
 
     public function searchStudent(Request $request)
@@ -299,6 +330,12 @@ class CashierController extends Controller
             ->whereHas('enrollments', function ($qe) {
                 $qe->whereIn('status', ['approved','enrolled']);
             })
+            // Newest-enrolled first, not alphabetical — a student who just
+            // got approved should show up at the top of this list without
+            // the cashier having to search for them by name.
+            ->withMax(['enrollments as latest_enrollment_at' => function ($qe) {
+                $qe->whereIn('status', ['approved','enrolled']);
+            }], 'created_at')
             ->with(['enrollments' => function ($qe) {
                 $qe->whereIn('status', ['approved','enrolled'])->latest();
             }]);
@@ -314,7 +351,7 @@ class CashierController extends Controller
             });
         }
 
-        $students = $query->orderBy('name')->get()
+        $students = $query->orderByDesc('latest_enrollment_at')->get()
             ->map(function (User $user) {
                 $e = $user->enrollments->first();
                 return [
@@ -480,6 +517,13 @@ class CashierController extends Controller
         $enrollment->increment('payment_amount', $request->amount);
         $this->advanceEnrollmentAfterPayment($enrollment->fresh());
 
+        ActivityLogger::log(
+            'cash_payment',
+            'Recorded cash payment of ₱' . number_format($request->amount, 2) . ' (Ref: ' . $reference . ')',
+            'PaymentTransaction',
+            $transaction->id
+        );
+
         return response()->json([
             'success'     => true,
             'reference'   => $reference,
@@ -534,7 +578,7 @@ class CashierController extends Controller
 
         $invoice = $response->json();
 
-        PaymentTransaction::create([
+        $transaction = PaymentTransaction::create([
             'enrollment_id'      => $request->enrollment_id,
             'user_id'            => Enrollment::find($request->enrollment_id)->user_id,
             'payment_type'       => 'online',
@@ -549,11 +593,55 @@ class CashierController extends Controller
             'processed_at'       => now(),
         ]);
 
+        ActivityLogger::log(
+            'xendit_link_generated',
+            'Generated ' . $request->payment_method . ' payment link for ₱' . number_format($request->amount, 2) . ' — ' . $request->student_name,
+            'PaymentTransaction',
+            $transaction->id
+        );
+
         return response()->json([
             'success'     => true,
             'invoice_url' => $invoice['invoice_url'],
             'invoice_id'  => $invoice['id'],
             'expiry'      => $invoice['expiry_date'] ?? null,
+        ]);
+    }
+
+    /**
+     * Polled from the cashier's "payment link generated" panel — the actual
+     * payment usually happens on the customer's own phone (scanning the
+     * link/QR), so the cashier's screen otherwise has no way to know it went
+     * through except by manually reloading. Route is behind CashierMiddleware
+     * already, so any cashier/admin/superadmin can check any transaction —
+     * same shared-resource trust model as the rest of this internal tool.
+     *
+     * Also actively reconciles against Xendit's own API when our local copy
+     * still says "pending" — the webhook alone can only ever update this if
+     * Xendit's servers can reach this app over the public internet, which a
+     * local/APP_URL=127.0.0.1 setup with no tunnel never allows. Without
+     * this, a payment could show as completed on Xendit's own dashboard
+     * while sitting as "pending" here forever, no matter how many times the
+     * page polls or is manually reloaded.
+     */
+    public function checkXenditStatus(Request $request)
+    {
+        $request->validate(['invoice_id' => 'required|string']);
+
+        $transaction = PaymentTransaction::where('xendit_invoice_id', $request->invoice_id)->first();
+
+        if (!$transaction) {
+            return response()->json(['status' => 'not_found'], 404);
+        }
+
+        $status = \App\Services\PaymentService::reconcileXenditInvoice($transaction);
+        $transaction->refresh();
+
+        return response()->json([
+            'status'       => $status,
+            'amount'       => $transaction->amount,
+            'reference'    => $transaction->reference_number,
+            'processed_at' => $transaction->processed_at?->toIso8601String(),
         ]);
     }
 
@@ -608,27 +696,14 @@ class CashierController extends Controller
             // Idempotency guard — Xendit can and does redeliver the same "paid"
             // webhook more than once (retries on timeout / non-2xx responses).
             // Without this, a redelivery would double-credit the enrollment.
+            // (Also re-checked inside completeXenditPayment() itself, since
+            // the live-status fallback in reconcileXenditInvoice() can race
+            // with this webhook arriving at the same time.)
             if ($transaction->status === 'completed') {
                 return response()->json(['message' => 'Already processed']);
             }
 
-            $transaction->update(['status' => 'completed', 'processed_at' => now()]);
-
-            $enrollment = $transaction->enrollment;
-            if ($enrollment) {
-                $enrollment->decrement('remaining_balance', $transaction->amount);
-                $enrollment->increment('payment_amount', $transaction->amount);
-                $fresh = $enrollment->fresh();
-
-                // Create installment schedule if this is an installment plan and none exist yet
-                if (in_array($fresh->payment_option, ['B', 'C', 'D']) || $fresh->payment_type === 'installment') {
-                    \App\Services\PaymentService::createInstallments($fresh);
-                    // Reconcile: mark the correct number of months as paid based on total paid
-                    \App\Services\PaymentService::reconcileInstallmentStatuses($fresh);
-                }
-
-                $this->advanceEnrollmentAfterPayment($fresh->fresh());
-            }
+            \App\Services\PaymentService::completeXenditPayment($transaction);
 
             return response()->json(['message' => 'OK']);
         });

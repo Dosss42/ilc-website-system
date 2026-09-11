@@ -113,10 +113,13 @@
         .invalid-feedback { color:#dc2626;font-size:12px;margin-top:4px;display:block; }
 
         .remember-row {
-            display:flex;align-items:center;gap:8px;margin-bottom:18px;
+            display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:18px;
         }
+        .remember-row .check-wrap { display:flex;align-items:center;gap:8px; }
         .remember-row input[type=checkbox] { accent-color:#c5a059;width:16px;height:16px; }
         .remember-row label { font-size:13px;color:#64748b;cursor:pointer; }
+        .forgot-link { font-size:12px;color:#2471a3;text-decoration:none;font-weight:600; }
+        .forgot-link:hover { text-decoration:underline; }
 
         .back-link {
             display:flex;align-items:center;justify-content:center;gap:6px;
@@ -191,8 +194,11 @@
                 </div>
 
                 <div class="remember-row">
-                    <input type="checkbox" name="remember" id="rememberMe" value="1">
-                    <label for="rememberMe">Remember me</label>
+                    <div class="check-wrap">
+                        <input type="checkbox" name="remember" id="rememberMe" value="1">
+                        <label for="rememberMe">Remember me</label>
+                    </div>
+                    <a href="{{ route('password.request') }}" class="forgot-link">Forgot password?</a>
                 </div>
 
                 {{-- reCAPTCHA --}}

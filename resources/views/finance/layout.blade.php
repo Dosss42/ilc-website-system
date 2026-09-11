@@ -7,7 +7,7 @@
     <title>@yield('title', 'Finance Portal') - IEMELIF Learning Center</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/global-scrollbar.css">
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -31,7 +31,7 @@
             --blue-pale: #e8f0fb;
         }
 
-        * { font-family: 'Poppins', sans-serif; }
+        * { font-family: 'Open Sans', sans-serif; }
 
         body {
             background: #f5f6fa;
@@ -345,6 +345,10 @@
             <a href="{{ route('finance.reports.index') }}" class="menu-item {{ request()->routeIs('finance.reports.*') ? 'active' : '' }}">
                 <i class="bi bi-graph-up"></i>
                 Financial Reports
+            </a>
+            <a href="{{ route('finance.audit-trail') }}" class="menu-item {{ request()->routeIs('finance.audit-trail') ? 'active' : '' }}">
+                <i class="bi bi-journal-check"></i>
+                Audit Trail
             </a>
 
             <div class="menu-section">Account</div>

@@ -10,6 +10,7 @@ use App\Models\PaymentInstallment;
 use App\Models\StudentDocument;
 use App\Models\Section;
 use App\Services\PaymentService;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -18,6 +19,20 @@ use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
+    /**
+     * Id of whichever staff account actually performed the action.
+     *
+     * approvePayment/rejectPayment/processAdminPayment are reachable from
+     * BOTH an admin-side route (default 'web' guard) and a finance-portal
+     * route (finance guard) — Auth::guard('finance')->id() alone returned
+     * null every time an admin/superadmin used the admin-side route, so
+     * 'processed_by'/'reviewed_by' were silently never recorded for those.
+     */
+    private function actingStaffId(): ?int
+    {
+        return Auth::guard('finance')->id() ?? Auth::guard('web')->id();
+    }
+
     /**
      * Show finance portal dashboard
      */
@@ -633,6 +648,23 @@ class DashboardController extends Controller
     }
 
     /**
+     * Audit Trail — deliberately scoped to the signed-in finance staff's own
+     * actions, not every finance/admin's. It's their personal accountability
+     * record (proof of what they approved/rejected/processed and when), not
+     * a system-wide log — that stays a Super Admin-only view.
+     */
+    public function auditTrail(Request $request)
+    {
+        $userId = Auth::guard('finance')->id();
+
+        $logs = \App\Models\ActivityLog::where('user_id', $userId)
+            ->latest('created_at')
+            ->paginate(25);
+
+        return view('finance.audit-trail', compact('logs'));
+    }
+
+    /**
      * Approve a payment
      */
     public function approvePayment(Request $request, $id)
@@ -661,7 +693,7 @@ class DashboardController extends Controller
         try {
             $payment->update([
                 'status' => 'completed',
-                'processed_by' => Auth::guard('finance')->id(),
+                'processed_by' => $this->actingStaffId(),
                 'processed_at' => now(),
             ]);
 
@@ -812,6 +844,13 @@ class DashboardController extends Controller
                 $this->updateEnrollmentPaymentStatus($payment->enrollment);
             }
 
+            ActivityLogger::log(
+                'payment_approved',
+                'Approved payment #' . $payment->id . ' (₱' . number_format($payment->amount, 2) . ')',
+                'PaymentTransaction',
+                $payment->id
+            );
+
             // Return JSON for AJAX requests, otherwise redirect
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
@@ -843,7 +882,7 @@ class DashboardController extends Controller
 
             $document->update([
                 'status' => 'approved',
-                'reviewed_by' => Auth::guard('finance')->id(),
+                'reviewed_by' => $this->actingStaffId(),
                 'reviewed_at' => now(),
             ]);
 
@@ -890,7 +929,7 @@ class DashboardController extends Controller
                     'status' => 'completed',
                     'installment_month' => $installment ? $installment->month_name : null,
                     'installment_id' => $installment ? $installment->id : null,
-                    'processed_by' => Auth::guard('finance')->id(),
+                    'processed_by' => $this->actingStaffId(),
                     'processed_at' => now(),
                 ]);
 
@@ -932,6 +971,13 @@ class DashboardController extends Controller
             }
 
             DB::commit();
+
+            ActivityLogger::log(
+                'payment_approved',
+                'Approved payment screenshot for ' . ($enrollment->student_data['first_name'] ?? '') . ' ' . ($enrollment->student_data['last_name'] ?? '') . ' (₱' . number_format($amountPaid ?? 0, 2) . ')',
+                'StudentDocument',
+                $document->id
+            );
 
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
@@ -1007,7 +1053,7 @@ class DashboardController extends Controller
             'status'        => 'completed',
             'installment_month' => $installmentMonth,
             'installment_id' => $installment ? $installment->id : null,
-            'processed_by'  => Auth::guard('finance')->id(),
+            'processed_by'  => $this->actingStaffId(),
             'processed_at'  => now(),
         ]);
 
@@ -1058,6 +1104,14 @@ class DashboardController extends Controller
         $this->updateEnrollmentPaymentStatus($enrollment);
 
         $monthDisplay = $installmentMonth ?? ($isDownpayment ? 'Downpayment' : 'Payment');
+
+        ActivityLogger::log(
+            'walkin_payment',
+            'Recorded walk-in ' . $methodLabel . ' payment of ₱' . number_format($amountPaid, 2) . ' for ' . $monthDisplay,
+            'PaymentTransaction',
+            $payment->id
+        );
+
         return redirect()->route('finance.payments.index')
             ->with('success', 'Walk-in payment recorded for ' . $monthDisplay . ' — ₱' . number_format($amountPaid, 2) . ' via ' . $methodLabel . '. Payment is listed below.');
     }
@@ -1099,7 +1153,7 @@ class DashboardController extends Controller
                 'reference_number' => $request->payment_reference,
                 'description'   => 'Admin payment via ' . $methodLabel . ' - ₱' . number_format($amountPaid, 2) . ($request->payment_reference ? ' (Ref: ' . $request->payment_reference . ')' : ''),
                 'status'        => 'completed',
-                'processed_by'  => Auth::guard('finance')->id(),
+                'processed_by'  => $this->actingStaffId(),
                 'processed_at'  => now(),
             ]);
 
@@ -1211,6 +1265,13 @@ class DashboardController extends Controller
 
             DB::commit();
 
+            ActivityLogger::log(
+                'payment_processed',
+                'Processed ' . $methodLabel . ' payment of ₱' . number_format($amountPaid, 2) . ' for enrollment #' . $enrollment->id,
+                'PaymentTransaction',
+                $payment->id
+            );
+
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => true,
@@ -1262,7 +1323,7 @@ class DashboardController extends Controller
         $payment->update([
             'status' => 'rejected',
             'reject_reason' => $validated['reject_reason'],
-            'processed_by' => Auth::guard('finance')->id(),
+            'processed_by' => $this->actingStaffId(),
             'processed_at' => now(),
         ]);
 
@@ -1273,6 +1334,13 @@ class DashboardController extends Controller
                 'payment_transaction_id' => null,
             ]);
         }
+
+        ActivityLogger::log(
+            'payment_rejected',
+            'Rejected payment #' . $payment->id . ' — ' . $validated['reject_reason'],
+            'PaymentTransaction',
+            $payment->id
+        );
 
         // Return JSON for AJAX requests, otherwise redirect
         if ($request->ajax() || $request->wantsJson()) {
@@ -1297,9 +1365,16 @@ class DashboardController extends Controller
         $document->update([
             'status' => 'rejected',
             'reject_reason' => $validated['reject_reason'],
-            'reviewed_by' => Auth::guard('finance')->id(),
+            'reviewed_by' => $this->actingStaffId(),
             'reviewed_at' => now(),
         ]);
+
+        ActivityLogger::log(
+            'payment_rejected',
+            'Rejected payment screenshot #' . $document->id . ' — ' . $validated['reject_reason'],
+            'StudentDocument',
+            $document->id
+        );
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([

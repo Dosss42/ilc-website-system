@@ -8,6 +8,20 @@ use Illuminate\Support\Facades\Request;
 
 class ActivityLogger
 {
+    /**
+     * Resolve the currently authenticated user regardless of which guard
+     * they signed in on. Finance and Cashier staff authenticate on their
+     * own dedicated guards, not the default 'web' guard, so Auth::user()
+     * alone silently returns null for them — logging their actions with
+     * a blank user_id/user_name/user_role, or being skipped entirely.
+     */
+    public static function resolveUser()
+    {
+        return Auth::user()
+            ?? Auth::guard('finance')->user()
+            ?? Auth::guard('cashier')->user();
+    }
+
     public static function log(
         string $eventType,
         string $description,
@@ -16,7 +30,7 @@ class ActivityLogger
         array   $extra       = []
     ): void {
         try {
-            $user = Auth::user();
+            $user = self::resolveUser();
 
             ActivityLog::create([
                 'user_id'      => $user?->id,

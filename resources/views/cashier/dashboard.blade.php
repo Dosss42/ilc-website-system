@@ -7,7 +7,8 @@
     <title>Cashier Portal — ILC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    {{-- Open Sans, matching every other portal (Admin, Super Admin, Teacher, Student) --}}
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -25,7 +26,7 @@
             --topbar-h:   62px;
             --radius:     14px;
         }
-        * { font-family: 'Poppins', sans-serif; box-sizing: border-box; margin: 0; padding: 0; }
+        * { font-family: 'Open Sans', sans-serif; box-sizing: border-box; margin: 0; padding: 0; }
         body { background: #f1f5f9; min-height: 100vh; }
 
         /* ── TOPBAR ── */
@@ -76,7 +77,7 @@
         .topbar-search input {
             border: none; background: transparent; outline: none;
             font-size: 13px; color: #334155; width: 100%;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Open Sans', sans-serif;
         }
         .topbar-search input::placeholder { color: #94a3b8; }
 
@@ -173,7 +174,7 @@
             color: #fff; font-size: 13px; font-weight: 700;
             padding: 10px 14px; cursor: pointer; width: calc(100% - 28px);
             transition: background .15s, transform .1s;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Open Sans', sans-serif;
         }
         .sidebar-quick-btn:hover { background: #d4b06a; transform: translateY(-1px); }
         .sidebar-quick-btn:active { transform: translateY(0); }
@@ -192,7 +193,7 @@
             color: rgba(255,255,255,0.65);
             text-decoration: none;
             font-size: 13px; font-weight: 400;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Open Sans', sans-serif;
             transition: all 0.18s;
             border-left: 3px solid transparent;
             cursor: pointer;
@@ -392,7 +393,7 @@
             background: linear-gradient(135deg, #1a3a6c, #2471a3);
             color: #fff; border: none; border-radius: 10px;
             font-size: 13px; font-weight: 700; cursor: pointer;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Open Sans', sans-serif;
             transition: all .15s;
             box-shadow: 0 4px 12px rgba(26,58,108,.25);
         }
@@ -403,7 +404,7 @@
             background: #fff; color: #2471a3;
             border: 1.5px solid #bfdbfe; border-radius: 10px;
             font-size: 13px; font-weight: 600; cursor: pointer;
-            font-family: 'Poppins', sans-serif; transition: all .15s;
+            font-family: 'Open Sans', sans-serif; transition: all .15s;
         }
         .btn-outline-cash:hover { background: var(--blue-pale); }
 
@@ -471,7 +472,7 @@
             width: 100%; border: 1.5px solid #e2e8f0;
             border-radius: 9px; padding: 10px 13px;
             font-size: 13px; color: #1e293b;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Open Sans', sans-serif;
             background: #f8faff; outline: none; transition: all .2s;
         }
         .form-fld:focus { border-color: #2471a3; background: #fff; box-shadow: 0 0 0 3px rgba(26,58,108,.08); }
@@ -553,7 +554,7 @@
                 <div style="padding:6px 0;">
                     <form method="POST" action="{{ route('cashier.logout') }}" style="margin:0;">
                         @csrf
-                        <button type="submit" style="display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:13px;color:#dc2626;text-decoration:none;cursor:pointer;transition:background .15s;border:none;background:none;width:100%;font-family:'Poppins',sans-serif;">
+                        <button type="submit" style="display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:13px;color:#dc2626;text-decoration:none;cursor:pointer;transition:background .15s;border:none;background:none;width:100%;font-family:'Open Sans',sans-serif;">
                             <i class="bi bi-box-arrow-left" style="font-size:15px;width:18px;"></i> Log Out
                         </button>
                     </form>
@@ -638,6 +639,10 @@
     <button class="sidebar-link" data-section="collection" onclick="showSection('collection', this)">
         <span class="link-icon"><i class="bi bi-bar-chart-fill"></i></span>
         <span class="link-label">Collection Summary</span>
+    </button>
+    <button class="sidebar-link" data-section="audit" onclick="showSection('audit', this)">
+        <span class="link-icon"><i class="bi bi-journal-check"></i></span>
+        <span class="link-label">Audit Trail</span>
     </button>
 
     {{-- BOTTOM --}}
@@ -1029,7 +1034,7 @@
                         <div style="display:flex;align-items:center;gap:8px;background:#f8faff;border:1.5px solid #e2e8f0;border-radius:10px;padding:8px 14px;min-width:260px;">
                             <i class="bi bi-search" style="color:#94a3b8;font-size:14px;flex-shrink:0;"></i>
                             <input type="text" id="studentListFilter" placeholder="Filter by name, grade, ref no…"
-                                style="border:none;background:transparent;outline:none;font-size:13px;color:#334155;width:100%;font-family:'Poppins',sans-serif;"
+                                style="border:none;background:transparent;outline:none;font-size:13px;color:#334155;width:100%;font-family:'Open Sans',sans-serif;"
                                 oninput="filterStudentList(this.value)">
                         </div>
                         <button onclick="loadStudentList()" class="btn-outline-cash" style="white-space:nowrap;">
@@ -1218,7 +1223,7 @@
                         <div style="display:flex;align-items:center;background:#f8faff;border:2.5px solid #e2e8f0;border-radius:16px;overflow:hidden;transition:all .2s;" id="amountInputWrap">
                             <span style="padding:18px 8px 18px 22px;font-size:30px;font-weight:900;color:#cbd5e1;user-select:none;">₱</span>
                             <input type="number" id="paymentAmount" placeholder="0.00" step="0.01" min="0"
-                                style="flex:1;padding:18px 22px 18px 6px;font-size:32px;font-weight:900;color:#1e293b;border:none;outline:none;background:transparent;font-family:'Poppins',sans-serif;letter-spacing:-1px;"
+                                style="flex:1;padding:18px 22px 18px 6px;font-size:32px;font-weight:900;color:#1e293b;border:none;outline:none;background:transparent;font-family:'Open Sans',sans-serif;letter-spacing:-1px;"
                                 oninput="updateTransactionSummary()"
                                 onfocus="document.getElementById('amountInputWrap').style.borderColor='#2471a3';document.getElementById('amountInputWrap').style.background='#fff';document.getElementById('amountInputWrap').style.boxShadow='0 0 0 4px rgba(36,113,163,.08)';"
                                 onblur="document.getElementById('amountInputWrap').style.borderColor='#e2e8f0';document.getElementById('amountInputWrap').style.background='#f8faff';document.getElementById('amountInputWrap').style.boxShadow='none';">
@@ -1303,6 +1308,9 @@
                     </div>
                     <div style="font-size:11px;color:#64748b;margin-bottom:12px;" id="xenditLinkExpiry"></div>
                     <a id="xenditLinkOpenBtn" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:#16a34a;color:#fff;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;"><i class="bi bi-box-arrow-up-right"></i> Open Payment Page</a>
+                    {{-- Filled in by pollCashierXenditStatus() while waiting for the
+                         customer to actually complete payment on their own device. --}}
+                    <div id="xenditPollStatus" style="display:none;margin-top:12px;padding:10px 14px;border-radius:10px;font-size:12px;font-weight:600;"></div>
                 </div>
 
                 {{-- Success Banner --}}
@@ -1492,7 +1500,7 @@
                         <div style="display:flex;align-items:center;gap:8px;background:#f8faff;border:1.5px solid #e2e8f0;border-radius:10px;padding:8px 14px;min-width:260px;">
                             <i class="bi bi-search" style="color:#94a3b8;font-size:14px;flex-shrink:0;"></i>
                             <input type="text" id="lookupFilterInput" placeholder="Filter by name, grade, ref no…"
-                                style="border:none;background:transparent;outline:none;font-size:13px;color:#334155;width:100%;font-family:'Poppins',sans-serif;"
+                                style="border:none;background:transparent;outline:none;font-size:13px;color:#334155;width:100%;font-family:'Open Sans',sans-serif;"
                                 oninput="filterLookupList(this.value)">
                         </div>
                         <button onclick="loadLookupList()" class="btn-outline-cash" style="white-space:nowrap;">
@@ -1811,7 +1819,7 @@
                     <div style="display:flex;align-items:center;gap:8px;background:#f8faff;border:1.5px solid #e2e8f0;border-radius:10px;padding:8px 14px;min-width:240px;">
                         <i class="bi bi-search" style="color:#94a3b8;font-size:14px;flex-shrink:0;"></i>
                         <input type="text" id="receiptsFilter" placeholder="Search by name or reference…"
-                            style="border:none;background:transparent;outline:none;font-size:13px;color:#334155;width:100%;font-family:'Poppins',sans-serif;"
+                            style="border:none;background:transparent;outline:none;font-size:13px;color:#334155;width:100%;font-family:'Open Sans',sans-serif;"
                             oninput="filterReceipts(this.value)">
                     </div>
                     <button onclick="loadReceipts()" class="btn-outline-cash" style="white-space:nowrap;">
@@ -1915,6 +1923,59 @@
             <div class="card-box-body" style="height:220px;"><canvas id="csColBar"></canvas></div>
         </div>
         </div>{{-- /collection-content --}}
+    </div>
+
+    {{-- ── AUDIT TRAIL SECTION ── --}}
+    <div id="section-audit" style="display:none;">
+
+        {{-- Skeleton --}}
+        <div id="audit-skel" style="display:none;">
+            <div style="margin-bottom:24px;"><span class="skel" style="height:26px;width:160px;margin-bottom:8px;"></span><span class="skel" style="height:14px;width:310px;"></span></div>
+            <div class="skel-wrap">
+                <div class="skel-hdr"><div style="display:flex;align-items:center;gap:10px;"><span class="skel" style="height:18px;width:120px;"></span><span class="skel" style="height:22px;width:34px;border-radius:20px;"></span></div></div>
+                @for($i=0;$i<7;$i++)
+                <div class="skel-trow"><span class="skel" style="height:12px;width:24px;"></span><span class="skel" style="height:22px;width:110px;border-radius:6px;"></span><span class="skel" style="height:28px;flex:2;border-radius:6px;"></span><span class="skel" style="height:14px;flex:1;"></span></div>
+                @endfor
+            </div>
+        </div>
+
+        {{-- Real content --}}
+        <div id="audit-content" class="sec-content">
+        <div class="page-header">
+            <div>
+                <div class="page-title"><i class="bi bi-journal-check me-2" style="color:#2471a3;"></i>Audit Trail</div>
+                <div class="page-sub">A record of payments and actions you've performed — for your own reference and accountability.</div>
+            </div>
+        </div>
+        <div class="card-box">
+            <div class="card-box-header">
+                <div class="card-box-title">
+                    <i class="bi bi-list-check" style="color:#2471a3;"></i> My Activity
+                    <span id="auditCount" style="background:#eff6ff;color:#2471a3;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;margin-left:6px;">0</span>
+                </div>
+                <button onclick="loadAuditTrail()" class="btn-outline-cash" style="white-space:nowrap;">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Action</th>
+                            <th>Description</th>
+                            <th>Date &amp; Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="auditBody">
+                        <tr><td colspan="4" style="text-align:center;padding:48px;color:#94a3b8;">
+                            <i class="bi bi-arrow-repeat" style="font-size:28px;display:block;margin-bottom:10px;"></i>Loading activity…
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        </div>{{-- /audit-content --}}
     </div>
 
     {{-- ── SETTINGS SECTION ── --}}
@@ -2044,7 +2105,7 @@
     })();
     // ─────────────────────────────────────────────────────────────────────────
 
-    var sections = ['dashboard','process','history','lookup','daily','receipts','collection','settings'];
+    var sections = ['dashboard','process','history','lookup','daily','receipts','collection','audit','settings'];
 
     // Initialise on load — show dashboard with skeleton first
     document.addEventListener('DOMContentLoaded', function () {
@@ -2084,6 +2145,7 @@
         }
         if (name === 'daily')    { var dr = document.getElementById('dailyReportDate'); loadDailyReport(dr ? dr.value : ''); }
         if (name === 'receipts') { loadReceipts(); }
+        if (name === 'audit')    { loadAuditTrail(); }
 
         // 4. Show the section container
         var sec = document.getElementById('section-' + name);
@@ -2192,6 +2254,7 @@
     var _logoUrl        = '{{ asset("images/logo.png") }}';
     var _dailyUrl       = '{{ route("cashier.daily.report") }}';
     var _receiptsUrl    = '{{ route("cashier.receipts.list") }}';
+    var _auditUrl       = '{{ route("cashier.audit-trail") }}';
     var _cashierName    = '{{ auth("cashier")->user()->name ?? "Cashier" }}';
     var _allStudents = [];
 
@@ -2485,6 +2548,48 @@
         }));
     }
 
+    /* ── Audit Trail (own activity only) ── */
+    var _auditBadgeClass = {
+        login: 'cash', logout: 'cash',
+        cash_payment: 'cash', walkin_payment: 'cash',
+        xendit_link_generated: 'gcash', xendit_payment_completed: 'gcash',
+        password_change: 'gcash'
+    };
+    var _auditLabel = {
+        login: 'Login', logout: 'Logout',
+        cash_payment: 'Cash Payment', walkin_payment: 'Walk-in Payment',
+        xendit_link_generated: 'Xendit Link', xendit_payment_completed: 'Xendit Confirmed',
+        password_change: 'Password Change'
+    };
+
+    function loadAuditTrail() {
+        var tbody = document.getElementById('auditBody');
+        var count = document.getElementById('auditCount');
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:48px;color:#94a3b8;"><i class="bi bi-arrow-repeat" style="font-size:28px;display:block;margin-bottom:10px;"></i>Loading activity…</td></tr>';
+        fetch(_auditUrl, { credentials:'same-origin', headers:{'Accept':'application/json','X-CSRF-TOKEN':_csrfToken} })
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+            if (count) count.textContent = data.length;
+            if (!data.length) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:48px;color:#94a3b8;"><i class="bi bi-inbox" style="font-size:32px;display:block;margin-bottom:10px;"></i>No activity recorded yet.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.map(function(log,i){
+                var cls   = _auditBadgeClass[log.event_type] || 'cash';
+                var label = _auditLabel[log.event_type] || log.event_type;
+                return '<tr>'
+                    +'<td style="color:#94a3b8;">'+(i+1)+'</td>'
+                    +'<td><span class="method-pill '+cls+'">'+label+'</span></td>'
+                    +'<td style="font-size:12.5px;color:#334155;">'+log.description+'</td>'
+                    +'<td style="font-size:12px;color:#64748b;white-space:nowrap;">'+log.date+'<br><span style="font-size:10px;">'+log.time+'</span></td>'
+                    +'</tr>';
+            }).join('');
+        })
+        .catch(function(){
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:40px;color:#dc2626;">Failed to load activity. <button onclick="loadAuditTrail()" style="margin-left:6px;padding:4px 12px;background:#1a3a6c;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;">Retry</button></td></tr>';
+        });
+    }
+
     /* ── Payment Plan Selector ── */
     var _planGrade = null;
 
@@ -2574,7 +2679,7 @@
                   + '</div>';
         });
         html += '<button id="confirmPlanBtn" onclick="confirmPaymentPlan()" '
-              + 'style="display:none;width:100%;margin-top:4px;padding:12px;background:linear-gradient(135deg,#1a3a6c,#2471a3);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:\'Poppins\',sans-serif;">'
+              + 'style="display:none;width:100%;margin-top:4px;padding:12px;background:linear-gradient(135deg,#1a3a6c,#2471a3);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:\'Open Sans\',sans-serif;">'
               + '<i class="bi bi-check-circle-fill me-2"></i>Confirm Plan &amp; Continue</button>';
         list.innerHTML = html;
     }
@@ -2799,6 +2904,14 @@
                     + '</button>';
             }).join('');
             qRow.style.display = 'block';
+            // Auto-fill the highest-priority option (Downpayment, else Monthly,
+            // else Full Balance — same order the buttons above are built in)
+            // instead of making the cashier click it themselves. Typing an
+            // amount by hand never set the payment *type*, which is what was
+            // silently causing "please select a payment type" on Generate
+            // Payment Link even though an amount and method were both set.
+            // The buttons stay fully clickable to override this default.
+            quickFillAmount(btns[0].amount, btns[0].type, qBtns.firstElementChild);
         } else {
             qRow.style.display = 'none';
         }
@@ -3006,6 +3119,7 @@
                 }
                 document.getElementById('xenditLinkResult').style.display = 'block';
                 window.open(data.invoice_url, '_blank');
+                pollCashierXenditStatus(data.invoice_id);
             } else {
                 alert('❌ ' + (data.message || 'Failed to generate link.'));
             }
@@ -3015,6 +3129,59 @@
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-link-45deg" style="font-size:20px;"></i><span id="processBtnLabel">Generate Payment Link</span>';
         });
+    }
+
+    // ── Poll for payment completion ──
+    // The customer usually pays this link on their own phone, not the
+    // cashier's screen — so without this, the cashier's page has no way to
+    // know it went through except manually reloading, even though the
+    // payment already succeeded on Xendit's side. Poll every 5s for up to
+    // 15 minutes, then give up quietly.
+    let _cashierXenditPollTimer = null;
+    function pollCashierXenditStatus(invoiceId) {
+        if (_cashierXenditPollTimer) clearInterval(_cashierXenditPollTimer);
+        var statusEl = document.getElementById('xenditPollStatus');
+        var attempts = 0;
+        var maxAttempts = 180; // 180 * 5s = 15 minutes
+
+        function tick() {
+            attempts++;
+            fetch('/cashier/payment/xendit-status?invoice_id=' + encodeURIComponent(invoiceId), {
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.status === 'completed') {
+                    clearInterval(_cashierXenditPollTimer);
+                    statusEl.style.display = 'block';
+                    statusEl.style.background = '#dcfce7';
+                    statusEl.style.color = '#166534';
+                    statusEl.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Payment confirmed! Refreshing…';
+                    setTimeout(function() { window.location.reload(); }, 1800);
+                } else if (d.status === 'expired' || d.status === 'failed') {
+                    clearInterval(_cashierXenditPollTimer);
+                    statusEl.style.display = 'block';
+                    statusEl.style.background = '#fee2e2';
+                    statusEl.style.color = '#991b1b';
+                    statusEl.innerHTML = '<i class="bi bi-x-circle-fill me-1"></i> This payment link expired or was not completed.';
+                } else if (attempts >= maxAttempts) {
+                    clearInterval(_cashierXenditPollTimer);
+                    statusEl.style.display = 'block';
+                    statusEl.style.background = '#fef3c7';
+                    statusEl.style.color = '#92400e';
+                    statusEl.innerHTML = '<i class="bi bi-clock-history me-1"></i> Still waiting on this payment — reload once the customer confirms.';
+                } else {
+                    statusEl.style.display = 'block';
+                    statusEl.style.background = '#e0f2fe';
+                    statusEl.style.color = '#075985';
+                    statusEl.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Waiting for payment confirmation…';
+                }
+            })
+            .catch(function() { /* transient network hiccup — just try again next tick */ });
+        }
+
+        tick();
+        _cashierXenditPollTimer = setInterval(tick, 5000);
     }
 
     function copyXenditLink() {
@@ -3264,7 +3431,7 @@
 
     // ══ Chart.js ══
     const _CsC = {blue:'#1a3a6c',mid:'#2471a3',gold:'#c5a059',green:'#16a34a',red:'#dc2626',gray:'#94a3b8'};
-    Chart.defaults.font.family = "'Poppins',sans-serif";
+    Chart.defaults.font.family = "'Open Sans',sans-serif";
     Chart.defaults.font.size   = 11;
 
     // Dashboard charts — lazy init (only after section is visible so Chart.js can measure canvas)
