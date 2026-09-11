@@ -18,7 +18,18 @@ return new class extends Migration
         // Step 2: Drop the unique index
         DB::statement('ALTER TABLE teacher_assignments DROP INDEX teacher_assignment_unique');
 
-        // Step 3: Also drop the leftover subject_id index if it exists
+        // Step 3: Also drop the leftover subject_id index if it exists.
+        // On a fresh migrate (new install, disaster-recovery rebuild, or a
+        // test database), the FK constraint of the same name still exists
+        // at this point (MySQL auto-names it after the index), and MySQL
+        // refuses to drop an index a foreign key still depends on — drop
+        // the FK first. Guarded because on an already-migrated database
+        // (this migration already ran there) that FK is long gone.
+        try {
+            DB::statement('ALTER TABLE teacher_assignments DROP FOREIGN KEY teacher_assignments_subject_id_foreign');
+        } catch (\Throwable $e) {
+            // FK doesn't exist — nothing to drop, continue.
+        }
         DB::statement('ALTER TABLE teacher_assignments DROP INDEX teacher_assignments_subject_id_foreign');
 
         // Step 4: Make subject_id nullable

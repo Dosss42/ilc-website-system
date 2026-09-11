@@ -1,8 +1,6 @@
-@extends('finance.layout')
+<?php $__env->startSection('title', 'Financial Reports'); ?>
 
-@section('title', 'Financial Reports')
-
-@section('styles')
+<?php $__env->startSection('styles'); ?>
 <style>
     .content-card {
         background: #fff;
@@ -123,9 +121,9 @@
         margin-top: 20px;
     }
 </style>
-@endsection
+<?php $__env->stopSection(); ?>
 
-@section('skeleton')
+<?php $__env->startSection('skeleton'); ?>
 <div class="skel skel-header-title"></div>
 <div class="skel-card">
     <div style="display:flex;gap:12px;">
@@ -157,13 +155,13 @@
         <div class="skel skel-chart" style="height:180px;"></div>
     </div>
 </div>
-@endsection
+<?php $__env->stopSection(); ?>
 
-@section('content')
-@php
+<?php $__env->startSection('content'); ?>
+<?php
     $reportTypeLabels = ['daily' => 'Daily', 'weekly' => 'Weekly', 'monthly' => 'Monthly', 'yearly' => 'Yearly'];
     $reportTypeLabel  = $reportTypeLabels[$reportType] ?? 'Daily';
-@endphp
+?>
 <div class="page-header no-print">
     <h1 class="page-title">Financial Reports</h1>
     <button type="button" class="btn-filter" onclick="window.print()">
@@ -174,15 +172,15 @@
 <!-- Report Filters -->
 <div class="content-card no-print">
     <div class="card-body">
-        <form method="GET" action="{{ route('finance.reports.index') }}" class="filters">
+        <form method="GET" action="<?php echo e(route('finance.reports.index')); ?>" class="filters">
             <select name="type" class="filter-input">
-                <option value="daily" {{ $reportType === 'daily' ? 'selected' : '' }}>Daily Report</option>
-                <option value="weekly" {{ $reportType === 'weekly' ? 'selected' : '' }}>Weekly Report</option>
-                <option value="monthly" {{ $reportType === 'monthly' ? 'selected' : '' }}>Monthly Report</option>
-                <option value="yearly" {{ $reportType === 'yearly' ? 'selected' : '' }}>Yearly Report</option>
+                <option value="daily" <?php echo e($reportType === 'daily' ? 'selected' : ''); ?>>Daily Report</option>
+                <option value="weekly" <?php echo e($reportType === 'weekly' ? 'selected' : ''); ?>>Weekly Report</option>
+                <option value="monthly" <?php echo e($reportType === 'monthly' ? 'selected' : ''); ?>>Monthly Report</option>
+                <option value="yearly" <?php echo e($reportType === 'yearly' ? 'selected' : ''); ?>>Yearly Report</option>
             </select>
-            <input type="date" name="date_from" class="filter-input" value="{{ $dateFrom }}" placeholder="From Date">
-            <input type="date" name="date_to" class="filter-input" value="{{ $dateTo }}" placeholder="To Date">
+            <input type="date" name="date_from" class="filter-input" value="<?php echo e($dateFrom); ?>" placeholder="From Date">
+            <input type="date" name="date_to" class="filter-input" value="<?php echo e($dateTo); ?>" placeholder="To Date">
             <button type="submit" class="btn-filter">
                 <i class="bi bi-search"></i> Generate Report
             </button>
@@ -191,8 +189,8 @@
 </div>
 
 <div class="print-only" style="display:none;">
-    <h2>{{ $reportTypeLabel }} Financial Report</h2>
-    <p>{{ \Carbon\Carbon::parse($dateFrom)->format('M d, Y') }} — {{ \Carbon\Carbon::parse($dateTo)->format('M d, Y') }}</p>
+    <h2><?php echo e($reportTypeLabel); ?> Financial Report</h2>
+    <p><?php echo e(\Carbon\Carbon::parse($dateFrom)->format('M d, Y')); ?> — <?php echo e(\Carbon\Carbon::parse($dateTo)->format('M d, Y')); ?></p>
 </div>
 
 <!-- Summary Statistics -->
@@ -202,7 +200,7 @@
             <div class="stat-icon" style="background: #e3f2fd; color: #1976d2;">
                 <i class="bi bi-credit-card"></i>
             </div>
-            <div class="stat-value">{{ $reportData['total_payments'] ?? 0 }}</div>
+            <div class="stat-value"><?php echo e($reportData['total_payments'] ?? 0); ?></div>
             <div class="stat-label">Total Payments</div>
         </div>
     </div>
@@ -211,7 +209,7 @@
             <div class="stat-icon" style="background: #e8f5e9; color: #2e7d32;">
                 <i class="bi bi-cash-stack"></i>
             </div>
-            <div class="stat-value">{{ $reportData['payments_by_method']['cash'] ?? 0 }}</div>
+            <div class="stat-value"><?php echo e($reportData['payments_by_method']['cash'] ?? 0); ?></div>
             <div class="stat-label">Cash Payments</div>
         </div>
     </div>
@@ -220,7 +218,7 @@
             <div class="stat-icon" style="background: #fff3e0; color: #e65100;">
                 <i class="bi bi-phone"></i>
             </div>
-            <div class="stat-value">{{ $reportData['payments_by_method']['gcash'] ?? 0 }}</div>
+            <div class="stat-value"><?php echo e($reportData['payments_by_method']['gcash'] ?? 0); ?></div>
             <div class="stat-label">GCash Payments</div>
         </div>
     </div>
@@ -229,8 +227,8 @@
             <div class="stat-icon" style="background: #f3e5f5; color: #6a1b9a;">
                 <i class="bi bi-calendar-check"></i>
             </div>
-            <div class="stat-value">{{ count($reportData['daily_breakdown'] ?? []) }}</div>
-            <div class="stat-label">Active {{ $reportTypeLabel }} Periods</div>
+            <div class="stat-value"><?php echo e(count($reportData['daily_breakdown'] ?? [])); ?></div>
+            <div class="stat-label">Active <?php echo e($reportTypeLabel); ?> Periods</div>
         </div>
     </div>
 </div>
@@ -240,7 +238,7 @@
     <div class="card-header">
         <h3 class="card-title">
             <i class="bi bi-table" style="color: var(--gold);"></i>
-            {{ $reportTypeLabel }} Payment Breakdown
+            <?php echo e($reportTypeLabel); ?> Payment Breakdown
         </h3>
     </div>
     <div class="card-body" style="padding: 0;">
@@ -254,32 +252,33 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse($reportData['daily_breakdown'] ?? [] as $period)
+                <?php $__empty_1 = true; $__currentLoopData = $reportData['daily_breakdown'] ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $period): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                     <tr>
-                        <td>{{ $period->period_label }}</td>
+                        <td><?php echo e($period->period_label); ?></td>
                         <td style="font-weight: 600; color: var(--blue);">
-                            {{ $period->count }} payments
+                            <?php echo e($period->count); ?> payments
                         </td>
                         <td style="font-weight: 600; color: #2e7d32;">
-                            ₱{{ number_format($period->total_amount, 2) }}
+                            ₱<?php echo e(number_format($period->total_amount, 2)); ?>
+
                         </td>
                         <td>
-                            @if($period->count > 10)
+                            <?php if($period->count > 10): ?>
                                 <span style="color: #28a745; font-weight: 600;">
                                     <i class="bi bi-graph-up-arrow"></i> High Activity
                                 </span>
-                            @elseif($period->count > 5)
+                            <?php elseif($period->count > 5): ?>
                                 <span style="color: #ffc107; font-weight: 600;">
                                     <i class="bi bi-graph-up"></i> Moderate
                                 </span>
-                            @else
+                            <?php else: ?>
                                 <span style="color: #6c757d;">
                                     <i class="bi bi-dash-circle"></i> Low
                                 </span>
-                            @endif
+                            <?php endif; ?>
                         </td>
                     </tr>
-                @empty
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                     <tr>
                         <td colspan="4" style="text-align: center; padding: 60px; color: #666;">
                             <i class="bi bi-inbox" style="font-size: 64px; color: #ddd; display: block; margin-bottom: 16px;"></i>
@@ -287,47 +286,47 @@
                             <p>No payment records found for the selected date range.</p>
                         </td>
                     </tr>
-                @endforelse
+                <?php endif; ?>
             </tbody>
         </table>
     </div>
 </div>
 
 <!-- Charts Row -->
-@php
+<?php
     $cashCount  = $reportData['payments_by_method']['cash']  ?? 0;
     $gcashCount = $reportData['payments_by_method']['gcash'] ?? 0;
     $methodTotal = $cashCount + $gcashCount;
     $dailyLabels  = collect($reportData['daily_breakdown'] ?? [])->pluck('period_label')->reverse()->values();
     $dailyCounts  = collect($reportData['daily_breakdown'] ?? [])->pluck('count')->reverse()->values();
-@endphp
+?>
 
 <div class="row mb-4">
-    {{-- Daily Activity Bar Chart --}}
+    
     <div class="col-lg-8 mb-4">
         <div class="content-card h-100">
             <div class="card-header">
                 <h3 class="card-title">
                     <i class="bi bi-bar-chart-fill" style="color: var(--gold);"></i>
-                    {{ $reportTypeLabel }} Payment Activity
+                    <?php echo e($reportTypeLabel); ?> Payment Activity
                 </h3>
             </div>
             <div class="card-body">
-                @if(count($reportData['daily_breakdown'] ?? []) > 0)
+                <?php if(count($reportData['daily_breakdown'] ?? []) > 0): ?>
                     <div class="chart-container">
                         <canvas id="dailyChart"></canvas>
                     </div>
-                @else
+                <?php else: ?>
                     <div style="text-align:center; padding:60px 20px; color:#aaa;">
                         <i class="bi bi-bar-chart" style="font-size:48px; display:block; margin-bottom:12px;"></i>
                         No activity data for selected period
                     </div>
-                @endif
+                <?php endif; ?>
             </div>
         </div>
     </div>
 
-    {{-- Payment Method Doughnut Chart --}}
+    
     <div class="col-lg-4 mb-4">
         <div class="content-card h-100">
             <div class="card-header">
@@ -337,33 +336,33 @@
                 </h3>
             </div>
             <div class="card-body d-flex flex-column align-items-center justify-content-center">
-                @if($methodTotal > 0)
+                <?php if($methodTotal > 0): ?>
                     <div style="max-width:220px; width:100%;">
                         <canvas id="methodChart"></canvas>
                     </div>
                     <div class="d-flex gap-4 mt-3" style="font-size:13px;">
-                        <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#2e7d32;margin-right:5px;"></span>Cash ({{ $cashCount }})</span>
-                        <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#1976d2;margin-right:5px;"></span>GCash ({{ $gcashCount }})</span>
+                        <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#2e7d32;margin-right:5px;"></span>Cash (<?php echo e($cashCount); ?>)</span>
+                        <span><span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#1976d2;margin-right:5px;"></span>GCash (<?php echo e($gcashCount); ?>)</span>
                     </div>
-                @else
+                <?php else: ?>
                     <div style="text-align:center; padding:40px 20px; color:#aaa;">
                         <i class="bi bi-pie-chart" style="font-size:48px; display:block; margin-bottom:12px;"></i>
                         No payment data
                     </div>
-                @endif
+                <?php endif; ?>
             </div>
         </div>
     </div>
 </div>
-@endsection
+<?php $__env->stopSection(); ?>
 
-@section('scripts')
+<?php $__env->startSection('scripts'); ?>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-@if(count($reportData['daily_breakdown'] ?? []) > 0)
+<?php if(count($reportData['daily_breakdown'] ?? []) > 0): ?>
 (function() {
-    var labels = @json($dailyLabels);
-    var counts = @json($dailyCounts);
+    var labels = <?php echo json_encode($dailyLabels, 15, 512) ?>;
+    var counts = <?php echo json_encode($dailyCounts, 15, 512) ?>;
     new Chart(document.getElementById('dailyChart'), {
         type: 'bar',
         data: {
@@ -388,16 +387,16 @@
         }
     });
 })();
-@endif
+<?php endif; ?>
 
-@if($methodTotal > 0)
+<?php if($methodTotal > 0): ?>
 (function() {
     new Chart(document.getElementById('methodChart'), {
         type: 'doughnut',
         data: {
             labels: ['Cash', 'GCash'],
             datasets: [{
-                data: [{{ $cashCount }}, {{ $gcashCount }}],
+                data: [<?php echo e($cashCount); ?>, <?php echo e($gcashCount); ?>],
                 backgroundColor: ['#2e7d32', '#1976d2'],
                 borderWidth: 2,
                 borderColor: '#fff',
@@ -410,7 +409,7 @@
                 tooltip: {
                     callbacks: {
                         label: function(ctx) {
-                            var pct = Math.round(ctx.parsed / {{ $methodTotal }} * 100);
+                            var pct = Math.round(ctx.parsed / <?php echo e($methodTotal); ?> * 100);
                             return ctx.label + ': ' + ctx.parsed + ' (' + pct + '%)';
                         }
                     }
@@ -420,6 +419,8 @@
         }
     });
 })();
-@endif
+<?php endif; ?>
 </script>
-@endsection
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('finance.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Users\ron28\Desktop\ILC SYSTEM\ilc-website-system\resources\views/finance/reports.blade.php ENDPATH**/ ?>

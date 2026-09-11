@@ -188,6 +188,10 @@ Route::middleware(['auth', 'superadmin'])->prefix('superadmin')->name('superadmi
         Route::post('/{user}/reset-password', [SuperAdminController::class, 'resetPassword'])->name('reset-password');
     });
 
+    // System Logs
+    Route::get('/logs/more',   [SuperAdminController::class, 'loadMoreLogs'])->name('logs.more');
+    Route::get('/logs/export', [SuperAdminController::class, 'exportLogs'])->name('logs.export');
+
     // Backup & Restore
     Route::post('/backup/create',          [SuperAdminController::class, 'createBackup'])->name('backup.create');
     Route::get('/backup/download/{file}',  [SuperAdminController::class, 'downloadBackup'])->name('backup.download');
@@ -393,9 +397,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 });
 
 // ─────────────────────────────────────────
-// PAYMENT MANAGEMENT (Auth only - accessible from admin dashboard)
+// PAYMENT MANAGEMENT (accessible from admin dashboard)
+// Was only 'auth' — any logged-in web-guard user, including a student,
+// could approve/reject/delete ANY payment transaction. Confirmed exploitable
+// (a student approving their own unpaid transaction) before being fixed here.
 // ─────────────────────────────────────────
-Route::middleware(['auth'])->prefix('admin/payments')->name('admin.payments.')->group(function () {
+Route::middleware(['auth', 'admin'])->prefix('admin/payments')->name('admin.payments.')->group(function () {
     Route::get('/{payment}', [\App\Http\Controllers\Finance\DashboardController::class, 'paymentDetails'])->name('details');
     Route::post('/{payment}/approve', [\App\Http\Controllers\Finance\DashboardController::class, 'approvePayment'])->name('approve');
     Route::post('/{payment}/reject', [\App\Http\Controllers\Finance\DashboardController::class, 'rejectPayment'])->name('reject');
@@ -410,18 +417,19 @@ Route::middleware(['auth'])->prefix('admin/payments')->name('admin.payments.')->
 Route::middleware(['auth:web,finance,cashier'])->get('/documents/{document}/view', [\App\Http\Controllers\Finance\DashboardController::class, 'viewDocument'])->name('documents.view');
 
 // ─────────────────────────────────────────
-// PAYMENT APPROVAL ROUTES (Auth only - for admin dashboard)
+// PAYMENT APPROVAL ROUTES (for admin dashboard) — same missing-role-check
+// issue as above, fixed the same way.
 // ─────────────────────────────────────────
-Route::middleware(['auth'])->prefix('payments')->name('payments.')->group(function () {
+Route::middleware(['auth', 'admin'])->prefix('payments')->name('payments.')->group(function () {
     Route::get('/test', function () { return response()->json(['ok' => true]); })->name('test');
     Route::post('/{id}/approve', [\App\Http\Controllers\Finance\DashboardController::class, 'approvePayment'])->name('approve');
     Route::post('/{id}/reject', [\App\Http\Controllers\Finance\DashboardController::class, 'rejectPayment'])->name('reject');
 });
 
 // ─────────────────────────────────────────
-// ADMIN PAYMENT PROCESSING (Auth only - for walk-in payments)
+// ADMIN PAYMENT PROCESSING (for walk-in payments) — same fix.
 // ─────────────────────────────────────────
-Route::middleware(['auth'])->prefix('admin/enrollments')->name('admin.enrollments.')->group(function () {
+Route::middleware(['auth', 'admin'])->prefix('admin/enrollments')->name('admin.enrollments.')->group(function () {
     Route::post('/{enrollment}/payment', [\App\Http\Controllers\Finance\DashboardController::class, 'processAdminPayment'])->name('payment');
 });
 
@@ -554,7 +562,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin/finance-users')->name('admin
 // ─────────────────────────────────────────
 // TEACHER DASHBOARD
 // ─────────────────────────────────────────
-Route::middleware(['auth', 'maintenance'])->prefix('teacher')->name('teacher.')->group(function () {
+Route::middleware(['auth', 'teacher', 'maintenance'])->prefix('teacher')->name('teacher.')->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\Teacher\DashboardController::class, 'index'])->name('dashboard');
 
     // My Students — grade management

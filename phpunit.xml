@@ -23,10 +23,32 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
+        <!--
+            This app relies heavily on MySQL-specific SQL (YEARWEEK(),
+            DATE_FORMAT(), ENUM columns, JSON columns queried with MySQL
+            JSON functions) throughout controllers and services. Testing
+            against SQLite's in-memory driver would produce false failures
+            unrelated to real bugs (different date functions, no YEARWEEK,
+            etc.), so tests run against a real, separate MySQL database
+            instead — isolated from the real app data by RefreshDatabase
+            (migrated fresh, wrapped in a rolled-back transaction per test).
+        -->
+        <env name="DB_CONNECTION" value="mysql"/>
+        <env name="DB_HOST" value="127.0.0.1"/>
+        <env name="DB_PORT" value="3306"/>
+        <env name="DB_DATABASE" value="ilc_system_test"/>
+        <env name="DB_USERNAME" value="root"/>
+        <env name="DB_PASSWORD" value=""/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
+        <!-- Disable reCAPTCHA in tests — RecaptchaService::isEnabled() checks
+             this site key, so leaving it blank cleanly bypasses the "I'm not
+             a robot" check for every login test without touching app code. -->
+        <env name="RECAPTCHA_SITE_KEY" value=""/>
+        <!-- Dummy Xendit key so PaymentService's empty-key guard doesn't
+             short-circuit before Http::fake() ever gets a chance to run. -->
+        <env name="XENDIT_SECRET_KEY" value="xnd_test_dummy_key_for_tests"/>
+        <env name="XENDIT_WEBHOOK_TOKEN" value="test_webhook_token"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>

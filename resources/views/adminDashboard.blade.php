@@ -14549,7 +14549,7 @@ function openWalkInEnrollmentModal() {
             payment_action:  'plan-only'    // tells controller not to touch payment_amount
         };
 
-        fetch(`/finance/enrollments/${enrollmentId}/payment`, {
+        fetch(`/admin/enrollments/${enrollmentId}/payment`, {
 
             method: 'POST',
 
@@ -15224,7 +15224,7 @@ function openWalkInEnrollmentModal() {
 
         
 
-        fetch(`/finance/enrollments/${enrollmentId}/payment`, {
+        fetch(`/admin/enrollments/${enrollmentId}/payment`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             credentials: 'same-origin',

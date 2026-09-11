@@ -76,7 +76,7 @@ class SuperAdminController extends Controller
     /**
      * Get system logs from the activity_logs table.
      */
-    private function getSystemLogs(array $filters = [])
+    private function buildLogsQuery(array $filters = [])
     {
         $query = ActivityLog::orderByDesc('created_at');
 
@@ -96,7 +96,77 @@ class SuperAdminController extends Controller
             $query->where('user_role', $filters['role']);
         }
 
-        return $query->limit(200)->get();
+        return $query;
+    }
+
+    private function getSystemLogs(array $filters = [])
+    {
+        return $this->buildLogsQuery($filters)->limit(200)->get();
+    }
+
+    /**
+     * "Load more" for the System Logs table — the table only ever renders
+     * the latest 200 rows server-side (kept small so the page itself loads
+     * fast); this lets the same client-side filters page further back
+     * instead of silently capping history at 200 with no way to see more.
+     */
+    public function loadMoreLogs(Request $request)
+    {
+        $offset = max(0, (int) $request->input('offset', 200));
+        $logs = $this->buildLogsQuery([
+            'type'   => $request->input('log_type'),
+            'search' => $request->input('log_search'),
+            'date'   => $request->input('log_date'),
+            'role'   => $request->input('log_role'),
+        ])->skip($offset)->limit(200)->get();
+
+        return response()->json([
+            'logs' => $logs->map(fn($log) => [
+                'event_type'  => $log->event_type,
+                'description' => $log->description,
+                'user_name'   => $log->user_name,
+                'user_role'   => $log->user_role,
+                'ip_address'  => $log->ip_address,
+                'created_at'  => $log->created_at?->format('M d, Y h:i A'),
+                'date_iso'    => $log->created_at?->toDateString(),
+            ]),
+            'has_more' => $logs->count() === 200,
+        ]);
+    }
+
+    /**
+     * Real CSV export — the "Export Logs" button used to be a dead `href="#"`
+     * link. Exports every row matching the current filters, not just the
+     * 200 shown on screen.
+     */
+    public function exportLogs(Request $request)
+    {
+        $logs = $this->buildLogsQuery([
+            'type'   => $request->input('log_type'),
+            'search' => $request->input('log_search'),
+            'date'   => $request->input('log_date'),
+            'role'   => $request->input('log_role'),
+        ])->get();
+
+        ActivityLogger::log('update', 'System logs exported (' . $logs->count() . ' rows)', 'ActivityLog');
+
+        $filename = 'activity_logs_' . now()->format('Y-m-d_His') . '.csv';
+
+        return response()->streamDownload(function () use ($logs) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['Date & Time', 'Event Type', 'Description', 'User', 'Role', 'IP Address']);
+            foreach ($logs as $log) {
+                fputcsv($out, [
+                    $log->created_at?->format('Y-m-d H:i:s'),
+                    $log->event_type,
+                    $log->description,
+                    $log->user_name ?? 'System',
+                    $log->user_role ?? '',
+                    $log->ip_address ?? '',
+                ]);
+            }
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv']);
     }
 
     /**

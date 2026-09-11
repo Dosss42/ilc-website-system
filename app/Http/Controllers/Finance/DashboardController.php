@@ -1656,19 +1656,46 @@ class DashboardController extends Controller
         $query = PaymentTransaction::whereIn('status', ['completed', 'approved'])
             ->whereBetween('updated_at', [$dateFrom, $dateTo . ' 23:59:59']);
 
+        // The report "type" (daily/weekly/monthly/yearly) used to be accepted
+        // by the dropdown but never actually used here — every option
+        // produced the exact same day-by-day breakdown. Group by the actual
+        // requested period instead.
+        [$dateExpr, $periodFormat] = match ($type) {
+            'weekly'  => ["YEARWEEK(updated_at, 3)", 'W'],   // ISO week
+            'monthly' => ["DATE_FORMAT(updated_at, '%Y-%m')", 'M'],
+            'yearly'  => ["YEAR(updated_at)", 'Y'],
+            default   => ["DATE(updated_at)", 'D'],          // daily
+        };
+
+        $breakdown = (clone $query)
+            ->select(
+                DB::raw($dateExpr . ' as period_key'),
+                DB::raw('MIN(updated_at) as period_start'),
+                DB::raw('COUNT(*) as count'),
+                DB::raw('COALESCE(SUM(amount), 0) as total_amount')
+            )
+            ->groupBy('period_key')
+            ->orderBy('period_key', 'desc')
+            ->get()
+            ->map(function ($row) use ($periodFormat) {
+                $date = \Carbon\Carbon::parse($row->period_start);
+                $row->period_label = match ($periodFormat) {
+                    'W' => 'Week of ' . $date->startOfWeek()->format('M d, Y'),
+                    'M' => $date->format('F Y'),
+                    'Y' => $date->format('Y'),
+                    default => $date->format('F d, Y'),
+                };
+                return $row;
+            });
+
         return [
+            'report_type' => $type,
             'total_payments' => $query->count(),
             'payments_by_method' => [
                 'gcash' => (clone $query)->where('payment_method', 'gcash')->count(),
                 'cash' => (clone $query)->where('payment_method', 'cash')->count(),
             ],
-            'daily_breakdown' => $query->select(
-                DB::raw('DATE(updated_at) as date'),
-                DB::raw('COUNT(*) as count')
-            )
-                ->groupBy('date')
-                ->orderBy('date', 'desc')
-                ->get(),
+            'daily_breakdown' => $breakdown,
         ];
     }
 

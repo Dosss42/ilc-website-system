@@ -426,10 +426,6 @@
         }
         .perm-row:last-child { border-bottom: none; }
         .perm-row-name { font-size: 13px; color: var(--text); }
-        .perm-checks { display: flex; gap: 20px; }
-        .perm-check { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-        .perm-check label { font-size: 10px; color: var(--muted); font-weight: 600; text-transform: uppercase; }
-        .perm-check input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--blue); }
 
         /* PROGRESS */
         .prog-bar-wrap { background: var(--bg); border-radius: 20px; height: 8px; overflow: hidden; margin-top: 6px; }
@@ -1015,11 +1011,15 @@
         <div class="section-header">
             <div>
                 <h1>Roles &amp; Permissions</h1>
-                <p>Define access levels for each role in the system.</p>
+                <p>What each role can actually access — a reference, not a configuration screen.</p>
             </div>
-            <a href="#" class="btn-dash btn-primary">
-                <i class="bi bi-plus-lg"></i> Add Role
-            </a>
+        </div>
+
+        <div class="content-card mb-4" style="border-left:4px solid var(--blue);">
+            <div class="p-3" style="font-size:12.5px;color:var(--muted);display:flex;gap:10px;align-items:flex-start;">
+                <i class="bi bi-info-circle-fill" style="color:var(--blue);font-size:16px;flex-shrink:0;margin-top:1px;"></i>
+                <span>This page used to show editable Allow/Deny checkboxes that didn't actually save anywhere. Access levels in this system are enforced directly in code (route middleware and controller checks) for reliability — this page now shows what's <strong>actually</strong> true for each role, so it can't say something that isn't real.</span>
+            </div>
         </div>
 
         <div class="row g-4">
@@ -1034,25 +1034,39 @@
                                 <span class="role-badge superadmin ms-auto">Full Access</span>
                             </div>
                         </div>
-                        <div class="perm-module" style="cursor:pointer;" onclick="selectRole('admin')">
+                        <div id="role-admin" class="perm-module" style="cursor:pointer;" onclick="selectRole('admin')">
                             <div class="perm-module-header">
                                 <i class="bi bi-shield-fill" style="color:var(--blue);"></i>
                                 <span>Admin / Registrar</span>
                                 <span class="role-badge admin ms-auto">Admin</span>
                             </div>
                         </div>
-                        <div class="perm-module" style="cursor:pointer;" onclick="selectRole('teacher')">
+                        <div id="role-finance" class="perm-module" style="cursor:pointer;" onclick="selectRole('finance')">
+                            <div class="perm-module-header">
+                                <i class="bi bi-shield-lock-fill" style="color:#2471a3;"></i>
+                                <span>Finance</span>
+                                <span class="role-badge teacher ms-auto">Limited</span>
+                            </div>
+                        </div>
+                        <div id="role-cashier" class="perm-module" style="cursor:pointer;" onclick="selectRole('cashier')">
+                            <div class="perm-module-header">
+                                <i class="bi bi-cash-coin" style="color:#b45309;"></i>
+                                <span>Cashier</span>
+                                <span class="role-badge teacher ms-auto">Limited</span>
+                            </div>
+                        </div>
+                        <div id="role-teacher" class="perm-module" style="cursor:pointer;" onclick="selectRole('teacher')">
                             <div class="perm-module-header">
                                 <i class="bi bi-shield-half" style="color:var(--green);"></i>
                                 <span>Teacher</span>
                                 <span class="role-badge teacher ms-auto">Limited</span>
                             </div>
                         </div>
-                        <div class="perm-module" style="cursor:pointer;" onclick="selectRole('student')">
+                        <div id="role-student" class="perm-module" style="cursor:pointer;" onclick="selectRole('student')">
                             <div class="perm-module-header">
                                 <i class="bi bi-shield" style="color:#d68910;"></i>
                                 <span>Student</span>
-                                <span class="role-badge student ms-auto">Read Only</span>
+                                <span class="role-badge student ms-auto">Own Data Only</span>
                             </div>
                         </div>
                     </div>
@@ -1062,79 +1076,110 @@
             <div class="col-md-8">
                 <div class="content-card">
                     <div class="content-card-header">
-                        <h6>Permissions — Super Admin</h6>
-                        <button class="btn-dash btn-primary" style="padding:6px 14px;font-size:12px;">
-                            <i class="bi bi-floppy-fill"></i> Save Changes
-                        </button>
+                        <h6 id="permPanelTitle">Access — Super Admin</h6>
                     </div>
                     <div class="p-3">
-                        <div class="perm-module">
-                            <div class="perm-module-header">
-                                <i class="bi bi-people-fill" style="color:var(--blue);"></i>
-                                <span>Student Management</span>
-                            </div>
-                            <div class="perm-row">
-                                <span class="perm-row-name">View Students</span>
-                                <div class="perm-checks">
-                                    <div class="perm-check"><label>Allow</label><input type="checkbox" checked></div>
-                                    <div class="perm-check"><label>Deny</label><input type="checkbox"></div>
+                        <?php
+                            // Sourced directly from the real, enforced route middleware and
+                            // controller checks in this codebase — not a separate config that
+                            // could drift from what's actually true.
+                            $roleCapabilities = [
+                                'superadmin' => [
+                                    'Everything Admin has, plus:' => [
+                                        'Create, edit, deactivate, and delete any user account (including other Super Admins)',
+                                        'Create and restore full database backups',
+                                        'Toggle enrollment open/closed and site-wide maintenance mode',
+                                        'View system-wide activity logs across every role',
+                                    ],
+                                ],
+                                'admin' => [
+                                    'Enrollment & Students' => [
+                                        'Approve, decline, and process payment for enrollment applications',
+                                        'Full student record management, including archive/restore/permanent delete',
+                                        'Section changes and walk-in enrollment',
+                                    ],
+                                    'Academics' => [
+                                        'Manage subjects, sections, schedules, and teacher assignments',
+                                        'Approve or reject submitted grades; run promotion and summer class flows',
+                                        'Guidance records',
+                                    ],
+                                    'Finance (view + act)' => [
+                                        'Approve or reject online (Xendit) and payment-screenshot transactions',
+                                        'Configure fee amounts and school-year settings',
+                                    ],
+                                    'Content & Reports' => [
+                                        'Announcements, news, contact message inbox',
+                                        'Academic, financial, enrollment, and guidance reports',
+                                    ],
+                                ],
+                                'finance' => [
+                                    'Payments (view only)' => [
+                                        'View all payment transactions and installment plans — cannot approve or reject (that stays with Admin, by design)',
+                                        'Record a walk-in cash/GCash payment directly',
+                                        'View fee settings and financial reports',
+                                    ],
+                                    'Own account' => [
+                                        'Own profile, password, and personal Audit Trail (own actions only — not other staff\'s)',
+                                    ],
+                                ],
+                                'cashier' => [
+                                    'Payment Processing' => [
+                                        'Process a cash payment or generate an online (Xendit) payment link for any student',
+                                        'Search/list students, set an enrollment payment plan',
+                                        'Daily collection report and receipts list',
+                                    ],
+                                    'Own account' => [
+                                        'Own profile, password, and personal Audit Trail (own actions only — not other staff\'s)',
+                                    ],
+                                ],
+                                'teacher' => [
+                                    'Own Sections Only' => [
+                                        'Enter and manage grades, attendance, for sections/subjects they\'re assigned to — not other teachers\' sections',
+                                        'Print DepEd forms (SF9/SF5) and class report cards for their own students',
+                                        'Schedule Parent-Teacher Conferences',
+                                    ],
+                                    'Announcements' => [
+                                        'Post announcements visible to all students (targeting is not otherwise configurable)',
+                                    ],
+                                    'Own account' => [
+                                        'Own profile and password (OTP-verified change)',
+                                    ],
+                                ],
+                                'student' => [
+                                    'Own Records Only' => [
+                                        'View own profile, grades, schedule, and payment history',
+                                        'Upload/manage own documents — cannot see other students\' documents',
+                                        'Submit enrollment/re-enrollment and section-change requests',
+                                        'Make payments (cash at cashier, or online via Xendit)',
+                                    ],
+                                    'Own account' => [
+                                        'Own profile and password (OTP-verified change)',
+                                    ],
+                                ],
+                            ];
+                            $roleTitles = [
+                                'superadmin' => 'Super Admin', 'admin' => 'Admin / Registrar',
+                                'finance' => 'Finance', 'cashier' => 'Cashier',
+                                'teacher' => 'Teacher', 'student' => 'Student',
+                            ];
+                        ?>
+                        <?php $__currentLoopData = $roleCapabilities; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $roleKey => $groups): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <div class="role-perm-panel" id="permPanel-<?php echo e($roleKey); ?>" data-title="Access — <?php echo e($roleTitles[$roleKey]); ?>" style="<?php echo e($roleKey === 'superadmin' ? '' : 'display:none;'); ?>">
+                            <?php $__currentLoopData = $groups; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $groupName => $items): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <div class="perm-module">
+                                <div class="perm-module-header">
+                                    <i class="bi bi-check-circle-fill" style="color:var(--green);"></i>
+                                    <span><?php echo e($groupName); ?></span>
                                 </div>
-                            </div>
-                            <div class="perm-row">
-                                <span class="perm-row-name">Create / Edit Students</span>
-                                <div class="perm-checks">
-                                    <div class="perm-check"><label>Allow</label><input type="checkbox" checked></div>
-                                    <div class="perm-check"><label>Deny</label><input type="checkbox"></div>
+                                <?php $__currentLoopData = $items; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <div class="perm-row">
+                                    <span class="perm-row-name" style="font-weight:400;"><?php echo e($item); ?></span>
                                 </div>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                             </div>
-                            <div class="perm-row">
-                                <span class="perm-row-name">Delete Students</span>
-                                <div class="perm-checks">
-                                    <div class="perm-check"><label>Allow</label><input type="checkbox" checked></div>
-                                    <div class="perm-check"><label>Deny</label><input type="checkbox"></div>
-                                </div>
-                            </div>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </div>
-                        <div class="perm-module">
-                            <div class="perm-module-header">
-                                <i class="bi bi-journal-text" style="color:var(--gold);"></i>
-                                <span>System Logs</span>
-                            </div>
-                            <div class="perm-row">
-                                <span class="perm-row-name">View Logs</span>
-                                <div class="perm-checks">
-                                    <div class="perm-check"><label>Allow</label><input type="checkbox" checked></div>
-                                    <div class="perm-check"><label>Deny</label><input type="checkbox"></div>
-                                </div>
-                            </div>
-                            <div class="perm-row">
-                                <span class="perm-row-name">Delete Logs</span>
-                                <div class="perm-checks">
-                                    <div class="perm-check"><label>Allow</label><input type="checkbox" checked></div>
-                                    <div class="perm-check"><label>Deny</label><input type="checkbox"></div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="perm-module">
-                            <div class="perm-module-header">
-                                <i class="bi bi-database-fill" style="color:var(--orange);"></i>
-                                <span>Backup &amp; Restore</span>
-                            </div>
-                            <div class="perm-row">
-                                <span class="perm-row-name">Create Backup</span>
-                                <div class="perm-checks">
-                                    <div class="perm-check"><label>Allow</label><input type="checkbox" checked></div>
-                                    <div class="perm-check"><label>Deny</label><input type="checkbox"></div>
-                                </div>
-                            </div>
-                            <div class="perm-row">
-                                <span class="perm-row-name">Restore Backup</span>
-                                <div class="perm-checks">
-                                    <div class="perm-check"><label>Allow</label><input type="checkbox" checked></div>
-                                    <div class="perm-check"><label>Deny</label><input type="checkbox"></div>
-                                </div>
-                            </div>
-                        </div>
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     </div>
                 </div>
             </div>
@@ -1150,7 +1195,7 @@
                 <h1>System Logs</h1>
                 <p>Full audit trail of all system activities.</p>
             </div>
-            <a href="#" class="btn-dash btn-secondary">
+            <a href="#" id="exportLogsBtn" class="btn-dash btn-secondary" onclick="exportLogsCsv(event)">
                 <i class="bi bi-download"></i> Export Logs
             </a>
         </div>
@@ -1212,7 +1257,7 @@
                             <th>Date &amp; Time</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="logsTableBody">
                         <?php $__empty_1 = true; $__currentLoopData = $logs; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $log): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                         <?php
                             $badgeClass = match($log->event_type) {
@@ -1267,6 +1312,11 @@
                         <?php endif; ?>
                     </tbody>
                 </table>
+            </div>
+            <div id="logsLoadMoreWrap" style="padding:16px;text-align:center;border-top:1px solid var(--border);<?php echo e($logs->count() < 200 ? ' display:none;' : ''); ?>">
+                <button class="btn-dash btn-secondary" id="btnLoadMoreLogs" onclick="loadMoreLogs()">
+                    <i class="bi bi-arrow-down-circle"></i> Load More
+                </button>
             </div>
         </div>
     </div><!-- /section-logs -->
@@ -2493,6 +2543,14 @@
         document.querySelectorAll('[id^="role-"]').forEach(el => el.style.borderColor = '');
         const el = document.getElementById('role-' + role);
         if (el) el.style.borderColor = 'var(--blue)';
+
+        document.querySelectorAll('.role-perm-panel').forEach(function(p) { p.style.display = 'none'; });
+        var panel = document.getElementById('permPanel-' + role);
+        if (panel) {
+            panel.style.display = '';
+            var title = document.getElementById('permPanelTitle');
+            if (title) title.textContent = panel.dataset.title;
+        }
     }
 
     // Auto-capitalize first letter of each word on text inputs
@@ -2795,6 +2853,71 @@
         var roleEl = document.getElementById('logRoleFilter');
         if (roleEl) roleEl.value = '';
         filterLogsTable();
+    }
+
+    // ── Export / Load More (System Logs) ──────────────────
+    var _logsOffset = <?php echo e($logs->count()); ?>;
+
+    function currentLogFilterParams() {
+        var params = new URLSearchParams();
+        var type = document.getElementById('logTypeFilter').value;
+        var date = document.getElementById('logDateFilter').value;
+        var search = document.getElementById('logSearchInput').value;
+        var roleEl = document.getElementById('logRoleFilter');
+        if (type) params.set('log_type', type);
+        if (date) params.set('log_date', date);
+        if (search) params.set('log_search', search);
+        if (roleEl && roleEl.value) params.set('log_role', roleEl.value);
+        return params;
+    }
+
+    function exportLogsCsv(e) {
+        e.preventDefault();
+        var params = currentLogFilterParams();
+        window.location.href = '<?php echo e(route("superadmin.logs.export")); ?>?' + params.toString();
+    }
+
+    async function loadMoreLogs() {
+        var btn = document.getElementById('btnLoadMoreLogs');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Loading…';
+        try {
+            var params = currentLogFilterParams();
+            params.set('offset', _logsOffset);
+            var r = await fetch('<?php echo e(route("superadmin.logs.more")); ?>?' + params.toString(), {
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken }
+            });
+            var d = await r.json();
+            var tbody = document.getElementById('logsTableBody');
+            var badgeMap = {
+                login: ['success','Login'], logout: ['active','Logout'], failed_login: ['warning','Failed Login'],
+                create: ['success','Create'], update: ['primary','Update'], delete: ['danger','Delete'], error: ['danger','Error']
+            };
+            d.logs.forEach(function(log) {
+                var b = badgeMap[log.event_type] || ['active', log.event_type.charAt(0).toUpperCase() + log.event_type.slice(1)];
+                var userCell = log.user_name
+                    ? '<div style="font-size:13px;font-weight:600;">' + log.user_name + '</div><div style="font-size:11px;color:var(--muted);">' + (log.user_role || '') + '</div>'
+                    : '<span style="color:var(--muted);font-size:12px;">System</span>';
+                var tr = document.createElement('tr');
+                tr.className = 'log-row';
+                tr.dataset.type = log.event_type;
+                tr.dataset.desc = (log.description + ' ' + (log.user_name || '')).toLowerCase();
+                tr.dataset.ts = log.date_iso || '';
+                tr.dataset.role = log.user_role || '';
+                tr.innerHTML = '<td><span class="status-badge ' + b[0] + '">' + b[1] + '</span></td>' +
+                    '<td style="max-width:420px;word-break:break-word;">' + log.description + '</td>' +
+                    '<td>' + userCell + '</td>' +
+                    '<td style="font-size:12px;color:var(--muted);">' + (log.ip_address || '—') + '</td>' +
+                    '<td style="font-size:12px;color:var(--muted);white-space:nowrap;">' + (log.created_at || '') + '</td>';
+                tbody.appendChild(tr);
+            });
+            _logsOffset += d.logs.length;
+            document.getElementById('logsLoadMoreWrap').style.display = d.has_more ? '' : 'none';
+        } catch (e) {
+            saToast('error', 'Failed to load more logs.');
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-arrow-down-circle"></i> Load More';
     }
 
     // ── Backup functions ──────────────────────────────────────
