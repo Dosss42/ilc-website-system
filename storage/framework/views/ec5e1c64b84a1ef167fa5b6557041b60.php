@@ -676,6 +676,31 @@ const sections = [
     'guidance','announcements','news','reports','settings','summer','promotion','assessment','messages','grade-oversight','archives'
 ];
 
+// ── Breadcrumbs ──
+const BREADCRUMB_LABELS = {
+    dashboard: 'Dashboard', students: 'Student Management', teachers: 'Teacher Management',
+    'teacher-assignments': 'Teacher Assignments', enrollment: 'Enrollment Management',
+    finance: 'Finance', payments: 'Payments', installments: 'Installments', fees: 'Fee Settings',
+    subjects: 'Subject Management', sections: 'Section Management', schedules: 'Schedule Management',
+    guidance: 'Guidance Records', announcements: 'Announcements', news: 'News Management',
+    reports: 'Reports', settings: 'Settings', summer: 'Summer Classes',
+    promotion: 'Assessment & Promotion', assessment: 'Assessment & Promotion',
+    messages: 'Contact Messages', 'grade-oversight': 'Grade Oversight', archives: 'Archives',
+};
+function updateBreadcrumb(name) {
+    const el = document.getElementById('bc-current');
+    const skel = document.getElementById('bc-current-skel');
+    if (!el) return;
+    if (!skel) { el.textContent = BREADCRUMB_LABELS[name] || name; return; }
+    el.style.display = 'none';
+    skel.style.display = 'inline-block';
+    setTimeout(function() {
+        el.textContent = BREADCRUMB_LABELS[name] || name;
+        el.style.display = '';
+        skel.style.display = 'none';
+    }, 280);
+}
+
 function showSettingsTab(tab) {
     document.querySelectorAll('.settings-tab').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.stg-nav-item').forEach(btn => btn.classList.remove('active'));
@@ -725,6 +750,7 @@ function showSection(name) {
         if (nav) nav.classList.toggle('active', s === name);
     });
     localStorage.setItem('currentAdminSection', name);
+    updateBreadcrumb(name);
     window.scrollTo(0, 0);
     applySectionSkeleton(name);
     if (name === 'settings' && typeof initSettings === 'function') {
@@ -1181,6 +1207,20 @@ function openWalkInEnrollmentModal() {
 
 
 <div class="dash-main">
+
+    <style>
+        .ilc-breadcrumb{display:flex;align-items:center;gap:8px;padding:18px 2px 16px 28px;font-size:13px;color:#64748b;flex-wrap:wrap;}
+        .ilc-breadcrumb a{color:#1a3a6c;text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:5px;}
+        .ilc-breadcrumb a:hover{text-decoration:underline;}
+        .ilc-bc-sep{font-size:10px;color:#b6c0cc;}
+        .ilc-bc-current{color:#334155;font-weight:700;}
+    </style>
+    <nav class="ilc-breadcrumb" aria-label="breadcrumb">
+        <a href="#" onclick="showSection('dashboard');return false;"><i class="bi bi-house-door-fill"></i> Home</a>
+        <i class="bi bi-chevron-right ilc-bc-sep"></i>
+        <span id="bc-current" class="ilc-bc-current">Dashboard</span>
+        <span id="bc-current-skel" class="skel" style="display:none;width:110px;height:13px;border-radius:4px;"></span>
+    </nav>
 
     
 

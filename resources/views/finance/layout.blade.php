@@ -378,6 +378,35 @@
             @yield('skeleton')
         </div>
 
+        @php
+            $__bcMap = [
+                'finance.dashboard'          => 'Dashboard',
+                'finance.payments.index'     => 'Payments',
+                'finance.students.index'     => 'All Students',
+                'finance.installments.index' => 'Installments',
+                'finance.fees.index'         => 'Fee Management',
+                'finance.reports.index'      => 'Reports',
+                'finance.profile'            => 'My Profile',
+                'finance.change-password'    => 'Change Password',
+            ];
+            $__bcRoute = \Illuminate\Support\Facades\Route::currentRouteName();
+            $__bcCurrent = $__bcMap[$__bcRoute] ?? ucwords(str_replace(['-', '.'], [' ', ' '], \Illuminate\Support\Str::afterLast($__bcRoute ?? '', '.')));
+        @endphp
+        <style>
+            .ilc-breadcrumb{display:flex;align-items:center;gap:8px;padding:10px 2px 18px 8px;font-size:13px;color:#64748b;flex-wrap:wrap;}
+            .ilc-breadcrumb a{color:var(--blue);text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:5px;}
+            .ilc-breadcrumb a:hover{text-decoration:underline;}
+            .ilc-bc-sep{font-size:10px;color:#b6c0cc;}
+            .ilc-bc-current{color:#334155;font-weight:700;}
+        </style>
+        <nav class="ilc-breadcrumb" aria-label="breadcrumb">
+            <a href="{{ route('finance.dashboard') }}"><i class="bi bi-house-door-fill"></i> Home</a>
+            @if($__bcRoute !== 'finance.dashboard')
+                <i class="bi bi-chevron-right ilc-bc-sep"></i>
+                <span class="ilc-bc-current">{{ $__bcCurrent }}</span>
+            @endif
+        </nav>
+
         @if(session('success'))
             <div class="alert alert-success alert-dismissible fade show" role="alert">
                 {{ session('success') }}

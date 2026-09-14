@@ -338,6 +338,20 @@
     </aside>
 
     <main class="main-content">
+        <style>
+            .ilc-breadcrumb{display:flex;align-items:center;gap:8px;padding:10px 2px 16px 8px;font-size:13px;color:#64748b;flex-wrap:wrap;}
+            .ilc-breadcrumb a{color:var(--blue);text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:5px;}
+            .ilc-breadcrumb a:hover{text-decoration:underline;}
+            .ilc-bc-sep{font-size:10px;color:#b6c0cc;}
+            .ilc-bc-current{color:#334155;font-weight:700;}
+        </style>
+        <nav class="ilc-breadcrumb" aria-label="breadcrumb">
+            <a href="{{ route('finance.dashboard') }}"><i class="bi bi-house-door-fill"></i> Home</a>
+            <i class="bi bi-chevron-right ilc-bc-sep"></i>
+            <a href="{{ route('finance.payments.index') }}">Payments</a>
+            <i class="bi bi-chevron-right ilc-bc-sep"></i>
+            <span class="ilc-bc-current">Payment Details</span>
+        </nav>
         <div class="page-header">
             <h1 class="page-title">
                 <a href="{{ route('finance.payments.index') }}" class="btn-back">

@@ -666,6 +666,20 @@
 {{-- ══ MAIN CONTENT ══ --}}
 <div class="main" id="main-content">
 
+<style>
+    .ilc-breadcrumb{display:flex;align-items:center;gap:8px;padding:18px 2px 16px 28px;font-size:13px;color:#64748b;flex-wrap:wrap;}
+    .ilc-breadcrumb a{color:#1a3a6c;text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:5px;}
+    .ilc-breadcrumb a:hover{text-decoration:underline;}
+    .ilc-bc-sep{font-size:10px;color:#b6c0cc;}
+    .ilc-bc-current{color:#334155;font-weight:700;}
+</style>
+<nav class="ilc-breadcrumb" aria-label="breadcrumb">
+    <a href="#" onclick="showSection('dashboard');return false;"><i class="bi bi-house-door-fill"></i> Home</a>
+    <i class="bi bi-chevron-right ilc-bc-sep"></i>
+    <span id="bc-current" class="ilc-bc-current">Dashboard</span>
+    <span id="bc-current-skel" class="skel" style="display:none;width:110px;height:13px;border-radius:4px;"></span>
+</nav>
+
 {{-- ══ GLOBAL SKELETON — shown when switching any section ══ --}}
 <div id="cs-global-skeleton" style="display:none;opacity:1;transition:opacity .2s ease;">
 
@@ -2115,8 +2129,29 @@
     // Skeleton delays per section (ms the shimmer plays before content appears)
     var _skelDelay = { dashboard: 600, collection: 500 };
 
+    // ── Breadcrumbs ──
+    var BREADCRUMB_LABELS = {
+        dashboard: 'Dashboard', process: 'Process Payment', history: 'Transaction History',
+        lookup: 'Student Lookup', daily: 'Daily Report', receipts: 'Receipts',
+        collection: 'Collection Summary', audit: 'Audit Log', settings: 'Settings',
+    };
+    function updateBreadcrumb(name) {
+        var el = document.getElementById('bc-current');
+        var skel = document.getElementById('bc-current-skel');
+        if (!el) return;
+        if (!skel) { el.textContent = BREADCRUMB_LABELS[name] || name; return; }
+        el.style.display = 'none';
+        skel.style.display = 'inline-block';
+        setTimeout(function() {
+            el.textContent = BREADCRUMB_LABELS[name] || name;
+            el.style.display = '';
+            skel.style.display = 'none';
+        }, 280);
+    }
+
     function showSection(name, btn) {
         var delay = _skelDelay[name] || 400;
+        updateBreadcrumb(name);
 
         // 1. Hide all sections immediately
         sections.forEach(function(s) {

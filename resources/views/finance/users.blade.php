@@ -119,6 +119,18 @@
 </head>
 <body>
     <div class="container-fluid py-4">
+        <style>
+            .ilc-breadcrumb{display:flex;align-items:center;gap:8px;padding:10px 2px 16px 8px;font-size:13px;color:#64748b;flex-wrap:wrap;}
+            .ilc-breadcrumb a{color:var(--blue);text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:5px;}
+            .ilc-breadcrumb a:hover{text-decoration:underline;}
+            .ilc-bc-sep{font-size:10px;color:#b6c0cc;}
+            .ilc-bc-current{color:#334155;font-weight:700;}
+        </style>
+        <nav class="ilc-breadcrumb" aria-label="breadcrumb">
+            <a href="{{ route('admin.dashboard') }}"><i class="bi bi-house-door-fill"></i> Home</a>
+            <i class="bi bi-chevron-right ilc-bc-sep"></i>
+            <span class="ilc-bc-current">Finance Users Management</span>
+        </nav>
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1 style="font-size: 24px; font-weight: 700; color: var(--blue);">
                 <i class="bi bi-people" style="color: var(--gold);"></i>
