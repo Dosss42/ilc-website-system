@@ -31,6 +31,7 @@ class ScheduleController extends Controller
         }
 
         $schedules = $query->orderBy('day_of_week')->orderBy('start_time')->get();
+        $this->flagConflicts($schedules);
         return response()->json(['schedules' => $schedules]);
     }
 
@@ -48,13 +49,16 @@ class ScheduleController extends Controller
             'term'        => 'required|integer|min:1|max:3',
         ]);
 
+        // Conflicts no longer block saving — the schedule is created either way and
+        // flagged so the UI can render it with a red warning instead of refusing it.
         $conflicts = $this->detectConflicts($validated);
-        if (!empty($conflicts)) {
-            return response()->json(['success' => false, 'conflicts' => $conflicts], 422);
-        }
 
         $schedule = Schedule::create($validated);
-        return response()->json($schedule->load(['section', 'subject', 'teacher']), 201);
+        $schedule->load(['section', 'subject', 'teacher']);
+        $schedule->has_conflict     = !empty($conflicts);
+        $schedule->conflict_reasons = $conflicts;
+
+        return response()->json($schedule, 201);
     }
 
     public function show(Schedule $schedule)
@@ -77,13 +81,16 @@ class ScheduleController extends Controller
             'term'        => 'required|integer|min:1|max:3',
         ]);
 
+        // Conflicts no longer block saving — the schedule is updated either way and
+        // flagged so the UI can render it with a red warning instead of refusing it.
         $conflicts = $this->detectConflicts($validated, $schedule->id);
-        if (!empty($conflicts)) {
-            return response()->json(['success' => false, 'conflicts' => $conflicts], 422);
-        }
 
         $schedule->update($validated);
-        return response()->json($schedule->load(['section', 'subject', 'teacher']));
+        $schedule->load(['section', 'subject', 'teacher']);
+        $schedule->has_conflict     = !empty($conflicts);
+        $schedule->conflict_reasons = $conflicts;
+
+        return response()->json($schedule);
     }
 
     /**
@@ -141,6 +148,67 @@ class ScheduleController extends Controller
         }
 
         return $conflicts;
+    }
+
+    /**
+     * Mark every schedule in the given collection with `has_conflict` (bool) and
+     * `conflict_reasons` (string[]) by comparing it against every other schedule
+     * already loaded — same pairwise rules as detectConflicts(). A teacher or
+     * room conflict can involve a schedule from a completely different
+     * section/grade than the one currently filtered on screen, so each
+     * schedule is compared against every OTHER active schedule on the same
+     * day + term (a small extra query per distinct day/term combo actually
+     * present), not just the rows already in $schedules — otherwise a Grade 1
+     * teacher clash never shows up while viewing Kindergarten's grid.
+     */
+    private function flagConflicts($schedules): void
+    {
+        // Accumulate in a plain array keyed by schedule id first — appending
+        // directly to an Eloquent model's dynamic property with `$model->prop[] =`
+        // doesn't work (Eloquent's __get() returns attributes by value, so PHP
+        // treats it as "indirect modification of overloaded property" and throws
+        // in strict/dev error reporting). Assign the finished arrays back to each
+        // model in one shot at the end instead.
+        $reasonsById = [];
+        foreach ($schedules as $s) {
+            $reasonsById[$s->id] = [];
+        }
+
+        $combos = $schedules->map(fn($s) => $s->day_of_week . '|' . (int) $s->term)->unique();
+
+        foreach ($combos as $combo) {
+            [$day, $term] = explode('|', $combo, 2);
+
+            $everyoneThatDayTerm = Schedule::where('day_of_week', $day)
+                ->where('term', (int) $term)
+                ->where('is_active', true)
+                ->with(['section:id,name', 'subject:id,name'])
+                ->get();
+
+            foreach ($schedules->where('day_of_week', $day)->where('term', (int) $term) as $a) {
+                foreach ($everyoneThatDayTerm as $b) {
+                    if ($a->id === $b->id) continue;
+                    if (!$a->is_active || !$b->is_active) continue;
+                    if (!($a->start_time < $b->end_time && $a->end_time > $b->start_time)) continue;
+
+                    $bName = optional($b->subject)->name ?? 'a subject';
+                    $bSec  = optional($b->section)->name ?? 'another section';
+
+                    if ($a->teacher_id && $b->teacher_id && $a->teacher_id === $b->teacher_id && $a->section_id !== $b->section_id) {
+                        $reasonsById[$a->id][] = "Teacher also teaches {$bName} ({$bSec}) at this time.";
+                    } elseif ($a->room && $b->room && $a->room === $b->room && $a->section_id !== $b->section_id) {
+                        $reasonsById[$a->id][] = "Room \"{$a->room}\" is also used by {$bSec} - {$bName} at this time.";
+                    } elseif ($a->section_id === $b->section_id) {
+                        $reasonsById[$a->id][] = "This section also has {$bName} scheduled at this time.";
+                    }
+                }
+            }
+        }
+
+        foreach ($schedules as $s) {
+            $s->conflict_reasons = $reasonsById[$s->id] ?? [];
+            $s->has_conflict     = !empty($s->conflict_reasons);
+        }
     }
 
     /**

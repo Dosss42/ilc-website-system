@@ -332,256 +332,215 @@
 
         /* Schedule Grid Table */
 
+        :root {
+            --sch-blue: #2471a3;
+            --sch-blue-tint: #e8f0fb;
+        }
+
+        .sched-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 16px 0 22px;
+            margin-bottom: 22px;
+            border-bottom: 1px solid #edf1f6;
+        }
+
+        .sched-toolbar .form-fld {
+            min-width: 168px;
+            width: auto;
+        }
+
+        .sched-toolbar .btn-dash { flex-shrink: 0; }
+
         .schedule-grid-table {
-
             width: 100%;
-
             table-layout: fixed;
-
             border-collapse: separate;
-
             border-spacing: 0;
-
             font-size: 13px;
-
-            border-radius: 12px;
-
+            border-radius: 14px;
             overflow: hidden;
-
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-
+            box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px rgba(15,23,42,0.06);
         }
 
         .schedule-grid-table th {
-
-            padding: 16px 12px;
-
+            padding: 14px 12px;
             text-align: center;
-
-            font-weight: 600;
-
+            font-weight: 700;
             border: none;
-
-            background: linear-gradient(135deg, #1a3a6c 0%, #2471a3 100%);
-
-            color: white;
-
-            font-size: 14px;
-
-            letter-spacing: 0.5px;
-
+            color: #fff;
+            font-size: 13px;
+            letter-spacing: 0.3px;
         }
+
+        .schedule-grid-table th:first-child { background: #334155; }
+        .schedule-grid-table th.day-mon,
+        .schedule-grid-table th.day-tue,
+        .schedule-grid-table th.day-wed,
+        .schedule-grid-table th.day-thu,
+        .schedule-grid-table th.day-fri { background: linear-gradient(135deg, #1a3a6c 0%, #2471a3 100%); }
 
         .schedule-grid-table td {
-
-            padding: 12px;
-
+            padding: 8px;
             border: none;
-
-            border-right: 1px solid #f0f0f0;
-
-            border-bottom: 1px solid #f0f0f0;
-
+            border-right: 1px solid #f1f5f9;
+            border-bottom: 1px solid #f1f5f9;
             vertical-align: top;
-
-            min-height: 70px;
-
-            height: 70px;
-
-            background: white;
-
+            min-height: 76px;
+            height: 76px;
+            background: #fff;
+            transition: background-color 0.15s ease;
         }
 
-        .schedule-grid-table td:last-child {
-
-            border-right: none;
-
-        }
-
-        .schedule-grid-table tr:last-child td {
-
-            border-bottom: none;
-
-        }
+        .schedule-grid-table td:last-child { border-right: none; }
+        .schedule-grid-table tr:last-child td { border-bottom: none; }
 
         .schedule-grid-table .time-cell {
-
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-
-            font-weight: 600;
-
+            background: #f8fafc;
+            font-weight: 700;
             text-align: center;
-
             vertical-align: middle;
-
-            font-size: 12px;
-
-            color: #495057;
-
-            border-right: 2px solid #dee2e6;
-
+            font-size: 11.5px;
+            color: #475569;
+            border-right: 2px solid #e2e8f0;
         }
 
         .schedule-grid-table .break-cell {
-
-            background: linear-gradient(135deg, #e8f0fb 0%, #dbeafe 100%);
-
+            background: repeating-linear-gradient(135deg, #fbfaf7, #fbfaf7 10px, #f5f2ea 10px, #f5f2ea 20px);
             text-align: center;
-
             vertical-align: middle;
-
-            font-weight: 600;
-
-            color: #1a3a6c;
-
-            font-style: italic;
-
-            letter-spacing: 1px;
-
-            border-bottom: 2px solid #b8d0f5;
-
+            font-weight: 700;
+            color: #92722a;
+            letter-spacing: 1.5px;
+            font-size: 11px;
+            border-bottom: 2px solid #ecd9a8;
         }
 
         .schedule-cell {
-
             cursor: pointer;
-
-            transition: all 0.3s ease;
-
-            min-height: 70px;
-
             position: relative;
-
         }
 
-        .schedule-cell:hover {
+        .schedule-cell:hover { background: #f8fafc; }
 
-            background: linear-gradient(135deg, #e8f0fb 0%, #dbeafe 100%);
-
-            transform: translateY(-1px);
-
-            box-shadow: 0 3px 10px rgba(26,58,108,0.12);
-
+        .sched-conflict-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 9.5px;
+            font-weight: 800;
+            color: #fff;
+            background: #dc2626;
+            padding: 2px 7px;
+            border-radius: 20px;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
 
         .schedule-cell-content {
-
-            padding: 10px;
-
+            padding: 8px 9px;
             border-radius: 8px;
-
-            background: linear-gradient(135deg, #e8f0fb 0%, #dbeafe 100%);
-
-            border-left: 4px solid var(--blue);
-
             height: 100%;
-
-            box-shadow: 0 2px 4px rgba(26,58,108,0.08);
-
+            box-sizing: border-box;
             overflow: hidden;
-
+            border-left: 3px solid var(--sch-blue);
+            background: var(--sch-blue-tint);
+            transition: transform 0.12s ease, box-shadow 0.12s ease;
         }
 
+        .schedule-cell-content:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(15,23,42,0.1);
+        }
+
+        .schedule-cell-content.has-conflict {
+            background: #fef2f2;
+            border-left: 3px solid #dc2626;
+        }
+
+        .schedule-cell-content .subj-row {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+
+        .schedule-cell-content .subj-code-pill {
+            flex-shrink: 0;
+            font-size: 9px;
+            font-weight: 800;
+            color: #fff;
+            background: var(--sch-blue);
+            padding: 1px 6px;
+            border-radius: 5px;
+            letter-spacing: 0.2px;
+        }
+
+        .schedule-cell-content.has-conflict .subj-code-pill { background: #dc2626; }
+
         .schedule-cell-content .subject {
-
-            font-weight: 600;
-
-            color: #1a3a6c;
-
-            font-size: 12px;
-
-            margin-bottom: 4px;
-
+            font-weight: 700;
+            color: #1e293b;
+            font-size: 11.5px;
             overflow: hidden;
-
             text-overflow: ellipsis;
-
             white-space: nowrap;
-
         }
 
         .schedule-cell-content .teacher {
-
-            font-size: 11px;
-
-            color: #2471a3;
-
-            margin-top: 4px;
-
+            font-size: 10.5px;
+            color: #475569;
+            margin-top: 3px;
             display: flex;
-
             align-items: center;
-
             gap: 4px;
-
             overflow: hidden;
-
             text-overflow: ellipsis;
-
             white-space: nowrap;
-
         }
 
         .schedule-cell-content .teacher .teacher-icon {
-
             font-size: 10px;
-
             flex-shrink: 0;
-
+            color: var(--sch-blue);
         }
 
         .schedule-cell-content .room {
-
             font-size: 10px;
-
-            color: var(--blue);
-
-            margin-top: 4px;
-
+            color: #64748b;
+            margin-top: 3px;
             display: flex;
-
             align-items: center;
-
             gap: 4px;
-
             overflow: hidden;
-
             text-overflow: ellipsis;
-
             white-space: nowrap;
-
         }
 
-        .schedule-cell-content .room:before {
-
-            content: 'ðŸ“';
-
-            font-size: 10px;
-
-            flex-shrink: 0;
-
-        }
+        .schedule-cell-content .room i { font-size: 9px; flex-shrink: 0; }
 
         .schedule-cell-empty {
-
-            color: #adb5bd;
-
-            font-size: 12px;
-
-            text-align: center;
-
-            padding-top: 22px;
-
-            font-weight: 500;
-
-            letter-spacing: 0.5px;
-
+            height: 100%;
+            min-height: 60px;
+            border: 1.5px dashed #dde3ec;
+            border-radius: 8px;
+            color: #b7c0cc;
+            font-size: 11.5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            transition: all 0.15s ease;
         }
 
-        .schedule-cell-empty:hover {
-
-            color: var(--blue);
-
+        .schedule-cell:hover .schedule-cell-empty {
+            border-color: var(--sch-blue);
+            color: var(--sch-blue);
+            background: var(--sch-blue-tint);
         }
 
         /* â”€â”€ Report Tabs â”€â”€ */
@@ -6181,48 +6140,30 @@ function openWalkInEnrollmentModal() {
             </div>
         </div>
 
-        {{-- Schedule Filters --}}
-        <div class="content-card mb-4">
-            <div class="content-card-header">
-                <h6>Filter Schedules</h6>
-            </div>
-            <div class="p-3">
-                <div class="row g-3 align-items-end">
-                    <div class="col-md-3">
-                        <label class="form-lbl">Grade Level</label>
-                        <select class="form-fld" id="scheduleGradeFilter">
-                            <option value="">— Select Grade —</option>
-                            <option value="nursery">Nursery</option>
-                            <option value="kindergarten">Kindergarten</option>
-                            <option value="grade1">Grade 1</option>
-                            <option value="grade2">Grade 2</option>
-                            <option value="grade3">Grade 3</option>
-                            <option value="grade4">Grade 4</option>
-                            <option value="grade5">Grade 5</option>
-                            <option value="grade6">Grade 6</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-lbl">Section</label>
-                        <select class="form-fld" id="scheduleSectionFilter" onchange="loadScheduleGrid()">
-                            <option value="">All Sections</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-lbl">Term</label>
-                        <select class="form-fld" id="scheduleTermFilter" onchange="loadScheduleGrid()">
-                            <option value="1">1st Term</option>
-                            <option value="2">2nd Term</option>
-                            <option value="3">3rd Term</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <button class="btn-dash btn-primary" style="width:100%;" onclick="loadScheduleGrid()">
-                            <i class="bi bi-search"></i> Load
-                        </button>
-                    </div>
-                </div>
-            </div>
+        {{-- Schedule Filters — slim inline toolbar, no boxed card --}}
+        <div class="sched-toolbar">
+            <select class="form-fld" id="scheduleGradeFilter">
+                <option value="">— Select Grade —</option>
+                <option value="nursery">Nursery</option>
+                <option value="kindergarten">Kindergarten</option>
+                <option value="grade1">Grade 1</option>
+                <option value="grade2">Grade 2</option>
+                <option value="grade3">Grade 3</option>
+                <option value="grade4">Grade 4</option>
+                <option value="grade5">Grade 5</option>
+                <option value="grade6">Grade 6</option>
+            </select>
+            <select class="form-fld" id="scheduleSectionFilter" onchange="loadScheduleGrid()">
+                <option value="">All Sections</option>
+            </select>
+            <select class="form-fld" id="scheduleTermFilter" onchange="loadScheduleGrid()">
+                <option value="1">1st Term</option>
+                <option value="2">2nd Term</option>
+                <option value="3">3rd Term</option>
+            </select>
+            <button class="btn-dash btn-primary" onclick="loadScheduleGrid()">
+                <i class="bi bi-search"></i> Load
+            </button>
         </div>
 
         {{-- Empty State --}}
@@ -6245,16 +6186,19 @@ function openWalkInEnrollmentModal() {
                     </button>
                 </div>
             </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 16px 12px;font-size:11.5px;color:#64748b;">
+                <i class="bi bi-exclamation-triangle-fill" style="color:#dc2626;font-size:11px;"></i>Red = schedule conflict
+            </div>
             <div style="overflow-x:auto;">
                 <table class="schedule-grid-table">
                     <thead>
                         <tr>
                             <th style="width:100px;min-width:100px;">Time</th>
-                            <th style="width:calc((100% - 100px) / 5);min-width:120px;">Monday</th>
-                            <th style="width:calc((100% - 100px) / 5);min-width:120px;">Tuesday</th>
-                            <th style="width:calc((100% - 100px) / 5);min-width:120px;">Wednesday</th>
-                            <th style="width:calc((100% - 100px) / 5);min-width:120px;">Thursday</th>
-                            <th style="width:calc((100% - 100px) / 5);min-width:120px;">Friday</th>
+                            <th class="day-mon" style="width:calc((100% - 100px) / 5);min-width:120px;">Monday</th>
+                            <th class="day-tue" style="width:calc((100% - 100px) / 5);min-width:120px;">Tuesday</th>
+                            <th class="day-wed" style="width:calc((100% - 100px) / 5);min-width:120px;">Wednesday</th>
+                            <th class="day-thu" style="width:calc((100% - 100px) / 5);min-width:120px;">Thursday</th>
+                            <th class="day-fri" style="width:calc((100% - 100px) / 5);min-width:120px;">Friday</th>
                         </tr>
                     </thead>
                     <tbody id="scheduleGridBody">
@@ -10415,6 +10359,29 @@ function openWalkInEnrollmentModal() {
     </div>
 </div>
 
+<!-- Schedule Conflict Confirmation Modal -->
+<div class="modal fade" id="scheduleConflictConfirmModal" tabindex="-1" style="z-index:1070;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border:0; border-radius:16px; overflow:hidden;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#e74c3c,#c0392b); color:#fff; border:0; padding:20px 24px;">
+                <h5 class="modal-title" style="font-weight:700; margin:0;"><i class="bi bi-exclamation-triangle-fill me-2"></i>Schedule Conflict Detected</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding:24px;">
+                <p style="font-size:14px;color:#64748b;margin:0 0 10px;">This time slot overlaps with an existing schedule:</p>
+                <div id="scheduleConflictConfirmMessage" style="font-size:13px;background:#fdecea;border:1px solid #f5c6cb;border-radius:10px;padding:12px 14px;color:#c0392b;font-weight:600;line-height:1.6;"></div>
+                <p style="font-size:13px;color:#64748b;margin:14px 0 0;">You can still save it — it will show a red warning on the schedule grid.</p>
+            </div>
+            <div class="modal-footer" style="border:0; padding:16px 24px;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmScheduleConflictBtn">
+                    <i class="bi bi-exclamation-triangle-fill me-1"></i>Save Anyway
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Promotion Confirmation Modal -->
 <div class="modal fade" id="promoteConfirmModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -10675,6 +10642,7 @@ function openWalkInEnrollmentModal() {
     }
 
     // â”€â”€ Build Schedule Grid with data â”€â”€
+
     function buildScheduleGrid(grade, term, sectionId, schedules) {
         const slots = gradeTimeSlots[grade] || gradeTimeSlots['default'];
         const tbody = document.getElementById('scheduleGridBody');
@@ -10715,19 +10683,28 @@ function openWalkInEnrollmentModal() {
                     const subjCode = entry.subject ? entry.subject.code : '';
                     const teacherName = entry.teacher ? entry.teacher.name : (entry.teacher_name || '');
                     const roomVal = entry.room || '';
-                    cell.innerHTML = `<div class="schedule-cell-content" style="cursor:pointer;" data-schedule-id="${entry.id}" data-subject-id="${entry.subject_id || ''}" data-section-id="${entry.section_id || ''}" data-room="${roomVal}" data-active="${entry.is_active ? 1 : 0}" data-term="${entry.term || term}">
-                        <div class="subject">${subjCode ? subjCode + ' - ' : ''}${subjName}</div>
+                    const hasConflict = !!entry.has_conflict;
+                    const reasons = entry.conflict_reasons || [];
+                    const warnBadge = hasConflict
+                        ? `<div class="sched-conflict-badge" title="${reasons.map(r => r.replace(/"/g, '&quot;')).join(' | ')}"><i class="bi bi-exclamation-triangle-fill"></i> Conflict</div>`
+                        : '';
+                    cell.innerHTML = `<div class="schedule-cell-content${hasConflict ? ' has-conflict' : ''}" style="cursor:pointer;" data-schedule-id="${entry.id}" data-subject-id="${entry.subject_id || ''}" data-section-id="${entry.section_id || ''}" data-room="${roomVal}" data-active="${entry.is_active ? 1 : 0}" data-term="${entry.term || term}">
+                        ${warnBadge}
+                        <div class="subj-row">
+                            ${subjCode ? `<span class="subj-code-pill">${subjCode}</span>` : ''}
+                            <div class="subject">${subjName}</div>
+                        </div>
                         <div class="teacher"><i class="bi bi-person-fill teacher-icon"></i> ${teacherName || '—'}</div>
-                        ${roomVal ? '<div class="room">' + roomVal + '</div>' : ''}
+                        ${roomVal ? '<div class="room"><i class="bi bi-geo-alt-fill"></i>' + roomVal + '</div>' : ''}
                     </div>`;
-                    cell.style.background = 'var(--blue-pale)';
+                    cell.title = hasConflict ? 'Schedule conflict:\n' + reasons.join('\n') : '';
                     // Click on content to edit
                     cell.querySelector('.schedule-cell-content').onclick = (e) => {
                         e.stopPropagation();
                         editScheduleFromCell(entry, day, slot, grade, sectionId, term);
                     };
                 } else {
-                    cell.innerHTML = `<div class="schedule-cell-empty">+ Add</div>`;
+                    cell.innerHTML = `<div class="schedule-cell-empty"><i class="bi bi-plus-lg me-1"></i>Add</div>`;
                 }
                 row.appendChild(cell);
             });
@@ -10810,53 +10787,70 @@ function openWalkInEnrollmentModal() {
 
         var slots    = gradeTimeSlots[grade] || gradeTimeSlots['default'];
         var days     = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        var blueLine = '#2471a3', blueTint = '#e8f0fb';
+        var dayColors = {
+            Monday: { line: blueLine, tint: blueTint }, Tuesday: { line: blueLine, tint: blueTint },
+            Wednesday: { line: blueLine, tint: blueTint }, Thursday: { line: blueLine, tint: blueTint },
+            Friday: { line: blueLine, tint: blueTint }
+        };
         var schedules = _scheduleCache || [];
         var logoUrl  = '{{ asset("images/logo.png") }}';
         var printDate = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
 
+        // Every cell — filled or empty — gets the SAME fixed height so the
+        // printed grid reads as a neat, evenly-boxed timetable regardless of
+        // how much text is in any one slot.
+        var CELL_HEIGHT = '1in';
+
         // Build table rows
-        var theadHtml = '<tr style="background:#1a3a6c;color:#fff;">'
-            + '<th style="padding:8px 10px;text-align:center;border:1px solid #2c5282;width:90px;font-size:11px;">TIME</th>';
+        var theadHtml = '<tr>'
+            + '<th style="padding:9px 10px;text-align:center;border:1px solid #334155;width:80px;font-size:11px;background:#334155;color:#fff;">TIME</th>';
         days.forEach(function(d) {
-            theadHtml += '<th style="padding:8px 10px;text-align:center;border:1px solid #2c5282;font-size:11px;">' + d.toUpperCase() + '</th>';
+            var c = dayColors[d];
+            theadHtml += '<th style="padding:9px 10px;text-align:center;border:1px solid ' + c.line + ';font-size:11px;background:' + c.line + ';color:#fff;">' + d.toUpperCase() + '</th>';
         });
         theadHtml += '</tr>';
 
         var tbodyHtml = '';
         slots.forEach(function(slot, idx) {
-            var rowBg = idx % 2 === 0 ? '#fff' : '#f8fafc';
-
             if (slot.isBreak) {
                 tbodyHtml += '<tr>'
-                    + '<td colspan="6" style="padding:5px 10px;background:#f0f4f8;text-align:center;font-size:10px;font-weight:700;color:#64748b;border:1px solid #e2e8f0;letter-spacing:1px;">'
+                    + '<td colspan="6" style="padding:6px 10px;background:#f5f2ea;text-align:center;font-size:10px;font-weight:700;color:#92722a;border:1px solid #ecd9a8;letter-spacing:1.5px;">'
                     + slot.breakName.toUpperCase()
                     + '</td></tr>';
                 return;
             }
 
-            tbodyHtml += '<tr style="background:' + rowBg + ';">';
-            tbodyHtml += '<td style="padding:6px 8px;border:1px solid #e2e8f0;font-size:10px;font-weight:700;color:#475569;text-align:center;white-space:nowrap;">' + slot.label + '</td>';
+            tbodyHtml += '<tr>';
+            tbodyHtml += '<td style="height:' + CELL_HEIGHT + ';box-sizing:border-box;padding:6px 8px;border:1px solid #e2e8f0;font-size:10px;font-weight:700;color:#475569;text-align:center;white-space:nowrap;background:#f8fafc;">' + slot.label + '</td>';
 
             days.forEach(function(day) {
+                var c = dayColors[day];
                 var entry = schedules.find(function(s) {
                     return s.day_of_week === day
                         && (s.start_time || '').substring(0, 5) === slot.start
                         && (s.end_time || '').substring(0, 5) === slot.end;
                 });
 
+                var tdOpen = '<td style="height:' + CELL_HEIGHT + ';box-sizing:border-box;padding:5px;border:1px solid #e2e8f0;vertical-align:top;overflow:hidden;">';
+
                 if (entry) {
+                    var hasConflict = !!entry.has_conflict;
+                    var lineColor = hasConflict ? '#dc2626' : c.line;
+                    var tintColor = hasConflict ? '#fef2f2' : c.tint;
                     var subjName = entry.subject ? entry.subject.name : (entry.subject_name || '—');
                     var subjCode = entry.subject ? (entry.subject.code || '') : '';
                     var teacher  = entry.teacher ? entry.teacher.name : (entry.teacher_name || '—');
                     var room     = entry.room || '';
-                    tbodyHtml += '<td style="padding:6px 8px;border:1px solid #e2e8f0;vertical-align:top;">'
-                        + '<div style="background:#e8f0fb;border-left:3px solid #1a3a6c;border-radius:4px;padding:6px 7px;">'
-                        + '<div style="font-size:11px;font-weight:700;color:#1a3a6c;">' + (subjCode ? subjCode + ' — ' : '') + subjName + '</div>'
-                        + '<div style="font-size:10px;color:#2471a3;margin-top:2px;">' + teacher + '</div>'
-                        + (room ? '<div style="font-size:10px;color:#1a3a6c;margin-top:2px;">' + room + '</div>' : '')
+                    tbodyHtml += tdOpen
+                        + '<div style="background:' + tintColor + ';border-left:3px solid ' + lineColor + ';border-radius:4px;padding:6px 7px;height:100%;box-sizing:border-box;overflow:hidden;">'
+                        + (hasConflict ? '<div style="display:inline-block;font-size:8px;font-weight:800;color:#fff;background:#dc2626;padding:1px 5px;border-radius:8px;margin-bottom:3px;letter-spacing:0.3px;">CONFLICT</div>' : '')
+                        + '<div style="font-size:10.5px;font-weight:700;color:#1e293b;">' + (subjCode ? '<span style="color:' + lineColor + ';">' + subjCode + '</span> — ' : '') + subjName + '</div>'
+                        + '<div style="font-size:9.5px;color:#475569;margin-top:2px;">' + teacher + '</div>'
+                        + (room ? '<div style="font-size:9px;color:#64748b;margin-top:2px;">' + room + '</div>' : '')
                         + '</div></td>';
                 } else {
-                    tbodyHtml += '<td style="padding:6px 8px;border:1px solid #e2e8f0;background:' + rowBg + ';"></td>';
+                    tbodyHtml += tdOpen + '</td>';
                 }
             });
             tbodyHtml += '</tr>';
@@ -10867,7 +10861,7 @@ function openWalkInEnrollmentModal() {
             + '<title>Class Schedule — ' + gradeLabel + ' ' + sectionLabel + '</title>'
             + '<style>'
             + 'body{font-family:Arial,sans-serif;margin:0;padding:24px;color:#222;font-size:13px;}'
-            + 'table{border-collapse:collapse;width:100%;}'
+            + 'table{border-collapse:collapse;width:100%;table-layout:fixed;}'
             + '.header{text-align:center;border-bottom:3px solid #1a3a6c;padding-bottom:16px;margin-bottom:18px;}'
             + '.header img{width:80px;height:80px;object-fit:contain;display:block;margin:0 auto 10px;}'
             + '.school-name{font-size:22px;font-weight:700;color:#1a3a6c;letter-spacing:0.5px;}'
@@ -11454,6 +11448,25 @@ function openWalkInEnrollmentModal() {
                 if (typeof deleteConfirmCallback === 'function') {
                     deleteConfirmCallback();
                     deleteConfirmCallback = null;
+                }
+            }, { once: true });
+            bootstrap.Modal.getInstance(modalEl).hide();
+        });
+    }
+
+    // â”€â”€ Schedule Conflict Confirmation ("Save Anyway") â”€â”€
+    let scheduleConflictConfirmCallback = null;
+
+    const confirmScheduleConflictBtn = document.getElementById('confirmScheduleConflictBtn');
+    if (confirmScheduleConflictBtn) {
+        confirmScheduleConflictBtn.addEventListener('click', function() {
+            const modalEl = document.getElementById('scheduleConflictConfirmModal');
+            // Same nested-modal-safe pattern as confirmDeleteBtn — this dialog
+            // opens on top of the already-open Add/Edit Schedule modal.
+            modalEl.addEventListener('hidden.bs.modal', function() {
+                if (typeof scheduleConflictConfirmCallback === 'function') {
+                    scheduleConflictConfirmCallback();
+                    scheduleConflictConfirmCallback = null;
                 }
             }, { once: true });
             bootstrap.Modal.getInstance(modalEl).hide();
@@ -17159,12 +17172,9 @@ function openWalkInEnrollmentModal() {
     }
 
     function saveSchedule() {
+      try {
 
         const id = document.getElementById('sched-id').value;
-
-        const url = id ? `/admin/schedules/${id}` : '/admin/schedules';
-
-        const method = id ? 'PUT' : 'POST';
 
         const sectionId = document.getElementById('sched-section').value;
         const subjectId = document.getElementById('sched-subject').value;
@@ -17180,9 +17190,12 @@ function openWalkInEnrollmentModal() {
             return;
         }
 
-        // Client-side conflict detection against loaded schedule cache
+        // Client-side conflict detection against loaded schedule cache.
+        // Conflicts no longer silently block saving — if any are found, ask
+        // for confirmation first ("Save Anyway"); the actual save request
+        // only fires once the user confirms (or immediately, if clean).
+        const conflicts = [];
         if (_scheduleCache && _scheduleCache.length && startTime && endTime) {
-            const conflicts = [];
             _scheduleCache.forEach(s => {
                 // Skip the current entry when editing
                 if (id && String(s.id) === String(id)) return;
@@ -17215,24 +17228,49 @@ function openWalkInEnrollmentModal() {
                     conflicts.push(`Section conflict: ${secName} already has ${subName} scheduled on ${dayOfWeek} ${sStart}–${sEnd}.`);
                 }
             });
-
-            if (conflicts.length > 0) {
-                showCustomAlert('error', 'Schedule Conflict Detected', conflicts.join('\n'));
-                return;
-            }
         }
+
+        if (conflicts.length > 0) {
+            document.getElementById('scheduleConflictConfirmMessage').innerHTML =
+                conflicts.map(c => c.replace(/</g, '&lt;')).join('<br>');
+            scheduleConflictConfirmCallback = function() { _submitScheduleSave(conflicts); };
+            new bootstrap.Modal(document.getElementById('scheduleConflictConfirmModal')).show();
+            return;
+        }
+
+        _submitScheduleSave([]);
+      } catch (err) {
+          // Safety net: a silent failure here used to look like "nothing
+          // happened" with no feedback at all. Surface whatever actually
+          // broke instead of swallowing it.
+          console.error('saveSchedule() failed:', err);
+          showCustomAlert('error', 'Unexpected Error', 'Something went wrong before the save request could be sent: ' + (err && err.message ? err.message : err));
+      }
+    }
+
+    // Performs the actual create/update request. `preSaveConflicts` is only
+    // used as a fallback warning message if the server doesn't echo back its
+    // own conflict_reasons for some reason.
+    function _submitScheduleSave(preSaveConflicts) {
+      try {
+
+        const id = document.getElementById('sched-id').value;
+
+        const url = id ? `/admin/schedules/${id}` : '/admin/schedules';
+
+        const method = id ? 'PUT' : 'POST';
 
         const body = {
 
-            section_id: sectionId,
+            section_id: document.getElementById('sched-section').value,
 
-            subject_id: subjectId,
+            subject_id: document.getElementById('sched-subject').value,
 
             teacher_id: document.getElementById('sched-teacher').value || null,
 
-            day_of_week: dayOfWeek,
+            day_of_week: document.getElementById('sched-day').value,
 
-            term: termVal,
+            term: document.getElementById('sched-term').value,
 
             start_time: document.getElementById('sched-start').value,
 
@@ -17257,22 +17295,35 @@ function openWalkInEnrollmentModal() {
         .then(async r => {
             const data = await r.json();
             if (!r.ok) {
-                // Conflict detection returns 422 with a conflicts array
-                if (data.conflicts && data.conflicts.length) {
-                    const list = data.conflicts.join('\n');
-                    showCustomAlert('error', 'Schedule Conflict Detected', list);
-                } else {
-                    const msg = data.message || Object.values(data.errors || {}).flat().join('\n') || 'Failed to save schedule.';
-                    showCustomAlert('error', 'Error', msg);
-                }
+                const msg = data.message || Object.values(data.errors || {}).flat().join('\n') || 'Failed to save schedule.';
+                showCustomAlert('error', 'Error', msg);
                 return;
             }
             bootstrap.Modal.getInstance(document.getElementById('scheduleModal')).hide();
-            showCustomAlert('success', 'Saved!', id ? 'Schedule updated.' : 'Schedule created.');
+
+            // Conflicts no longer block saving — the schedule is saved either way.
+            // Show a warning toast (instead of the plain success one) when the
+            // server flagged it, or when our own pre-check found one.
+            const serverReasons = data.conflict_reasons || [];
+            const allReasons = serverReasons.length ? serverReasons : preSaveConflicts;
+            if (data.has_conflict || allReasons.length) {
+                showCustomAlert('warning', 'Saved with a Schedule Conflict',
+                    (id ? 'Schedule updated' : 'Schedule created') + ', but it overlaps with another entry:\n' + allReasons.join('\n'));
+            } else {
+                showCustomAlert('success', 'Saved!', id ? 'Schedule updated.' : 'Schedule created.');
+            }
             loadScheduleGrid();
         })
 
-        .catch(() => showCustomAlert('error', 'Error', 'Failed to save schedule.'));
+        .catch(err => {
+            console.error('_submitScheduleSave() request failed:', err);
+            showCustomAlert('error', 'Error', 'Failed to save schedule: ' + (err && err.message ? err.message : 'network or server error.'));
+        });
+
+      } catch (err) {
+          console.error('_submitScheduleSave() failed before request:', err);
+          showCustomAlert('error', 'Unexpected Error', 'Something went wrong while preparing the save request: ' + (err && err.message ? err.message : err));
+      }
 
     }
 

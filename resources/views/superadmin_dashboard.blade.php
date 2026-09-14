@@ -3405,8 +3405,15 @@
             var day = s.day_of_week || '—';
             var dayBg = dayColors[day] || '#f0f4f8';
             var timeStr = (s.start_time ? s.start_time.substring(0,5) : '—') + ' – ' + (s.end_time ? s.end_time.substring(0,5) : '—');
-            return '<tr>' +
-                '<td style="font-weight:600;">' + sectionName + '</td>' +
+            var hasConflict = !!s.has_conflict;
+            var reasons = s.conflict_reasons || [];
+            var rowStyle = hasConflict ? ' style="background:#fdecea;border-left:3px solid #e74c3c;"' : '';
+            var rowTitle = hasConflict ? ' title="Schedule conflict:\n' + reasons.join('\n').replace(/"/g, '&quot;') + '"' : '';
+            var conflictBadge = hasConflict
+                ? '<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:800;color:#fff;background:#e74c3c;padding:2px 6px;border-radius:20px;text-transform:uppercase;letter-spacing:.3px;margin-left:6px;"><i class="bi bi-exclamation-triangle-fill"></i> Conflict</span>'
+                : '';
+            return '<tr' + rowStyle + rowTitle + '>' +
+                '<td style="font-weight:600;">' + sectionName + conflictBadge + '</td>' +
                 '<td>' + subjectName + '</td>' +
                 '<td>' + teacherName + '</td>' +
                 '<td><span style="background:' + dayBg + ';padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">' + day + '</span></td>' +
