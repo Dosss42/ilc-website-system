@@ -10279,6 +10279,37 @@ function openWalkInEnrollmentModal() {
     </div>
 </div>
 
+<!-- Password-Confirmation Modal (for destructive student actions: archive / permanent delete) -->
+<div class="modal fade" id="pwConfirmModal" tabindex="-1" style="z-index:1075;">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border:0; border-radius:16px; overflow:hidden;">
+            <div class="modal-header" style="background:linear-gradient(135deg,#dc3545,#c82333); color:#fff; border:0; padding:20px 24px;">
+                <h5 class="modal-title" style="font-weight:700; margin:0;"><i class="bi bi-shield-lock-fill me-2"></i>Confirm Your Password</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding:24px;">
+                <p id="pwConfirmMessage" style="font-size:14px; color:#475569; margin:0 0 16px;">This action cannot be undone. Enter your account password to confirm.</p>
+                <label class="form-lbl" for="pwConfirmInput">Your Password</label>
+                <div style="position:relative;">
+                    <input type="password" id="pwConfirmInput" class="form-fld" placeholder="Enter your password" style="width:100%;padding-right:42px;" autocomplete="current-password">
+                    <button type="button" onclick="_togglePwConfirmVisibility()" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);border:none;background:none;color:#94a3b8;cursor:pointer;padding:4px;">
+                        <i class="bi bi-eye-fill" id="pwConfirmToggleIcon"></i>
+                    </button>
+                </div>
+                <div id="pwConfirmError" style="display:none;color:#dc2626;font-size:12.5px;font-weight:600;margin-top:8px;">
+                    <i class="bi bi-exclamation-circle-fill me-1"></i><span id="pwConfirmErrorText">Incorrect password.</span>
+                </div>
+            </div>
+            <div class="modal-footer" style="border:0; padding:16px 24px;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="pwConfirmBtn">
+                    <i class="bi bi-check-lg me-1"></i>Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Schedule Conflict Confirmation Modal -->
 <div class="modal fade" id="scheduleConflictConfirmModal" tabindex="-1" style="z-index:1070;">
     <div class="modal-dialog modal-dialog-centered">
@@ -11371,6 +11402,64 @@ function openWalkInEnrollmentModal() {
                 }
             }, { once: true });
             bootstrap.Modal.getInstance(modalEl).hide();
+        });
+    }
+
+    // â”€â”€ Password-Confirmation ("type your password to confirm") â”€â”€
+    // Used for destructive student actions (archive / permanent delete) —
+    // unlike the plain delete-confirm modal, this one stays open on a wrong
+    // password (shows an inline error, lets the admin retry) and only closes
+    // once the server actually accepts the password.
+    let _pwConfirmCallback = null;
+
+    function showPasswordConfirm(message, onConfirm) {
+        document.getElementById('pwConfirmMessage').textContent = message;
+        const input = document.getElementById('pwConfirmInput');
+        input.value = '';
+        input.type = 'password';
+        document.getElementById('pwConfirmToggleIcon').className = 'bi bi-eye-fill';
+        document.getElementById('pwConfirmError').style.display = 'none';
+        _pwConfirmCallback = onConfirm;
+        new bootstrap.Modal(document.getElementById('pwConfirmModal')).show();
+        setTimeout(() => input.focus(), 300);
+    }
+
+    function _togglePwConfirmVisibility() {
+        const input = document.getElementById('pwConfirmInput');
+        const icon = document.getElementById('pwConfirmToggleIcon');
+        if (input.type === 'password') { input.type = 'text'; icon.className = 'bi bi-eye-slash-fill'; }
+        else { input.type = 'password'; icon.className = 'bi bi-eye-fill'; }
+    }
+
+    function _pwConfirmShowError(msg) {
+        document.getElementById('pwConfirmErrorText').textContent = msg || 'Incorrect password.';
+        document.getElementById('pwConfirmError').style.display = '';
+    }
+
+    function _pwConfirmClose() {
+        const modalEl = document.getElementById('pwConfirmModal');
+        const inst = bootstrap.Modal.getInstance(modalEl);
+        if (inst) inst.hide();
+    }
+
+    const pwConfirmBtn = document.getElementById('pwConfirmBtn');
+    if (pwConfirmBtn) {
+        pwConfirmBtn.addEventListener('click', function() {
+            const pw = document.getElementById('pwConfirmInput').value;
+            document.getElementById('pwConfirmError').style.display = 'none';
+            if (!pw) {
+                _pwConfirmShowError('Please enter your password.');
+                return;
+            }
+            if (typeof _pwConfirmCallback === 'function') {
+                _pwConfirmCallback(pw);
+            }
+        });
+    }
+    const pwConfirmInput = document.getElementById('pwConfirmInput');
+    if (pwConfirmInput) {
+        pwConfirmInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') { e.preventDefault(); document.getElementById('pwConfirmBtn').click(); }
         });
     }
 
@@ -12698,16 +12787,22 @@ function openWalkInEnrollmentModal() {
 
     // Archive Student (soft delete)
     function deleteStudent(studentId, studentName) {
-        showDeleteConfirm(
-            'Archive "' + (studentName || 'this student') + '"?\n\nTheir records will be preserved and can be restored from the Archives tab.',
-            function() {
+        showPasswordConfirm(
+            'Archive "' + (studentName || 'this student') + '"? Their records will be preserved and can be restored from the Archives tab. Enter your password to confirm.',
+            function(password) {
                 const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
                 fetch(`/admin/students/${studentId}`, {
                     method: 'DELETE',
-                    headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' }
+                    headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
                 })
-                .then(r => { if (!r.ok) throw new Error('Failed'); return r.json(); })
-                .then(d => {
+                .then(async r => {
+                    const d = await r.json();
+                    if (!r.ok) {
+                        _pwConfirmShowError(d.message || 'Incorrect password.');
+                        return;
+                    }
+                    _pwConfirmClose();
                     if (d.success) {
                         showCustomAlert('success', 'Archived!', d.message);
                         setTimeout(() => reloadWithSection(), 1200);
@@ -12715,7 +12810,7 @@ function openWalkInEnrollmentModal() {
                         showCustomAlert('error', 'Error', d.message || 'Archive failed.');
                     }
                 })
-                .catch(() => showCustomAlert('error', 'Error', 'Failed to archive student.'));
+                .catch(() => _pwConfirmShowError('Network error — failed to reach the server. Please try again.'));
             }
         );
     }
@@ -12756,16 +12851,22 @@ function openWalkInEnrollmentModal() {
 
     // Permanently delete an archived student — cannot be undone
     function forceDeleteStudent(studentId, studentName) {
-        showDeleteConfirm(
-            '⚠️ PERMANENTLY DELETE "' + (studentName || 'this student') + '"?\n\nAll records, documents, and files will be removed forever. This cannot be undone.',
-            function() {
+        showPasswordConfirm(
+            '⚠️ PERMANENTLY DELETE "' + (studentName || 'this student') + '"? All records, documents, and files will be removed forever. This cannot be undone. Enter your password to confirm.',
+            function(password) {
                 const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
                 fetch(`/admin/students/${studentId}/force`, {
                     method: 'DELETE',
-                    headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json' }
+                    headers: { 'X-CSRF-TOKEN': token, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
                 })
-                .then(r => { if (!r.ok) throw new Error('Failed'); return r.json(); })
-                .then(d => {
+                .then(async r => {
+                    const d = await r.json();
+                    if (!r.ok) {
+                        _pwConfirmShowError(d.message || 'Incorrect password.');
+                        return;
+                    }
+                    _pwConfirmClose();
                     if (d.success) {
                         showCustomAlert('success', 'Deleted!', d.message);
                         setTimeout(() => reloadWithSection(), 1200);
@@ -12773,7 +12874,7 @@ function openWalkInEnrollmentModal() {
                         showCustomAlert('error', 'Error', d.message || 'Delete failed.');
                     }
                 })
-                .catch(() => showCustomAlert('error', 'Error', 'Failed to permanently delete student.'));
+                .catch(() => _pwConfirmShowError('Network error — failed to reach the server. Please try again.'));
             }
         );
     }

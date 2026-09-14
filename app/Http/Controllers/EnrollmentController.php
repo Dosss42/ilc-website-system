@@ -2302,8 +2302,12 @@ class EnrollmentController extends Controller
     /**
      * Archive a student (soft delete) — data is preserved and can be restored.
      */
-    public function deleteStudent(User $user)
+    public function deleteStudent(Request $request, User $user)
     {
+        if (!\Illuminate\Support\Facades\Hash::check((string) $request->input('password'), Auth::user()->password)) {
+            return response()->json(['success' => false, 'message' => 'Incorrect password. Please try again.'], 422);
+        }
+
         $this->removeStudentFromSections($user->id);
         $user->delete(); // soft delete — sets deleted_at
         return response()->json(['success' => true, 'message' => 'Student archived successfully. You can restore them from the Archives tab.']);
@@ -2322,8 +2326,12 @@ class EnrollmentController extends Controller
     /**
      * Permanently delete a student — removes all records and files. Cannot be undone.
      */
-    public function forceDeleteStudent($id)
+    public function forceDeleteStudent(Request $request, $id)
     {
+        if (!\Illuminate\Support\Facades\Hash::check((string) $request->input('password'), Auth::user()->password)) {
+            return response()->json(['success' => false, 'message' => 'Incorrect password. Please try again.'], 422);
+        }
+
         $user = User::withTrashed()->findOrFail($id);
 
         $enrollmentIds = $user->enrollments()->pluck('id')->toArray();
