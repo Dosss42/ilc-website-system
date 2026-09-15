@@ -168,6 +168,7 @@ class StudentPortalController extends Controller
         // Get payment installments for installment plans
         $paymentInstallments = collect([]);
         $paymentSummary = null;
+        $examPermitStatus = null;
         if ($enrollment && ($enrollment->payment_type === 'installment' || in_array($enrollment->payment_option, ['B', 'C', 'D']))) {
             // Create installments if they don't exist
             PaymentService::createInstallments($enrollment);
@@ -178,6 +179,7 @@ class StudentPortalController extends Controller
             // Get payment summary
             $paymentSummary = PaymentService::getPaymentSummary($enrollment);
             $paymentInstallments = $paymentSummary['installments'] ?? collect([]);
+            $examPermitStatus = PaymentService::getExamPermitStatus($enrollment);
         }
 
         // Available sections for the student's grade level (for change-section feature)
@@ -284,7 +286,7 @@ class StudentPortalController extends Controller
         return view('studentportal', compact(
             'enrollment', 'progress', 'documents', 'profileComplete',
             'schedules', 'section', 'hasRequiredDocuments',
-            'paymentInstallments', 'paymentSummary', 'availableSections',
+            'paymentInstallments', 'paymentSummary', 'examPermitStatus', 'availableSections',
             'needsReenrollment', 'reenrollmentOpen', 'suggestedGrade',
             'currentSchoolYear', 'promotionRecord', 'enrollmentWindowOpen',
             'profile', 'address', 'guardian', 'mother', 'father', 'previousSchool',

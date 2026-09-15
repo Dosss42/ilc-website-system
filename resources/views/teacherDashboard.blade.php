@@ -1239,6 +1239,12 @@
                 </div>
             </div>
 
+            <!-- Exam Permit Hold notice — appears only when students in this class have a hold -->
+            <div id="ms-permit-banner" style="display:none;margin-bottom:14px;padding:12px 16px;background:#ffebee;border:1px solid #ffcdd2;border-radius:10px;color:#c62828;font-size:12.5px;align-items:center;gap:10px;">
+                <i class="bi bi-exclamation-triangle-fill" style="font-size:16px;"></i>
+                <span id="ms-permit-banner-text"></span>
+            </div>
+
             <!-- Grade table -->
             <div class="content-card">
                 <div class="content-card-header">
@@ -2114,10 +2120,14 @@
 
                 const sf9Url = '{{ route("teacher.sf9", ":sid") }}'.replace(':sid', s.student_id)
                     + '?school_year=' + encodeURIComponent(schoolYear);
+                const permitBadge = s.exam_permit_held
+                    ? '<div style="font-size:10px;color:#c62828;margin-top:2px;font-weight:600;" title="' + (s.exam_permit_reason === 'broken_promise' ? 'Promissory Note broken — payment promise date passed unpaid' : 'Payments 3+ consecutive months behind') + '"><i class="bi bi-exclamation-triangle-fill"></i> Exam Permit Withheld</div>'
+                    : '';
                 html += '<tr data-student-id="' + s.student_id + '" data-enrollment-id="' + (s.enrollment_id || '') + '">'
                     + '<td style="color:var(--muted);font-size:12px;">' + (i+1) + '</td>'
                     + '<td><div style="font-weight:600;font-size:13px;">' + s.name + '</div>'
                     +   (isDraftFill ? '<div style="font-size:10px;color:#d68910;margin-top:2px;"><i class="bi bi-upload"></i> Imported draft — verify before submitting</div>' : '')
+                    +   permitBadge
                     + '</td>'
                     + '<td style="font-size:12px;color:var(--muted);">' + (s.lrn || '—') + '</td>'
                     + '<td>' + inputHtml + '</td>'
@@ -2127,6 +2137,17 @@
                     + '</tr>';
             });
             tbody.innerHTML = html;
+
+            const permitBanner = document.getElementById('ms-permit-banner');
+            const heldCount = data.data.filter(function(s) { return s.exam_permit_held; }).length;
+            if (heldCount > 0) {
+                document.getElementById('ms-permit-banner-text').textContent =
+                    heldCount + ' student' + (heldCount > 1 ? 's' : '') + ' in this class ' + (heldCount > 1 ? 'have' : 'has') +
+                    ' an Exam Permit Hold for unpaid tuition — do not release their periodic exam results until Finance confirms the hold is lifted.';
+                permitBanner.style.display = 'flex';
+            } else {
+                permitBanner.style.display = 'none';
+            }
 
             if (data.draft_count > 0) {
                 showDraftNotice(data.draft_count);

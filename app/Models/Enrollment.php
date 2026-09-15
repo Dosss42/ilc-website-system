@@ -97,6 +97,11 @@ class Enrollment extends Model
         return $this->hasMany(PaymentInstallment::class)->orderBy('due_date');
     }
 
+    public function promissoryNotes()
+    {
+        return $this->hasMany(PromissoryNote::class)->orderByDesc('created_at');
+    }
+
     public function getFullNameAttribute()
     {
         $data = $this->student_data ?? [];

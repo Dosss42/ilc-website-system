@@ -167,6 +167,7 @@
                     $isCashBasis      = $enrollment->payment_option === 'A'
                         || ($enrollment->payment_type === 'full' && !in_array($enrollment->payment_option, ['B','C','D']));
                     $balance          = max(0, $totalFee - $totalPaid);
+                    $examStatus       = $isCashBasis ? ['held' => false] : \App\Services\PaymentService::getExamPermitStatus($enrollment);
                 @endphp
                 <tr style="{{ $isOverdue ? 'background:#fff8f8;' : '' }}"
                     data-status="{{ $enrollment->payment_status }}"
@@ -241,6 +242,12 @@
                                     {{ $weeksOverdue > 0 ? $weeksOverdue . 'w overdue' : 'Overdue' }}
                                 </span>
                             @endif
+                            @if($examStatus['held'])
+                                <span style="display:inline-flex;align-items:center;gap:4px;margin-top:4px;margin-left:4px;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;background:#3e1a1a;color:#ffcdd2;"
+                                      title="{{ $examStatus['reason'] === 'broken_promise' ? 'Promissory Note broken — promised date passed unpaid' : $examStatus['overdue_months'] . ' consecutive months unpaid' }}">
+                                    <i class="bi bi-file-earmark-lock-fill"></i> Exam Permit Held
+                                </span>
+                            @endif
                         @else
                             <span style="display:inline-flex;align-items:center;gap:4px;color:var(--green);font-weight:600;">
                                 <i class="bi bi-check-circle-fill"></i> {{ $enrollment->next_month_name ?? 'Fully Paid' }}
@@ -287,6 +294,14 @@
                             title="Add Promissory Note"
                             onclick="openPromissoryModal({{ $enrollment->id }}, '{{ addslashes($enrollment->user->name ?? '') }}', {{ $balance }}, '{{ addslashes($enrollment->user->guardian->name ?? '') }}')">
                             <i class="bi bi-file-earmark-text"></i>
+                        </button>
+                        @endif
+                        @if($enrollment->promissoryNotes->count() > 0)
+                        <button type="button" class="action-btn"
+                            style="background:#f3e8fd;color:#7b1fa2;border:1px solid #ce93d8;"
+                            title="View / Manage Promissory Notes ({{ $enrollment->promissoryNotes->count() }})"
+                            onclick="openNotesManager({{ $enrollment->id }}, '{{ addslashes($enrollment->user->name ?? '') }}')">
+                            <i class="bi bi-clipboard2-check"></i>
                         </button>
                         @endif
                     </td>
@@ -439,6 +454,36 @@
                 <button type="button" id="pnSaveBtn" onclick="savePromissoryNote()" style="background:linear-gradient(135deg,#e65100,#f5a623); color:#fff; border:none; border-radius:8px; padding:9px 22px; font-weight:700; font-size:13px; cursor:pointer;">
                     <i class="bi bi-file-earmark-check me-1"></i>Save Promissory Note
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Promissory Notes Manager Modal — history + status changes for one student --}}
+<div class="modal fade" id="notesManagerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content" style="border-radius:14px; border:none; box-shadow:0 20px 60px rgba(0,0,0,0.15);">
+            <div class="modal-header" style="background:linear-gradient(135deg,#5e35b1,#7b1fa2); color:#fff; border:0; border-radius:14px 14px 0 0; padding:18px 24px;">
+                <div>
+                    <h5 class="modal-title mb-0" style="font-weight:700; font-size:16px;">
+                        <i class="bi bi-clipboard2-check me-2"></i>Promissory Notes
+                    </h5>
+                    <div style="font-size:11px; opacity:0.85; margin-top:2px;" id="nm-student-display">—</div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding:20px 24px; max-height:65vh; overflow-y:auto;">
+                <div style="background:#f3e5f5; border-radius:8px; padding:10px 14px; margin-bottom:16px; font-size:12px; color:#4a148c;">
+                    <i class="bi bi-info-circle-fill me-1"></i>
+                    A note in good standing (still <strong>pending</strong> with a future promise date, or <strong>extended</strong>) keeps the Exam Permit clear.
+                    A <strong>broken</strong> note — the promised date passed unpaid — re-applies the hold until a new note is issued or the balance is paid in full.
+                </div>
+                <div id="nm-list">
+                    <div style="text-align:center; padding:30px; color:var(--muted);"><div class="spinner-border spinner-border-sm me-2"></div>Loading...</div>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top:1px solid #f0f0f0; padding:14px 24px;">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -847,6 +892,111 @@ function savePromissoryNote() {
         btn.innerHTML = '<i class="bi bi-file-earmark-check me-1"></i>Save Promissory Note';
         alert('Network error. Please try again.');
     });
+}
+
+// ── Promissory Notes Manager — view history, mark fulfilled/broken/extended ──
+var nmCurrentEnrollmentId = null;
+
+function openNotesManager(enrollmentId, studentName) {
+    nmCurrentEnrollmentId = enrollmentId;
+    document.getElementById('nm-student-display').textContent = studentName;
+    document.getElementById('nm-list').innerHTML = '<div style="text-align:center; padding:30px; color:var(--muted);"><div class="spinner-border spinner-border-sm me-2"></div>Loading...</div>';
+    new bootstrap.Modal(document.getElementById('notesManagerModal')).show();
+    loadNotesList(enrollmentId);
+}
+
+function loadNotesList(enrollmentId) {
+    fetch('{{ route("promissory.list") }}?enrollment_id=' + enrollmentId, {
+        headers: { 'Accept': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => renderNotesList(data.data || []))
+    .catch(() => {
+        document.getElementById('nm-list').innerHTML = '<div style="text-align:center; padding:20px; color:var(--red);">Failed to load notes.</div>';
+    });
+}
+
+function renderNotesList(notes) {
+    const list = document.getElementById('nm-list');
+    if (!notes.length) {
+        list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--muted);">No promissory notes on file.</div>';
+        return;
+    }
+    const statusColors = {
+        pending:   { bg: '#fff8e1', fg: '#f57c00', label: 'Pending' },
+        fulfilled: { bg: '#e8f5e9', fg: '#2e7d32', label: 'Fulfilled' },
+        broken:    { bg: '#ffebee', fg: '#c62828', label: 'Broken' },
+        extended:  { bg: '#e3f2fd', fg: '#1565c0', label: 'Extended' },
+    };
+    list.innerHTML = notes.map(function(n) {
+        const sc = statusColors[n.status] || statusColors.pending;
+        const overdueTag = n.is_overdue
+            ? '<span style="margin-left:6px; color:#c62828; font-weight:700; font-size:11px;"><i class="bi bi-exclamation-triangle-fill"></i> Promise date passed — mark as Broken below</span>'
+            : '';
+        let actions = '';
+        if (n.status === 'pending' || n.status === 'extended') {
+            actions = ''
+                + '<button type="button" class="btn btn-sm" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;font-size:11px;font-weight:600;" onclick="updateNoteStatus(' + n.id + ', \'fulfilled\')"><i class="bi bi-check-circle"></i> Mark Fulfilled</button> '
+                + '<button type="button" class="btn btn-sm" style="background:#ffebee;color:#c62828;border:1px solid #ef9a9a;font-size:11px;font-weight:600;" onclick="updateNoteStatus(' + n.id + ', \'broken\')"><i class="bi bi-x-circle"></i> Mark Broken</button> '
+                + '<button type="button" class="btn btn-sm" style="background:#e3f2fd;color:#1565c0;border:1px solid #90caf9;font-size:11px;font-weight:600;" onclick="promptExtendNote(' + n.id + ')"><i class="bi bi-calendar-plus"></i> Extend Date</button>';
+        } else if (n.status === 'broken') {
+            actions = '<span style="font-size:11px; color:var(--muted);">Issue a <strong>new</strong> Promissory Note above to lift the hold, or mark Fulfilled if the balance was actually settled.</span> '
+                + '<button type="button" class="btn btn-sm" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;font-size:11px;font-weight:600;" onclick="updateNoteStatus(' + n.id + ', \'fulfilled\')"><i class="bi bi-check-circle"></i> Mark Fulfilled</button>';
+        }
+        return '<div style="border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:10px;">'
+            + '<div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">'
+            +   '<div>'
+            +     '<div style="font-weight:700; font-size:13px; color:var(--blue);">' + n.reference_number + '</div>'
+            +     '<div style="font-size:11px; color:var(--muted); margin-top:2px;">Issued ' + n.date_issued + ' by ' + (n.created_by_name || 'Unknown') + '</div>'
+            +   '</div>'
+            +   '<span style="padding:3px 10px; border-radius:12px; font-size:10px; font-weight:700; background:' + sc.bg + '; color:' + sc.fg + ';">' + sc.label + '</span>'
+            + '</div>'
+            + '<div style="font-size:12px; color:var(--text); margin-bottom:6px;">'
+            +   'Promised <strong>₱' + Number(n.amount_promised).toLocaleString(undefined, {minimumFractionDigits:2}) + '</strong> by <strong>' + (n.extended_date || n.promise_date) + '</strong>'
+            +   (n.extended_date ? ' <span style="color:var(--muted);">(extended from ' + n.promise_date + ')</span>' : '')
+            +   overdueTag
+            + '</div>'
+            + (n.remarks ? '<div style="font-size:11.5px; color:var(--muted); margin-bottom:8px; font-style:italic;">"' + n.remarks + '"</div>' : '')
+            + '<div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin-top:8px;">'
+            +   actions
+            +   ' <a href="/promissory-notes/' + n.id + '/print" target="_blank" class="btn btn-sm btn-secondary" style="font-size:11px;"><i class="bi bi-printer"></i> Print</a>'
+            + '</div>'
+            + '</div>';
+    }).join('');
+}
+
+function updateNoteStatus(noteId, status, extendedDate) {
+    if (status === 'broken' && !confirm('Mark this Promissory Note as Broken? This will re-apply the Exam Permit Hold until a new note is issued or the balance is fully paid.')) {
+        return;
+    }
+    const body = { status: status };
+    if (extendedDate) body.extended_date = extendedDate;
+
+    fetch('/promissory-notes/' + noteId + '/status', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify(body)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            loadNotesList(nmCurrentEnrollmentId);
+            location.reload(); // refresh the Exam Permit badge in the table behind the modal
+        } else {
+            alert(data.message || 'Failed to update note.');
+        }
+    })
+    .catch(() => alert('Network error. Please try again.'));
+}
+
+function promptExtendNote(noteId) {
+    const newDate = prompt('New promise date (YYYY-MM-DD):');
+    if (!newDate) return;
+    updateNoteStatus(noteId, 'extended', newDate);
 }
 </script>
 @endsection

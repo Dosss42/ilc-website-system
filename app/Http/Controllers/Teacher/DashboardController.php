@@ -311,18 +311,34 @@ class DashboardController extends Controller
                 $draftRemarks  = null;
             }
 
+            // Exam Permit Hold flag — teachers see this so they know not to
+            // release exam results/report cards for a student whose family
+            // is 3+ consecutive months behind on tuition (see
+            // PaymentService::getExamPermitStatus). Only meaningful for
+            // installment-plan enrollments; full-payment students never hold.
+            $enrollment = $student->latestEnrollment;
+            $examPermitHeld = false;
+            $examPermitReason = null;
+            if ($enrollment && ($enrollment->payment_type === 'installment' || in_array($enrollment->payment_option, ['B', 'C', 'D']))) {
+                $examStatus = \App\Services\PaymentService::getExamPermitStatus($enrollment);
+                $examPermitHeld   = $examStatus['held'];
+                $examPermitReason = $examStatus['reason'];
+            }
+
             return [
-                'student_id'      => $student->id,
-                'name'            => $student->name,
-                'lrn'             => $student->lrn ?? '',
-                'enrollment_id'   => $student->latestEnrollment?->id ?? null,
-                'grade'           => $gradeVal,
-                'remarks'         => $remarks,
-                'grade_status'    => $grade?->status ?? null,
-                'draft_grade'     => $draftGradeVal,
-                'draft_remarks'   => $draftRemarks,
-                'draft_id'        => $draft?->id ?? null,
-                'has_draft'       => $draft !== null,
+                'student_id'         => $student->id,
+                'name'               => $student->name,
+                'lrn'                => $student->lrn ?? '',
+                'enrollment_id'      => $enrollment?->id ?? null,
+                'grade'              => $gradeVal,
+                'remarks'            => $remarks,
+                'grade_status'       => $grade?->status ?? null,
+                'draft_grade'        => $draftGradeVal,
+                'draft_remarks'      => $draftRemarks,
+                'draft_id'           => $draft?->id ?? null,
+                'has_draft'          => $draft !== null,
+                'exam_permit_held'   => $examPermitHeld,
+                'exam_permit_reason' => $examPermitReason,
             ];
         });
 

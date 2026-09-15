@@ -235,7 +235,7 @@ class DashboardController extends Controller
             // 'user.guardian' feeds the promissory-note modal's guardian-name
             // auto-fill (DATABASE_NORMALIZATION_PLAN.md Phase 7) — staff can
             // still edit it, this just saves them re-typing what's on file.
-            ->with(['user:id,name,email', 'user.guardian', 'paymentInstallments']);
+            ->with(['user:id,name,email', 'user.guardian', 'paymentInstallments', 'promissoryNotes']);
 
         // Filter by school year
         $yearFilter = $request->input('school_year');

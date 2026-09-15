@@ -2618,6 +2618,38 @@
                 </div>
             </div>
 
+            {{-- Exam Permit status — only relevant for installment plans --}}
+            @if($examPermitStatus)
+            @php
+                $epHeld = $examPermitStatus['held'] ?? false;
+                $epReason = $examPermitStatus['reason'] ?? null;
+                $epMonths = $examPermitStatus['overdue_months'] ?? 0;
+                if ($epReason === 'broken_promise') {
+                    $epTitle = 'Exam Permit Withheld — Promissory Note Broken';
+                    $epMsg = 'The promised payment date on file has passed without payment. Please visit the Finance Office to settle the balance or arrange a new Promissory Note.';
+                } elseif ($epHeld) {
+                    $epTitle = 'Exam Permit Withheld';
+                    $epMsg = "Payments are {$epMonths} consecutive months behind. Please settle the balance or arrange a Promissory Note with the Finance Office to restore the Exam Permit.";
+                } else {
+                    $epTitle = 'Exam Permit Clear';
+                    $epMsg = $examPermitStatus['note'] ?? null
+                        ? 'A Promissory Note is on file and in good standing. Please pay by the promised date to keep the Exam Permit clear.'
+                        : 'No hold on file. The Exam Permit is available for periodic exams.';
+                }
+            @endphp
+            <div class="content-card mb-4" style="border-left:4px solid {{ $epHeld ? '#c62828' : '#2e7d32' }};">
+                <div style="padding:16px 20px; display:flex; align-items:flex-start; gap:14px;">
+                    <div style="width:40px;height:40px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:{{ $epHeld ? '#ffebee' : '#e8f5e9' }};">
+                        <i class="bi {{ $epHeld ? 'bi-exclamation-triangle-fill' : 'bi-patch-check-fill' }}" style="font-size:18px;color:{{ $epHeld ? '#c62828' : '#2e7d32' }};"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight:700; font-size:14px; color:{{ $epHeld ? '#c62828' : '#2e7d32' }}; margin-bottom:3px;">{{ $epTitle }}</div>
+                        <div style="font-size:12.5px; color:var(--muted); line-height:1.5;">{{ $epMsg }}</div>
+                    </div>
+                </div>
+            </div>
+            @endif
+
             {{-- Installment quick-row + View Schedule button --}}
             @if($enrollment->payment_type === 'installment' || in_array($enrollment->payment_option, ['B', 'C', 'D']))
             @php

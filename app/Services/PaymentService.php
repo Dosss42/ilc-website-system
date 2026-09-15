@@ -24,6 +24,12 @@ class PaymentService
     const LATE_FEE_WEEKS = 3; // Late fee applied after 3 weeks (2 weeks + 1 week grace)
     const MONTHS = ['July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March'];
 
+    // Exam Permit Hold: how many consecutive unpaid months trigger it.
+    // Confirmed with the school: 3 months behind, no earlier than that —
+    // the existing weekly email/late-fee escalation above already covers
+    // months 1-2, this is the next step up in consequence.
+    const EXAM_PERMIT_HOLD_MONTHS = 3;
+
     /**
      * Check and process all overdue payments
      * Sends notifications, applies late fees, and blocks accounts as needed
@@ -527,6 +533,87 @@ class PaymentService
         ]);
 
         return true;
+    }
+
+    /**
+     * Exam Permit Hold status for an enrollment.
+     *
+     * The existing weekly email/late-fee escalation above (checkOverdueInstallments)
+     * already covers the first ~3 weeks of a single missed month. This is the
+     * next, heavier consequence once a family has fallen EXAM_PERMIT_HOLD_MONTHS
+     * consecutive months behind — the point at which parents can no longer
+     * pick up an Exam Permit until either the balance is settled or a
+     * Promissory Note is signed with Finance/Admin.
+     *
+     * "Consecutive months behind" is simply the count of installments whose
+     * due_date has passed and are still not 'paid' — advance/partial payments
+     * always settle the OLDEST unpaid installment first (see
+     * processAdvancePayment/reconcileInstallmentStatuses), so those overdue
+     * rows always form a contiguous run ending at "today". That's what lets
+     * "paid month 1, then missed months 2-4" and "never paid months 1-3"
+     * resolve to the same, correct answer here without tracking a separate
+     * streak counter that could drift out of sync with the installment rows.
+     *
+     * A broken promise (a Promissory Note whose promised date passed unpaid)
+     * is treated as worse than a plain overdue balance: it holds regardless
+     * of the raw month count, and — per school policy — needs a *new*
+     * Promissory Note (created by Finance or Admin) to lift, not just a
+     * partial payment.
+     */
+    public static function getExamPermitStatus(Enrollment $enrollment): array
+    {
+        // Use the loaded relation collections (->paymentInstallments /
+        // ->promissoryNotes as properties, not ->paymentInstallments() calls)
+        // so callers that eager-load them for a list of enrollments — e.g.
+        // Finance's Installments page — don't turn this into an N+1 query
+        // per row. Falls back to a normal lazy-load automatically if the
+        // caller didn't eager-load, so this stays correct everywhere either way.
+        $today = Carbon::today();
+        $overdueMonths = $enrollment->paymentInstallments
+            ->filter(fn($i) => $i->due_date && $i->due_date->lt($today) && $i->status !== 'paid')
+            ->count();
+
+        $notes = $enrollment->promissoryNotes;
+
+        $brokenNote = $notes->first(function ($note) {
+            return $note->status === 'broken'
+                || ($note->status === 'pending' && $note->is_overdue);
+        });
+
+        if ($brokenNote) {
+            return [
+                'held'           => true,
+                'reason'         => 'broken_promise',
+                'overdue_months' => $overdueMonths,
+                'note'           => $brokenNote,
+            ];
+        }
+
+        $activeNote = $notes->first(function ($note) {
+            if ($note->status === 'pending') {
+                return $note->promise_date && Carbon::today()->lte($note->promise_date);
+            }
+            if ($note->status === 'extended') {
+                return $note->extended_date && Carbon::today()->lte($note->extended_date);
+            }
+            return false;
+        });
+
+        if ($overdueMonths >= self::EXAM_PERMIT_HOLD_MONTHS && !$activeNote) {
+            return [
+                'held'           => true,
+                'reason'         => 'overdue',
+                'overdue_months' => $overdueMonths,
+                'note'           => null,
+            ];
+        }
+
+        return [
+            'held'           => false,
+            'reason'         => null,
+            'overdue_months' => $overdueMonths,
+            'note'           => $activeNote,
+        ];
     }
 
     /**
