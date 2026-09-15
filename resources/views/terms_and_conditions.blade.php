@@ -173,8 +173,14 @@
             <li>Bank transfer (details provided upon request)</li>
         </ul>
 
-        <h3>5.2 Payment Deadlines</h3>
-        <p>All payments must be made by the specified deadlines. Late payments may incur penalties as outlined in the school's fee schedule.</p>
+        <h3>5.2 Payment Deadlines and Late Fees</h3>
+        <p>For students under an installment payment plan, each monthly installment is due on the date shown in the student's Payment Schedule, visible at all times in the Student Portal. If a payment is not received by the due date, the following applies automatically:</p>
+        <ul>
+            <li><strong>1 week</strong> past the due date — a warning notice is sent by email.</li>
+            <li><strong>2 weeks</strong> past the due date — a follow-up reminder is sent (grace period; no fee yet).</li>
+            <li><strong>3 weeks</strong> past the due date — a late fee of <strong>₱500</strong> is added to that installment, and a confirmation notice is sent.</li>
+        </ul>
+        <p>Weekly reminders continue automatically for as long as an installment remains unpaid. A late fee alone does not affect a student's ability to attend class; see Section 5.4 and 5.5 for what happens if payments fall further behind.</p>
 
         <h3>5.3 Refund Policy</h3>
         <p>Refunds are subject to the school's refund policy:</p>
@@ -183,6 +189,25 @@
             <li>Partial refund if withdrawal is made within the first week of classes</li>
             <li>No refund for withdrawals after the first week of classes</li>
             <li>Special circumstances may be considered on a case-by-case basis</li>
+        </ul>
+
+        <h3>5.4 Promissory Note</h3>
+        <p>A <strong>Promissory Note</strong> is a written agreement between the parent/guardian and the school's Finance Office, stating a specific amount the family will pay by a specific promised date. It may be requested by the parent/guardian, or offered by the school, and becomes required once an account reaches the condition described in Section 5.5.</p>
+        <ul>
+            <li>While a Promissory Note is active and its promised date has not yet passed, the account is considered in good standing.</li>
+            <li>If the promised date passes without full payment, the note is considered <strong>broken</strong>. This may result in the restriction described in Section 5.5 being applied or re-applied, and may be subject to additional terms set by the Finance Office.</li>
+            <li>Only Finance staff or the school Administrator may issue, extend, or resolve a Promissory Note — it cannot be self-certified by a parent/guardian.</li>
+            <li>A copy of every Promissory Note is available to the parent/guardian upon request.</li>
+        </ul>
+
+        <h3>5.5 Exam Permit</h3>
+        <p>An <strong>Exam Permit</strong> is the school's permission for a student to sit for periodic/quarterly exams.</p>
+        <ul>
+            <li>The Exam Permit is withheld when payments are <strong>three (3) consecutive months</strong> behind schedule and there is no Promissory Note in good standing, or when a Promissory Note on the account has been broken (Section 5.4).</li>
+            <li>Withholding the Exam Permit is a restriction on taking the exam, separate from the late fee described in Section 5.2.</li>
+            <li>The Exam Permit is automatically restored as soon as the account balance is brought current, or a new Promissory Note is signed before its promised date, or the Finance Office confirms the balance has been settled — no separate request is needed.</li>
+            <li>This restriction applies specifically to periodic/quarterly exams and does not affect a student's ability to attend regular classes.</li>
+            <li>Parents/guardians may contact the Finance Office at any time to check their account status or arrange a Promissory Note before this restriction applies.</li>
         </ul>
 
         <h2>6. Academic Integrity and Conduct</h2>
