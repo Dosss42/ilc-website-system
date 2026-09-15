@@ -219,12 +219,33 @@ class CashierController extends Controller
     public function receiptsList(Request $request)
     {
         $search = trim($request->get('q', ''));
+        $userId = $request->get('user_id');
+        // Receipts (the tab) only ever wants completed transactions, so that
+        // stays the default — Payment History passes status=all (or a specific
+        // status) to see pending/rejected ones too, via this same endpoint.
+        $status = $request->get('status', 'completed');
+        $method = $request->get('method');
+        $date   = $request->get('date');
 
         $query = PaymentTransaction::with(['user', 'enrollment'])
-            ->where('status', 'completed')
             ->latest('processed_at');
 
-        if ($search !== '') {
+        if ($status && $status !== 'all') {
+            $query->where('status', $status);
+        }
+        if ($method && $method !== 'all') {
+            $method === 'cash' ? $query->where('payment_method', 'cash') : $query->where('payment_method', '!=', 'cash');
+        }
+        if ($date) {
+            $query->whereDate('processed_at', $date);
+        }
+
+        if ($userId) {
+            // Used by the Process Payment screen's "Recent Payments" mini panel
+            // and by Payment History when opened for one student — scoped to
+            // that student, not a name/reference search.
+            $query->where('user_id', $userId);
+        } elseif ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('reference_number', 'like', "%{$search}%")
                   ->orWhereHas('user', function ($qu) use ($search) {
@@ -233,10 +254,12 @@ class CashierController extends Controller
             });
         }
 
-        $txs = $query->limit(100)->get()->map(function ($tx) {
+        $limit = (int) $request->get('limit', 100);
+        $txs = $query->limit($limit ?: 100)->get()->map(function ($tx) {
             return [
                 'or_no'       => $tx->reference_number ?? '—',
                 'date'        => $tx->processed_at?->format('M d, Y'),
+                'date_iso'    => $tx->processed_at?->toDateString(),
                 'time'        => $tx->processed_at?->format('h:i A'),
                 'student'     => $tx->user?->name ?? '—',
                 'grade'       => $tx->enrollment?->grade_level ? ucfirst($tx->enrollment->grade_level) : '—',
@@ -459,6 +482,39 @@ class CashierController extends Controller
         return response()->json($options);
     }
 
+    /**
+     * Month-by-month installment timeline for one enrollment — powers the
+     * "which months are paid / which is next" view on the Process Payment
+     * screen. Same shape as Finance's installmentDetails() so both portals
+     * render it identically.
+     */
+    public function installmentTimeline($enrollmentId)
+    {
+        $enrollment = \App\Models\Enrollment::find($enrollmentId);
+        if (!$enrollment) {
+            return response()->json(['installments' => [], 'downpayment' => null]);
+        }
+
+        $installments = $enrollment->paymentInstallments()->orderBy('due_date')->get()
+            ->map(fn($i) => [
+                'id'         => $i->id,
+                'month_name' => $i->month_name,
+                'due_date'   => $i->due_date?->format('Y-m-d'),
+                'amount'     => (float) $i->amount,
+                'late_fee'   => (float) ($i->late_fee ?? 0),
+                'status'     => $i->status,
+                'weeks_overdue' => $i->weeks_overdue ?? 0,
+            ]);
+
+        return response()->json([
+            'installments' => $installments,
+            'downpayment'  => [
+                'amount' => (float) ($enrollment->downpayment_amount ?? 0),
+                'paid'   => (float) ($enrollment->payment_amount ?? 0) >= (float) ($enrollment->downpayment_amount ?? 0),
+            ],
+        ]);
+    }
+
     public function setEnrollmentPlan(Request $request)
     {
         $request->validate([
@@ -540,7 +596,8 @@ class CashierController extends Controller
             'enrollment_id'  => 'required|exists:enrollments,id',
             'amount'         => 'required|numeric|min:1',
             'payment_type'   => 'required|string',
-            'payment_method' => 'required|string',
+            // GrabPay / bank transfer / OTC removed — out of scope for this system.
+            'payment_method' => 'required|string|in:gcash,maya',
             'student_name'   => 'required|string',
             'student_email'  => 'nullable|email',
         ]);
@@ -711,13 +768,11 @@ class CashierController extends Controller
 
     private function xenditMethodsFor(string $method): array
     {
+        // GrabPay / bank transfer / OTC removed — out of scope for this system.
         return match ($method) {
-            'gcash'   => ['GCASH'],
-            'maya'    => ['PAYMAYA'],
-            'grabpay' => ['GRABPAY'],
-            'otc'     => ['SEVEN_ELEVEN', 'CEBUANA', 'PALAWAN', 'MLHUILLIER'],
-            'bank'    => ['DD_BPI', 'DD_UBP', 'DD_RCBC', 'DD_CHINABANK'],
-            default   => [],
+            'gcash' => ['GCASH'],
+            'maya'  => ['PAYMAYA'],
+            default => [],
         };
     }
 

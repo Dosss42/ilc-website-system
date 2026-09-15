@@ -539,6 +539,7 @@ Route::prefix('cashier')->name('cashier.')->group(function () {
         Route::get('/students/search', [\App\Http\Controllers\CashierController::class, 'searchStudent'])->name('students.search');
         Route::get('/students', [\App\Http\Controllers\CashierController::class, 'listStudents'])->name('students.list');
         Route::get('/payment-options', [\App\Http\Controllers\CashierController::class, 'getPaymentOptions'])->name('payment.options');
+        Route::get('/installments/{enrollmentId}', [\App\Http\Controllers\CashierController::class, 'installmentTimeline'])->name('installments.timeline');
         Route::post('/enrollment/set-plan', [\App\Http\Controllers\CashierController::class, 'setEnrollmentPlan'])->name('enrollment.set-plan');
         Route::get('/daily-report', [\App\Http\Controllers\CashierController::class, 'dailyReport'])->name('daily.report');
         Route::get('/receipts', [\App\Http\Controllers\CashierController::class, 'receiptsList'])->name('receipts.list');

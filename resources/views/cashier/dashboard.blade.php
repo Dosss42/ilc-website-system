@@ -386,6 +386,20 @@
         .method-pill.cash   { background: #f0fdf4; color: #16a34a; }
         .method-pill.gcash  { background: #e8f0fb; color: #2471a3; }
 
+        /* ── Installment Timeline — "which months are paid, what's next" ── */
+        .pay-timeline { display: flex; align-items: flex-start; overflow-x: auto; padding: 10px 4px 4px; }
+        .pt-step { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; min-width: 46px; }
+        .pt-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; border: 2.5px solid #cbd5e1; background: #fff; color: #94a3b8; flex-shrink: 0; }
+        .pt-step.paid .pt-dot { background: #16a34a; border-color: #16a34a; color: #fff; }
+        .pt-step.pending .pt-dot { background: #2471a3; border-color: #2471a3; color: #fff; }
+        .pt-step.overdue .pt-dot { background: #dc2626; border-color: #dc2626; color: #fff; }
+        .pt-step.next .pt-dot { background: #fff; border-color: #d97706; color: #d97706; box-shadow: 0 0 0 4px rgba(217,119,6,.15); }
+        .pt-label { font-size: 10px; font-weight: 700; color: #64748b; white-space: nowrap; }
+        .pt-step.next .pt-label { color: #d97706; }
+        .pt-sub { font-size: 9px; color: #b0b8c4; white-space: nowrap; }
+        .pt-line { flex: 1; height: 3px; min-width: 14px; background: #e2e8f0; margin: 13px -2px 0; }
+        .pt-line.paid { background: #16a34a; }
+
         /* ── ACTION BUTTONS ── */
         .btn-primary-cash {
             display: inline-flex; align-items: center; gap: 7px;
@@ -613,7 +627,7 @@
         <span class="link-icon"><i class="bi bi-cash-coin"></i></span>
         <span class="link-label">Process Payment</span>
     </button>
-    <button class="sidebar-link" data-section="history" onclick="showSection('history', this)">
+    <button class="sidebar-link" data-section="history" onclick="_historyStudentFilter=null;showSection('history', this)">
         <span class="link-icon"><i class="bi bi-clock-history"></i></span>
         <span class="link-label">Payment History</span>
         <span class="sidebar-badge" id="pending-badge" style="display:none;">0</span>
@@ -667,7 +681,7 @@
 <div class="main" id="main-content">
 
 <style>
-    .ilc-breadcrumb{display:flex;align-items:center;gap:8px;padding:18px 2px 16px 28px;font-size:13px;color:#64748b;flex-wrap:wrap;}
+    .ilc-breadcrumb{display:flex;align-items:center;gap:8px;padding:0 0 18px;font-size:13px;color:#64748b;flex-wrap:wrap;}
     .ilc-breadcrumb a{color:#1a3a6c;text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:5px;}
     .ilc-breadcrumb a:hover{text-decoration:underline;}
     .ilc-bc-sep{font-size:10px;color:#b6c0cc;}
@@ -1035,6 +1049,21 @@
             </div>
         </div>
 
+        {{-- ── Payment Guide — always visible, so it's the first thing a new
+             cashier sees, not something buried after a student is picked ── --}}
+        <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:14px;padding:12px 18px;margin-bottom:18px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
+            <div style="font-size:11px;font-weight:800;color:#92400e;display:flex;align-items:center;gap:6px;white-space:nowrap;"><i class="bi bi-info-circle-fill"></i> How to process a payment:</div>
+            <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;flex:1;">
+                <div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:#78350f;"><span style="width:19px;height:19px;border-radius:6px;background:#fcd34d;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;flex-shrink:0;">1</span>Search and select a student</div>
+                <i class="bi bi-chevron-right" style="color:#fbbf24;font-size:10px;"></i>
+                <div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:#78350f;"><span style="width:19px;height:19px;border-radius:6px;background:#fcd34d;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;flex-shrink:0;">2</span>Choose a quick preset or enter amount</div>
+                <i class="bi bi-chevron-right" style="color:#fbbf24;font-size:10px;"></i>
+                <div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:#78350f;"><span style="width:19px;height:19px;border-radius:6px;background:#fcd34d;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;flex-shrink:0;">3</span>Select Cash or Online method</div>
+                <i class="bi bi-chevron-right" style="color:#fbbf24;font-size:10px;"></i>
+                <div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:#78350f;"><span style="width:19px;height:19px;border-radius:6px;background:#fcd34d;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;flex-shrink:0;">4</span>Click Process &amp; print receipt</div>
+            </div>
+        </div>
+
         {{-- ── Student List Panel ── --}}
         <div id="studentListPanel">
             <div class="card-box" style="margin-bottom:0;">
@@ -1134,47 +1163,24 @@
                         <div style="background:rgba(255,255,255,.12);border-radius:20px;height:6px;overflow:hidden;">
                             <div id="payProgressBar" style="height:100%;background:linear-gradient(90deg,#c5a059,#f5d08a);border-radius:20px;width:0%;transition:width .6s ease;"></div>
                         </div>
-                        <div style="display:flex;justify-content:space-between;margin-top:5px;">
-                            <div style="font-size:10px;color:rgba(255,255,255,.4);" id="payProgressLabel">0% paid</div>
+                        <div style="display:flex;justify-content:flex-end;margin-top:5px;">
                             <div style="font-size:10px;color:rgba(255,255,255,.4);" id="cardTotalFee">Total: ₱0.00</div>
                         </div>
                     </div>
                 </div>
 
-                {{-- Account Details --}}
+                {{-- Recent Payments — lets the cashier verify this student's payment
+                     history before collecting a new one, instead of duplicating the
+                     balance numbers already shown in the card above. --}}
                 <div class="card-box" style="margin-bottom:14px;">
                     <div class="card-box-header">
-                        <div class="card-box-title"><i class="bi bi-wallet2" style="color:#2471a3;"></i> Account Details</div>
-                        <span id="acctPaymentPlan" style="font-size:11px;font-weight:700;background:#e8f0fb;color:#1a3a6c;padding:3px 10px;border-radius:20px;">—</span>
+                        <div class="card-box-title"><i class="bi bi-clock-history" style="color:#2471a3;"></i> Recent Payments</div>
+                        <a href="#" onclick="loadHistoryForStudent(selectedStudent.id, selectedStudent.name);return false;" style="font-size:11px;font-weight:700;color:#2471a3;text-decoration:none;">View All <i class="bi bi-arrow-right"></i></a>
                     </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#f1f5f9;">
-                        <div style="background:#fff;padding:14px 16px;">
-                            <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Total Fee</div>
-                            <div id="acctTotalFee" style="font-size:16px;font-weight:800;color:#1e293b;">—</div>
+                    <div id="recentPaymentsList">
+                        <div style="text-align:center;padding:24px;color:#94a3b8;font-size:12px;">
+                            <i class="bi bi-arrow-repeat" style="font-size:18px;display:block;margin-bottom:6px;"></i>Loading…
                         </div>
-                        <div style="background:#fff;padding:14px 16px;">
-                            <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Amount Paid</div>
-                            <div id="acctAmountPaid" style="font-size:16px;font-weight:800;color:#16a34a;">—</div>
-                        </div>
-                        <div style="background:#fff;padding:14px 16px;border-top:1px solid #f1f5f9;">
-                            <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Remaining</div>
-                            <div id="acctRemaining" style="font-size:16px;font-weight:800;color:#dc2626;">—</div>
-                        </div>
-                        <div style="background:#fff;padding:14px 16px;border-top:1px solid #f1f5f9;">
-                            <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Monthly</div>
-                            <div id="acctMonthly" style="font-size:16px;font-weight:800;color:#1a3a6c;">—</div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Quick Guide --}}
-                <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:14px;padding:14px 16px;">
-                    <div style="font-size:11px;font-weight:700;color:#92400e;margin-bottom:10px;display:flex;align-items:center;gap:6px;"><i class="bi bi-info-circle-fill"></i> Payment Guide</div>
-                    <div style="display:flex;flex-direction:column;gap:6px;">
-                        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#78350f;"><div style="width:20px;height:20px;border-radius:6px;background:#fcd34d;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;flex-shrink:0;">1</div>Search and select student</div>
-                        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#78350f;"><div style="width:20px;height:20px;border-radius:6px;background:#fcd34d;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;flex-shrink:0;">2</div>Choose a quick preset or enter amount</div>
-                        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#78350f;"><div style="width:20px;height:20px;border-radius:6px;background:#fcd34d;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;flex-shrink:0;">3</div>Select Cash or Online method</div>
-                        <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#78350f;"><div style="width:20px;height:20px;border-radius:6px;background:#fcd34d;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;flex-shrink:0;">4</div>Click Process &amp; print receipt</div>
                     </div>
                 </div>
 
@@ -1211,6 +1217,22 @@
                                     <i class="bi bi-arrow-repeat" style="font-size:22px;display:block;margin-bottom:8px;"></i>
                                     Loading plans…
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Installment Timeline — which months are paid, what's next.
+                     Shown only for installment plans (B/C/D), hidden for full-payment (A). --}}
+                <div id="timelineCard" style="display:none;margin-bottom:14px;">
+                    <div class="card-box" style="margin-bottom:0;">
+                        <div class="card-box-header" style="padding:12px 18px;">
+                            <div class="card-box-title"><i class="bi bi-signpost-split-fill" style="color:#c5a059;"></i> Payment Timeline</div>
+                            <span style="font-size:11px;color:#94a3b8;">Months paid vs. what's next</span>
+                        </div>
+                        <div id="timelineBody" style="padding:6px 18px 16px;">
+                            <div style="text-align:center;padding:16px;color:#94a3b8;font-size:12px;">
+                                <i class="bi bi-arrow-repeat" style="font-size:18px;display:block;margin-bottom:6px;"></i>Loading…
                             </div>
                         </div>
                     </div>
@@ -1269,13 +1291,13 @@
                                     <i class="bi bi-phone" style="font-size:22px;color:#94a3b8;"></i>
                                 </div>
                                 <div style="font-size:14px;font-weight:800;color:#64748b;" id="onlineBtnLabel">Online</div>
-                                <div style="font-size:10px;color:#94a3b8;margin-top:3px;">GCash · Maya · Bank</div>
+                                <div style="font-size:10px;color:#94a3b8;margin-top:3px;">GCash · Maya</div>
                             </button>
                         </div>
                         <div id="onlineMethodRow" style="display:none;margin-top:14px;">
-                            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Select e-Wallet / Bank</div>
-                            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">
-                                @foreach([['gcash','bi-phone-fill','#0070ff','GCash'],['maya','bi-wallet2','#00b09b','Maya'],['grabpay','bi-bag-fill','#00b14f','Grab'],['bank','bi-bank2','#1a3a6c','Bank'],['otc','bi-shop','#e65100','OTC']] as [$m,$icon,$color,$label])
+                            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Select e-Wallet</div>
+                            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;max-width:220px;">
+                                @foreach([['gcash','bi-phone-fill','#0070ff','GCash'],['maya','bi-wallet2','#00b09b','Maya']] as [$m,$icon,$color,$label])
                                 <button type="button" class="online-method-opt" data-method="{{ $m }}" onclick="selectOnlineMethod('{{ $m }}')"
                                     style="padding:10px 4px;border:2px solid #e2e8f0;border-radius:12px;background:#fff;cursor:pointer;text-align:center;transition:all .2s;">
                                     <div style="width:34px;height:34px;border-radius:10px;background:{{ $color }};margin:0 auto 5px;display:flex;align-items:center;justify-content:center;">
@@ -1387,27 +1409,32 @@
         <div class="page-header">
             <div>
                 <div class="page-title"><i class="bi bi-clock-history me-2" style="color:#2471a3;"></i>Payment History</div>
-                <div class="page-sub">All transactions processed through this cashier terminal.</div>
+                <div class="page-sub" id="historyPageSub">All transactions processed through this cashier terminal.</div>
             </div>
-            <button class="btn-primary-cash"><i class="bi bi-download"></i> Export</button>
+        </div>
+        {{-- Shown only when opened for one specific student (e.g. from Process Payment) --}}
+        <div id="historyStudentChip" style="display:none;margin-bottom:14px;background:#e8f0fb;border:1.5px solid #bcd6f2;border-radius:12px;padding:10px 16px;align-items:center;gap:10px;">
+            <i class="bi bi-person-check-fill" style="color:#1a3a6c;"></i>
+            <span style="font-size:13px;color:#1a3a6c;">Showing payment history for <strong id="historyStudentChipName">—</strong></span>
+            <button onclick="clearHistoryStudentFilter()" style="margin-left:auto;background:none;border:none;color:#2471a3;font-size:12px;font-weight:700;cursor:pointer;"><i class="bi bi-x-circle me-1"></i>Show All Students</button>
         </div>
         <div class="card-box">
             <div class="card-box-header">
                 <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;width:100%;">
-                    <input type="date" class="form-fld" style="max-width:150px;" value="{{ date('Y-m-d') }}">
-                    <select class="form-fld" style="max-width:140px;">
-                        <option>All Methods</option>
-                        <option>Cash</option>
-                        <option>GCash</option>
+                    <input type="date" class="form-fld" id="historyDateFilter" style="max-width:150px;" onchange="loadHistory()">
+                    <select class="form-fld" id="historyMethodFilter" style="max-width:140px;" onchange="loadHistory()">
+                        <option value="all">All Methods</option>
+                        <option value="cash">Cash</option>
+                        <option value="online">Online / GCash</option>
                     </select>
-                    <select class="form-fld" style="max-width:140px;">
-                        <option>All Status</option>
-                        <option>Paid</option>
-                        <option>Pending</option>
+                    <select class="form-fld" id="historyStatusFilter" style="max-width:140px;" onchange="loadHistory()">
+                        <option value="all">All Status</option>
+                        <option value="completed">Paid</option>
+                        <option value="pending">Pending</option>
                     </select>
                     <div class="topbar-search" style="flex:1;max-width:240px;">
                         <i class="bi bi-search"></i>
-                        <input type="text" placeholder="Search…">
+                        <input type="text" id="historySearchInput" placeholder="Search student or reference…" oninput="loadHistory()">
                     </div>
                 </div>
             </div>
@@ -1428,49 +1455,7 @@
                         </tr>
                     </thead>
                     <tbody id="historyTbody">
-                        @forelse($recentTransactions as $i => $tx)
-                        <tr>
-                            <td style="color:#94a3b8;">{{ $i + 1 }}</td>
-                            <td><span style="font-family:monospace;font-size:11.5px;background:#f8faff;padding:3px 8px;border-radius:6px;color:#475569;">{{ $tx->reference_number ?? '—' }}</span></td>
-                            <td>
-                                <div style="font-weight:700;color:#1e293b;">{{ $tx->user?->name ?? '—' }}</div>
-                                <div style="font-size:11px;color:#94a3b8;">{{ $tx->enrollment?->grade_level ? ucfirst($tx->enrollment->grade_level) : '—' }}</div>
-                            </td>
-                            <td>{{ $tx->enrollment?->grade_level ? ucfirst($tx->enrollment->grade_level) : '—' }}</td>
-                            <td style="font-size:12px;">{{ ucwords(str_replace('_',' ',$tx->payment_type ?? '—')) }}</td>
-                            <td>
-                                @if(in_array($tx->payment_method,['cash','Cash']))
-                                    <span class="method-pill cash"><i class="bi bi-cash"></i> Cash</span>
-                                @else
-                                    <span class="method-pill gcash"><i class="bi bi-phone"></i> {{ ucfirst($tx->payment_method ?? '—') }}</span>
-                                @endif
-                            </td>
-                            <td style="font-weight:700;color:#16a34a;">₱{{ number_format($tx->amount,2) }}</td>
-                            <td>
-                                @if($tx->status === 'completed')
-                                    <span class="badge-status paid"><i class="bi bi-check-circle-fill"></i> Paid</span>
-                                @elseif($tx->status === 'pending')
-                                    <span class="badge-status pending"><i class="bi bi-hourglass-split"></i> Pending</span>
-                                @else
-                                    <span class="badge-status rejected">{{ ucfirst($tx->status) }}</span>
-                                @endif
-                            </td>
-                            <td style="font-size:12px;color:#64748b;">{{ $tx->processed_at?->format('M d, Y') }}<br><span style="font-size:10px;">{{ $tx->processed_at?->format('h:i A') }}</span></td>
-                            <td>
-                                <button onclick="reprintTx('{{ $tx->reference_number }}','{{ $tx->user?->name }}','{{ $tx->enrollment?->grade_level }}','{{ $tx->enrollment?->school_year }}','{{ $tx->payment_type }}','{{ $tx->payment_method }}','{{ $tx->amount }}','{{ $tx->processed_at?->format('M d, Y') }}','{{ $tx->processed_at?->format('h:i A') }}')"
-                                    class="action-btn-sm" title="Print Receipt">
-                                    <i class="bi bi-printer-fill"></i>
-                                </button>
-                            </td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="10" style="text-align:center;padding:48px;color:#94a3b8;">
-                                <i class="bi bi-inbox" style="font-size:36px;display:block;margin-bottom:10px;"></i>
-                                No completed transactions yet
-                            </td>
-                        </tr>
-                        @endforelse
+                        <tr><td colspan="10" style="text-align:center;padding:48px;color:#94a3b8;"><i class="bi bi-arrow-repeat" style="font-size:28px;display:block;margin-bottom:10px;"></i>Loading history…</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -2121,10 +2106,32 @@
 
     var sections = ['dashboard','process','history','lookup','daily','receipts','collection','audit','settings'];
 
-    // Initialise on load — show dashboard with skeleton first
+    // Initialise on load — restore whichever tab was open last time, same
+    // behavior as the Admin portal, so re-visiting doesn't always dump you
+    // back on Dashboard.
     document.addEventListener('DOMContentLoaded', function () {
-        showSection('dashboard', document.querySelector('.sidebar-link[data-section="dashboard"]'));
+        var savedSection = localStorage.getItem('currentCashierSection');
+        var sectionToShow = (savedSection && sections.includes(savedSection)) ? savedSection : 'dashboard';
+        showSection(sectionToShow, document.querySelector('.sidebar-link[data-section="' + sectionToShow + '"]'));
     });
+
+    // ── Auto-refresh when tab becomes visible again ──
+    // Handles returning from another browser tab/window after >=30s away,
+    // same behavior as the Admin portal, so data doesn't go stale silently.
+    (function () {
+        var _hiddenAt = null;
+        var THRESHOLD = 30000; // 30 seconds
+        document.addEventListener('visibilitychange', function () {
+            if (document.visibilityState === 'hidden') {
+                _hiddenAt = Date.now();
+            } else {
+                if (_hiddenAt && (Date.now() - _hiddenAt) >= THRESHOLD) {
+                    location.reload();
+                }
+                _hiddenAt = null;
+            }
+        });
+    })();
 
     // Skeleton delays per section (ms the shimmer plays before content appears)
     var _skelDelay = { dashboard: 600, collection: 500 };
@@ -2152,6 +2159,7 @@
     function showSection(name, btn) {
         var delay = _skelDelay[name] || 400;
         updateBreadcrumb(name);
+        localStorage.setItem('currentCashierSection', name);
 
         // 1. Hide all sections immediately
         sections.forEach(function(s) {
@@ -2180,6 +2188,7 @@
         }
         if (name === 'daily')    { var dr = document.getElementById('dailyReportDate'); loadDailyReport(dr ? dr.value : ''); }
         if (name === 'receipts') { loadReceipts(); }
+        if (name === 'history')  { loadHistory(); }
         if (name === 'audit')    { loadAuditTrail(); }
 
         // 4. Show the section container
@@ -2289,6 +2298,7 @@
     var _logoUrl        = '{{ asset("images/logo.png") }}';
     var _dailyUrl       = '{{ route("cashier.daily.report") }}';
     var _receiptsUrl    = '{{ route("cashier.receipts.list") }}';
+    var _timelineUrlBase = '{{ url("cashier/installments") }}';
     var _auditUrl       = '{{ route("cashier.audit-trail") }}';
     var _cashierName    = '{{ auth("cashier")->user()->name ?? "Cashier" }}';
     var _allStudents = [];
@@ -2575,6 +2585,194 @@
         }).join('');
     }
 
+    /* ── Recent Payments (Process Payment screen — one selected student) ── */
+    function loadRecentPayments(userId) {
+        var box = document.getElementById('recentPaymentsList');
+        if (!box || !userId) return;
+        box.innerHTML = '<div style="text-align:center;padding:24px;color:#94a3b8;font-size:12px;"><i class="bi bi-arrow-repeat" style="font-size:18px;display:block;margin-bottom:6px;"></i>Loading…</div>';
+        fetch(_receiptsUrl + '?user_id=' + encodeURIComponent(userId) + '&limit=5', {
+            credentials: 'same-origin',
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': _csrfToken }
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(data){ renderRecentPayments(data); })
+        .catch(function(){
+            box.innerHTML = '<div style="text-align:center;padding:20px;color:#dc2626;font-size:12px;">Failed to load payment history.</div>';
+        });
+    }
+
+    function renderRecentPayments(txs) {
+        var box = document.getElementById('recentPaymentsList');
+        if (!box) return;
+        if (!txs.length) {
+            box.innerHTML = '<div style="text-align:center;padding:24px;color:#94a3b8;font-size:12px;"><i class="bi bi-inbox" style="font-size:22px;display:block;margin-bottom:6px;"></i>No payments recorded yet.</div>';
+            return;
+        }
+        box.innerHTML = txs.map(function(r){
+            return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 16px;border-top:1px solid #f1f5f9;">'
+                + '<div style="min-width:0;">'
+                + '<div style="font-size:12.5px;font-weight:700;color:#1e293b;">₱' + r.amount + ' <span class="method-pill ' + (r.method.toLowerCase()==='cash'?'cash':'gcash') + '" style="margin-left:4px;font-size:9px;padding:2px 7px;">' + r.method + '</span></div>'
+                + '<div style="font-size:10.5px;color:#94a3b8;margin-top:2px;">' + r.type + ' &middot; ' + r.date + ' ' + r.time + '</div>'
+                + '</div>'
+                + '<span style="font-family:monospace;font-size:10.5px;background:#fffbeb;padding:3px 8px;border-radius:6px;color:#b45309;flex-shrink:0;">' + (r.or_no||'—') + '</span>'
+                + '</div>';
+        }).join('');
+    }
+
+    /* ── Installment Timeline (Process Payment — one selected student) ── */
+    function loadInstallmentTimeline(enrollmentId, paymentType) {
+        var card = document.getElementById('timelineCard');
+        if (!card) return;
+        if (paymentType !== 'installment' || !enrollmentId) {
+            card.style.display = 'none';
+            return;
+        }
+        card.style.display = 'block';
+        document.getElementById('timelineBody').innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8;font-size:12px;"><i class="bi bi-arrow-repeat" style="font-size:18px;display:block;margin-bottom:6px;"></i>Loading…</div>';
+        fetch(_timelineUrlBase + '/' + enrollmentId, {
+            credentials: 'same-origin',
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': _csrfToken }
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(data){ renderInstallmentTimeline(data); })
+        .catch(function(){
+            document.getElementById('timelineBody').innerHTML = '<div style="text-align:center;padding:16px;color:#dc2626;font-size:12px;">Failed to load timeline.</div>';
+        });
+    }
+
+    function renderInstallmentTimeline(data) {
+        var body = document.getElementById('timelineBody');
+        var installments = data.installments || [];
+        if (!installments.length) {
+            body.innerHTML = '<div style="text-align:center;padding:16px;color:#94a3b8;font-size:12px;">No monthly schedule found yet.</div>';
+            return;
+        }
+
+        var dp = data.downpayment;
+        var steps = [];
+        if (dp && dp.amount > 0) {
+            steps.push({ label: 'DP', sub: '', cls: dp.paid ? 'paid' : 'next', icon: dp.paid ? 'bi-check-lg' : 'bi-flag-fill' });
+        }
+
+        // "Next" is already claimed by the DP step itself only when there IS a
+        // downpayment and it's still unpaid — otherwise no one has claimed it
+        // yet, so the first unpaid month below should.
+        var foundNext = !!(dp && dp.amount > 0 && !dp.paid);
+        installments.forEach(function(inst) {
+            var cls = 'upcoming', icon = '';
+            if (inst.status === 'paid') { cls = 'paid'; icon = 'bi-check-lg'; }
+            else if (inst.status === 'pending_approval') { cls = 'pending'; icon = 'bi-hourglass-split'; }
+            else if (inst.weeks_overdue > 0) { cls = 'overdue'; icon = 'bi-exclamation-lg'; }
+            else if (!foundNext) { cls = 'next'; icon = 'bi-flag-fill'; foundNext = true; }
+
+            var d = inst.due_date ? new Date(inst.due_date + 'T00:00:00') : null;
+            var sub = d ? d.toLocaleDateString('en-PH', { day: 'numeric', month: 'short' }) : '';
+            steps.push({ label: (inst.month_name || '').substring(0, 3), sub: sub, cls: cls, icon: icon });
+        });
+
+        var html = '<div class="pay-timeline">';
+        steps.forEach(function(s, i) {
+            if (i > 0) html += '<div class="pt-line ' + (steps[i - 1].cls === 'paid' ? 'paid' : '') + '"></div>';
+            html += '<div class="pt-step ' + s.cls + '">'
+                + '<div class="pt-dot">' + (s.icon ? '<i class="bi ' + s.icon + '"></i>' : '') + '</div>'
+                + '<div class="pt-label">' + s.label + '</div>'
+                + (s.sub ? '<div class="pt-sub">' + s.sub + '</div>' : '')
+                + '</div>';
+        });
+        html += '</div>';
+
+        var next = steps.find(function(s){ return s.cls === 'next'; });
+        var overdue = steps.filter(function(s){ return s.cls === 'overdue'; }).length;
+        html += '<div style="margin-top:8px;padding-top:10px;border-top:1px solid #f1f5f9;font-size:11.5px;color:#64748b;display:flex;gap:14px;flex-wrap:wrap;">';
+        if (overdue > 0) html += '<span style="color:#dc2626;font-weight:700;"><i class="bi bi-exclamation-triangle-fill me-1"></i>' + overdue + ' overdue</span>';
+        if (next) html += '<span style="color:#d97706;font-weight:700;"><i class="bi bi-flag-fill me-1"></i>Next due: ' + next.label + (next.sub ? ' (' + next.sub + ')' : '') + '</span>';
+        if (!next && overdue === 0) html += '<span style="color:#16a34a;font-weight:700;"><i class="bi bi-check-circle-fill me-1"></i>Fully paid</span>';
+        html += '</div>';
+
+        body.innerHTML = html;
+    }
+
+    /* ── Payment History (full page — all students, or scoped to one) ── */
+    var _historyStudentFilter = null; // { id, name } when opened from a specific student
+
+    function loadHistoryForStudent(userId, studentName) {
+        _historyStudentFilter = { id: userId, name: studentName };
+        var link = document.querySelector('.sidebar-link[data-section="history"]');
+        showSection('history', link);
+    }
+
+    function clearHistoryStudentFilter() {
+        _historyStudentFilter = null;
+        document.getElementById('historyStudentChip').style.display = 'none';
+        document.getElementById('historyPageSub').textContent = 'All transactions processed through this cashier terminal.';
+        loadHistory();
+    }
+
+    function loadHistory() {
+        var tbody = document.getElementById('historyTbody');
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:48px;color:#94a3b8;"><i class="bi bi-arrow-repeat" style="font-size:28px;display:block;margin-bottom:10px;"></i>Loading history…</td></tr>';
+
+        var chip = document.getElementById('historyStudentChip');
+        if (_historyStudentFilter) {
+            document.getElementById('historyStudentChipName').textContent = _historyStudentFilter.name;
+            chip.style.display = 'flex';
+            document.getElementById('historyPageSub').textContent = 'Full payment history for ' + _historyStudentFilter.name + '.';
+        } else {
+            chip.style.display = 'none';
+        }
+
+        var params = new URLSearchParams();
+        params.set('status', document.getElementById('historyStatusFilter').value || 'all');
+        params.set('method', document.getElementById('historyMethodFilter').value || 'all');
+        var date = document.getElementById('historyDateFilter').value;
+        if (date) params.set('date', date);
+        params.set('limit', 200);
+
+        if (_historyStudentFilter) {
+            params.set('user_id', _historyStudentFilter.id);
+        } else {
+            var q = document.getElementById('historySearchInput').value.trim();
+            if (q) params.set('q', q);
+        }
+
+        fetch(_receiptsUrl + '?' + params.toString(), {
+            credentials: 'same-origin',
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': _csrfToken }
+        })
+        .then(function(r){ return r.json(); })
+        .then(function(data){ renderHistory(data); })
+        .catch(function(){
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:#dc2626;">Failed to load history. <button onclick="loadHistory()" style="margin-left:6px;padding:4px 12px;background:#1a3a6c;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;">Retry</button></td></tr>';
+        });
+    }
+
+    function renderHistory(txs) {
+        var tbody = document.getElementById('historyTbody');
+        if (!txs.length) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:48px;color:#94a3b8;"><i class="bi bi-inbox" style="font-size:36px;display:block;margin-bottom:10px;"></i>No transactions found.</td></tr>';
+            return;
+        }
+        var statusBadge = { completed: '<span class="badge-status paid"><i class="bi bi-check-circle-fill"></i> Paid</span>', pending: '<span class="badge-status pending"><i class="bi bi-hourglass-split"></i> Pending</span>' };
+        tbody.innerHTML = txs.map(function(r, i){
+            var badge = statusBadge[r.status] || ('<span class="badge-status rejected">' + (r.status.charAt(0).toUpperCase() + r.status.slice(1)) + '</span>');
+            var methodPill = r.method.toLowerCase() === 'cash'
+                ? '<span class="method-pill cash"><i class="bi bi-cash"></i> Cash</span>'
+                : '<span class="method-pill gcash"><i class="bi bi-phone"></i> ' + r.method + '</span>';
+            return '<tr>'
+                + '<td style="color:#94a3b8;">' + (i + 1) + '</td>'
+                + '<td><span style="font-family:monospace;font-size:11.5px;background:#f8faff;padding:3px 8px;border-radius:6px;color:#475569;">' + (r.or_no||'—') + '</span></td>'
+                + '<td><div style="font-weight:700;color:#1e293b;">' + r.student + '</div><div style="font-size:11px;color:#94a3b8;">' + r.grade + '</div></td>'
+                + '<td>' + r.grade + '</td>'
+                + '<td style="font-size:12px;">' + r.type + '</td>'
+                + '<td>' + methodPill + '</td>'
+                + '<td style="font-weight:700;color:#16a34a;">₱' + r.amount + '</td>'
+                + '<td>' + badge + '</td>'
+                + '<td style="font-size:12px;color:#64748b;">' + r.date + '<br><span style="font-size:10px;">' + r.time + '</span></td>'
+                + '<td><button onclick="reprintTx(\'' + r.or_no + '\',\'' + r.student + '\',\'' + r.grade + '\',\'' + r.school_year + '\',\'' + r.type + '\',\'' + r.method + '\',\'' + r.amount + '\',\'' + r.date + '\',\'' + r.time + '\')" class="action-btn-sm" title="Print Receipt"><i class="bi bi-printer-fill"></i></button></td>'
+                + '</tr>';
+        }).join('');
+    }
+
     function filterReceipts(q) {
         if (!q) { renderReceipts(_allReceipts); return; }
         var low = q.toLowerCase();
@@ -2781,16 +2979,14 @@
             setPlanCardState('confirmed');
             var fmt = function(v){ return '₱' + Number(v||0).toLocaleString('en-PH',{minimumFractionDigits:2}); };
             document.getElementById('studentBalance').textContent  = fmt(selectedStudent.balance);
-            document.getElementById('acctTotalFee').textContent    = fmt(selectedStudent.total_fee);
-            document.getElementById('acctRemaining').textContent   = fmt(selectedStudent.balance);
             document.getElementById('cardTotalFee').textContent    = 'Total: ' + fmt(selectedStudent.total_fee);
             var total = Number(selectedStudent.total_fee||0);
             var paid  = Number(selectedStudent.payment_amount||0);
             var pct   = total > 0 ? Math.min(100,Math.round((paid/total)*100)) : 0;
             document.getElementById('payProgressBar').style.width  = pct + '%';
-            document.getElementById('payProgressLabel').textContent = pct + '% paid';
             /* Rebuild quick presets with new plan */
             rebuildQuickPresets(selectedStudent);
+            loadInstallmentTimeline(selectedStudent.enrollment_id, selectedStudent.payment_type);
             window._selectedPlan = null;
         })
         .catch(function() {
@@ -2856,7 +3052,6 @@
         document.getElementById('selectedStudentNameHidden').value  = s.name;
 
         var fmt = function(v){ return '₱' + Number(v||0).toLocaleString('en-PH',{minimumFractionDigits:2}); };
-        var planLabels = { A:'Full Payment', B:'Installment B', C:'Installment C', D:'Installment D' };
 
         document.getElementById('studentInitial').textContent    = s.name.charAt(0).toUpperCase();
         document.getElementById('studentName').textContent       = s.name;
@@ -2870,15 +3065,10 @@
         var paid  = Number(s.payment_amount||0);
         var pct   = total > 0 ? Math.min(100, Math.round((paid/total)*100)) : 0;
         document.getElementById('payProgressBar').style.width = pct + '%';
-        document.getElementById('payProgressLabel').textContent = pct + '% paid';
         document.getElementById('cardTotalFee').textContent = 'Total: ' + fmt(total);
 
-        // Account details grid
-        document.getElementById('acctPaymentPlan').textContent = planLabels[s.payment_option] || 'Not set';
-        document.getElementById('acctTotalFee').textContent    = total > 0 ? fmt(total) : '—';
-        document.getElementById('acctAmountPaid').textContent  = fmt(s.payment_amount);
-        document.getElementById('acctRemaining').textContent   = fmt(s.balance);
-        document.getElementById('acctMonthly').textContent     = s.monthly_amount > 0 ? fmt(s.monthly_amount) : '—';
+        loadRecentPayments(s.id);
+        loadInstallmentTimeline(s.enrollment_id, s.payment_type);
 
         // Update process section today stats
         syncProcessStats();
@@ -3062,7 +3252,7 @@
         if (!method) { alert('Please select a payment method.'); return; }
         if (!type)   { alert('Please select a payment type.'); return; }
 
-        var isXendit = ['gcash','maya','grabpay','bank','otc'].includes(method);
+        var isXendit = ['gcash','maya'].includes(method);
 
         if (isXendit) {
             generateXenditLink(enrollmentId, amount, method, type);
@@ -3256,7 +3446,6 @@
         });
         // Reset progress bar
         document.getElementById('payProgressBar').style.width = '0%';
-        document.getElementById('payProgressLabel').textContent = '0% paid';
         var btn = document.getElementById('processBtn');
         btn.disabled = false;
         btn.style.background = 'linear-gradient(135deg,#166534,#16a34a)';

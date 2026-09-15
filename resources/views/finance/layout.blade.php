@@ -4,6 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script>
+        // Remember which Finance page was last open and, when landing back on
+        // the bare Dashboard fresh (e.g. right after logging back in, or by
+        // opening the portal from a bookmark/new tab), jump straight back to
+        // it — same "pick up where I left off" behavior as the Admin
+        // portal's tabs. Runs before the rest of the page loads so there's
+        // no dashboard flash before the redirect.
+        //
+        // "Fresh" is judged from document.referrer rather than a one-time
+        // flag: if the browser navigated here FROM another page already
+        // inside /finance/ (e.g. clicking the "Dashboard" link on purpose),
+        // that's treated as deliberate and never redirected. A stored
+        // per-tab flag would only catch the very first load of a tab and
+        // then incorrectly let every later legitimate click through — this
+        // referrer check gets it right on every single load, new tab or not.
+        (function () {
+            var isDashboard = @json(\Illuminate\Support\Facades\Route::currentRouteName() === 'finance.dashboard');
+            var currentPath = window.location.pathname;
+            if (isDashboard) {
+                var ref = document.referrer || '';
+                var cameFromWithinFinance = ref.indexOf('/finance/') !== -1 && ref.indexOf('/finance/login') === -1;
+                if (!cameFromWithinFinance) {
+                    var savedPath = localStorage.getItem('financeLastPage');
+                    if (savedPath && savedPath !== currentPath && savedPath.indexOf('/finance/') === 0) {
+                        window.location.replace(savedPath);
+                        return;
+                    }
+                }
+            }
+            localStorage.setItem('financeLastPage', currentPath);
+        })();
+    </script>
     <title>@yield('title', 'Finance Portal') - IEMELIF Learning Center</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
@@ -393,7 +425,7 @@
             $__bcCurrent = $__bcMap[$__bcRoute] ?? ucwords(str_replace(['-', '.'], [' ', ' '], \Illuminate\Support\Str::afterLast($__bcRoute ?? '', '.')));
         @endphp
         <style>
-            .ilc-breadcrumb{display:flex;align-items:center;gap:8px;padding:10px 2px 18px 8px;font-size:13px;color:#64748b;flex-wrap:wrap;}
+            .ilc-breadcrumb{display:flex;align-items:center;gap:8px;padding:0 0 18px;font-size:13px;color:#64748b;flex-wrap:wrap;}
             .ilc-breadcrumb a{color:var(--blue);text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:5px;}
             .ilc-breadcrumb a:hover{text-decoration:underline;}
             .ilc-bc-sep{font-size:10px;color:#b6c0cc;}
@@ -442,6 +474,28 @@
             }
             if (document.readyState === 'complete') reveal();
             else window.addEventListener('load', reveal);
+        })();
+    </script>
+
+    <script>
+        // ── Auto-refresh when tab becomes visible again ──
+        // Handles returning from another browser tab/window after >=30s away,
+        // same behavior as the Admin/Super Admin/Cashier portals, so figures
+        // (totals, pending counts, etc.) don't go stale silently while the
+        // Finance user is looking at something else.
+        (function () {
+            var _hiddenAt = null;
+            var THRESHOLD = 30000; // 30 seconds
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'hidden') {
+                    _hiddenAt = Date.now();
+                } else {
+                    if (_hiddenAt && (Date.now() - _hiddenAt) >= THRESHOLD) {
+                        location.reload();
+                    }
+                    _hiddenAt = null;
+                }
+            });
         })();
     </script>
 </body>

@@ -160,6 +160,20 @@
         .sched-subject { font-weight: 700; color: var(--blue); display: block; }
         .sched-room    { color: var(--muted); display: block; }
 
+        /* ── Installment Timeline — "which months are paid, what's next" ── */
+        .pay-timeline { display: flex; align-items: flex-start; overflow-x: auto; padding: 6px 2px 2px; }
+        .pt-step { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; min-width: 46px; }
+        .pt-dot { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; border: 2.5px solid #cbd5e1; background: #fff; color: #94a3b8; flex-shrink: 0; }
+        .pt-step.paid .pt-dot { background: #43a047; border-color: #43a047; color: #fff; }
+        .pt-step.pending .pt-dot { background: #3b82f6; border-color: #3b82f6; color: #fff; }
+        .pt-step.overdue .pt-dot { background: #e53935; border-color: #e53935; color: #fff; }
+        .pt-step.next .pt-dot { background: #fff; border-color: #e65100; color: #e65100; box-shadow: 0 0 0 4px rgba(230,81,0,.15); }
+        .pt-label { font-size: 10px; font-weight: 700; color: var(--muted); white-space: nowrap; }
+        .pt-step.next .pt-label { color: #e65100; }
+        .pt-sub { font-size: 9px; color: #b0b8c4; white-space: nowrap; }
+        .pt-line { flex: 1; height: 3px; min-width: 14px; background: #e2e8f0; margin: 13px -2px 0; }
+        .pt-line.paid { background: #43a047; }
+
         /* ── Payment Step Indicator ── */
         .pay-steps {
             display: flex;
@@ -2608,47 +2622,77 @@
             @if($enrollment->payment_type === 'installment' || in_array($enrollment->payment_option, ['B', 'C', 'D']))
             @php
                 $instList    = $paymentInstallments ?? collect([]);
-                $instPaid    = $instList->where('status', 'paid')->count();
-                $instTotal   = $instList->count();
-                $instNext    = $instList->whereIn('status', ['pending','overdue'])->sortBy('due_date')->first();
                 $dpAmount    = $enrollment->downpayment_amount ?? 0;
                 $dpPaid      = $dpAmount > 0 && ($enrollment->payment_amount ?? 0) >= $dpAmount;
+
+                // Build the timeline steps: downpayment (if any) + one per month.
+                // "next" = the first not-yet-paid step in order, so parents see at
+                // a glance which months are done and which one is coming up.
+                $tlSteps = [];
+                if ($dpAmount > 0) {
+                    $tlSteps[] = ['label' => 'DP', 'sub' => '', 'cls' => $dpPaid ? 'paid' : 'next'];
+                }
+                // "Next" is already claimed by the DP step itself only when there
+                // IS a downpayment and it's still unpaid — otherwise no one has
+                // claimed it yet, so the first unpaid month below should.
+                $tlFoundNext = $dpAmount > 0 && !$dpPaid;
+                foreach ($instList->sortBy('due_date') as $inst) {
+                    $cls = 'upcoming';
+                    if ($inst->status === 'paid') {
+                        $cls = 'paid';
+                    } elseif ($inst->status === 'pending_approval') {
+                        $cls = 'pending';
+                    } elseif (($inst->weeks_overdue ?? 0) > 0) {
+                        $cls = 'overdue';
+                    } elseif (!$tlFoundNext) {
+                        $cls = 'next';
+                        $tlFoundNext = true;
+                    }
+                    $tlSteps[] = [
+                        'label' => substr($inst->month_name ?? '', 0, 3),
+                        'sub'   => optional($inst->due_date)->format('M j'),
+                        'cls'   => $cls,
+                    ];
+                }
+                $tlNext = collect($tlSteps)->firstWhere('cls', 'next');
             @endphp
             <div class="content-card mb-4">
-                <div style="padding:16px 20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;">
-                    <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
-                        {{-- Paid months counter --}}
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <div style="width:36px;height:36px;border-radius:50%;background:#e8f5e9;display:flex;align-items:center;justify-content:center;">
-                                <i class="bi bi-calendar-check-fill" style="color:#43a047;font-size:16px;"></i>
-                            </div>
-                            <div>
-                                <div style="font-size:12px;color:var(--muted);line-height:1;">Months Paid</div>
-                                <div style="font-size:16px;font-weight:700;color:#43a047;line-height:1.3;">{{ $instPaid }}<span style="color:#aaa;font-weight:400;">/{{ $instTotal }}</span></div>
-                            </div>
-                        </div>
-                        {{-- Next due --}}
-                        @if($instNext)
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <div style="width:36px;height:36px;border-radius:50%;background:{{ ($instNext->status??'') === 'overdue' ? '#ffebee' : '#eff6ff' }};display:flex;align-items:center;justify-content:center;">
-                                <i class="bi bi-alarm" style="color:{{ ($instNext->status??'') === 'overdue' ? '#e53935' : '#3b82f6' }};font-size:16px;"></i>
-                            </div>
-                            <div>
-                                <div style="font-size:12px;color:var(--muted);line-height:1;">Next Due</div>
-                                <div style="font-size:13px;font-weight:700;color:{{ ($instNext->status??'') === 'overdue' ? '#e53935' : '#1d4ed8' }};line-height:1.3;">
-                                    {{ $instNext->month_name ?? '—' }}
-                                    &mdash; {{ optional($instNext->due_date)->format('M d, Y') ?? '—' }}
-                                    @if(($instNext->status??'') === 'overdue')
-                                        <span class="badge bg-danger ms-1" style="font-size:10px;">Overdue</span>
-                                    @endif
-                                </div>
-                            </div>
-                        </div>
-                        @endif
-                    </div>
-                    <button type="button" class="btn-dash btn-dash-primary" onclick="openInstallmentScheduleModal()" style="padding:9px 18px; font-size:13px; flex-shrink:0;">
+                <div class="content-card-header">
+                    <h6><i class="bi bi-signpost-split-fill me-2" style="color:var(--gold);"></i>Payment Timeline</h6>
+                    <button type="button" class="btn-dash btn-dash-primary" onclick="openInstallmentScheduleModal()" style="padding:7px 16px; font-size:12.5px;">
                         <i class="bi bi-calendar-week me-2"></i>View Schedule
                     </button>
+                </div>
+                <div style="padding:14px 20px 18px;">
+                    <div class="pay-timeline">
+                        @foreach($tlSteps as $i => $step)
+                            @if($i > 0)
+                                <div class="pt-line {{ ($tlSteps[$i-1]['cls'] ?? '') === 'paid' ? 'paid' : '' }}"></div>
+                            @endif
+                            <div class="pt-step {{ $step['cls'] }}">
+                                <div class="pt-dot">
+                                    @if($step['cls'] === 'paid')<i class="bi bi-check-lg"></i>
+                                    @elseif($step['cls'] === 'pending')<i class="bi bi-hourglass-split"></i>
+                                    @elseif($step['cls'] === 'overdue')<i class="bi bi-exclamation-lg"></i>
+                                    @elseif($step['cls'] === 'next')<i class="bi bi-flag-fill"></i>
+                                    @endif
+                                </div>
+                                <div class="pt-label">{{ $step['label'] }}</div>
+                                @if($step['sub'])<div class="pt-sub">{{ $step['sub'] }}</div>@endif
+                            </div>
+                        @endforeach
+                    </div>
+                    <div style="margin-top:10px;padding-top:12px;border-top:1px solid #f1f5f9;font-size:12px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap;">
+                        @php $tlOverdueCount = collect($tlSteps)->where('cls','overdue')->count(); @endphp
+                        @if($tlOverdueCount > 0)
+                            <span style="color:#e53935;font-weight:700;"><i class="bi bi-exclamation-triangle-fill me-1"></i>{{ $tlOverdueCount }} overdue</span>
+                        @endif
+                        @if($tlNext)
+                            <span style="color:#e65100;font-weight:700;"><i class="bi bi-flag-fill me-1"></i>Next to pay: {{ $tlNext['label'] }}{{ $tlNext['sub'] ? ' ('.$tlNext['sub'].')' : '' }}</span>
+                        @elseif($tlOverdueCount === 0)
+                            <span style="color:#43a047;font-weight:700;"><i class="bi bi-check-circle-fill me-1"></i>Fully paid</span>
+                        @endif
+                    </div>
                 </div>
             </div>
             @endif
@@ -2756,7 +2800,7 @@
                                     </div>
                                     <div class="pay-method-info">
                                         <strong>Pay Online</strong>
-                                        <span>GCash, Maya, GrabPay, Bank, OTC via secure link</span>
+                                        <span>GCash or Maya via secure link</span>
                                     </div>
                                     <i class="bi bi-chevron-right text-muted" style="font-size:14px;"></i>
                                 </div>
@@ -2857,7 +2901,7 @@
                                     <i class="bi bi-grid-3x3-gap-fill"></i> Select Payment Method
                                 </div>
                                 <input type="hidden" id="xendit-method" value="">
-                                <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;" id="xendit-method-grid">
+                                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;max-width:280px;" id="xendit-method-grid">
                                     <div class="xmethod-card" data-method="gcash" onclick="selectXenditMethod('gcash')"
                                         style="border:2px solid #e8ecf1;border-radius:14px;padding:14px 8px;text-align:center;cursor:pointer;transition:all .2s;background:#fff;">
                                         <div style="width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#0070ff,#00aaff);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;">
@@ -2873,30 +2917,6 @@
                                         </div>
                                         <div style="font-size:12px;font-weight:700;color:#1e293b;">Maya</div>
                                         <div style="font-size:10px;color:#94a3b8;margin-top:2px;">e-Wallet</div>
-                                    </div>
-                                    <div class="xmethod-card" data-method="grabpay" onclick="selectXenditMethod('grabpay')"
-                                        style="border:2px solid #e8ecf1;border-radius:14px;padding:14px 8px;text-align:center;cursor:pointer;transition:all .2s;background:#fff;">
-                                        <div style="width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#00b14f,#00d264);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;">
-                                            <i class="bi bi-bag-fill" style="font-size:18px;color:#fff;"></i>
-                                        </div>
-                                        <div style="font-size:12px;font-weight:700;color:#1e293b;">GrabPay</div>
-                                        <div style="font-size:10px;color:#94a3b8;margin-top:2px;">e-Wallet</div>
-                                    </div>
-                                    <div class="xmethod-card" data-method="bank" onclick="selectXenditMethod('bank')"
-                                        style="border:2px solid #e8ecf1;border-radius:14px;padding:14px 8px;text-align:center;cursor:pointer;transition:all .2s;background:#fff;">
-                                        <div style="width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#1a3a6c,#2471a3);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;">
-                                            <i class="bi bi-bank2" style="font-size:18px;color:#fff;"></i>
-                                        </div>
-                                        <div style="font-size:12px;font-weight:700;color:#1e293b;">Bank</div>
-                                        <div style="font-size:10px;color:#94a3b8;margin-top:2px;">BPI · UBP</div>
-                                    </div>
-                                    <div class="xmethod-card" data-method="otc" onclick="selectXenditMethod('otc')"
-                                        style="border:2px solid #e8ecf1;border-radius:14px;padding:14px 8px;text-align:center;cursor:pointer;transition:all .2s;background:#fff;">
-                                        <div style="width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#e65100,#f57c00);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;">
-                                            <i class="bi bi-shop" style="font-size:18px;color:#fff;"></i>
-                                        </div>
-                                        <div style="font-size:12px;font-weight:700;color:#1e293b;">OTC</div>
-                                        <div style="font-size:10px;color:#94a3b8;margin-top:2px;">7-Eleven</div>
                                     </div>
                                 </div>
                             </div>
@@ -3433,8 +3453,8 @@
                                 </div>
                             </div>
                             <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;opacity:.7;margin-bottom:8px;">Select Method</div>
-                            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;" id="inst-xendit-method-grid">
-                                @foreach([['gcash','bi-phone-fill','#0070ff','GCash'],['maya','bi-wallet2','#00b09b','Maya'],['grabpay','bi-bag-fill','#00b14f','Grab'],['bank','bi-bank2','#2471a3','Bank'],['otc','bi-shop','#e65100','OTC']] as [$m,$icon,$color,$label])
+                            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;max-width:200px;" id="inst-xendit-method-grid">
+                                @foreach([['gcash','bi-phone-fill','#0070ff','GCash'],['maya','bi-wallet2','#00b09b','Maya']] as [$m,$icon,$color,$label])
                                 <div class="inst-xmethod-card" data-method="{{ $m }}" onclick="selectInstXenditMethod('{{ $m }}')"
                                     style="border:2px solid rgba(255,255,255,0.2);border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;transition:all .2s;background:rgba(255,255,255,0.1);">
                                     <div style="width:32px;height:32px;border-radius:8px;background:{{ $color }};margin:0 auto 5px;display:flex;align-items:center;justify-content:center;">
@@ -4577,7 +4597,7 @@
             if (cashPanel)   cashPanel.style.display   = 'none';
             if (xenditPanel) xenditPanel.style.display = 'block';
             if (methodLabel) methodLabel.textContent = 'Generate a secure online payment link';
-            if (methodSub)   methodSub.textContent   = 'Pay via GCash, Maya, GrabPay, Bank Transfer, or OTC';
+            if (methodSub)   methodSub.textContent   = 'Pay via GCash or Maya';
         }
     }
 

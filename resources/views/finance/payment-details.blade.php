@@ -339,7 +339,7 @@
 
     <main class="main-content">
         <style>
-            .ilc-breadcrumb{display:flex;align-items:center;gap:8px;padding:10px 2px 16px 8px;font-size:13px;color:#64748b;flex-wrap:wrap;}
+            .ilc-breadcrumb{display:flex;align-items:center;gap:8px;padding:0 0 16px;font-size:13px;color:#64748b;flex-wrap:wrap;}
             .ilc-breadcrumb a{color:var(--blue);text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:5px;}
             .ilc-breadcrumb a:hover{text-decoration:underline;}
             .ilc-bc-sep{font-size:10px;color:#b6c0cc;}

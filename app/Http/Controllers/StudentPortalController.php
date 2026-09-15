@@ -1168,7 +1168,8 @@ class StudentPortalController extends Controller
         $request->validate([
             'enrollment_id'     => 'required|exists:enrollments,id',
             'amount'            => 'required|numeric|min:1',
-            'payment_method'    => 'required|string',
+            // GrabPay / bank transfer / OTC removed — out of scope for this system.
+            'payment_method'    => 'required|string|in:gcash,maya',
             'payment_type'      => 'required|string',
             'payment_option'    => 'nullable|in:A,B,C,D',
             'total_fee'         => 'nullable|numeric|min:0',
@@ -1209,13 +1210,11 @@ class StudentPortalController extends Controller
 
         $externalId = 'STU-' . $user->id . '-' . $enrollment->id . '-' . time();
 
+        // GrabPay / bank transfer / OTC removed — out of scope for this system.
         $allowedMethods = match ($request->payment_method) {
-            'gcash'   => ['GCASH'],
-            'maya'    => ['PAYMAYA'],
-            'grabpay' => ['GRABPAY'],
-            'bank'    => ['DD_BPI', 'DD_UBP', 'DD_RCBC', 'DD_CHINABANK'],
-            'otc'     => ['SEVEN_ELEVEN', 'CEBUANA', 'PALAWAN', 'MLHUILLIER'],
-            default   => [],
+            'gcash' => ['GCASH'],
+            'maya'  => ['PAYMAYA'],
+            default => [],
         };
 
         $response = \Illuminate\Support\Facades\Http::withBasicAuth($apiKey, '')

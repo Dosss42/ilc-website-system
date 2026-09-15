@@ -199,11 +199,19 @@ class DashboardController extends Controller
             ->selectRaw("COUNT(*) as total, COALESCE(SUM(CASE WHEN status='completed' THEN amount ELSE 0 END),0) as total_amount")
             ->first();
 
+        $statusCounts = PaymentTransaction::whereIn('payment_type', ['walkin', 'admin', 'downpayment', 'online'])
+            ->selectRaw("status, COUNT(*) as total")
+            ->groupBy('status')
+            ->pluck('total', 'status');
+
         $combinedPayStats = [
             'total'         => ($payStatsWalkin->total ?? 0) + ($payStatsXendit->total ?? 0),
             'walkin_amount' => $payStatsWalkin->total_amount ?? 0,
             'xendit_total'  => $payStatsXendit->total        ?? 0,
             'xendit_amount' => $payStatsXendit->total_amount ?? 0,
+            'pending'       => $statusCounts->get('pending', 0),
+            'completed'     => $statusCounts->get('completed', 0),
+            'rejected'      => $statusCounts->get('rejected', 0),
         ];
 
         $schoolYears = $this->getSchoolYears();
