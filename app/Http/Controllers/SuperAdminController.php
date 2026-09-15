@@ -305,7 +305,7 @@ class SuperAdminController extends Controller
             $imagePath = $request->file('image')->store('announcements', 'public');
         }
 
-        Announcement::create([
+        $announcement = Announcement::create([
             'teacher_id' => Auth::id(),
             'title'      => $request->title,
             'content'    => $request->content,
@@ -315,18 +315,24 @@ class SuperAdminController extends Controller
             'image'      => $imagePath,
         ]);
 
+        ActivityLogger::log('create', "Posted announcement \"{$announcement->title}\" ({$announcement->category}, audience: {$announcement->audience})", 'Announcement', $announcement->id);
+
         return back()->with('sa_success', 'Announcement posted successfully!')->with('sa_section', 'announcements');
     }
 
     public function toggleAnnouncement(Announcement $announcement)
     {
         $announcement->update(['is_active' => !$announcement->is_active]);
+        ActivityLogger::log('update', ($announcement->is_active ? 'Activated' : 'Deactivated') . " announcement \"{$announcement->title}\"", 'Announcement', $announcement->id);
         return back()->with('sa_success', 'Announcement updated.')->with('sa_section', 'announcements');
     }
 
     public function destroyAnnouncement(Announcement $announcement)
     {
+        $title = $announcement->title;
+        $id    = $announcement->id;
         $announcement->delete();
+        ActivityLogger::log('delete', "Deleted announcement \"{$title}\"", 'Announcement', $id);
         return back()->with('sa_success', 'Announcement deleted.')->with('sa_section', 'announcements');
     }
 
@@ -346,7 +352,7 @@ class SuperAdminController extends Controller
             $imagePath = $request->file('image')->store('news', 'public');
         }
 
-        News::create([
+        $news = News::create([
             'posted_by' => Auth::id(),
             'title'     => $request->title,
             'body'      => $request->body,
@@ -355,19 +361,25 @@ class SuperAdminController extends Controller
             'is_active' => true,
         ]);
 
+        ActivityLogger::log('create', "Published news article \"{$news->title}\" ({$news->category})", 'News', $news->id);
+
         return back()->with('sa_success', 'News article published!')->with('sa_section', 'news');
     }
 
     public function toggleNews(News $news)
     {
         $news->update(['is_active' => !$news->is_active]);
+        ActivityLogger::log('update', ($news->is_active ? 'Activated' : 'Deactivated') . " news article \"{$news->title}\"", 'News', $news->id);
         return back()->with('sa_success', 'News article updated.')->with('sa_section', 'news');
     }
 
     public function destroyNews(News $news)
     {
         if ($news->image) Storage::disk('public')->delete($news->image);
+        $title = $news->title;
+        $id    = $news->id;
         $news->delete();
+        ActivityLogger::log('delete', "Deleted news article \"{$title}\"", 'News', $id);
         return back()->with('sa_success', 'News article deleted.')->with('sa_section', 'news');
     }
 

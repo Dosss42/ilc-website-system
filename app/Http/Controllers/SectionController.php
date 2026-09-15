@@ -6,6 +6,7 @@ use App\Models\Section;
 use App\Models\Subject;
 use App\Models\TeacherAssignment;
 use App\Models\User;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -133,6 +134,8 @@ class SectionController extends Controller
             ]);
         }
 
+        ActivityLogger::log('create', "Created section \"{$section->name}\" — {$section->grade_level} (S.Y. {$section->school_year})", 'Section', $section->id);
+
         return response()->json($section->load(['teacher', 'subjects']), 201);
     }
 
@@ -226,14 +229,20 @@ class SectionController extends Controller
             }
         }
 
+        ActivityLogger::log('update', "Updated section \"{$section->name}\" — {$section->grade_level} (S.Y. {$section->school_year})", 'Section', $section->id);
+
         return response()->json($section->load(['teacher', 'subjects']));
     }
 
     public function destroy(Section $section)
     {
+        $sectionName = $section->name;
+        $gradeLevel  = $section->grade_level;
         // Remove related teacher assignments before deleting section
         TeacherAssignment::where('section_id', $section->id)->delete();
+        $sectionId = $section->id;
         $section->delete();
+        ActivityLogger::log('delete', "Deleted section \"{$sectionName}\" — {$gradeLevel}", 'Section', $sectionId);
         return response()->json(['success' => true]);
     }
 
@@ -257,6 +266,9 @@ class SectionController extends Controller
                 'school_year' => $section->school_year,
             ]
         );
+
+        $teacherName = User::find($validated['teacher_id'])?->name ?? "#{$validated['teacher_id']}";
+        ActivityLogger::log('update', "Assigned {$teacherName} as adviser for section \"{$section->name}\"", 'Section', $section->id);
 
         return response()->json($section->load('teacher'));
     }
@@ -305,6 +317,8 @@ class SectionController extends Controller
             }
         }
 
+        ActivityLogger::log('update', "Added {$user->name} to section \"{$section->name}\"", 'Section', $section->id);
+
         // Return the updated section with current enrollment count
         $section->refresh();
         return response()->json([
@@ -329,6 +343,8 @@ class SectionController extends Controller
             $enrollment->section = null;
             $enrollment->save();
         }
+
+        ActivityLogger::log('update', ($user->name ?? 'Student') . " removed from section \"{$section->name}\"", 'Section', $section->id);
 
         return response()->json(['success' => true, 'current_enrollment' => $section->live_enrollment_count]);
     }
@@ -366,6 +382,8 @@ class SectionController extends Controller
             $enrollment->section = $target->name;
             $enrollment->save();
         }
+
+        ActivityLogger::log('update', ($user->name ?? 'Student') . " transferred from \"{$section->name}\" to \"{$target->name}\"", 'Section', $target->id);
 
         return response()->json([
             'success'            => true,

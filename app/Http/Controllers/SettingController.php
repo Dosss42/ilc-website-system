@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Setting;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -75,6 +76,9 @@ class SettingController extends Controller
 
             Setting::clearCache();
 
+            $keys = implode(', ', array_column($data['settings'], 'key'));
+            ActivityLogger::log('update', 'Updated system settings: ' . (mb_strlen($keys) > 200 ? mb_substr($keys, 0, 200) . '…' : $keys), 'Setting');
+
             return response()->json([
                 'success' => true,
                 'message' => 'Settings updated successfully'
@@ -115,6 +119,8 @@ class SettingController extends Controller
 
         Setting::set('enrollment_open', $newValue, 'boolean');
 
+        ActivityLogger::log('update', 'Enrollment turned ' . ($newValue ? 'ON' : 'OFF'), 'Setting');
+
         return response()->json([
             'success'          => true,
             'enrollment_open'  => $newValue,
@@ -132,6 +138,8 @@ class SettingController extends Controller
         $newValue = !$current;
 
         Setting::set('maintenance_mode', $newValue, 'boolean');
+
+        ActivityLogger::log('update', 'Maintenance mode turned ' . ($newValue ? 'ON' : 'OFF'), 'Setting');
 
         return response()->json([
             'success'          => true,

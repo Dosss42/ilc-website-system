@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Mail\TeacherAccountCreated;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -35,6 +36,8 @@ class TeacherController extends Controller
             'is_active' => $validated['is_active'] ?? true,
             'email_verified_at' => now(),
         ]);
+
+        ActivityLogger::log('create', "Created teacher account for {$teacher->name} ({$teacher->email})", 'User', $teacher->id);
 
         // Send welcome email (synchronous to avoid queue worker dependency)
         try {
@@ -77,18 +80,24 @@ class TeacherController extends Controller
 
         $teacher->name = $validated['name'];
         $teacher->email = $validated['email'];
-        if (!empty($validated['password'])) {
+        $passwordChanged = !empty($validated['password']);
+        if ($passwordChanged) {
             $teacher->password = bcrypt($validated['password']);
         }
         $teacher->is_active = $validated['is_active'] ?? true;
         $teacher->save();
+
+        ActivityLogger::log('update', "Updated teacher {$teacher->name} ({$teacher->email})" . ($passwordChanged ? ' — password reset' : ''), 'User', $teacher->id);
 
         return response()->json($teacher);
     }
 
     public function destroy(User $teacher)
     {
+        $name = $teacher->name;
+        $email = $teacher->email;
         $teacher->delete();
+        ActivityLogger::log('delete', "Deleted teacher {$name} ({$email})", 'User', $teacher->id);
         return response()->json(['message' => 'Teacher deleted successfully.']);
     }
 }

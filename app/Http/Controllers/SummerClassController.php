@@ -6,6 +6,7 @@ use App\Models\SummerClass;
 use App\Models\SummerClassEnrollment;
 use App\Models\Subject;
 use App\Models\User;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -65,11 +66,14 @@ class SummerClassController extends Controller
         ]);
 
         $summerClass = SummerClass::create($validated);
+        $summerClass->load(['subject:id,name,code', 'teacher:id,name']);
+
+        ActivityLogger::log('create', "Created summer class: {$summerClass->subject->name} — {$summerClass->grade_level} (S.Y. {$summerClass->school_year})", 'SummerClass', $summerClass->id);
 
         return response()->json([
             'success' => true,
             'message' => 'Summer class created successfully.',
-            'data' => $summerClass->load(['subject:id,name,code', 'teacher:id,name']),
+            'data' => $summerClass,
         ]);
     }
 
@@ -105,17 +109,24 @@ class SummerClassController extends Controller
         ]);
 
         $summerClass->update($validated);
+        $fresh = $summerClass->fresh(['subject:id,name,code', 'teacher:id,name']);
+
+        ActivityLogger::log('update', "Updated summer class: {$fresh->subject->name} — {$fresh->grade_level} (S.Y. {$fresh->school_year})", 'SummerClass', $fresh->id);
 
         return response()->json([
             'success' => true,
             'message' => 'Summer class updated successfully.',
-            'data' => $summerClass->fresh(['subject:id,name,code', 'teacher:id,name']),
+            'data' => $fresh,
         ]);
     }
 
     public function destroy(SummerClass $summerClass)
     {
+        $summerClass->load('subject:id,name');
+        $desc = "Deleted summer class: " . ($summerClass->subject->name ?? '—') . " — {$summerClass->grade_level} (S.Y. {$summerClass->school_year})";
+        $id = $summerClass->id;
         $summerClass->delete();
+        ActivityLogger::log('delete', $desc, 'SummerClass', $id);
 
         return response()->json([
             'success' => true,
@@ -148,11 +159,15 @@ class SummerClassController extends Controller
             'student_id' => $validated['student_id'],
             'original_grade' => $validated['original_grade'] ?? null,
         ]);
+        $enrollment->load('student:id,name,email,lrn');
+
+        $summerClass->load('subject:id,name');
+        ActivityLogger::log('update', "Enrolled {$enrollment->student->name} in summer class ({$summerClass->subject->name})", 'SummerClass', $summerClass->id);
 
         return response()->json([
             'success' => true,
             'message' => 'Student enrolled in summer class.',
-            'data' => $enrollment->load('student:id,name,email,lrn'),
+            'data' => $enrollment,
         ]);
     }
 
@@ -164,6 +179,10 @@ class SummerClassController extends Controller
         SummerClassEnrollment::where('summer_class_id', $summerClass->id)
             ->where('student_id', $studentId)
             ->delete();
+
+        $summerClass->load('subject:id,name');
+        $studentName = User::find($studentId)?->name ?? "#{$studentId}";
+        ActivityLogger::log('update', "Removed {$studentName} from summer class ({$summerClass->subject->name})", 'SummerClass', $summerClass->id);
 
         return response()->json([
             'success' => true,
@@ -192,6 +211,9 @@ class SummerClassController extends Controller
             'remarks' => $validated['remarks'] ?? null,
             'status' => $status,
         ]);
+
+        $studentName = User::find($studentId)?->name ?? "#{$studentId}";
+        ActivityLogger::log('update', "Set summer class grade for {$studentName}: {$validated['summer_grade']} ({$status})", 'SummerClass', $summerClass->id);
 
         return response()->json([
             'success' => true,

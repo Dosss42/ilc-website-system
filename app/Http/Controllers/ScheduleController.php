@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Schedule;
 use App\Models\Section;
 use App\Models\User;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 
 class ScheduleController extends Controller
@@ -58,6 +59,11 @@ class ScheduleController extends Controller
         $schedule->has_conflict     = !empty($conflicts);
         $schedule->conflict_reasons = $conflicts;
 
+        $desc = "Created schedule: {$schedule->subject->name} for {$schedule->section->name} on {$schedule->day_of_week} "
+              . substr($schedule->start_time, 0, 5) . '–' . substr($schedule->end_time, 0, 5)
+              . (!empty($conflicts) ? ' (⚠ conflict)' : '');
+        ActivityLogger::log('create', $desc, 'Schedule', $schedule->id);
+
         return response()->json($schedule, 201);
     }
 
@@ -89,6 +95,11 @@ class ScheduleController extends Controller
         $schedule->load(['section', 'subject', 'teacher']);
         $schedule->has_conflict     = !empty($conflicts);
         $schedule->conflict_reasons = $conflicts;
+
+        $desc = "Updated schedule: {$schedule->subject->name} for {$schedule->section->name} on {$schedule->day_of_week} "
+              . substr($schedule->start_time, 0, 5) . '–' . substr($schedule->end_time, 0, 5)
+              . (!empty($conflicts) ? ' (⚠ conflict)' : '');
+        ActivityLogger::log('update', $desc, 'Schedule', $schedule->id);
 
         return response()->json($schedule);
     }
@@ -283,7 +294,12 @@ class ScheduleController extends Controller
 
     public function destroy(Schedule $schedule)
     {
+        $schedule->load(['section', 'subject']);
+        $desc = "Deleted schedule: " . ($schedule->subject->name ?? '—') . ' for ' . ($schedule->section->name ?? '—')
+              . " on {$schedule->day_of_week} " . substr($schedule->start_time, 0, 5) . '–' . substr($schedule->end_time, 0, 5);
+        $scheduleId = $schedule->id;
         $schedule->delete();
+        ActivityLogger::log('delete', $desc, 'Schedule', $scheduleId);
         return response()->json(['success' => true]);
     }
 

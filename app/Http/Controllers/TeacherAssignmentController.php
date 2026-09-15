@@ -6,6 +6,7 @@ use App\Models\TeacherAssignment;
 use App\Models\User;
 use App\Models\Subject;
 use App\Models\Section;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 
 class TeacherAssignmentController extends Controller
@@ -109,6 +110,9 @@ class TeacherAssignmentController extends Controller
 
         $assignment->load(['teacher', 'subject', 'section']);
 
+        $what = $assignment->is_advisory ? 'advisory teacher' : ($assignment->subject->name ?? 'subject teacher');
+        ActivityLogger::log('create', "Assigned {$assignment->teacher->name} as {$what} for section \"{$assignment->section->name}\"", 'TeacherAssignment', $assignment->id);
+
         return response()->json(['success' => true, 'assignment' => $assignment]);
     }
 
@@ -159,12 +163,16 @@ class TeacherAssignmentController extends Controller
 
         $assignment->load(['teacher', 'subject', 'section']);
 
+        ActivityLogger::log('update', "Updated teacher assignment: {$assignment->teacher->name} — section \"{$assignment->section->name}\"", 'TeacherAssignment', $assignment->id);
+
         return response()->json(['success' => true, 'assignment' => $assignment]);
     }
 
     public function destroy($id)
     {
         $assignment = TeacherAssignment::findOrFail($id);
+        $assignment->load(['teacher', 'section']);
+        $desc = "Removed teacher assignment: " . ($assignment->teacher->name ?? '—') . " — section \"" . ($assignment->section->name ?? '—') . "\"";
 
         // Re-sync section.teacher_id after removing this advisory
         if ($assignment->is_advisory) {
@@ -178,6 +186,7 @@ class TeacherAssignmentController extends Controller
         }
 
         $assignment->delete();
+        ActivityLogger::log('delete', $desc, 'TeacherAssignment', $id);
 
         return response()->json(['success' => true]);
     }

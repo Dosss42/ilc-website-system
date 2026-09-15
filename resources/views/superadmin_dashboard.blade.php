@@ -1234,6 +1234,7 @@
                             <option value="login">Login</option>
                             <option value="logout">Logout</option>
                             <option value="failed_login">Failed Login</option>
+                            <option value="denied">Denied Attempt</option>
                             <option value="create">Create</option>
                             <option value="update">Update</option>
                             <option value="delete">Delete</option>
@@ -1283,6 +1284,7 @@
                                 'login'        => 'success',
                                 'logout'       => 'active',
                                 'failed_login' => 'warning',
+                                'denied'       => 'danger',
                                 'create'       => 'success',
                                 'update'       => 'primary',
                                 'delete'       => 'danger',
@@ -1293,6 +1295,7 @@
                                 'login'        => 'Login',
                                 'logout'       => 'Logout',
                                 'failed_login' => 'Failed Login',
+                                'denied'       => 'Denied Attempt',
                                 'create'       => 'Create',
                                 'update'       => 'Update',
                                 'delete'       => 'Delete',
@@ -2926,6 +2929,7 @@
             var tbody = document.getElementById('logsTableBody');
             var badgeMap = {
                 login: ['success','Login'], logout: ['active','Logout'], failed_login: ['warning','Failed Login'],
+                denied: ['danger','Denied Attempt'],
                 create: ['success','Create'], update: ['primary','Update'], delete: ['danger','Delete'], error: ['danger','Error']
             };
             d.logs.forEach(function(log) {

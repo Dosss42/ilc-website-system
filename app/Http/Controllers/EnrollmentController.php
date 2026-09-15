@@ -28,6 +28,7 @@ use App\Models\Setting;
 use App\Models\OtpVerification;
 use App\Mail\EnrollmentOtpMail;
 use App\Services\PaymentService;
+use App\Services\ActivityLogger;
 
 class EnrollmentController extends Controller
 {
@@ -1288,6 +1289,9 @@ class EnrollmentController extends Controller
 
             DB::commit(); // single commit for all writes above
 
+            $studentName = trim(($studentData['first_name'] ?? '') . ' ' . ($studentData['last_name'] ?? '')) ?: ($studentData['student_email'] ?? 'student');
+            ActivityLogger::log('update', "Approved enrollment for {$studentName} (#{$enrollment->reference_number})", 'Enrollment', $enrollment->id);
+
             // Section assignment happens when Finance processes payment → updateEnrollmentPaymentStatus()
 
             // Send approval email after the response is returned so the admin is not blocked
@@ -1373,6 +1377,10 @@ class EnrollmentController extends Controller
                 Log::warning('Failed to send decline email: ' . $mailException->getMessage());
                 // Continue without failing the entire decline process
             }
+
+            $studentData = $enrollment->student_data;
+            $studentName = trim(($studentData['first_name'] ?? '') . ' ' . ($studentData['last_name'] ?? '')) ?: ($studentData['student_email'] ?? 'student');
+            ActivityLogger::log('delete', "Declined enrollment for {$studentName} (#{$enrollment->reference_number}) — reason: {$validated['reason']}", 'Enrollment', $enrollment->id);
 
             // Check if request expects JSON (AJAX)
             if (request()->expectsJson()) {
@@ -1893,6 +1901,8 @@ class EnrollmentController extends Controller
             'reviewed_at' => now(),
         ]);
 
+        ActivityLogger::log('update', "Approved {$document->document_type} for " . ($document->user->name ?? 'student #' . $document->user_id), 'StudentDocument', $document->id);
+
         // If it's a payment screenshot, always process payment on approval
         if ($document->document_type === 'payment_screenshot' && $document->enrollment_id) {
             $enrollment = Enrollment::find($document->enrollment_id);
@@ -2043,6 +2053,8 @@ class EnrollmentController extends Controller
             'reviewed_by' => Auth::id(),
             'reviewed_at' => now(),
         ]);
+
+        ActivityLogger::log('delete', "Rejected {$document->document_type} for " . ($document->user->name ?? 'student #' . $document->user_id) . " — reason: {$request->reject_reason}", 'StudentDocument', $document->id);
 
         if ($request->expectsJson()) {
             return response()->json(['success' => true, 'message' => 'Document rejected.']);
@@ -2285,6 +2297,8 @@ class EnrollmentController extends Controller
             }
         }
 
+        ActivityLogger::log('update', "Updated student record for {$user->name} ({$user->email})", 'User', $user->id);
+
         return response()->json(['success' => true, 'message' => 'Student updated successfully.']);
     }
 
@@ -2305,11 +2319,13 @@ class EnrollmentController extends Controller
     public function deleteStudent(Request $request, User $user)
     {
         if (!\Illuminate\Support\Facades\Hash::check((string) $request->input('password'), Auth::user()->password)) {
+            ActivityLogger::log('denied', "Wrong password entered while trying to archive student {$user->name}", 'User', $user->id);
             return response()->json(['success' => false, 'message' => 'Incorrect password. Please try again.'], 422);
         }
 
         $this->removeStudentFromSections($user->id);
         $user->delete(); // soft delete — sets deleted_at
+        ActivityLogger::log('delete', "Archived student {$user->name} ({$user->email})", 'User', $user->id);
         return response()->json(['success' => true, 'message' => 'Student archived successfully. You can restore them from the Archives tab.']);
     }
 
@@ -2320,6 +2336,7 @@ class EnrollmentController extends Controller
     {
         $user = User::withTrashed()->findOrFail($id);
         $user->restore();
+        ActivityLogger::log('update', "Restored student {$user->name} ({$user->email}) from archive", 'User', $user->id);
         return response()->json(['success' => true, 'message' => 'Student restored successfully.']);
     }
 
@@ -2328,7 +2345,9 @@ class EnrollmentController extends Controller
      */
     public function forceDeleteStudent(Request $request, $id)
     {
+        $targetUser = User::withTrashed()->find($id);
         if (!\Illuminate\Support\Facades\Hash::check((string) $request->input('password'), Auth::user()->password)) {
+            ActivityLogger::log('denied', "Wrong password entered while trying to PERMANENTLY delete student " . ($targetUser->name ?? "#{$id}"), 'User', $id);
             return response()->json(['success' => false, 'message' => 'Incorrect password. Please try again.'], 422);
         }
 
@@ -2371,7 +2390,11 @@ class EnrollmentController extends Controller
         DB::table('guardians')->where('user_id', $user->id)->delete();
         DB::table('previous_schools')->where('user_id', $user->id)->delete();
         $user->enrollments()->forceDelete();
+        $deletedName  = $user->name;
+        $deletedEmail = $user->email;
         $user->forceDelete();
+
+        ActivityLogger::log('delete', "PERMANENTLY deleted student {$deletedName} ({$deletedEmail}) and all their records", 'User', $id);
 
         return response()->json(['success' => true, 'message' => 'Student permanently deleted.']);
     }
@@ -2540,6 +2563,8 @@ class EnrollmentController extends Controller
         if ($skippedCount > 0) {
             $message .= " $skippedCount student(s) were skipped because they already have an enrollment for $toSchoolYear.";
         }
+
+        ActivityLogger::log('update', "Mass promoted {$promotedCount} student(s) from {$fromGrade} to {$nextGrade} ({$validated['from_school_year']} → {$toSchoolYear}), {$skippedCount} skipped", 'Promotion');
 
         return response()->json([
             'success' => true,
@@ -2754,6 +2779,8 @@ class EnrollmentController extends Controller
             $actionLabel = $validated['action'] === 'promote'
                 ? "Promoted to " . ucfirst(str_replace('_', ' ', $toGrade))
                 : "Retained at " . ucfirst(str_replace('_', ' ', $toGrade));
+
+            ActivityLogger::log('update', "{$user->name}: {$actionLabel} (from {$fromGrade}, {$fromSchoolYear} → {$toSchoolYear})", 'Promotion', $user->id);
 
             return response()->json([
                 'success'       => true,
@@ -3073,6 +3100,9 @@ class EnrollmentController extends Controller
             ->when(!$request->subject_id, fn($q) => $q->whereNull('subject_id'))
             ->update(['status' => 'approved']);
 
+        $teacherName = User::find($request->teacher_id)?->name ?? "#{$request->teacher_id}";
+        ActivityLogger::log('update', "Approved {$count} grade(s) submitted by {$teacherName} (Term {$request->term}, S.Y. {$request->school_year})", 'Grade');
+
         return response()->json(['success' => true, 'message' => "$count grade(s) approved."]);
     }
 
@@ -3093,6 +3123,9 @@ class EnrollmentController extends Controller
             ->when($request->subject_id, fn($q) => $q->where('subject_id', $request->subject_id))
             ->when(!$request->subject_id, fn($q) => $q->whereNull('subject_id'))
             ->update(['status' => 'rejected']);
+
+        $teacherName = User::find($request->teacher_id)?->name ?? "#{$request->teacher_id}";
+        ActivityLogger::log('delete', "Returned {$count} grade(s) to {$teacherName} for revision (Term {$request->term}, S.Y. {$request->school_year})" . ($request->reason ? " — reason: {$request->reason}" : ''), 'Grade');
 
         return response()->json(['success' => true, 'message' => "$count grade(s) returned to teacher."]);
     }

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Subject;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 
 class SubjectController extends Controller
@@ -31,6 +32,7 @@ class SubjectController extends Controller
         ]);
 
         $subject = Subject::create($validated);
+        ActivityLogger::log('create', "Added subject \"{$subject->name}\" ({$subject->code}) — {$subject->grade_level}", 'Subject', $subject->id);
         return response()->json($subject, 201);
     }
 
@@ -51,12 +53,16 @@ class SubjectController extends Controller
         ]);
 
         $subject->update($validated);
+        ActivityLogger::log('update', "Updated subject \"{$subject->name}\" ({$subject->code})", 'Subject', $subject->id);
         return response()->json($subject);
     }
 
     public function destroy(Subject $subject)
     {
+        $name = $subject->name;
+        $code = $subject->code;
         $subject->delete();
+        ActivityLogger::log('delete', "Deleted subject \"{$name}\" ({$code})", 'Subject', $subject->id);
         return response()->json(['success' => true]);
     }
 }

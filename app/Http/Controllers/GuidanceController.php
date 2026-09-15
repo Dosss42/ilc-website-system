@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\GuidanceRecord;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -53,6 +54,10 @@ class GuidanceController extends Controller
             $record = GuidanceRecord::create($validated);
             $record->load(['student:id,name', 'counselor:id,name']);
 
+            // Description intentionally omits concern_description/notes — those are
+            // sensitive counseling content and don't belong in a general audit log.
+            ActivityLogger::log('create', "Added guidance record ({$record->concern_type}) for " . ($record->student->name ?? 'student #' . $record->student_id), 'GuidanceRecord', $record->id);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Guidance record created successfully',
@@ -98,6 +103,8 @@ class GuidanceController extends Controller
             $guidance->update($validated);
             $guidance->load(['student:id,name', 'counselor:id,name']);
 
+            ActivityLogger::log('update', "Updated guidance record ({$guidance->concern_type}) for " . ($guidance->student->name ?? 'student #' . $guidance->student_id), 'GuidanceRecord', $guidance->id);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Guidance record updated successfully',
@@ -118,7 +125,12 @@ class GuidanceController extends Controller
     public function destroy(GuidanceRecord $guidance)
     {
         try {
+            $guidance->load('student:id,name');
+            $studentName = $guidance->student->name ?? 'student #' . $guidance->student_id;
+            $concernType = $guidance->concern_type;
+            $guidanceId  = $guidance->id;
             $guidance->delete();
+            ActivityLogger::log('delete', "Deleted guidance record ({$concernType}) for {$studentName}", 'GuidanceRecord', $guidanceId);
             return response()->json([
                 'success' => true,
                 'message' => 'Guidance record deleted successfully'
