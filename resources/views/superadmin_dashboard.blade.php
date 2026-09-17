@@ -1564,6 +1564,10 @@
                             </td>
                             <td>
                                 <div style="display:flex;gap:6px;">
+                                    <button type="button" class="action-btn view" title="Edit"
+                                        onclick="openEditAnnouncementModal({{ $ann->id }}, {{ \Illuminate\Support\Js::from($ann->title) }}, {{ \Illuminate\Support\Js::from($ann->content) }}, {{ \Illuminate\Support\Js::from($ann->category) }}, {{ \Illuminate\Support\Js::from($ann->audience) }}, {{ \Illuminate\Support\Js::from($ann->created_at->format('Y-m-d\TH:i')) }})">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </button>
                                     <form method="POST" action="{{ route('superadmin.announcements.toggle', $ann) }}" style="margin:0;">
                                         @csrf
                                         <button type="submit" class="action-btn {{ $ann->is_active ? 'edit' : 'view' }}" title="{{ $ann->is_active ? 'Hide' : 'Show' }}">
@@ -1684,6 +1688,10 @@
                             </td>
                             <td>
                                 <div style="display:flex;gap:6px;">
+                                    <button type="button" class="action-btn view" title="Edit"
+                                        onclick="openEditNewsModal({{ $article->id }}, {{ \Illuminate\Support\Js::from($article->title) }}, {{ \Illuminate\Support\Js::from($article->body) }}, {{ \Illuminate\Support\Js::from($article->category) }}, {{ \Illuminate\Support\Js::from($article->created_at->format('Y-m-d\TH:i')) }})">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </button>
                                     <form method="POST" action="{{ route('superadmin.news.toggle', $article) }}" style="margin:0;">
                                         @csrf
                                         <button type="submit" class="action-btn {{ $article->is_active ? 'edit' : 'view' }}" title="{{ $article->is_active ? 'Hide' : 'Show' }}">
@@ -2367,6 +2375,138 @@
 </div>
 
 <!-- ══════════════════════════════════════
+     EDIT ANNOUNCEMENT MODAL
+══════════════════════════════════════ -->
+<div class="modal fade" id="editAnnouncementModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:560px;">
+        <div class="modal-content" style="border:0;border-radius:20px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.18);">
+            <div style="background:linear-gradient(135deg,#1a3a6c 0%,#2563eb 100%);padding:20px 24px;position:relative;">
+                <div style="font-size:16px;font-weight:800;color:#fff;">Edit Announcement</div>
+                <div style="font-size:11px;color:rgba(255,255,255,.65);margin-top:1px;">Category, audience, content, and post date can all be changed here</div>
+                <button type="button" data-bs-dismiss="modal"
+                    style="position:absolute;top:14px;right:16px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div style="padding:20px 24px;background:#fff;">
+                <form id="editAnnouncementForm">
+                    @csrf
+                    <input type="hidden" id="edit-ann-id" name="id">
+                    <div class="mb-3">
+                        <label class="form-lbl">Title</label>
+                        <input type="text" id="edit-ann-title" name="title" class="form-fld" required maxlength="255">
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-4">
+                            <label class="form-lbl">Category</label>
+                            <select id="edit-ann-category" name="category" class="form-fld" required>
+                                <option value="general">General</option>
+                                <option value="academic">Academic</option>
+                                <option value="reminder">Reminder</option>
+                                <option value="activity">Activity</option>
+                                <option value="enrollment">Enrollment</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-lbl">Audience</label>
+                            <select id="edit-ann-audience" name="audience" class="form-fld" required>
+                                <option value="all">All (Public)</option>
+                                <option value="parents">Parents</option>
+                                <option value="teachers">Teachers</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-lbl">Posted Date</label>
+                            <input type="datetime-local" id="edit-ann-posted-at" name="posted_at" class="form-fld">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-lbl">Content</label>
+                        <textarea id="edit-ann-content" name="content" class="form-fld" rows="5" required style="resize:vertical;"></textarea>
+                    </div>
+                    <div class="mb-1">
+                        <label class="form-lbl">Replace Cover Image (optional)</label>
+                        <input type="file" id="edit-ann-image" name="image" class="form-fld" accept="image/jpeg,image/png,image/webp">
+                    </div>
+                </form>
+            </div>
+            <div style="padding:14px 24px;background:#f8faff;border-top:1.5px solid #e2e8f0;display:flex;gap:10px;justify-content:flex-end;">
+                <button type="button" data-bs-dismiss="modal"
+                    style="padding:10px 18px;background:#fff;color:#64748b;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">
+                    <i class="bi bi-x-lg me-1"></i>Cancel
+                </button>
+                <button type="button" onclick="submitEditAnnouncement()" id="btnUpdateAnnouncement"
+                    style="padding:10px 22px;background:linear-gradient(135deg,#1a3a6c,#2563eb);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;">
+                    <i class="bi bi-floppy-fill"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     EDIT NEWS MODAL
+══════════════════════════════════════ -->
+<div class="modal fade" id="editNewsModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:560px;">
+        <div class="modal-content" style="border:0;border-radius:20px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.18);">
+            <div style="background:linear-gradient(135deg,#1a3a6c 0%,#2563eb 100%);padding:20px 24px;position:relative;">
+                <div style="font-size:16px;font-weight:800;color:#fff;">Edit News Article</div>
+                <div style="font-size:11px;color:rgba(255,255,255,.65);margin-top:1px;">Category, body, and post date can all be changed here</div>
+                <button type="button" data-bs-dismiss="modal"
+                    style="position:absolute;top:14px;right:16px;width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div style="padding:20px 24px;background:#fff;">
+                <form id="editNewsForm">
+                    @csrf
+                    <input type="hidden" id="edit-news-id" name="id">
+                    <div class="mb-3">
+                        <label class="form-lbl">Headline</label>
+                        <input type="text" id="edit-news-title" name="title" class="form-fld" required maxlength="255">
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-lbl">Category</label>
+                            <select id="edit-news-category" name="category" class="form-fld" required>
+                                <option value="general">General</option>
+                                <option value="academic">Academic</option>
+                                <option value="events">Events</option>
+                                <option value="activity">Activity</option>
+                                <option value="achievement">Achievement</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-lbl">Posted Date</label>
+                            <input type="datetime-local" id="edit-news-posted-at" name="posted_at" class="form-fld">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-lbl">Body</label>
+                        <textarea id="edit-news-body" name="body" class="form-fld" rows="5" required style="resize:vertical;"></textarea>
+                    </div>
+                    <div class="mb-1">
+                        <label class="form-lbl">Replace Cover Photo (optional)</label>
+                        <input type="file" id="edit-news-image" name="image" class="form-fld" accept="image/jpeg,image/png,image/webp">
+                    </div>
+                </form>
+            </div>
+            <div style="padding:14px 24px;background:#f8faff;border-top:1.5px solid #e2e8f0;display:flex;gap:10px;justify-content:flex-end;">
+                <button type="button" data-bs-dismiss="modal"
+                    style="padding:10px 18px;background:#fff;color:#64748b;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">
+                    <i class="bi bi-x-lg me-1"></i>Cancel
+                </button>
+                <button type="button" onclick="submitEditNews()" id="btnUpdateNews"
+                    style="padding:10px 22px;background:linear-gradient(135deg,#1a3a6c,#2563eb);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;">
+                    <i class="bi bi-floppy-fill"></i>Save Changes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════
      RESET PASSWORD MODAL
 ══════════════════════════════════════ -->
 <div class="modal fade" id="resetPasswordModal" tabindex="-1">
@@ -2650,13 +2790,18 @@
 
     // ── User Management ────────────────────────────────────────
     var createUserModal, editUserModal, resetPasswordModal, saConfirmModal;
+    var editAnnouncementModal, editNewsModal;
     var csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
     document.addEventListener('DOMContentLoaded', function() {
         createUserModal    = new bootstrap.Modal(document.getElementById('createUserModal'));
         editUserModal      = new bootstrap.Modal(document.getElementById('editUserModal'));
         resetPasswordModal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
-        saConfirmModal     = new bootstrap.Modal(document.getElementById('saConfirmModal'));
+        saConfirmModal      = new bootstrap.Modal(document.getElementById('saConfirmModal'));
+        var annModalEl = document.getElementById('editAnnouncementModal');
+        var newsModalEl = document.getElementById('editNewsModal');
+        if (annModalEl)  editAnnouncementModal = new bootstrap.Modal(annModalEl);
+        if (newsModalEl) editNewsModal         = new bootstrap.Modal(newsModalEl);
     });
 
     // Password visibility toggle
@@ -2786,6 +2931,104 @@
             }
         } catch(e) { saToast('error', 'Network error. Please try again.'); }
         setBtnLoading('btnUpdateUser', false, '<i class="bi bi-floppy-fill"></i>Save Changes');
+    }
+
+    // ── Edit Announcement / Edit News ──────────────────
+    // File uploads + a spoofed PUT don't mix well in plain PHP (multipart
+    // bodies only get parsed on a real POST) — so these submit as an actual
+    // POST with a `_method=PUT` field, which Laravel still routes to the
+    // PUT route, while the wire-level request stays POST so the optional
+    // image upload is received correctly either way.
+    function openEditAnnouncementModal(id, title, content, category, audience, postedAt) {
+        document.getElementById('edit-ann-id').value        = id;
+        document.getElementById('edit-ann-title').value     = title;
+        document.getElementById('edit-ann-content').value   = content;
+        document.getElementById('edit-ann-category').value  = category;
+        document.getElementById('edit-ann-audience').value  = audience;
+        document.getElementById('edit-ann-posted-at').value = postedAt;
+        document.getElementById('edit-ann-image').value     = '';
+        editAnnouncementModal.show();
+    }
+
+    async function submitEditAnnouncement() {
+        var id = document.getElementById('edit-ann-id').value;
+        var title = document.getElementById('edit-ann-title').value.trim();
+        var content = document.getElementById('edit-ann-content').value.trim();
+        if (!title || !content) { saToast('warning', 'Title and content are required.'); return; }
+
+        var fd = new FormData();
+        fd.append('_method', 'PUT');
+        fd.append('_token', csrfToken);
+        fd.append('title', title);
+        fd.append('content', content);
+        fd.append('category', document.getElementById('edit-ann-category').value);
+        fd.append('audience', document.getElementById('edit-ann-audience').value);
+        fd.append('posted_at', document.getElementById('edit-ann-posted-at').value);
+        var imgFile = document.getElementById('edit-ann-image').files[0];
+        if (imgFile) fd.append('image', imgFile);
+
+        setBtnLoading('btnUpdateAnnouncement', true);
+        try {
+            var r = await fetch('/superadmin/announcements/' + id, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                body: fd
+            });
+            if (r.ok || r.redirected) {
+                saToast('success', 'Announcement updated!');
+                editAnnouncementModal.hide();
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                var d = await r.json().catch(() => null);
+                saToast('error', (d && d.message) || (d && d.errors ? Object.values(d.errors).flat().join(', ') : 'Error updating announcement.'));
+            }
+        } catch(e) { saToast('error', 'Network error. Please try again.'); }
+        setBtnLoading('btnUpdateAnnouncement', false, '<i class="bi bi-floppy-fill"></i>Save Changes');
+    }
+
+    function openEditNewsModal(id, title, body, category, postedAt) {
+        document.getElementById('edit-news-id').value        = id;
+        document.getElementById('edit-news-title').value     = title;
+        document.getElementById('edit-news-body').value      = body;
+        document.getElementById('edit-news-category').value  = category;
+        document.getElementById('edit-news-posted-at').value = postedAt;
+        document.getElementById('edit-news-image').value     = '';
+        editNewsModal.show();
+    }
+
+    async function submitEditNews() {
+        var id = document.getElementById('edit-news-id').value;
+        var title = document.getElementById('edit-news-title').value.trim();
+        var body = document.getElementById('edit-news-body').value.trim();
+        if (!title || !body) { saToast('warning', 'Headline and body are required.'); return; }
+
+        var fd = new FormData();
+        fd.append('_method', 'PUT');
+        fd.append('_token', csrfToken);
+        fd.append('title', title);
+        fd.append('body', body);
+        fd.append('category', document.getElementById('edit-news-category').value);
+        fd.append('posted_at', document.getElementById('edit-news-posted-at').value);
+        var imgFile = document.getElementById('edit-news-image').files[0];
+        if (imgFile) fd.append('image', imgFile);
+
+        setBtnLoading('btnUpdateNews', true);
+        try {
+            var r = await fetch('/superadmin/news/' + id, {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                body: fd
+            });
+            if (r.ok || r.redirected) {
+                saToast('success', 'News article updated!');
+                editNewsModal.hide();
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                var d = await r.json().catch(() => null);
+                saToast('error', (d && d.message) || (d && d.errors ? Object.values(d.errors).flat().join(', ') : 'Error updating news article.'));
+            }
+        } catch(e) { saToast('error', 'Network error. Please try again.'); }
+        setBtnLoading('btnUpdateNews', false, '<i class="bi bi-floppy-fill"></i>Save Changes');
     }
 
     function confirmToggleStatus(userId, userName, isCurrentlyActive) {

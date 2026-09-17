@@ -54,12 +54,14 @@ Route::get('/news', function () {
     $newsQuery    = \App\Models\News::where('is_active', true);
     if ($category) $newsQuery->where('category', $category);
     $featuredNews = \App\Models\News::where('is_active', true)->latest()->first();
-    $news         = $newsQuery->when($featuredNews, fn($q) => $q->where('id', '!=', $featuredNews->id))->latest()->paginate(9)->withQueryString();
+    $news         = $newsQuery->when($featuredNews, fn($q) => $q->where('id', '!=', $featuredNews->id))->latest()->paginate(12)->withQueryString();
     $recentNews   = \App\Models\News::where('is_active', true)->latest()->limit(5)->get();
     $categories   = \App\Models\News::where('is_active', true)->selectRaw('category, count(*) as total')->groupBy('category')->get();
     $sidebarAnns  = \App\Models\Announcement::where('is_active', true)->where('audience', 'all')->latest()->limit(4)->get();
     $visitorCount = (int) \App\Models\Setting::get('visitor_count', 0);
-    return view('news', compact('news', 'featuredNews', 'recentNews', 'categories', 'sidebarAnns', 'visitorCount', 'category'));
+    return response()
+        ->view('news', compact('news', 'featuredNews', 'recentNews', 'categories', 'sidebarAnns', 'visitorCount', 'category'))
+        ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
 })->name('news');
 
 Route::get('/news/{news}', function (\App\Models\News $news) {
@@ -81,7 +83,9 @@ Route::get('/announcements', function () {
     $scheduleAnns         = \App\Models\Announcement::where('is_active', true)->where('audience', 'all')->where('category', 'activity')->latest()->limit(5)->get();
     $reminderAnns         = \App\Models\Announcement::where('is_active', true)->where('audience', 'all')->where('category', 'reminder')->latest()->limit(4)->get();
     $visitorCount         = (int) \App\Models\Setting::get('visitor_count', 0);
-    return view('announcements', compact('announcements', 'featuredAnnouncement', 'recentAnns', 'annCategories', 'scheduleAnns', 'reminderAnns', 'visitorCount', 'category'));
+    return response()
+        ->view('announcements', compact('announcements', 'featuredAnnouncement', 'recentAnns', 'annCategories', 'scheduleAnns', 'reminderAnns', 'visitorCount', 'category'))
+        ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
 })->name('announcements');
 
 Route::get('/announcements/{announcement}', function (\App\Models\Announcement $announcement) {
@@ -205,11 +209,13 @@ Route::middleware(['auth', 'superadmin'])->prefix('superadmin')->name('superadmi
 
     // Announcements
     Route::post('/announcements',                        [SuperAdminController::class, 'storeAnnouncement'])->name('announcements.store');
+    Route::put('/announcements/{announcement}',          [SuperAdminController::class, 'updateAnnouncement'])->name('announcements.update');
     Route::post('/announcements/{announcement}/toggle',  [SuperAdminController::class, 'toggleAnnouncement'])->name('announcements.toggle');
     Route::delete('/announcements/{announcement}',       [SuperAdminController::class, 'destroyAnnouncement'])->name('announcements.destroy');
 
     // News
     Route::post('/news',                [SuperAdminController::class, 'storeNews'])->name('news.store');
+    Route::put('/news/{news}',          [SuperAdminController::class, 'updateNews'])->name('news.update');
     Route::post('/news/{news}/toggle',  [SuperAdminController::class, 'toggleNews'])->name('news.toggle');
     Route::delete('/news/{news}',       [SuperAdminController::class, 'destroyNews'])->name('news.destroy');
 
@@ -376,11 +382,13 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
 
     // ANNOUNCEMENTS (admin can post/manage)
     Route::post('/announcements',                       [\App\Http\Controllers\SuperAdminController::class, 'storeAnnouncement'])->name('announcements.store');
+    Route::put('/announcements/{announcement}',         [\App\Http\Controllers\SuperAdminController::class, 'updateAnnouncement'])->name('announcements.update');
     Route::post('/announcements/{announcement}/toggle', [\App\Http\Controllers\SuperAdminController::class, 'toggleAnnouncement'])->name('announcements.toggle');
     Route::delete('/announcements/{announcement}',      [\App\Http\Controllers\SuperAdminController::class, 'destroyAnnouncement'])->name('announcements.destroy');
 
     // NEWS (admin can post/manage)
     Route::post('/news',               [\App\Http\Controllers\SuperAdminController::class, 'storeNews'])->name('news.store');
+    Route::put('/news/{news}',         [\App\Http\Controllers\SuperAdminController::class, 'updateNews'])->name('news.update');
     Route::post('/news/{news}/toggle', [\App\Http\Controllers\SuperAdminController::class, 'toggleNews'])->name('news.toggle');
     Route::delete('/news/{news}',      [\App\Http\Controllers\SuperAdminController::class, 'destroyNews'])->name('news.destroy');
 

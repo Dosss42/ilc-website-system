@@ -1094,8 +1094,18 @@ class EnrollmentController extends Controller
         $unreadMessagesCount  = $contactMessages->where('status', 'unread')->count();
 
         // Announcements & News for admin management
-        $announcements = \App\Models\Announcement::orderByDesc('created_at')->take(20)->get();
-        $news          = \App\Models\News::orderByDesc('created_at')->take(20)->get();
+        $annCategoryFilter  = $request->input('ann_category');
+        $newsCategoryFilter = $request->input('news_category');
+
+        $announcements = \App\Models\Announcement::orderByDesc('created_at')
+            ->when($annCategoryFilter, fn($q) => $q->where('category', $annCategoryFilter))
+            ->paginate(10, ['*'], 'ann_page')
+            ->withQueryString();
+
+        $news = \App\Models\News::orderByDesc('created_at')
+            ->when($newsCategoryFilter, fn($q) => $q->where('category', $newsCategoryFilter))
+            ->paginate(10, ['*'], 'news_page')
+            ->withQueryString();
 
         return view('adminDashboard', compact(
             'enrollments', 'students', 'paymentEnrollments',
@@ -1114,7 +1124,7 @@ class EnrollmentController extends Controller
             'currentSchoolYear', 'enrollmentOpen', 'maintenanceMode', 'assessStudents', 'assessGuidanceCounts',
             'assessSummerStatus', 'guidanceCounselors',
             'contactMessages', 'unreadMessagesCount',
-            'announcements', 'news'
+            'announcements', 'news', 'annCategoryFilter', 'newsCategoryFilter'
         ));
     }
 

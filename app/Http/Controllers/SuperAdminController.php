@@ -320,6 +320,52 @@ class SuperAdminController extends Controller
         return back()->with('sa_success', 'Announcement posted successfully!')->with('sa_section', 'announcements');
     }
 
+    /**
+     * There was no way to edit an announcement after posting it at all —
+     * only create, toggle visibility, or delete. Category and post date
+     * (created_at, which is what "Posted on" actually displays everywhere)
+     * were both stuck as whatever they were set to at creation.
+     */
+    public function updateAnnouncement(Request $request, Announcement $announcement)
+    {
+        $validated = $request->validate([
+            'title'      => 'required|string|max:255',
+            'content'    => 'required|string',
+            'category'   => 'required|in:academic,reminder,activity,general,enrollment',
+            'audience'   => 'required|in:all,parents,teachers',
+            'posted_at'  => 'nullable|date',
+            'image'      => 'nullable|image|mimes:jpg,jpeg,png,webp|max:3072',
+        ]);
+
+        $updateData = [
+            'title'    => $validated['title'],
+            'content'  => $validated['content'],
+            'category' => $validated['category'],
+            'audience' => $validated['audience'],
+        ];
+
+        if ($request->hasFile('image')) {
+            if ($announcement->image) {
+                Storage::disk('public')->delete($announcement->image);
+            }
+            $updateData['image'] = $request->file('image')->store('announcements', 'public');
+        }
+
+        $announcement->update($updateData);
+
+        // created_at is deliberately NOT in $fillable (mass-assigning it
+        // everywhere would be a much bigger door to leave open) — set it
+        // directly here instead, only on this one controlled admin-edit path.
+        if (!empty($validated['posted_at'])) {
+            $announcement->created_at = $validated['posted_at'];
+            $announcement->save();
+        }
+
+        ActivityLogger::log('update', "Edited announcement \"{$announcement->title}\"", 'Announcement', $announcement->id);
+
+        return back()->with('sa_success', 'Announcement updated.')->with('sa_section', 'announcements');
+    }
+
     public function toggleAnnouncement(Announcement $announcement)
     {
         $announcement->update(['is_active' => !$announcement->is_active]);
@@ -364,6 +410,47 @@ class SuperAdminController extends Controller
         ActivityLogger::log('create', "Published news article \"{$news->title}\" ({$news->category})", 'News', $news->id);
 
         return back()->with('sa_success', 'News article published!')->with('sa_section', 'news');
+    }
+
+    /**
+     * Same gap as announcements — no way to edit a published news article's
+     * category, body, or post date after the fact.
+     */
+    public function updateNews(Request $request, News $news)
+    {
+        $validated = $request->validate([
+            'title'     => 'required|string|max:255',
+            'body'      => 'required|string',
+            'category'  => 'required|in:academic,events,activity,achievement,general',
+            'posted_at' => 'nullable|date',
+            'image'     => 'nullable|image|mimes:jpg,jpeg,png,webp|max:3072',
+        ]);
+
+        $updateData = [
+            'title'    => $validated['title'],
+            'body'     => $validated['body'],
+            'category' => $validated['category'],
+        ];
+
+        if ($request->hasFile('image')) {
+            if ($news->image) {
+                Storage::disk('public')->delete($news->image);
+            }
+            $updateData['image'] = $request->file('image')->store('news', 'public');
+        }
+
+        $news->update($updateData);
+
+        // Same reasoning as updateAnnouncement() — created_at isn't in
+        // $fillable on purpose, set directly here instead.
+        if (!empty($validated['posted_at'])) {
+            $news->created_at = $validated['posted_at'];
+            $news->save();
+        }
+
+        ActivityLogger::log('update', "Edited news article \"{$news->title}\"", 'News', $news->id);
+
+        return back()->with('sa_success', 'News article updated.')->with('sa_section', 'news');
     }
 
     public function toggleNews(News $news)

@@ -188,6 +188,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
                      When using database:
                      Use $featuredAnnouncement->title, etc.
                      ============================================= --}}
+                @if($announcements->currentPage() == 1)
                 @if(isset($featuredAnnouncement) && $featuredAnnouncement)
                 <a href="{{ route('announcements.show', $featuredAnnouncement) }}" style="text-decoration:none;color:inherit;display:block;">
                 <div class="ann-featured-card" style="cursor:pointer;">
@@ -242,6 +243,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
                     </div>
                 </div>
                 @endif
+                @endif
 
                 {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
                      ANNOUNCEMENT GRID CARDS &mdash; Dynamic DB
@@ -278,7 +280,45 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
                     </div>
                     @endforeach
                 </div>
-                <div class="ann-pagination">{{ $announcements->links() }}</div>
+                @if ($announcements->lastPage() > 1)
+                @php
+                    $annCurrent = $announcements->currentPage();
+                    $annLast    = $announcements->lastPage();
+                    $annStart   = max(1, $annCurrent - 2);
+                    $annEnd     = min($annLast, $annCurrent + 2);
+                @endphp
+                <div class="ann-pagination">
+                    @if ($announcements->onFirstPage())
+                        <span class="ann-page-btn" style="opacity:.4;cursor:default;"><i class="bi bi-chevron-left"></i></span>
+                    @else
+                        <a href="{{ $announcements->previousPageUrl() }}" class="ann-page-btn"><i class="bi bi-chevron-left"></i></a>
+                    @endif
+
+                    @if ($annStart > 1)
+                        <a href="{{ $announcements->url(1) }}" class="ann-page-btn">1</a>
+                        @if ($annStart > 2)
+                            <span class="ann-page-btn" style="border:none;background:none;">&hellip;</span>
+                        @endif
+                    @endif
+
+                    @for ($i = $annStart; $i <= $annEnd; $i++)
+                        <a href="{{ $announcements->url($i) }}" class="ann-page-btn {{ $annCurrent == $i ? 'active' : '' }}">{{ $i }}</a>
+                    @endfor
+
+                    @if ($annEnd < $annLast)
+                        @if ($annEnd < $annLast - 1)
+                            <span class="ann-page-btn" style="border:none;background:none;">&hellip;</span>
+                        @endif
+                        <a href="{{ $announcements->url($annLast) }}" class="ann-page-btn">{{ $annLast }}</a>
+                    @endif
+
+                    @if ($announcements->hasMorePages())
+                        <a href="{{ $announcements->nextPageUrl() }}" class="ann-page-btn"><i class="bi bi-chevron-right"></i></a>
+                    @else
+                        <span class="ann-page-btn" style="opacity:.4;cursor:default;"><i class="bi bi-chevron-right"></i></span>
+                    @endif
+                </div>
+                @endif
                 @else
                 {{-- Static fallback when no DB announcements --}}
                 <div class="row g-3">
@@ -505,7 +545,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
                         {{-- Static fallback --}}
                         <div class="notice-box">
                             <div class="notice-item"><i class="bi bi-check-circle-fill"></i><span>Wear complete and proper school uniform every day.</span></div>
-                            <div class="notice-item"><i class="bi bi-check-circle-fill"></i><span>Students must be in school by <strong>7:00 AM</strong>.</span></div>
+                            <div class="notice-item"><i class="bi bi-check-circle-fill"></i><span>Students must be in school by <strong>800 AM</strong>.</span></div>
                             <div class="notice-item"><i class="bi bi-check-circle-fill"></i><span>All enrollment requirements must be submitted within the first two weeks of classes.</span></div>
                             <div class="notice-item"><i class="bi bi-check-circle-fill"></i><span>Use of mobile phones is <strong>not allowed</strong> during class hours.</span></div>
                             <div class="notice-item"><i class="bi bi-check-circle-fill"></i><span>Chapel service is every <strong>Monday morning</strong>. All students must attend.</span></div>
@@ -522,21 +562,21 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
                             <div class="notice-item">
                                 <i class="bi bi-geo-alt-fill"></i>
                                 {{-- CHANGE: Update with your address --}}
-                                <span>Purok Pag-asa, General Tinio, Nueva Ecija</span>
+                                <span>General Tinio, Nueva Ecija</span>
                             </div>
                             <div class="notice-item">
                                 <i class="bi bi-telephone-fill"></i>
                                 {{-- CHANGE: Update with your phone --}}
-                                <span>(044) 000-0000</span>
+                                <span>0951-989-9685
                             </div>
                             <div class="notice-item">
                                 <i class="bi bi-envelope-fill"></i>
                                 {{-- CHANGE: Update with your email --}}
-                                <span>info@iemelif-ilc.edu.ph</span>
+                                <span>Iemelif_learningcenter@gmail.com
                             </div>
                             <div class="notice-item">
                                 <i class="bi bi-clock-fill"></i>
-                                <span>Office Hours: Mon&ndash;Fri 7:00 AM &ndash; 3:00 PM</span>
+                                <span>Office Hours: Mon&ndash;Fri 8:00 AM &ndash; 5:00 PM</span>
                             </div>
                         </div>
                     </div>

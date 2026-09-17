@@ -226,6 +226,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
                      TO ADD IMAGE: Replace .img-placeholder div with:
                      <img src="/images/news1.jpg" alt="News">
                      ============================================= --}}
+                @if($news->currentPage() == 1)
                 @if(isset($featuredNews) && $featuredNews)
                 <a href="{{ route('news.show', $featuredNews) }}" style="text-decoration:none;color:inherit;display:block;">
                 <div class="featured-news-card" style="cursor:pointer;">
@@ -272,6 +273,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
                     </div>
                 </div>
                 @endif
+                @endif
 
                 {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
                      NEWS GRID &mdash; Dynamic DB
@@ -303,7 +305,45 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
                     </div>
                     @endforeach
                 </div>
-                <div class="news-pagination">{{ $news->links() }}</div>
+                @if ($news->lastPage() > 1)
+                @php
+                    $newsCurrent = $news->currentPage();
+                    $newsLast    = $news->lastPage();
+                    $newsStart   = max(1, $newsCurrent - 2);
+                    $newsEnd     = min($newsLast, $newsCurrent + 2);
+                @endphp
+                <div class="news-pagination">
+                    @if ($news->onFirstPage())
+                        <span class="page-btn" style="opacity:.4;cursor:default;"><i class="bi bi-chevron-left"></i></span>
+                    @else
+                        <a href="{{ $news->previousPageUrl() }}" class="page-btn"><i class="bi bi-chevron-left"></i></a>
+                    @endif
+
+                    @if ($newsStart > 1)
+                        <a href="{{ $news->url(1) }}" class="page-btn">1</a>
+                        @if ($newsStart > 2)
+                            <span class="page-btn" style="border:none;background:none;">&hellip;</span>
+                        @endif
+                    @endif
+
+                    @for ($i = $newsStart; $i <= $newsEnd; $i++)
+                        <a href="{{ $news->url($i) }}" class="page-btn {{ $newsCurrent == $i ? 'active' : '' }}">{{ $i }}</a>
+                    @endfor
+
+                    @if ($newsEnd < $newsLast)
+                        @if ($newsEnd < $newsLast - 1)
+                            <span class="page-btn" style="border:none;background:none;">&hellip;</span>
+                        @endif
+                        <a href="{{ $news->url($newsLast) }}" class="page-btn">{{ $newsLast }}</a>
+                    @endif
+
+                    @if ($news->hasMorePages())
+                        <a href="{{ $news->nextPageUrl() }}" class="page-btn"><i class="bi bi-chevron-right"></i></a>
+                    @else
+                        <span class="page-btn" style="opacity:.4;cursor:default;"><i class="bi bi-chevron-right"></i></span>
+                    @endif
+                </div>
+                @endif
                 @else
                 {{-- Static fallback when no news published yet --}}
                 <div class="row g-3">

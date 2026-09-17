@@ -124,6 +124,11 @@
                 <div class="school-title"><h1>IEMELIF Learning Center</h1><p>General Tinio, Nueva Ecija</p></div>
             </div>
             <div class="d-none d-lg-flex flex-column align-items-end gap-1">
+                <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#111;font-weight:500;">
+                    <div style="display:flex;align-items:center;gap:4px;"><i class="bi bi-calendar3" style="color:var(--ilc-gold);font-size:11px;"></i><span id="topbar-date"></span></div>
+                    <div style="width:1px;height:11px;background:#ccc;"></div>
+                    <div style="display:flex;align-items:center;gap:4px;"><i class="bi bi-clock" style="color:var(--ilc-gold);font-size:11px;"></i><span id="topbar-time" style="font-variant-numeric:tabular-nums;min-width:70px;"></span></div>
+                </div>
                 <form class="search-form" action="{{ route('search') }}" method="GET" style="display:flex;">
                     <input type="text" name="q" class="form-control" placeholder="Search..." value="{{ request('q') }}">
                     <button class="btn-search" type="submit"><i class="bi bi-search"></i></button>
@@ -471,5 +476,6 @@
     if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',start);}else{start();}
 })();
 </script>
+<script>(function(){var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],months=['January','February','March','April','May','June','July','August','September','October','November','December'];function pad(n){return n<10?'0'+n:n;}function tick(){var now=new Date(),d=days[now.getDay()]+', '+months[now.getMonth()]+' '+now.getDate()+', '+now.getFullYear(),h=now.getHours(),ampm=h>=12?'PM':'AM';h=h%12||12;var t=h+':'+pad(now.getMinutes())+':'+pad(now.getSeconds())+' '+ampm;var de=document.getElementById('topbar-date'),te=document.getElementById('topbar-time');if(de)de.textContent=d;if(te)te.textContent=t;}tick();setInterval(tick,1000);})();</script>
 </body>
 </html>
