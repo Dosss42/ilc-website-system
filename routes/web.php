@@ -653,3 +653,23 @@ Route::middleware(['auth', 'verified'])->prefix('profile')->name('profile.')->gr
     Route::post('/enrollment', [ProfileController::class, 'updateEnrollment'])->name('enrollment.update');
     Route::get('/status', [ProfileController::class, 'checkCompletionStatus'])->name('status');
 });
+
+// ─────────────────────────────────────────
+// ONE-TIME CONTENT SEEDING (token-protected)
+// Visit /system/seed-content/{token} once after deploy to populate the
+// sample Announcements/News content. Safe to visit more than once — the
+// seeder itself checks whether the batch already exists and skips if so.
+// Remove this route once you no longer need it.
+// ─────────────────────────────────────────
+Route::get('/system/seed-content/{token}', function (string $token) {
+    if (!config('app.seed_token') || !hash_equals((string) config('app.seed_token'), $token)) {
+        abort(404);
+    }
+
+    \Illuminate\Support\Facades\Artisan::call('db:seed', [
+        '--class' => \Database\Seeders\AnnouncementNewsSeeder::class,
+        '--force' => true,
+    ]);
+
+    return '<pre>' . e(\Illuminate\Support\Facades\Artisan::output()) . '</pre>';
+});
