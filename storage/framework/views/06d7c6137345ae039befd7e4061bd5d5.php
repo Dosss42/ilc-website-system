@@ -5,30 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IEMELIF Learning Center - General Tinio Nueva Ecija</title>
 
-    {{-- SEO: what Google shows in search results, and what Facebook/Messenger
-         show when this link is shared — this is what actually makes the site
-         findable and recognizable, not just having it "on the internet". --}}
+    
     <meta name="description" content="IEMELIF Learning Center is a school in General Tinio, Nueva Ecija offering Nursery to Grade 6 education. Enroll online, view announcements, and access student/teacher portals.">
     <meta name="keywords" content="IEMELIF Learning Center, General Tinio Nueva Ecija school, elementary school Nueva Ecija, online enrollment">
-    <link rel="canonical" href="{{ url('/') }}">
+    <link rel="canonical" href="<?php echo e(url('/')); ?>">
 
     <meta property="og:type" content="website">
     <meta property="og:title" content="IEMELIF Learning Center - General Tinio, Nueva Ecija">
     <meta property="og:description" content="A school in General Tinio, Nueva Ecija offering Nursery to Grade 6 education. Enroll online and stay updated with school announcements.">
-    <meta property="og:image" content="{{ asset('images/logo.png') }}">
-    <meta property="og:url" content="{{ url('/') }}">
+    <meta property="og:image" content="<?php echo e(asset('images/logo.png')); ?>">
+    <meta property="og:url" content="<?php echo e(url('/')); ?>">
     <meta name="twitter:card" content="summary">
 
-    {{-- Bootstrap 5 CSS --}}
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    {{-- Bootstrap Icons --}}
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    {{-- Google Fonts --}}
+    
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
-    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1780380004">
-    <link rel="stylesheet" href="{{ asset('css/home.css') }}?v=1780380004">
+    <link rel="stylesheet" href="<?php echo e(asset('css/styles.css')); ?>?v=1780380004">
+    <link rel="stylesheet" href="<?php echo e(asset('css/home.css')); ?>?v=1780380004">
     <style>
         /* Custom Scrollbar Design */
         ::-webkit-scrollbar { width: 12px; }
@@ -76,34 +74,32 @@ body, div, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select
     font-family: 'Open Sans', sans-serif !important;
 }
 </style>
-    <link rel="stylesheet" href="{{ asset('css/ilc-typography.css') }}?v=1780380004">
+    <link rel="stylesheet" href="<?php echo e(asset('css/ilc-typography.css')); ?>?v=1780380004">
 </head>
 <body>
 
-{{-- ══════════════════════════════════════════
-     TOP HEADER
-════════════════════════════════════════════ --}}
+
 <header class="top-header">
     <div class="container">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-            {{-- Logos + Title --}}
+            
             <div class="d-flex align-items-center gap-3">
-                {{-- Logo 2 --}}
+                
                 <div class="school-logo">
-                    <a class="nav-link" href="{{ route('home') }}">
+                    <a class="nav-link" href="<?php echo e(route('home')); ?>">
                     <img src="/images/logo.png" alt="Logo 2"></a>
                 </div>
-                {{-- School Name --}}
+                
                 <div class="school-title">
                     <h1>IEMELIF Learning Center</h1>
                     <p>General Tinio, Nueva Ecija</p>
                 </div>
             </div>
 
-            {{-- Right side: Date/Time stacked above Search --}}
+            
             <div class="d-none d-lg-flex flex-column align-items-end gap-1">
 
-                {{-- Date & Time --}}
+                
                 <div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#111;font-weight:500;">
                     <div style="display:flex;align-items:center;gap:4px;">
                         <i class="bi bi-calendar3" style="color:var(--ilc-gold);font-size:11px;"></i>
@@ -116,9 +112,9 @@ body, div, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select
                     </div>
                 </div>
 
-                {{-- Search Bar --}}
-                <form class="search-form" action="{{ route('search') }}" method="GET" style="display:flex;flex-direction:row;align-items:center;">
-                    <input type="text" name="q" class="form-control" placeholder="Search..." value="{{ request('q') }}" style="flex:1;">
+                
+                <form class="search-form" action="<?php echo e(route('search')); ?>" method="GET" style="display:flex;flex-direction:row;align-items:center;">
+                    <input type="text" name="q" class="form-control" placeholder="Search..." value="<?php echo e(request('q')); ?>" style="flex:1;">
                     <button class="btn-search" type="submit" style="flex-shrink:0;">
                         <i class="bi bi-search"></i>
                     </button>
@@ -150,65 +146,63 @@ body, div, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select
 })();
 </script>
 
-{{-- ══════════════════════════════════════════
-     NAVIGATION
-════════════════════════════════════════════ --}}
+
 <nav class="main-nav navbar navbar-expand-lg">
     <div class="container">
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav">
             <span class="navbar-toggler-icon"></span>
         </button>
 
-        {{-- Collapsible nav links --}}
+        
         <div class="collapse navbar-collapse" id="mainNav">
             <ul class="navbar-nav mx-auto">
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}" href="{{ route('home') }}">Home</a>
+                    <a class="nav-link <?php echo e(request()->routeIs('home') ? 'active' : ''); ?>" href="<?php echo e(route('home')); ?>">Home</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('about*') ? 'active' : '' }}" href="{{ route('about') }}">About</a>
+                    <a class="nav-link <?php echo e(request()->routeIs('about*') ? 'active' : ''); ?>" href="<?php echo e(route('about')); ?>">About</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('academics*') ? 'active' : '' }}" href="{{ route('academics') }}">Academics</a>
+                    <a class="nav-link <?php echo e(request()->routeIs('academics*') ? 'active' : ''); ?>" href="<?php echo e(route('academics')); ?>">Academics</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('admission*') ? 'active' : '' }}" href="{{ route('admission') }}">Enrollment</a>
+                    <a class="nav-link <?php echo e(request()->routeIs('admission*') ? 'active' : ''); ?>" href="<?php echo e(route('admission')); ?>">Enrollment</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('announcements*') ? 'active' : '' }}" href="{{ route('announcements') }}">Announcements</a>
+                    <a class="nav-link <?php echo e(request()->routeIs('announcements*') ? 'active' : ''); ?>" href="<?php echo e(route('announcements')); ?>">Announcements</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('news*') ? 'active' : '' }}" href="{{ route('news') }}">News</a>
+                    <a class="nav-link <?php echo e(request()->routeIs('news*') ? 'active' : ''); ?>" href="<?php echo e(route('news')); ?>">News</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('aims') ? 'active' : '' }}" href="{{ route('aims') }}">AIMS</a>
+                    <a class="nav-link <?php echo e(request()->routeIs('aims') ? 'active' : ''); ?>" href="<?php echo e(route('aims')); ?>">AIMS</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('contact*') ? 'active' : '' }}" href="{{ route('contact') }}">Contact</a>
+                    <a class="nav-link <?php echo e(request()->routeIs('contact*') ? 'active' : ''); ?>" href="<?php echo e(route('contact')); ?>">Contact</a>
                 </li>
             </ul>
         </div>
 
-        {{-- Always visible: Search toggle + Login --}}
+        
         <div class="d-flex align-items-center gap-2 nav-actions">
-            {{-- Search toggle: mobile/tablet only --}}
+            
             <button type="button" class="nav-search-toggle d-lg-none" id="navSearchToggle" onclick="toggleNavSearch()" title="Search">
                 <i class="bi bi-search"></i>
             </button>
-            <a href="{{ route('login') }}" class="btn btn-outline-light btn-sm nav-login-btn">
+            <a href="<?php echo e(route('login')); ?>" class="btn btn-outline-light btn-sm nav-login-btn">
                 <i class="bi bi-person-fill me-1"></i>Log In
             </a>
         </div>
     </div>
 
-    {{-- Slide-down search bar: mobile/tablet only --}}
+    
     <div class="nav-search-bar d-lg-none" id="navSearchBar">
         <div class="container">
-            <form class="nav-search-form" action="{{ route('search') }}" method="GET">
+            <form class="nav-search-form" action="<?php echo e(route('search')); ?>" method="GET">
                 <i class="bi bi-search nav-search-icon"></i>
                 <input type="text" name="q" id="navSearchInput" class="nav-search-input"
                        placeholder="Search announcements, news, programs..."
-                       value="{{ request('q') }}">
+                       value="<?php echo e(request('q')); ?>">
                 <span class="nav-search-hint">Press Enter to search · Esc to close</span>
             </form>
         </div>
@@ -240,16 +234,12 @@ document.addEventListener('keydown', function(e) {
 });
 </script>
 
-{{-- ══════════════════════════════════════════
-     HERO CAROUSEL — Skeleton
-════════════════════════════════════════════ --}}
+
 <div class="skel-section" id="skel-hero" style="width:100%;overflow:hidden;">
     <span class="skel" style="width:100%;height:520px;border-radius:0;display:block;"></span>
 </div>
 
-{{-- ══════════════════════════════════════════
-     HERO CAROUSEL — Real
-════════════════════════════════════════════ --}}
+
 <div class="real-section" id="real-hero">
 <style>
 /* ── Ken Burns Hero ── */
@@ -267,7 +257,7 @@ document.addEventListener('keydown', function(e) {
     inset: -6%;           /* slightly oversized so zoom never reveals edges */
     width: 112%;
     height: 112%;
-    background: url('{{ asset('images/background.png') }}') center center / cover no-repeat;
+    background: url('<?php echo e(asset('images/background.png')); ?>') center center / cover no-repeat;
     animation: kenBurns 22s ease-in-out infinite;
     will-change: transform;
     pointer-events: none;
@@ -469,13 +459,13 @@ document.addEventListener('keydown', function(e) {
         <div class="hero-divider"></div>
         <div class="hero-tagline">Nurturing Faith, Excellence, and Learning — General Tinio, Nueva Ecija</div>
         <div class="hero-actions">
-            @php $enrollmentOpen = \App\Models\Setting::get('enrollment_open', true); @endphp
-            @if($enrollmentOpen)
-            <a href="{{ route('enrollment.form') }}" class="hero-btn-primary">
+            <?php $enrollmentOpen = \App\Models\Setting::get('enrollment_open', true); ?>
+            <?php if($enrollmentOpen): ?>
+            <a href="<?php echo e(route('enrollment.form')); ?>" class="hero-btn-primary">
                 <i class="bi bi-pencil-fill"></i> Enroll Now
             </a>
-            @endif
-            <a href="{{ route('about') }}" class="hero-btn-secondary">
+            <?php endif; ?>
+            <a href="<?php echo e(route('about')); ?>" class="hero-btn-secondary">
                 <i class="bi bi-info-circle"></i> Learn More
             </a>
         </div>
@@ -486,28 +476,26 @@ document.addEventListener('keydown', function(e) {
         <span>Scroll</span>
     </div>
 </div>
-</div>{{-- /real-hero --}}
+</div>
 
 
-{{-- ══════════════════════════════════════════
-     THUMBNAIL ROW — Skeleton
-════════════════════════════════════════════ --}}
+
 <div class="skel-section" id="skel-thumbs">
-    {{-- Stats bar skeleton --}}
+    
     <div style="background:#1a3a6c;padding:20px 0;">
         <div class="container"><div class="row g-3">
-            @for($i=0;$i<4;$i++)
+            <?php for($i=0;$i<4;$i++): ?>
             <div class="col-md-3 text-center">
                 <span class="skel-dark" style="height:28px;width:50px;display:block;border-radius:4px;margin:0 auto 6px;"></span>
                 <span class="skel-dark" style="height:11px;width:80px;display:block;border-radius:4px;margin:0 auto;"></span>
             </div>
-            @endfor
+            <?php endfor; ?>
         </div></div>
     </div>
-    {{-- Feature cards skeleton --}}
+    
     <div style="background:#f6f8fb;padding:36px 0;">
         <div class="container"><div class="row g-4">
-            @for($i=0;$i<3;$i++)
+            <?php for($i=0;$i<3;$i++): ?>
             <div class="col-md-4">
                 <span class="skel" style="height:200px;display:block;border-radius:18px 18px 0 0;margin-bottom:0;"></span>
                 <div style="background:#fff;border-radius:0 0 18px 18px;padding:18px;border:1.5px solid #e8edf5;border-top:none;">
@@ -516,15 +504,13 @@ document.addEventListener('keydown', function(e) {
                     <span class="skel" style="height:11px;width:85%;display:block;border-radius:4px;"></span>
                 </div>
             </div>
-            @endfor
+            <?php endfor; ?>
         </div>
     </div>
 </div>
-</div>{{-- /skel-thumbs --}}
+</div>
 
-{{-- ══════════════════════════════════════════
-     STATS + FEATURE CARDS ROW — Real
-════════════════════════════════════════════ --}}
+
 <div class="real-section" id="real-thumbs">
 <style>
 /* ── Stats Bar ── */
@@ -683,7 +669,7 @@ document.addEventListener('keydown', function(e) {
 }
 </style>
 
-{{-- Stats Bar --}}
+
 <div class="stats-bar">
     <div class="container-fluid px-0">
         <div class="stats-bar-inner">
@@ -694,8 +680,8 @@ document.addEventListener('keydown', function(e) {
             </div>
             <div class="stat-item">
                 <i class="bi bi-people-fill stat-icon"></i>
-                @php $studentCount = \App\Models\User::where('role','student')->count(); @endphp
-                <div class="stat-number" data-count="{{ $studentCount }}" data-suffix="">{{ $studentCount }}</div>
+                <?php $studentCount = \App\Models\User::where('role','student')->count(); ?>
+                <div class="stat-number" data-count="<?php echo e($studentCount); ?>" data-suffix=""><?php echo e($studentCount); ?></div>
                 <div class="stat-label">Enrolled Students</div>
             </div>
             <div class="stat-item">
@@ -748,16 +734,16 @@ document.addEventListener('keydown', function(e) {
 })();
 </script>
 
-{{-- Feature Cards --}}
+
 <div class="feature-cards-row">
     <div class="container">
         <div class="row g-4">
 
-            {{-- Card 1: About / School Head --}}
+            
             <div class="col-md-4">
-                <a href="{{ route('about') }}" class="feature-card">
+                <a href="<?php echo e(route('about')); ?>" class="feature-card">
                     <div class="feature-card-img">
-                        <img src="{{ asset('images/oic.jpg') }}" alt="School Head">
+                        <img src="<?php echo e(asset('images/oic.jpg')); ?>" alt="School Head">
                         <div class="feature-card-img-overlay"></div>
                         <span class="feature-card-badge" style="background:rgba(26,58,108,.7);color:#fff;">
                             <i class="bi bi-person-badge me-1"></i>Leadership
@@ -771,31 +757,32 @@ document.addEventListener('keydown', function(e) {
                 </a>
             </div>
 
-            {{-- Card 2: Enrollment --}}
+            
             <div class="col-md-4">
-                @php $enrollOpen = \App\Models\Setting::get('enrollment_open', true); @endphp
-                <a href="{{ $enrollOpen ? route('enrollment.form') : route('admission') }}" class="feature-card">
+                <?php $enrollOpen = \App\Models\Setting::get('enrollment_open', true); ?>
+                <a href="<?php echo e($enrollOpen ? route('enrollment.form') : route('admission')); ?>" class="feature-card">
                     <div class="feature-card-img">
-                        <img src="{{ asset('images/bg7.jpg') }}" alt="Enrollment">
+                        <img src="<?php echo e(asset('images/bg7.jpg')); ?>" alt="Enrollment">
                         <div class="feature-card-img-overlay"></div>
-                        <span class="feature-card-badge" style="background:{{ $enrollOpen ? 'rgba(22,163,74,.8)' : 'rgba(100,116,139,.7)' }};color:#fff;">
+                        <span class="feature-card-badge" style="background:<?php echo e($enrollOpen ? 'rgba(22,163,74,.8)' : 'rgba(100,116,139,.7)'); ?>;color:#fff;">
                             <i class="bi bi-circle-fill me-1" style="font-size:7px;"></i>
-                            {{ $enrollOpen ? 'Enrollment Open' : 'Enrollment Closed' }}
+                            <?php echo e($enrollOpen ? 'Enrollment Open' : 'Enrollment Closed'); ?>
+
                         </span>
                     </div>
                     <div class="feature-card-body">
-                        <div class="feature-card-title">{{ $enrollOpen ? 'Enroll Now for S.Y. 2026–2027' : 'Enrollment Information' }}</div>
-                        <div class="feature-card-text">{{ $enrollOpen ? 'Secure your child\'s spot today. Online enrollment is open — complete the requirements and register in minutes.' : 'Enrollment for the current school year is now closed. Check back soon or contact the school for updates.' }}</div>
-                        <span class="feature-card-link">{{ $enrollOpen ? 'Start Enrollment' : 'View Details' }} <i class="bi bi-arrow-right"></i></span>
+                        <div class="feature-card-title"><?php echo e($enrollOpen ? 'Enroll Now for S.Y. 2026–2027' : 'Enrollment Information'); ?></div>
+                        <div class="feature-card-text"><?php echo e($enrollOpen ? 'Secure your child\'s spot today. Online enrollment is open — complete the requirements and register in minutes.' : 'Enrollment for the current school year is now closed. Check back soon or contact the school for updates.'); ?></div>
+                        <span class="feature-card-link"><?php echo e($enrollOpen ? 'Start Enrollment' : 'View Details'); ?> <i class="bi bi-arrow-right"></i></span>
                     </div>
                 </a>
             </div>
 
-            {{-- Card 3: Academics --}}
+            
             <div class="col-md-4">
-                <a href="{{ route('academics') }}" class="feature-card">
+                <a href="<?php echo e(route('academics')); ?>" class="feature-card">
                     <div class="feature-card-img">
-                        <img src="{{ asset('images/logo2.png') }}" alt="Academics" style="object-fit:contain;padding:20px;background:#e8f0fb;">
+                        <img src="<?php echo e(asset('images/logo2.png')); ?>" alt="Academics" style="object-fit:contain;padding:20px;background:#e8f0fb;">
                         <div class="feature-card-img-overlay" style="background:linear-gradient(to bottom, transparent 30%, rgba(10,22,50,.4) 100%);"></div>
                         <span class="feature-card-badge" style="background:rgba(197,160,89,.85);color:#0f2451;">
                             <i class="bi bi-book-fill me-1"></i>Academics
@@ -813,36 +800,32 @@ document.addEventListener('keydown', function(e) {
     </div>
 </div>
 
-</div>{{-- /real-thumbs --}}
+</div>
 
-{{-- ══════════════════════════════════════════
-     NEWS & ANNOUNCEMENTS HEADER — Skeleton
-════════════════════════════════════════════ --}}
+
 <div class="skel-section" id="skel-news-hdr" style="padding:12px 0;background:#e8edf2;">
     <div class="container" style="text-align:center;">
         <span class="skel" style="height:22px;width:300px;display:inline-block;border-radius:4px;"></span>
     </div>
 </div>
 
-{{-- NEWS & ANNOUNCEMENTS HEADER — Real --}}
+
 <div class="real-section" id="real-news-hdr">
 <div style="background: var(--ilc-blue); padding: 10px 0; text-align:center; border-bottom: 4px solid var(--ilc-gold);">
     <span style="color:#fff; font-size:18px; font-weight:700; text-transform:uppercase; letter-spacing:2px;">
         ILC NEWS &amp; ANNOUCEMENTS
     </span>
 </div>
-</div>{{-- /real-news-hdr --}}
+</div>
 
-{{-- ══════════════════════════════════════════
-     NEWS + ANNOUNCEMENTS — Skeleton
-════════════════════════════════════════════ --}}
+
 <div class="skel-section" id="skel-news" style="padding:40px 0;background:#fff;">
     <div class="container">
         <div class="row g-4">
-            {{-- Left: News skeleton --}}
+            
             <div class="col-lg-7">
                 <span class="skel" style="height:20px;width:120px;display:block;border-radius:4px;margin-bottom:18px;"></span>
-                @for($i=0;$i<3;$i++)
+                <?php for($i=0;$i<3;$i++): ?>
                 <div style="display:flex;gap:14px;margin-bottom:22px;align-items:flex-start;">
                     <span class="skel" style="width:110px;height:80px;flex-shrink:0;border-radius:8px;display:block;"></span>
                     <div style="flex:1;">
@@ -851,13 +834,13 @@ document.addEventListener('keydown', function(e) {
                         <span class="skel" style="height:13px;width:75%;display:block;border-radius:4px;"></span>
                     </div>
                 </div>
-                @endfor
+                <?php endfor; ?>
                 <span class="skel" style="height:34px;width:110px;border-radius:20px;display:block;"></span>
             </div>
-            {{-- Right: Announcements skeleton --}}
+            
             <div class="col-lg-5">
                 <span class="skel" style="height:20px;width:150px;display:block;border-radius:4px;margin-bottom:18px;"></span>
-                @for($i=0;$i<3;$i++)
+                <?php for($i=0;$i<3;$i++): ?>
                 <div style="display:flex;gap:12px;margin-bottom:16px;align-items:center;">
                     <span class="skel" style="width:52px;height:64px;flex-shrink:0;border-radius:8px;display:block;"></span>
                     <div style="flex:1;">
@@ -865,16 +848,14 @@ document.addEventListener('keydown', function(e) {
                         <span class="skel" style="height:13px;width:60%;display:block;border-radius:4px;"></span>
                     </div>
                 </div>
-                @endfor
+                <?php endfor; ?>
                 <span class="skel" style="height:34px;width:160px;border-radius:20px;display:block;"></span>
             </div>
         </div>
     </div>
 </div>
 
-{{-- ══════════════════════════════════════════
-     NEWS + ANNOUNCEMENTS TWO-COLUMN — Real
-════════════════════════════════════════════ --}}
+
 <div class="real-section" id="real-news">
 <style>
 /* ── Enhanced News & Announcements ── */
@@ -1074,61 +1055,61 @@ document.addEventListener('keydown', function(e) {
     <div class="container">
         <div class="row g-4 g-xl-5">
 
-            {{-- LEFT: LATEST NEWS --}}
+            
             <div class="col-lg-7">
                 <div class="news-col-hdr">
                     <span class="news-col-hdr-badge">Latest</span>
                     <span class="news-col-hdr-title">ILC News</span>
                 </div>
 
-                @if(isset($latestNews) && $latestNews->isNotEmpty())
-                    @foreach($latestNews as $article)
-                    <a href="{{ route('news.show', $article) }}" class="news-card">
+                <?php if(isset($latestNews) && $latestNews->isNotEmpty()): ?>
+                    <?php $__currentLoopData = $latestNews; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $article): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <a href="<?php echo e(route('news.show', $article)); ?>" class="news-card">
                         <div class="news-img">
-                            @if($article->image)
-                                <img src="{{ asset('storage/'.$article->image) }}" alt="{{ $article->title }}">
-                            @else
-                                <img src="{{ asset('images/bg'.(($loop->index % 3) + 1).'.jpg') }}" alt="{{ $article->title }}">
-                            @endif
+                            <?php if($article->image): ?>
+                                <img src="<?php echo e(asset('storage/'.$article->image)); ?>" alt="<?php echo e($article->title); ?>">
+                            <?php else: ?>
+                                <img src="<?php echo e(asset('images/bg'.(($loop->index % 3) + 1).'.jpg')); ?>" alt="<?php echo e($article->title); ?>">
+                            <?php endif; ?>
                         </div>
                         <div class="news-body">
-                            <h6>{{ $article->title }}</h6>
-                            <p>{{ Str::limit($article->body, 110) }}</p>
+                            <h6><?php echo e($article->title); ?></h6>
+                            <p><?php echo e(Str::limit($article->body, 110)); ?></p>
                             <span class="news-read-more">Read More <i class="bi bi-arrow-right-short"></i></span>
                         </div>
                     </a>
-                    @endforeach
-                @else
-                <a href="{{ route('news') }}" class="news-card">
-                    <div class="news-img"><div class="news-img-placeholder"><img src="{{ asset('images/bg4.jpg') }}" alt="News"></div></div>
+                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                <?php else: ?>
+                <a href="<?php echo e(route('news')); ?>" class="news-card">
+                    <div class="news-img"><div class="news-img-placeholder"><img src="<?php echo e(asset('images/bg4.jpg')); ?>" alt="News"></div></div>
                     <div class="news-body">
                         <h6>Celebrating 35 Years of Excellence in Education and Faith</h6>
                         <p>The IEMELIF Learning Center celebrated its 35th founding anniversary with inspiring programs.</p>
                         <span class="news-read-more">Read More <i class="bi bi-arrow-right-short"></i></span>
                     </div>
                 </a>
-                <a href="{{ route('news') }}" class="news-card">
-                    <div class="news-img"><div class="news-img-placeholder"><img src="{{ asset('images/bg2.jpg') }}" alt="News"></div></div>
+                <a href="<?php echo e(route('news')); ?>" class="news-card">
+                    <div class="news-img"><div class="news-img-placeholder"><img src="<?php echo e(asset('images/bg2.jpg')); ?>" alt="News"></div></div>
                     <div class="news-body">
                         <h6>Science Education Affair 2025</h6>
                         <p>Students and faculty participated actively showcasing projects and innovations that highlight STEM learning.</p>
                         <span class="news-read-more">Read More <i class="bi bi-arrow-right-short"></i></span>
                     </div>
                 </a>
-                <a href="{{ route('news') }}" class="news-card">
-                    <div class="news-img"><div class="news-img-placeholder"><img src="{{ asset('images/bg3.jpg') }}" alt="News"></div></div>
+                <a href="<?php echo e(route('news')); ?>" class="news-card">
+                    <div class="news-img"><div class="news-img-placeholder"><img src="<?php echo e(asset('images/bg3.jpg')); ?>" alt="News"></div></div>
                     <div class="news-body">
                         <h6>Welcome Back to School, ILCians!</h6>
                         <p>The school warmly welcomed all students and staff for a new school year filled with hope and growth.</p>
                         <span class="news-read-more">Read More <i class="bi bi-arrow-right-short"></i></span>
                     </div>
                 </a>
-                @endif
+                <?php endif; ?>
 
-                <a href="{{ route('news') }}" class="btn-more"><i class="bi bi-newspaper"></i> More News</a>
+                <a href="<?php echo e(route('news')); ?>" class="btn-more"><i class="bi bi-newspaper"></i> More News</a>
             </div>
 
-            {{-- RIGHT: ANNOUNCEMENTS --}}
+            
             <div class="col-lg-5">
                 <div class="news-col-hdr">
                     <span class="news-col-hdr-badge">Posted</span>
@@ -1136,43 +1117,43 @@ document.addEventListener('keydown', function(e) {
                 </div>
 
                 <div class="ann-panel">
-                    {{-- Enrollment status card --}}
+                    
                     <div class="enrollment-feature-card">
                         <div class="enroll-icon-box">
                             <i class="bi bi-mortarboard-fill"></i>
                         </div>
                         <div class="enroll-body">
-                            <span class="enroll-sy">S.Y. {{ now()->year }}–{{ now()->year + 1 }}</span>
-                            @if(isset($enrollmentOpen) && $enrollmentOpen)
+                            <span class="enroll-sy">S.Y. <?php echo e(now()->year); ?>–<?php echo e(now()->year + 1); ?></span>
+                            <?php if(isset($enrollmentOpen) && $enrollmentOpen): ?>
                             <span class="ann-title" style="color:#fff !important;">Enrollment Period is now open.</span>
-                            <a href="{{ route('admission') }}" class="enroll-btn-apply">
+                            <a href="<?php echo e(route('admission')); ?>" class="enroll-btn-apply">
                                 <i class="bi bi-pencil-square"></i> Apply Now
                             </a>
-                            @else
+                            <?php else: ?>
                             <span class="ann-title" style="color:#fff !important;">Enrollment is not yet open.</span>
                             <span class="enroll-btn-closed"><i class="bi bi-lock-fill"></i> Opening Soon</span>
-                            @endif
+                            <?php endif; ?>
                         </div>
                     </div>
 
-                    {{-- Announcements --}}
-                    @if(isset($latestAnnouncements) && $latestAnnouncements->isNotEmpty())
-                        @foreach($latestAnnouncements as $ann)
-                        <div class="announcement-card {{ $loop->even ? 'alt' : '' }}">
+                    
+                    <?php if(isset($latestAnnouncements) && $latestAnnouncements->isNotEmpty()): ?>
+                        <?php $__currentLoopData = $latestAnnouncements; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $ann): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                        <div class="announcement-card <?php echo e($loop->even ? 'alt' : ''); ?>">
                             <div class="ann-date-box">
-                                <span class="ann-month">{{ $ann->created_at->format('M') }}</span>
-                                <span class="ann-day">{{ $ann->created_at->format('d') }}</span>
-                                <span class="ann-year">{{ $ann->created_at->format('Y') }}</span>
+                                <span class="ann-month"><?php echo e($ann->created_at->format('M')); ?></span>
+                                <span class="ann-day"><?php echo e($ann->created_at->format('d')); ?></span>
+                                <span class="ann-year"><?php echo e($ann->created_at->format('Y')); ?></span>
                             </div>
-                            <div class="ann-title">{{ $ann->title }}</div>
+                            <div class="ann-title"><?php echo e($ann->title); ?></div>
                         </div>
-                        @endforeach
-                    @else
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                    <?php else: ?>
                     <div class="announcement-card">
                         <div class="ann-date-box">
                             <span class="ann-month">Jun</span>
                             <span class="ann-day">15</span>
-                            <span class="ann-year">{{ now()->year }}</span>
+                            <span class="ann-year"><?php echo e(now()->year); ?></span>
                         </div>
                         <div class="ann-title">School Opening Day — Welcome back, ILCians!</div>
                     </div>
@@ -1180,28 +1161,26 @@ document.addEventListener('keydown', function(e) {
                         <div class="ann-date-box">
                             <span class="ann-month">Jun</span>
                             <span class="ann-day">15</span>
-                            <span class="ann-year">{{ now()->year }}</span>
+                            <span class="ann-year"><?php echo e(now()->year); ?></span>
                         </div>
                         <div class="ann-title">General Assembly for Parents and Guardians — Auditorium.</div>
                     </div>
-                    @endif
+                    <?php endif; ?>
 
-                    <a href="{{ route('announcements') }}" class="btn-more"><i class="bi bi-megaphone-fill"></i> More Announcements</a>
+                    <a href="<?php echo e(route('announcements')); ?>" class="btn-more"><i class="bi bi-megaphone-fill"></i> More Announcements</a>
                 </div>
             </div>
 
         </div>
     </div>
 </section>
-</div>{{-- /real-news --}}
+</div>
 
-{{-- ══════════════════════════════════════════
-     VMG SECTION — Skeleton
-════════════════════════════════════════════ --}}
+
 <div class="skel-section" id="skel-vmg" style="padding:50px 0;background:#f6f8fb;">
     <div class="container">
         <div class="row justify-content-center gy-4">
-            @for($i=0;$i<3;$i++)
+            <?php for($i=0;$i<3;$i++): ?>
             <div class="col-md-4">
                 <span class="skel" style="height:22px;width:90px;display:block;border-radius:4px;margin-bottom:14px;"></span>
                 <span class="skel" style="height:13px;width:100%;display:block;border-radius:4px;margin-bottom:6px;"></span>
@@ -1209,14 +1188,12 @@ document.addEventListener('keydown', function(e) {
                 <span class="skel" style="height:13px;width:80%;display:block;border-radius:4px;margin-bottom:6px;"></span>
                 <span class="skel" style="height:13px;width:88%;display:block;border-radius:4px;"></span>
             </div>
-            @endfor
+            <?php endfor; ?>
         </div>
     </div>
 </div>
 
-{{-- ══════════════════════════════════════════
-     VISION / MISSION / GOALS — Real
-════════════════════════════════════════════ --}}
+
 <div class="real-section" id="real-vmg">
 <style>
 /* ── Enhanced VMG Section ── */
@@ -1404,22 +1381,20 @@ document.addEventListener('keydown', function(e) {
         </div>
     </div>
 </section>
-</div>{{-- /real-vmg --}}
+</div>
 
-{{-- ══════════════════════════════════════════
-     FOOTER — Skeleton
-════════════════════════════════════════════ --}}
+
 <div class="skel-section" id="skel-footer" style="background:#1a3a6c;padding:40px 0 20px;">
     <div class="container">
         <div class="row g-4">
-            @for($i=0;$i<4;$i++)
+            <?php for($i=0;$i<4;$i++): ?>
             <div class="col-md-3">
                 <span class="skel-dark" style="height:16px;width:100px;display:block;border-radius:4px;margin-bottom:16px;"></span>
                 <span class="skel-dark" style="height:12px;width:100%;display:block;border-radius:4px;margin-bottom:8px;"></span>
                 <span class="skel-dark" style="height:12px;width:88%;display:block;border-radius:4px;margin-bottom:8px;"></span>
                 <span class="skel-dark" style="height:12px;width:76%;display:block;border-radius:4px;"></span>
             </div>
-            @endfor
+            <?php endfor; ?>
         </div>
         <div style="margin-top:32px;text-align:center;">
             <span class="skel-dark" style="height:12px;width:300px;display:inline-block;border-radius:4px;"></span>
@@ -1427,15 +1402,13 @@ document.addEventListener('keydown', function(e) {
     </div>
 </div>
 
-{{-- ══════════════════════════════════════════
-     FOOTER — Real
-════════════════════════════════════════════ --}}
+
 <div class="real-section" id="real-footer">
 <footer class="site-footer">
     <div class="container">
         <div class="row g-4">
 
-            {{-- Col 1: Contact Details --}}
+            
             <div class="col-md-3">
                 <h6>Contact Details</h6>
                 <div class="footer-contact">
@@ -1452,39 +1425,39 @@ document.addEventListener('keydown', function(e) {
                         <span><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="274e494148674e424a424b4e410a4e4b440942435209574f">Iemelif_learningcenter@gmail.com</a></span>
                     </p>
                 </div>
-                {{-- Partner Logos --}}
+                
                 <div class="footer-logos mt-3">
                     <div class="footer-logo-img">
-                        <img src="{{ asset('images/logo1.png') }}" alt="Logo"> 
+                        <img src="<?php echo e(asset('images/logo1.png')); ?>" alt="Logo"> 
                     </div>
                     <div class="footer-logo-img">
-                        <img src="{{ asset('images/logoo.jpg') }}" alt="Logo"> 
+                        <img src="<?php echo e(asset('images/logoo.jpg')); ?>" alt="Logo"> 
                     </div>
                 </div>
             </div>
 
-            {{-- Col 2: Quick Links --}}
+            
             <div class="col-md-2">
                 <h6>Quick Links</h6>
-                <a href="{{ route('home') }}">Home</a>
-                <a href="{{ route('about') }}">About Us</a>
-                <a href="{{ route('academics') }}">Academics</a>
-                <a href="{{ route('admission') }}">Enrollment</a>
-                <a href="{{ route('announcements') }}">Announcements</a>
-                <a href="{{ route('news') }}">News</a>
-                <a href="{{ route('aims') }}">AIMS</a>
-                <a href="{{ route('contact') }}">Contact Us</a>
-                <a href="{{ route('terms') }}">Terms &amp; Conditions</a>
-                <a href="{{ route('privacy') }}">Privacy Policy</a>
+                <a href="<?php echo e(route('home')); ?>">Home</a>
+                <a href="<?php echo e(route('about')); ?>">About Us</a>
+                <a href="<?php echo e(route('academics')); ?>">Academics</a>
+                <a href="<?php echo e(route('admission')); ?>">Enrollment</a>
+                <a href="<?php echo e(route('announcements')); ?>">Announcements</a>
+                <a href="<?php echo e(route('news')); ?>">News</a>
+                <a href="<?php echo e(route('aims')); ?>">AIMS</a>
+                <a href="<?php echo e(route('contact')); ?>">Contact Us</a>
+                <a href="<?php echo e(route('terms')); ?>">Terms &amp; Conditions</a>
+                <a href="<?php echo e(route('privacy')); ?>">Privacy Policy</a>
                 <a href="#" onclick="ckShowAgain(event)">Cookie Settings</a>
             </div>
 
-            {{-- Col 3: Latest Articles --}}
+            
             <div class="col-md-3">
                 <h6>Latest Articles</h6>
                 <div class="footer-news-item">
                     <div class="footer-news-img">
-                        <img src="{{ asset('images/bg4.jpg') }}" alt="News 1"> 
+                        <img src="<?php echo e(asset('images/bg4.jpg')); ?>" alt="News 1"> 
                     </div>
                     <div class="footer-news-text">
                         Celebrating 32 Years of Excellence in Education
@@ -1492,7 +1465,7 @@ document.addEventListener('keydown', function(e) {
                 </div>
                 <div class="footer-news-item">
                     <div class="footer-news-img">
-                        <img src="{{ asset('images/bg2.jpg') }}" alt="News 1"> 
+                        <img src="<?php echo e(asset('images/bg2.jpg')); ?>" alt="News 1"> 
                     </div>
                     <div class="footer-news-text">
                         Science Education Affair 2025 — A Successful Event
@@ -1500,7 +1473,7 @@ document.addEventListener('keydown', function(e) {
                 </div>
                 <div class="footer-news-item">
                     <div class="footer-news-img">
-                        <img src="{{ asset('images/bg3.jpg') }}" alt="News 1"> 
+                        <img src="<?php echo e(asset('images/bg3.jpg')); ?>" alt="News 1"> 
                     </div>
                     <div class="footer-news-text">
                         Welcome Back to School, ILCians!
@@ -1508,7 +1481,7 @@ document.addEventListener('keydown', function(e) {
                 </div>
             </div>
 
-            {{-- Col 4: Office Hours + Visitor Counter --}}
+            
             <div class="col-md-4">
                 <h6>Office Hours</h6>
                 <div class="office-hours-row"><span>Monday – Friday</span><span>7:30 AM – 5:00 PM</span></div>
@@ -1518,7 +1491,7 @@ document.addEventListener('keydown', function(e) {
                     <i class="bi bi-people-fill" style="font-size:20px;color:var(--ilc-gold);flex-shrink:0;"></i>
                     <div>
                         <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.8px;">Total Visitors</div>
-                        <div style="font-size:20px;font-weight:800;color:#fff;line-height:1.2;">{{ number_format($visitorCount ?? 0) }}</div>
+                        <div style="font-size:20px;font-weight:800;color:#fff;line-height:1.2;"><?php echo e(number_format($visitorCount ?? 0)); ?></div>
                     </div>
                     <div style="margin-left:auto;display:flex;align-items:center;gap:5px;font-size:10px;color:rgba(255,255,255,.4);">
                         <span style="width:6px;height:6px;border-radius:50%;background:#22c55e;display:inline-block;animation:pulse 1.5s ease-in-out infinite;"></span>
@@ -1527,20 +1500,20 @@ document.addEventListener('keydown', function(e) {
                 </div>
             </div>
 
-        </div>{{-- /row --}}
+        </div>
     </div>
 
     <div class="footer-bottom mt-4">
-        &copy; {{ date('Y') }} IEMELIF Learning Center — General Tinio, Nueva Ecija ILC. All rights reserved.
+        &copy; <?php echo e(date('Y')); ?> IEMELIF Learning Center — General Tinio, Nueva Ecija ILC. All rights reserved.
     </div>
 </footer>
-</div>{{-- /real-footer --}}
+</div>
 
-{{-- Bootstrap 5 JS Bundle (required for carousel, dropdowns, etc.) --}}
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 
-{{-- ── Cookie Consent ── --}}
+
 <style>
 /* Overlay — pure dark dim, no blur */
 #ckOverlay {
@@ -1617,10 +1590,10 @@ document.addEventListener('keydown', function(e) {
 #ckBtnAccept:active { transform: translateY(0); }
 </style>
 
-{{-- Dark overlay --}}
+
 <div id="ckOverlay"></div>
 
-{{-- Banner --}}
+
 <div id="ckBanner">
     <div style="max-width:1140px;margin:0 auto;">
         <div style="display:flex;align-items:flex-start;gap:18px;margin-bottom:18px;">
@@ -1633,8 +1606,8 @@ document.addEventListener('keydown', function(e) {
                     We use cookies to enhance your browsing experience, remember your preferences, analyze site traffic, and deliver personalized content.
                     Cookies help us understand how visitors interact with our site so we can continuously improve our services for ILC families.
                     You can choose which types of cookies to allow below. Read our
-                    <a href="{{ route('privacy') }}" style="color:#c5a059;font-weight:600;text-decoration:underline;" target="_blank">Privacy Policy</a>
-                    and <a href="{{ route('terms') }}" style="color:#c5a059;font-weight:600;text-decoration:underline;" target="_blank">Terms of Service</a> for details.
+                    <a href="<?php echo e(route('privacy')); ?>" style="color:#c5a059;font-weight:600;text-decoration:underline;" target="_blank">Privacy Policy</a>
+                    and <a href="<?php echo e(route('terms')); ?>" style="color:#c5a059;font-weight:600;text-decoration:underline;" target="_blank">Terms of Service</a> for details.
                 </p>
             </div>
         </div>
@@ -1658,7 +1631,7 @@ document.addEventListener('keydown', function(e) {
     </div>
 </div>
 
-{{-- Manage Cookies Modal --}}
+
 <div id="ckModal">
     <div id="ckModalBox">
         <div style="background:#1a3a6c;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;">
@@ -1720,4 +1693,4 @@ document.addEventListener('keydown', function(e) {
 </script>
 </body>
 </html>
-</script>
+</script><?php /**PATH C:\Users\ron28\Desktop\ILC SYSTEM\ilc-website-system\resources\views/home.blade.php ENDPATH**/ ?>

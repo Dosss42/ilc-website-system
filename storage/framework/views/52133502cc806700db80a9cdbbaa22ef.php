@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
     <title>Finance Portal Login - IEMELIF Learning Center</title>
     <meta name="robots" content="noindex, nofollow">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -154,30 +154,39 @@
                 </div>
             </div>
 
-            @if(session('error'))
+            <?php if(session('error')): ?>
             <div class="alert-error">
                 <i class="bi bi-exclamation-triangle-fill"></i>
-                {{ session('error') }}
-            </div>
-            @endif
+                <?php echo e(session('error')); ?>
 
-            @if($errors->any())
+            </div>
+            <?php endif; ?>
+
+            <?php if($errors->any()): ?>
             <div class="alert-error">
                 <i class="bi bi-exclamation-triangle-fill"></i>
-                {{ $errors->first() }}
-            </div>
-            @endif
+                <?php echo e($errors->first()); ?>
 
-            <form method="POST" action="{{ route('finance.login') }}" id="financeLoginForm">
-                @csrf
+            </div>
+            <?php endif; ?>
+
+            <form method="POST" action="<?php echo e(route('finance.login')); ?>" id="financeLoginForm">
+                <?php echo csrf_field(); ?>
 
                 <div class="mb-3">
                     <label class="form-label-custom">Email Address</label>
                     <div class="input-wrap">
                         <i class="bi bi-envelope-fill input-icon"></i>
-                        <input type="email" name="email" class="form-input @error('email') is-invalid @enderror"
+                        <input type="email" name="email" class="form-input <?php $__errorArgs = ['email'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>"
                             placeholder="finance@iemelif.edu.ph"
-                            value="{{ old('email') }}" autocomplete="email" autofocus required>
+                            value="<?php echo e(old('email')); ?>" autocomplete="email" autofocus required>
                     </div>
                 </div>
 
@@ -199,15 +208,15 @@
                         <input type="checkbox" name="remember" id="rememberMe" value="1">
                         <label for="rememberMe">Remember me</label>
                     </div>
-                    <a href="{{ route('password.request') }}" class="forgot-link">Forgot password?</a>
+                    <a href="<?php echo e(route('password.request')); ?>" class="forgot-link">Forgot password?</a>
                 </div>
 
-                {{-- reCAPTCHA --}}
-                @if(config('services.recaptcha.site_key') && config('services.recaptcha.site_key') !== 'your_site_key_here')
+                
+                <?php if(config('services.recaptcha.site_key') && config('services.recaptcha.site_key') !== 'your_site_key_here'): ?>
                 <div style="margin-bottom:18px;display:flex;justify-content:center;">
-                    <div id="recaptcha-finance" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>
+                    <div id="recaptcha-finance" data-sitekey="<?php echo e(config('services.recaptcha.site_key')); ?>"></div>
                 </div>
-                @endif
+                <?php endif; ?>
 
                 <button type="submit" class="btn-login" id="loginBtn">
                     <i class="bi bi-box-arrow-in-right"></i> Sign In to Finance Portal
@@ -222,34 +231,34 @@
             </div>
 
             <div style="text-align:center;margin-top:16px;padding-top:14px;border-top:1px solid #f0f0f0;">
-                <a href="{{ route('home') }}" class="back-link">
+                <a href="<?php echo e(route('home')); ?>" class="back-link">
                     <i class="bi bi-arrow-left"></i> Back to Main Website
                 </a>
             </div>
 
         </div>
         <div class="footer-note">
-            &copy; {{ date('Y') }} IEMELIF Learning Center &nbsp;&bull;&nbsp; Finance Portal
+            &copy; <?php echo e(date('Y')); ?> IEMELIF Learning Center &nbsp;&bull;&nbsp; Finance Portal
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-    @if(config('services.recaptcha.site_key') && config('services.recaptcha.site_key') !== 'your_site_key_here')
+    <?php if(config('services.recaptcha.site_key') && config('services.recaptcha.site_key') !== 'your_site_key_here'): ?>
     <script>
         function onRecaptchaLoad() {
             grecaptcha.render('recaptcha-finance', {
-                'sitekey': '{{ config('services.recaptcha.site_key') }}'
+                'sitekey': '<?php echo e(config('services.recaptcha.site_key')); ?>'
             });
         }
-        @if($errors->any())
+        <?php if($errors->any()): ?>
         window.onload = function() {
             if (typeof grecaptcha !== 'undefined') grecaptcha.reset();
         };
-        @endif
+        <?php endif; ?>
     </script>
     <script src="https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit" async defer></script>
-    @endif
+    <?php endif; ?>
 
     <script>
         function togglePwd() {
@@ -271,3 +280,4 @@
     </script>
 </body>
 </html>
+<?php /**PATH C:\Users\ron28\Desktop\ILC SYSTEM\ilc-website-system\resources\views/finance/login.blade.php ENDPATH**/ ?>

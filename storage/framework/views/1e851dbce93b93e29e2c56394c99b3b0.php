@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reset Password — IEMELIF Learning Center</title>
+    <title>Forgot Password — IEMELIF Learning Center</title>
     <meta name="robots" content="noindex, nofollow">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -52,15 +52,10 @@
         .field-icon { position: absolute; left: 13px; color: #9ca3af; font-size: 14px; z-index: 1; }
         .form-control {
             width: 100%; border: 1.5px solid #e5e7eb; border-radius: 10px;
-            padding: 11px 38px 11px 38px; font-size: 13px; font-family: 'Poppins', sans-serif;
+            padding: 11px 14px 11px 38px; font-size: 13px; font-family: 'Poppins', sans-serif;
             background: #f9fafb; color: #111; transition: all 0.2s;
         }
         .form-control:focus { border-color: #1a3a6c; box-shadow: 0 0 0 3px rgba(26,58,108,0.1); background: #fff; outline: none; }
-        .btn-eye {
-            position: absolute; right: 4px; border: none; background: transparent;
-            color: #9ca3af; cursor: pointer; padding: 8px 10px;
-        }
-        .btn-eye:hover { color: #1a3a6c; }
         .btn-main {
             width: 100%; background: linear-gradient(135deg, #1a3a6c, #1e5799); color: #fff; border: none;
             border-radius: 10px; padding: 13px; font-size: 14px; font-weight: 700; font-family: 'Poppins', sans-serif;
@@ -76,7 +71,8 @@
             display: flex; align-items: flex-start; gap: 8px; line-height: 1.5;
         }
         .alert-danger-box { background: #fef2f2; border: 1.5px solid #fecaca; color: #b91c1c; }
-        .hint-text { font-size: 11px; color: #9ca3af; margin-top: 6px; }
+        .alert-success-box { background: #f0fdf4; border: 1.5px solid #bbf7d0; color: #15803d; }
+        .helper-text { font-size: 12px; color: #6b7280; line-height: 1.6; margin-bottom: 22px; }
     </style>
 </head>
 <body>
@@ -89,85 +85,57 @@
     <div class="card-header-accent">
         <div class="logo-circle">
             <img src="/images/logo.png" alt="ILC Logo"
-                 onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\'bi bi-key-fill fs-3\' style=\'color:#1a3a6c\'></i>'">
+                 onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\'bi bi-shield-lock-fill fs-3\' style=\'color:#1a3a6c\'></i>'">
         </div>
-        <h2>Reset Password</h2>
+        <h2>Forgot Password</h2>
         <p>IEMELIF Learning Center</p>
     </div>
 
     <div class="card-body-content">
 
-        @if($errors->any())
+        <?php if(session('status')): ?>
+            <div class="alert-box alert-success-box">
+                <i class="bi bi-check-circle-fill"></i>
+                <span><?php echo e(session('status')); ?></span>
+            </div>
+        <?php endif; ?>
+        <?php if($errors->any()): ?>
             <div class="alert-box alert-danger-box">
                 <i class="bi bi-exclamation-circle-fill"></i>
-                <span>{{ $errors->first() }}</span>
+                <span><?php echo e($errors->first()); ?></span>
             </div>
-        @endif
+        <?php endif; ?>
 
-        <form method="POST" action="{{ route('password.update') }}">
-            @csrf
-            <input type="hidden" name="token" value="{{ $token }}">
+        <p class="helper-text">
+            Enter the email address linked to your account and we'll send you a link to reset your password.
+        </p>
 
+        <form method="POST" action="<?php echo e(route('password.email')); ?>">
+            <?php echo csrf_field(); ?>
             <div class="field-wrap">
                 <label>Email Address</label>
                 <div class="field-inner">
                     <span class="field-icon"><i class="bi bi-envelope-fill"></i></span>
-                    <input type="email" name="email" class="form-control" style="padding-right:14px;"
-                           value="{{ old('email', $email) }}" required autofocus>
+                    <input type="email" name="email" class="form-control"
+                           placeholder="Enter your email"
+                           value="<?php echo e(old('email')); ?>" required autofocus>
                 </div>
-            </div>
-
-            <div class="field-wrap">
-                <label>New Password</label>
-                <div class="field-inner">
-                    <span class="field-icon"><i class="bi bi-lock-fill"></i></span>
-                    <input type="password" name="password" id="rPass" class="form-control"
-                           placeholder="At least 8 characters" required>
-                    <button type="button" class="btn-eye" onclick="togglePass('rPass','rEye')">
-                        <i class="bi bi-eye" id="rEye"></i>
-                    </button>
-                </div>
-            </div>
-
-            <div class="field-wrap">
-                <label>Confirm New Password</label>
-                <div class="field-inner">
-                    <span class="field-icon"><i class="bi bi-lock-fill"></i></span>
-                    <input type="password" name="password_confirmation" id="rPass2" class="form-control"
-                           placeholder="Re-enter new password" required>
-                    <button type="button" class="btn-eye" onclick="togglePass('rPass2','rEye2')">
-                        <i class="bi bi-eye" id="rEye2"></i>
-                    </button>
-                </div>
-                <div class="hint-text">Must match the password above.</div>
             </div>
 
             <button type="submit" class="btn-main">
-                <i class="bi bi-check-circle-fill"></i> Reset Password
+                <i class="bi bi-send-fill"></i> Send Reset Link
             </button>
         </form>
 
         <div class="switch-text">
-            <a href="{{ route('login') }}">Back to Login</a>
+            Remembered your password?
+            <a href="<?php echo e(route('login')); ?>">Back to Login</a>
         </div>
 
     </div>
 </div>
 </div>
 
-<script>
-    function togglePass(inputId, iconId) {
-        var input = document.getElementById(inputId);
-        var icon  = document.getElementById(iconId);
-        if (input.type === 'password') {
-            input.type = 'text';
-            icon.className = 'bi bi-eye-slash';
-        } else {
-            input.type = 'password';
-            icon.className = 'bi bi-eye';
-        }
-    }
-</script>
-
 </body>
 </html>
+<?php /**PATH C:\Users\ron28\Desktop\ILC SYSTEM\ilc-website-system\resources\views/auth/forgot-password.blade.php ENDPATH**/ ?>

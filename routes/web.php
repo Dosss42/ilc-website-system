@@ -24,6 +24,7 @@ use App\Http\Controllers\TeacherAssignmentController;
 // ─────────────────────────────────────────
 // PUBLIC ROUTES
 // ─────────────────────────────────────────
+Route::get('/sitemap.xml', [\App\Http\Controllers\SitemapController::class, 'index'])->name('sitemap');
 Route::get('/', function () {
     $enrollmentOpen = \App\Models\Setting::get('enrollment_open', true);
 

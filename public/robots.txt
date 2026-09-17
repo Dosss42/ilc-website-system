@@ -1,2 +1,26 @@
 User-agent: *
-Disallow:
+Allow: /
+
+# Portal logins and dashboards — never meant to appear in search results.
+# Google can't get past the login wall anyway, but disallowing these keeps
+# search engines from wasting crawl budget on them and keeps a bare login
+# page from ever being the thing someone finds when searching your school's
+# name.
+Disallow: /login
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /admin/
+Disallow: /superadmin/
+Disallow: /teacher/
+Disallow: /student/
+Disallow: /finance/
+Disallow: /cashier/
+Disallow: /profile/
+Disallow: /api/
+
+# Search results pages are duplicate-ish content, not original pages worth indexing
+Disallow: /search
+
+# ── IMPORTANT: replace this with your real deployed domain once Railway
+#    assigns one (or once your custom domain is live) ──
+Sitemap: https://ilc-website-system.up.railway.app/

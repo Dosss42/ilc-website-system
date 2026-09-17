@@ -359,12 +359,10 @@
 <div class="auth-wrapper">
 <div class="auth-card">
 
-    {{-- ══════════════════════════════════════
-         PANEL 1: LOGIN
-    ══════════════════════════════════════ --}}
+    
     <div class="panel active" id="panelLogin">
 
-        {{-- Navy header --}}
+        
         <div class="card-header-accent">
             <div class="logo-circle">
                 <img src="/images/logo.png" alt="ILC Logo"
@@ -377,24 +375,26 @@
             </span>
         </div>
 
-        {{-- Form body --}}
+        
         <div class="card-body-content">
 
-            @if(session('error'))
+            <?php if(session('error')): ?>
                 <div class="alert alert-danger">
                     <i class="bi bi-exclamation-circle-fill"></i>
-                    {{ session('error') }}
+                    <?php echo e(session('error')); ?>
+
                 </div>
-            @endif
-            @if($errors->any())
+            <?php endif; ?>
+            <?php if($errors->any()): ?>
                 <div class="alert alert-danger">
                     <i class="bi bi-exclamation-circle-fill"></i>
-                    {{ $errors->first() }}
+                    <?php echo e($errors->first()); ?>
+
                 </div>
-            @endif
+            <?php endif; ?>
 
             <form method="POST" action="/login">
-                @csrf
+                <?php echo csrf_field(); ?>
 
                 <div class="field-wrap">
                     <label>Email Address</label>
@@ -402,7 +402,7 @@
                         <span class="field-icon"><i class="bi bi-envelope-fill"></i></span>
                         <input type="email" name="email" class="form-control"
                                placeholder="Enter your email"
-                               value="{{ old('email') }}" required autofocus>
+                               value="<?php echo e(old('email')); ?>" required autofocus>
                     </div>
                 </div>
 
@@ -424,13 +424,13 @@
                     <label for="rememberMe">Remember me</label>
                 </div>
 
-                <a href="{{ route('password.request') }}" class="forgot-link">Forgot password?</a>
+                <a href="<?php echo e(route('password.request')); ?>" class="forgot-link">Forgot password?</a>
 
-                @if(config('services.recaptcha.site_key') && config('services.recaptcha.site_key') !== 'your_site_key_here')
+                <?php if(config('services.recaptcha.site_key') && config('services.recaptcha.site_key') !== 'your_site_key_here'): ?>
                 <div class="recaptcha-wrap">
-                    <div class="g-recaptcha" data-sitekey="{{ config('services.recaptcha.site_key') }}"></div>
+                    <div class="g-recaptcha" data-sitekey="<?php echo e(config('services.recaptcha.site_key')); ?>"></div>
                 </div>
-                @endif
+                <?php endif; ?>
 
                 <button type="submit" class="btn-main">
                     <i class="bi bi-box-arrow-in-right"></i> Sign In
@@ -439,16 +439,14 @@
 
             <div class="switch-text">
                 Don't have an account?
-                <a href="{{ route('enrollment.form') }}">Apply for Enrollment</a>
+                <a href="<?php echo e(route('enrollment.form')); ?>">Apply for Enrollment</a>
             </div>
 
-        </div>{{-- /card-body-content --}}
-    </div>{{-- /panelLogin --}}
+        </div>
+    </div>
 
 
-    {{-- ══════════════════════════════════════
-         PANEL 2: ENROLL (redirect notice)
-    ══════════════════════════════════════ --}}
+    
     <div class="panel" id="panelRegister">
 
         <div class="card-header-accent">
@@ -472,11 +470,11 @@
                 Student accounts are created automatically when you complete the enrollment process.
                 Please apply for enrollment first to receive your login credentials.
             </p>
-            <a href="{{ route('enrollment.form') }}"
+            <a href="<?php echo e(route('enrollment.form')); ?>"
                style="display:flex;align-items:center;justify-content:center;gap:8px;background:linear-gradient(135deg,#1a3a6c,#1e5799);color:#fff;border-radius:10px;padding:13px 20px;font-weight:700;font-size:14px;text-decoration:none;margin-bottom:10px;box-shadow:0 4px 14px rgba(26,58,108,0.35);">
                 <i class="bi bi-clipboard-check"></i> Apply for Enrollment
             </a>
-            <a href="{{ route('admission') }}"
+            <a href="<?php echo e(route('admission')); ?>"
                style="display:flex;align-items:center;justify-content:center;gap:8px;background:#f3f4f6;color:#374151;border-radius:10px;padding:12px 20px;font-weight:600;font-size:13px;text-decoration:none;">
                 <i class="bi bi-info-circle"></i> Learn About Admission
             </a>
@@ -487,15 +485,15 @@
             </div>
         </div>
 
-    </div>{{-- /panelRegister --}}
+    </div>
 
-</div>{{-- /auth-card --}}
-</div>{{-- /auth-wrapper --}}
+</div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-@if(config('services.recaptcha.site_key') && config('services.recaptcha.site_key') !== 'your_site_key_here')
+<?php if(config('services.recaptcha.site_key') && config('services.recaptcha.site_key') !== 'your_site_key_here'): ?>
 <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-@endif
+<?php endif; ?>
 <script>
     function showPanel(id) {
         document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
@@ -511,3 +509,4 @@
 </script>
 </body>
 </html>
+<?php /**PATH C:\Users\ron28\Desktop\ILC SYSTEM\ilc-website-system\resources\views/login_register.blade.php ENDPATH**/ ?>
