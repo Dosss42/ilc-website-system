@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Schedule;
 use App\Models\Section;
+use App\Models\TeacherAssignment;
 use App\Models\User;
 use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
@@ -59,6 +60,8 @@ class ScheduleController extends Controller
         $schedule->has_conflict     = !empty($conflicts);
         $schedule->conflict_reasons = $conflicts;
 
+        $this->ensureTeacherAssignment($schedule);
+
         $desc = "Created schedule: {$schedule->subject->name} for {$schedule->section->name} on {$schedule->day_of_week} "
               . substr($schedule->start_time, 0, 5) . '–' . substr($schedule->end_time, 0, 5)
               . (!empty($conflicts) ? ' (⚠ conflict)' : '');
@@ -96,12 +99,45 @@ class ScheduleController extends Controller
         $schedule->has_conflict     = !empty($conflicts);
         $schedule->conflict_reasons = $conflicts;
 
+        $this->ensureTeacherAssignment($schedule);
+
         $desc = "Updated schedule: {$schedule->subject->name} for {$schedule->section->name} on {$schedule->day_of_week} "
               . substr($schedule->start_time, 0, 5) . '–' . substr($schedule->end_time, 0, 5)
               . (!empty($conflicts) ? ' (⚠ conflict)' : '');
         ActivityLogger::log('update', $desc, 'Schedule', $schedule->id);
 
         return response()->json($schedule);
+    }
+
+    /**
+     * Keep teacher_assignments in sync with schedules — a schedule row is
+     * the source of truth for "this teacher teaches this subject in this
+     * section", but grade-entry authorization (Teacher\DashboardController::
+     * teacherOwnsSubjectInSection) checks teacher_assignments, not schedules.
+     * Without this, a schedule created here with no matching assignment
+     * silently locks that teacher out of entering grades for it — exactly
+     * the drift `php artisan db:verify-normalization` (schedules vs
+     * teacher_assignments check) exists to catch. Runs after every
+     * create/update so new schedules can never reintroduce that gap.
+     */
+    private function ensureTeacherAssignment(Schedule $schedule): void
+    {
+        if (!$schedule->teacher_id || !$schedule->subject_id) {
+            return;
+        }
+
+        $schoolYear = $schedule->section->school_year ?? null;
+        if (!$schoolYear) {
+            return;
+        }
+
+        TeacherAssignment::firstOrCreate([
+            'teacher_id'  => $schedule->teacher_id,
+            'subject_id'  => $schedule->subject_id,
+            'section_id'  => $schedule->section_id,
+            'school_year' => $schoolYear,
+            'is_advisory' => false,
+        ]);
     }
 
     /**
@@ -280,7 +316,9 @@ class ScheduleController extends Controller
                 continue;
             }
 
-            Schedule::create($data);
+            $newSchedule = Schedule::create($data);
+            $newSchedule->load('section');
+            $this->ensureTeacherAssignment($newSchedule);
             $copied++;
         }
 

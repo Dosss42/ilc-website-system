@@ -6,6 +6,10 @@ if [ -z "$APP_KEY" ]; then
     php artisan key:generate --force
 fi
 
+# Cache config now that real runtime env vars are available
+php artisan config:clear
+php artisan config:cache
+
 # Run migrations
 php artisan migrate --force
 

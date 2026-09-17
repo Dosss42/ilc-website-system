@@ -9,6 +9,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
@@ -22,6 +24,9 @@
             --green-pale: #f0fdf4;
             --red:        #dc2626;
             --red-pale:   #fef2f2;
+            --ink:        #1e293b;
+            --muted:      #64748b;
+            --border:     #e2e8f0;
             --sidebar-w:  240px;
             --topbar-h:   62px;
             --radius:     14px;
@@ -164,21 +169,6 @@
             padding: 3px 8px; border-radius: 20px;
             letter-spacing: .4px;
         }
-
-        /* Quick action button */
-        .sidebar-quick-btn {
-            margin: 8px 14px 4px;
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-            background: #c5a059;
-            border: none; border-radius: 10px;
-            color: #fff; font-size: 13px; font-weight: 700;
-            padding: 10px 14px; cursor: pointer; width: calc(100% - 28px);
-            transition: background .15s, transform .1s;
-            font-family: 'Open Sans', sans-serif;
-        }
-        .sidebar-quick-btn:hover { background: #d4b06a; transform: translateY(-1px); }
-        .sidebar-quick-btn:active { transform: translateY(0); }
-        .sidebar-quick-btn i { font-size: 15px; }
 
         .sidebar-section-lbl {
             font-size: 9px; font-weight: 700;
@@ -518,6 +508,95 @@
         .skel-hdr  { display:flex;justify-content:space-between;align-items:center;margin-bottom:18px; }
         .skel-trow { display:flex;gap:10px;padding:12px 0;border-bottom:1px solid #f1f5f9;align-items:center; }
         .sec-content { opacity:0;transition:opacity .35s ease; }
+
+        /* ══ PROCESS PAYMENT — receipt-ticket redesign ══
+           Scoped entirely under #payPanel so nothing here reaches any other
+           section (Dashboard, History, Lookup, etc. keep the original look). */
+        #payPanel {
+            --pp-paper:  #f8f6f1;
+            --pp-surface:#ffffff;
+            --pp-ink:    #1d2735;
+            --pp-soft:   #5b6472;
+            --pp-faint:  #8b93a0;
+            --pp-line:   #e5e1d8;
+            --pp-accent: #1a3a6c;
+            --pp-accent-soft: #e8edf5;
+            --pp-good:   #1f7a4d;
+            --pp-good-soft: #e8f4ec;
+            --pp-warn:   #a85a1a;
+            --pp-warn-soft: #faeee0;
+            font-family: 'Work Sans', 'Open Sans', sans-serif;
+            color: var(--pp-ink);
+        }
+        #payPanel .pp-mono { font-family: 'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; }
+
+        #payPanel .pp-card { background:var(--pp-surface); border:1px solid var(--pp-line); border-radius:10px; overflow:hidden; }
+        #payPanel .pp-sec { padding:14px 18px; border-bottom:1px solid var(--pp-line); }
+        #payPanel .pp-sec:last-child { border-bottom:none; }
+        #payPanel .pp-sec-label { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--pp-faint); margin-bottom:9px; }
+
+        /* student strip */
+        #payPanel .pp-avatar { width:38px;height:38px;border-radius:8px;background:var(--pp-accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0; }
+        #payPanel .pp-chip { font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:5px;background:var(--pp-warn-soft);color:var(--pp-warn);white-space:nowrap; }
+        #payPanel .pp-chip.good { background:var(--pp-good-soft); color:var(--pp-good); }
+        #payPanel .pp-dashed { border-top:1px dashed var(--pp-line); }
+        #payPanel .pp-bar-track { height:4px;background:var(--pp-line);border-radius:3px;overflow:hidden; }
+        #payPanel .pp-bar-fill  { height:100%;background:var(--pp-accent);border-radius:3px;transition:width .5s ease; }
+
+        /* dotted-leader schedule rows */
+        #payPanel .pp-item-row { display:flex; align-items:baseline; gap:8px; padding:4px 0; font-size:12.5px; }
+        #payPanel .pp-item-row .pp-name { white-space:nowrap; color:var(--pp-soft); }
+        #payPanel .pp-item-row .pp-leader { flex:1; border-bottom:1px dotted var(--pp-line); transform:translateY(-3px); }
+        #payPanel .pp-item-row .pp-amt { white-space:nowrap; font-weight:600; }
+        #payPanel .pp-item-row.next .pp-name, #payPanel .pp-item-row.next .pp-amt { color:var(--pp-warn); font-weight:700; }
+        #payPanel .pp-item-row.overdue .pp-name, #payPanel .pp-item-row.overdue .pp-amt { color:#b91c1c; font-weight:700; }
+        #payPanel .pp-item-row.paid .pp-amt { color:var(--pp-good); }
+        #payPanel .pp-item-row .pp-tick { font-size:11px; color:var(--pp-good); margin-right:2px; }
+        #payPanel .pp-item-row.faint .pp-name, #payPanel .pp-item-row.faint .pp-amt { color:var(--pp-faint); }
+
+        #payPanel .pp-tmini { display:flex; align-items:center; margin-top:10px; }
+        #payPanel .pp-tm-dot { width:7px;height:7px;border-radius:50%;background:var(--pp-line);flex-shrink:0; }
+        #payPanel .pp-tm-dot.paid { background:var(--pp-good); }
+        #payPanel .pp-tm-dot.next { background:var(--pp-warn); box-shadow:0 0 0 3px var(--pp-warn-soft); }
+        #payPanel .pp-tm-seg { flex:1;height:1px;background:var(--pp-line);min-width:6px; }
+        #payPanel .pp-tm-seg.paid { background:var(--pp-good); }
+
+        /* presets */
+        #payPanel .pp-preset { flex:1;min-width:130px;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--pp-line);border-radius:8px;background:var(--pp-paper);cursor:pointer;font-size:12px;font-weight:600;color:var(--pp-soft);font-family:inherit; }
+        #payPanel .pp-preset .pp-amt { font-weight:700;color:var(--pp-ink); }
+        #payPanel .pp-preset.active { border-color:var(--pp-accent);background:var(--pp-accent-soft);color:var(--pp-accent); }
+        #payPanel .pp-preset.active .pp-amt { color:var(--pp-accent); }
+
+        /* amount */
+        #payPanel .pp-amount-row { display:flex;align-items:baseline;gap:10px;padding:4px 0 2px; }
+        #payPanel .pp-peso { font-size:22px;font-weight:600;color:var(--pp-faint); }
+        #payPanel .pp-amount-input { font-size:32px;font-weight:700;letter-spacing:-1px;flex:1;min-width:0;border:none;outline:none;background:transparent;color:var(--pp-ink);font-family:'IBM Plex Mono',monospace; }
+        #payPanel .pp-amount-underline { height:2px;background:var(--pp-accent);border-radius:2px;margin-top:6px; }
+        #payPanel .pp-clear-btn { font-size:11px;color:var(--pp-faint);cursor:pointer;font-weight:600;white-space:nowrap;background:none;border:none;font-family:inherit; }
+
+        /* method segmented toggle */
+        #payPanel .pp-method-toggle { display:flex;background:var(--pp-paper);border:1px solid var(--pp-line);border-radius:9px;padding:3px;gap:3px; }
+        #payPanel .pp-method-opt { flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:9px 10px;border-radius:7px;font-size:12.5px;font-weight:600;color:var(--pp-soft);cursor:pointer;border:none;background:none;font-family:inherit;transition:all .12s; }
+        #payPanel .pp-method-opt.active { background:var(--pp-surface);color:var(--pp-ink);box-shadow:0 1px 2px rgba(0,0,0,.08); }
+        #payPanel .pp-method-opt.active.cash { color:var(--pp-good); }
+        #payPanel .pp-method-opt.active.online { color:var(--pp-accent); }
+        #payPanel .pp-wallet-chip { padding:6px 14px;border:1px solid var(--pp-line);border-radius:20px;font-size:11.5px;font-weight:600;color:var(--pp-soft);cursor:pointer;background:var(--pp-surface);font-family:inherit; }
+        #payPanel .pp-wallet-chip.active { border-color:var(--pp-accent);color:var(--pp-accent);background:var(--pp-accent-soft); }
+
+        #payPanel .pp-notes { width:100%;border:1px solid var(--pp-line);border-radius:8px;padding:9px 12px;font-size:12.5px;font-family:'Work Sans','Open Sans',sans-serif;background:var(--pp-paper);color:var(--pp-ink);resize:none; }
+
+        /* totals / receipt footer */
+        #payPanel .pp-total-line { display:flex;justify-content:space-between;font-size:12.5px;padding:3px 0;color:var(--pp-soft); }
+        #payPanel .pp-total-line b { color:var(--pp-ink);font-weight:600; }
+        #payPanel .pp-grand { display:flex;justify-content:space-between;align-items:baseline;margin-top:8px;padding-top:10px;border-top:1px dashed var(--pp-line); }
+        #payPanel .pp-grand .pp-l { font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--pp-soft); }
+        #payPanel .pp-grand .pp-v { font-size:22px;font-weight:700;color:var(--pp-accent); }
+        #payPanel .pp-confirm-btn { width:100%;margin-top:14px;padding:13px;background:var(--pp-good);color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:700;font-family:'Work Sans',sans-serif;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.2px;transition:background .15s; }
+
+        /* recent payments log */
+        #payPanel .pp-log-row { padding:9px 18px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--pp-line);font-size:12px; }
+        #payPanel .pp-log-meta { font-size:10px;color:var(--pp-faint);margin-top:1px; }
+        #payPanel .pp-log-ref { font-size:9.5px;color:var(--pp-faint); }
     </style>
 </head>
 <body>
@@ -591,11 +670,6 @@
         </div>
         <div class="sidebar-shift-pill">ON DUTY</div>
     </div>
-
-    
-    <button class="sidebar-quick-btn" onclick="showSection('process', document.querySelector('.sidebar-link[data-section=process]'))">
-        <i class="bi bi-plus-circle-fill"></i> Process Payment
-    </button>
 
     
     <div class="sidebar-today-strip">
@@ -1112,60 +1186,48 @@
                 </button>
 
                 
-                <div style="background:linear-gradient(145deg,#0f2451 0%,#1a3a6c 40%,#2471a3 100%);border-radius:22px;padding:26px;margin-bottom:14px;position:relative;overflow:hidden;">
-                    <div style="position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.05);pointer-events:none;"></div>
-                    <div style="position:absolute;bottom:-30px;left:-20px;width:100px;height:100px;border-radius:50%;background:rgba(197,160,89,.08);pointer-events:none;"></div>
-                    <div style="position:absolute;top:20px;right:20px;width:60px;height:60px;border-radius:50%;background:rgba(197,160,89,.06);pointer-events:none;"></div>
-                    
-                    <div style="display:flex;align-items:center;gap:14px;position:relative;">
-                        <div style="width:58px;height:58px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;color:#fff;font-size:24px;font-weight:900;flex-shrink:0;border:2.5px solid rgba(255,255,255,.3);box-shadow:0 4px 14px rgba(0,0,0,.2);" id="studentInitial">?</div>
+                <div class="pp-card" style="padding:16px;margin-bottom:12px;">
+                    <div style="display:flex;align-items:center;gap:11px;">
+                        <div class="pp-avatar" id="studentInitial">?</div>
                         <div style="flex:1;min-width:0;">
-                            <div style="font-size:17px;font-weight:900;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.2px;" id="studentName">—</div>
-                            <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:3px;display:flex;align-items:center;gap:6px;" id="studentGrade">
-                                <i class="bi bi-mortarboard-fill" style="font-size:10px;"></i> —
+                            <div style="font-size:14.5px;font-weight:700;letter-spacing:-.1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="studentName">—</div>
+                            <div style="font-size:11px;color:var(--pp-faint);margin-top:1px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                <span id="studentGrade">—</span><span style="width:3px;height:3px;border-radius:50%;background:var(--pp-faint);"></span><span id="studentSchoolYear">—</span>
+                                <span id="studentPayStatusBadge" class="pp-chip"></span>
                             </div>
                         </div>
                         <button onclick="clearPaymentForm()" title="Change student"
-                            style="background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:rgba(255,255,255,.75);border-radius:10px;padding:8px 12px;cursor:pointer;font-size:12px;transition:all .15s;line-height:1;flex-shrink:0;">
+                            style="background:none;border:1px solid var(--pp-line);color:var(--pp-soft);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:11px;line-height:1;flex-shrink:0;font-family:inherit;">
                             <i class="bi bi-arrow-left-circle me-1"></i>Change
                         </button>
                     </div>
-                    
-                    <div style="margin-top:14px;display:flex;align-items:center;gap:8px;">
-                        <div id="studentPayStatusBadge" style="font-size:10px;font-weight:700;padding:4px 12px;border-radius:20px;display:inline-block;"></div>
-                        <div style="font-size:11px;color:rgba(255,255,255,.5);display:flex;align-items:center;gap:5px;"><i class="bi bi-calendar3"></i><span id="studentSchoolYear">—</span></div>
-                    </div>
-                    
-                    <div style="margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.12);position:relative;">
-                        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px;">
+                    <div class="pp-dashed" style="margin-top:12px;padding-top:12px;">
+                        <div style="display:flex;justify-content:space-between;align-items:baseline;">
                             <div>
-                                <div style="font-size:10px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Outstanding Balance</div>
-                                <div style="font-size:32px;font-weight:900;color:#fff;line-height:1;letter-spacing:-1px;" id="studentBalance">₱0.00</div>
+                                <div style="font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--pp-faint);font-weight:600;">Outstanding</div>
+                                <div class="pp-mono" style="font-size:22px;font-weight:700;letter-spacing:-.5px;" id="studentBalance">₱0.00</div>
                             </div>
                             <div style="text-align:right;">
-                                <div style="font-size:10px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Amount Paid</div>
-                                <div style="font-size:16px;font-weight:700;color:rgba(255,255,255,.8);" id="cardAmountPaid">₱0.00</div>
+                                <div style="font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--pp-faint);font-weight:600;">Paid</div>
+                                <div class="pp-mono" style="font-size:13px;font-weight:600;color:var(--pp-soft);" id="cardAmountPaid">₱0.00</div>
                             </div>
                         </div>
-                        
-                        <div style="background:rgba(255,255,255,.12);border-radius:20px;height:6px;overflow:hidden;">
-                            <div id="payProgressBar" style="height:100%;background:linear-gradient(90deg,#c5a059,#f5d08a);border-radius:20px;width:0%;transition:width .6s ease;"></div>
-                        </div>
+                        <div class="pp-bar-track" style="margin-top:10px;"><div class="pp-bar-fill" id="payProgressBar" style="width:0%;"></div></div>
                         <div style="display:flex;justify-content:flex-end;margin-top:5px;">
-                            <div style="font-size:10px;color:rgba(255,255,255,.4);" id="cardTotalFee">Total: ₱0.00</div>
+                            <div style="font-size:10px;color:var(--pp-faint);" id="cardTotalFee">Total: ₱0.00</div>
                         </div>
                     </div>
                 </div>
 
                 
-                <div class="card-box" style="margin-bottom:14px;">
-                    <div class="card-box-header">
-                        <div class="card-box-title"><i class="bi bi-clock-history" style="color:#2471a3;"></i> Recent Payments</div>
-                        <a href="#" onclick="loadHistoryForStudent(selectedStudent.id, selectedStudent.name);return false;" style="font-size:11px;font-weight:700;color:#2471a3;text-decoration:none;">View All <i class="bi bi-arrow-right"></i></a>
+                <div class="pp-card">
+                    <div class="pp-sec" style="display:flex;justify-content:space-between;align-items:center;padding:11px 18px;">
+                        <div class="pp-sec-label" style="margin-bottom:0;">Recent Payments</div>
+                        <a href="#" onclick="loadHistoryForStudent(selectedStudent.id, selectedStudent.name);return false;" style="font-size:11px;font-weight:600;color:var(--pp-accent);text-decoration:none;">View all →</a>
                     </div>
                     <div id="recentPaymentsList">
-                        <div style="text-align:center;padding:24px;color:#94a3b8;font-size:12px;">
-                            <i class="bi bi-arrow-repeat" style="font-size:18px;display:block;margin-bottom:6px;"></i>Loading…
+                        <div style="text-align:center;padding:18px;color:var(--pp-faint);font-size:12px;">
+                            <i class="bi bi-arrow-repeat" style="font-size:16px;display:block;margin-bottom:6px;"></i>Loading…
                         </div>
                     </div>
                 </div>
@@ -1176,186 +1238,141 @@
             <div>
 
                 
-                <div id="planSelectorCard" style="display:none;margin-bottom:14px;">
-                    <div class="card-box" style="margin-bottom:0;" id="planSelectorBox">
-                        
-                        <div class="card-box-header" id="planSelectorHeader" style="padding:14px 18px;">
-                            <div class="card-box-title" id="planSelectorTitle">
-                                <i class="bi bi-clipboard-check-fill"></i>
-                                Payment Plan
+                <div class="pp-card">
+
+                    
+                    <div id="planSelectorCard" style="display:none;">
+                        <div id="planSelectorBox">
+                            <div class="pp-sec" id="planSelectorHeader" style="display:flex;justify-content:space-between;align-items:center;padding-bottom:0;border-bottom:none;">
+                                <div class="pp-sec-label" id="planSelectorTitle" style="margin-bottom:0;">Payment Plan</div>
+                                <button id="changePlanBtn" onclick="expandPlanOptions()"
+                                    style="display:none;padding:4px 10px;border:1px solid var(--pp-accent);background:var(--pp-accent-soft);color:var(--pp-accent);border-radius:6px;font-size:10.5px;font-weight:700;cursor:pointer;font-family:inherit;">
+                                    <i class="bi bi-pencil-fill me-1"></i>Change
+                                </button>
                             </div>
-                            <button id="changePlanBtn" onclick="expandPlanOptions()"
-                                style="display:none;padding:5px 14px;border:1.5px solid #2471a3;background:#e8f0fb;color:#1a3a6c;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">
-                                <i class="bi bi-pencil-fill me-1"></i>Change Plan
-                            </button>
-                        </div>
-                        
-                        <div id="planSummaryStrip" style="display:none;padding:12px 18px;background:#f0fdf4;border-top:1px solid #bbf7d0;">
-                            <div style="display:flex;align-items:center;gap:10px;">
-                                <i class="bi bi-check-circle-fill" style="color:#16a34a;font-size:18px;"></i>
-                                <div id="planSummaryText" style="font-size:13px;font-weight:700;color:#166534;flex:1;"></div>
-                            </div>
-                        </div>
-                        
-                        <div id="planOptionsWrap">
-                            <div style="padding:14px 16px 16px;" id="planOptionsList">
-                                <div style="text-align:center;padding:24px;color:#94a3b8;">
-                                    <i class="bi bi-arrow-repeat" style="font-size:22px;display:block;margin-bottom:8px;"></i>
-                                    Loading plans…
+                            
+                            <div id="planSummaryStrip" style="display:none;padding:0 18px 12px;">
+                                <div style="display:flex;align-items:center;gap:7px;">
+                                    <i class="bi bi-check-circle-fill" style="color:var(--pp-good);font-size:13px;"></i>
+                                    <div id="planSummaryText" class="pp-mono" style="font-size:12px;font-weight:600;color:var(--pp-good);flex:1;"></div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                
-                <div id="timelineCard" style="display:none;margin-bottom:14px;">
-                    <div class="card-box" style="margin-bottom:0;">
-                        <div class="card-box-header" style="padding:12px 18px;">
-                            <div class="card-box-title"><i class="bi bi-signpost-split-fill" style="color:#c5a059;"></i> Payment Timeline</div>
-                            <span style="font-size:11px;color:#94a3b8;">Months paid vs. what's next</span>
-                        </div>
-                        <div id="timelineBody" style="padding:6px 18px 16px;">
-                            <div style="text-align:center;padding:16px;color:#94a3b8;font-size:12px;">
-                                <i class="bi bi-arrow-repeat" style="font-size:18px;display:block;margin-bottom:6px;"></i>Loading…
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                
-                <div id="quickAmountRow" style="display:none;margin-bottom:14px;">
-                    <div class="card-box" style="margin-bottom:0;">
-                        <div class="card-box-header" style="padding:12px 18px;">
-                            <div class="card-box-title"><i class="bi bi-lightning-fill" style="color:#c5a059;"></i> Quick Presets</div>
-                            <span style="font-size:11px;color:#94a3b8;">Tap to fill amount instantly</span>
-                        </div>
-                        <div style="padding:14px 16px;display:flex;gap:10px;flex-wrap:wrap;" id="quickAmountBtns"></div>
-                    </div>
-                </div>
-
-                
-                <div class="card-box" style="margin-bottom:14px;">
-                    <div class="card-box-header" style="padding:12px 18px;">
-                        <div class="card-box-title"><i class="bi bi-cash-stack" style="color:#2471a3;"></i> Amount to Collect</div>
-                        <div id="paymentTypeLabel" style="font-size:11px;font-weight:700;color:#1a3a6c;background:#e8f0fb;padding:4px 12px;border-radius:20px;">Select type</div>
-                    </div>
-                    <div style="padding:16px 20px 12px;">
-                        <div style="display:flex;align-items:center;background:#f8faff;border:2.5px solid #e2e8f0;border-radius:16px;overflow:hidden;transition:all .2s;" id="amountInputWrap">
-                            <span style="padding:18px 8px 18px 22px;font-size:30px;font-weight:900;color:#cbd5e1;user-select:none;">₱</span>
-                            <input type="number" id="paymentAmount" placeholder="0.00" step="0.01" min="0"
-                                style="flex:1;padding:18px 22px 18px 6px;font-size:32px;font-weight:900;color:#1e293b;border:none;outline:none;background:transparent;font-family:'Open Sans',sans-serif;letter-spacing:-1px;"
-                                oninput="updateTransactionSummary()"
-                                onfocus="document.getElementById('amountInputWrap').style.borderColor='#2471a3';document.getElementById('amountInputWrap').style.background='#fff';document.getElementById('amountInputWrap').style.boxShadow='0 0 0 4px rgba(36,113,163,.08)';"
-                                onblur="document.getElementById('amountInputWrap').style.borderColor='#e2e8f0';document.getElementById('amountInputWrap').style.background='#f8faff';document.getElementById('amountInputWrap').style.boxShadow='none';">
-                        </div>
-                        <div style="margin-top:10px;display:flex;gap:8px;">
-                            <button type="button" onclick="clearAmount()" style="flex:1;padding:8px;border-radius:10px;border:1.5px solid #e2e8f0;background:#fff;font-size:12px;font-weight:600;color:#64748b;cursor:pointer;transition:all .15s;" onmouseover="this.style.background='#f8faff'" onmouseout="this.style.background='#fff'"><i class="bi bi-x-circle me-1"></i>Clear</button>
-                        </div>
-                    </div>
-                </div>
-
-                
-                <div class="card-box" style="margin-bottom:14px;">
-                    <div class="card-box-header" style="padding:12px 18px;">
-                        <div class="card-box-title"><i class="bi bi-credit-card-2-front" style="color:#2471a3;"></i> Payment Method</div>
-                    </div>
-                    <div style="padding:14px 16px 16px;">
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:0;">
-                            <button type="button" id="methodCashBtn" onclick="selectPayMethod('cash')"
-                                style="padding:20px 12px;border:2.5px solid #16a34a;border-radius:16px;background:#f0fdf4;cursor:pointer;text-align:center;transition:all .2s;box-shadow:0 4px 12px rgba(22,163,74,.15);">
-                                <div style="width:48px;height:48px;border-radius:14px;background:#16a34a;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
-                                    <i class="bi bi-cash-stack" style="font-size:22px;color:#fff;"></i>
-                                </div>
-                                <div style="font-size:14px;font-weight:800;color:#166534;">Cash</div>
-                                <div style="font-size:10px;color:#64748b;margin-top:3px;">Walk-in counter</div>
-                            </button>
-                            <button type="button" id="methodOnlineBtn" onclick="selectPayMethod('online')"
-                                style="padding:20px 12px;border:2.5px solid #e2e8f0;border-radius:16px;background:#fff;cursor:pointer;text-align:center;transition:all .2s;">
-                                <div style="width:48px;height:48px;border-radius:14px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;" id="onlineBtnIcon">
-                                    <i class="bi bi-phone" style="font-size:22px;color:#94a3b8;"></i>
-                                </div>
-                                <div style="font-size:14px;font-weight:800;color:#64748b;" id="onlineBtnLabel">Online</div>
-                                <div style="font-size:10px;color:#94a3b8;margin-top:3px;">GCash · Maya</div>
-                            </button>
-                        </div>
-                        <div id="onlineMethodRow" style="display:none;margin-top:14px;">
-                            <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Select e-Wallet</div>
-                            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;max-width:220px;">
-                                <?php $__currentLoopData = [['gcash','bi-phone-fill','#0070ff','GCash'],['maya','bi-wallet2','#00b09b','Maya']]; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as [$m,$icon,$color,$label]): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                                <button type="button" class="online-method-opt" data-method="<?php echo e($m); ?>" onclick="selectOnlineMethod('<?php echo e($m); ?>')"
-                                    style="padding:10px 4px;border:2px solid #e2e8f0;border-radius:12px;background:#fff;cursor:pointer;text-align:center;transition:all .2s;">
-                                    <div style="width:34px;height:34px;border-radius:10px;background:<?php echo e($color); ?>;margin:0 auto 5px;display:flex;align-items:center;justify-content:center;">
-                                        <i class="bi <?php echo e($icon); ?>" style="color:#fff;font-size:14px;"></i>
+                            
+                            <div id="planOptionsWrap">
+                                <div style="padding:0 18px 14px;" id="planOptionsList">
+                                    <div style="text-align:center;padding:16px;color:var(--pp-faint);">
+                                        <i class="bi bi-arrow-repeat" style="font-size:18px;display:block;margin-bottom:6px;"></i>
+                                        Loading plans…
                                     </div>
-                                    <div style="font-size:10px;font-weight:700;color:#334155;"><?php echo e($label); ?></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    
+                    <div id="timelineCard" class="pp-sec" style="display:none;">
+                        <div class="pp-sec-label">Schedule</div>
+                        <div id="timelineBody">
+                            <div style="text-align:center;padding:14px;color:var(--pp-faint);font-size:12px;">
+                                <i class="bi bi-arrow-repeat" style="font-size:16px;display:block;margin-bottom:6px;"></i>Loading…
+                            </div>
+                        </div>
+                    </div>
+
+                    
+                    <div class="pp-sec">
+                        <div class="pp-sec-label" style="display:flex;justify-content:space-between;">
+                            <span>Amount</span>
+                            <span id="paymentTypeLabel" style="text-transform:none;letter-spacing:0;color:var(--pp-accent);font-weight:700;">Select type</span>
+                        </div>
+
+                        
+                        <div id="quickAmountRow" style="display:none;margin-bottom:10px;">
+                            <div style="display:flex;gap:8px;flex-wrap:wrap;" id="quickAmountBtns"></div>
+                        </div>
+
+                        
+                        <div id="amountInputWrap" style="display:flex;align-items:baseline;gap:10px;">
+                            <span class="pp-peso pp-mono">₱</span>
+                            <input type="number" id="paymentAmount" placeholder="0.00" step="0.01" min="0" class="pp-amount-input"
+                                oninput="updateTransactionSummary()">
+                            <button type="button" onclick="clearAmount()" class="pp-clear-btn">Clear</button>
+                        </div>
+                        <div class="pp-amount-underline"></div>
+                    </div>
+
+                    
+                    <div class="pp-sec">
+                        <div class="pp-sec-label">Method</div>
+                        <div class="pp-method-toggle">
+                            <button type="button" id="methodCashBtn" onclick="selectPayMethod('cash')" class="pp-method-opt cash active">💵 Cash</button>
+                            <button type="button" id="methodOnlineBtn" onclick="selectPayMethod('online')" class="pp-method-opt online">📱 <span id="onlineBtnLabel">Online</span></button>
+                        </div>
+                        <div id="onlineMethodRow" style="display:none;margin-top:10px;">
+                            <div style="display:flex;gap:8px;">
+                                <?php $__currentLoopData = [['gcash','bi-phone-fill','GCash'],['maya','bi-wallet2','Maya']]; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as [$m,$icon,$label]): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <button type="button" class="online-method-opt pp-wallet-chip" data-method="<?php echo e($m); ?>" onclick="selectOnlineMethod('<?php echo e($m); ?>')">
+                                    <i class="bi <?php echo e($icon); ?> me-1"></i><?php echo e($label); ?>
+
                                 </button>
                                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                
-                <div class="card-box" style="margin-bottom:14px;">
-                    <div class="card-box-header" style="padding:12px 18px;">
-                        <div class="card-box-title"><i class="bi bi-pencil-square" style="color:#2471a3;"></i> Notes <span style="font-size:11px;font-weight:400;color:#94a3b8;">(optional)</span></div>
-                    </div>
-                    <div style="padding:12px 16px 16px;">
-                        <textarea id="paymentNotesField" rows="2" class="form-fld" placeholder="e.g. Paid via manager, reference #, etc."
-                            style="resize:none;font-size:13px;border-radius:10px;"
+                    
+                    <div class="pp-sec">
+                        <div class="pp-sec-label">Notes <span style="text-transform:none;font-weight:400;">(optional)</span></div>
+                        <textarea id="paymentNotesField" rows="1" class="pp-notes" placeholder="e.g. Paid via manager, reference #, etc."
                             oninput="document.getElementById('paymentNotes').value=this.value;"></textarea>
                     </div>
-                </div>
 
-                
-                <div id="txnSummary" style="display:none;background:linear-gradient(135deg,#f8faff,#eff6ff);border:1.5px solid #bfdbfe;border-radius:16px;padding:16px;margin-bottom:14px;">
-                    <div style="font-size:12px;font-weight:700;color:#1e40af;margin-bottom:12px;display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:.5px;"><i class="bi bi-receipt-cutoff"></i> Transaction Summary</div>
-                    <div style="display:flex;flex-direction:column;gap:8px;">
-                        <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#64748b;">Student</span><span style="font-weight:700;color:#1e293b;" id="txnStudent">—</span></div>
-                        <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#64748b;">Payment Type</span><span style="font-weight:700;color:#1e293b;" id="txnType">—</span></div>
-                        <div style="display:flex;justify-content:space-between;font-size:13px;"><span style="color:#64748b;">Method</span><span style="font-weight:700;color:#1e293b;" id="txnMethod">—</span></div>
-                        <div style="height:1px;background:#bfdbfe;margin:4px 0;"></div>
-                        <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:900;"><span style="color:#1e40af;">Total Amount</span><span style="color:#1a3a6c;" id="txnAmount">₱0.00</span></div>
-                    </div>
-                </div>
-
-                
-                <div id="xenditLinkResult" style="display:none;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1.5px solid #86efac;border-radius:16px;padding:18px;margin-bottom:14px;">
-                    <div style="font-size:13px;font-weight:700;color:#166534;margin-bottom:12px;display:flex;align-items:center;gap:8px;"><i class="bi bi-check-circle-fill"></i> Payment link generated!</div>
-                    <div style="display:flex;gap:8px;margin-bottom:10px;">
-                        <input type="text" id="xenditLinkUrl" readonly style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid #86efac;background:#fff;font-size:12px;font-family:monospace;outline:none;color:#166534;">
-                        <button onclick="copyXenditLink()" style="padding:10px 16px;background:#16a34a;color:#fff;border:none;border-radius:10px;cursor:pointer;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;"><i class="bi bi-clipboard" id="cashierCopyIcon"></i> Copy</button>
-                    </div>
-                    <div style="font-size:11px;color:#64748b;margin-bottom:12px;" id="xenditLinkExpiry"></div>
-                    <a id="xenditLinkOpenBtn" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:10px 20px;background:#16a34a;color:#fff;border-radius:10px;font-size:13px;font-weight:700;text-decoration:none;"><i class="bi bi-box-arrow-up-right"></i> Open Payment Page</a>
                     
-                    <div id="xenditPollStatus" style="display:none;margin-top:12px;padding:10px 14px;border-radius:10px;font-size:12px;font-weight:600;"></div>
-                </div>
+                    <div class="pp-sec">
+                        
+                        <div id="txnSummary" style="display:none;">
+                            <div class="pp-total-line"><span>Student</span><b id="txnStudent">—</b></div>
+                            <div class="pp-total-line"><span>Payment Type</span><b id="txnType">—</b></div>
+                            <div class="pp-total-line"><span>Method</span><b id="txnMethod">—</b></div>
+                            <div class="pp-grand"><span class="pp-l">Total</span><span class="pp-v pp-mono" id="txnAmount">₱0.00</span></div>
+                        </div>
 
-                
-                <div id="paySuccessBanner" style="display:none;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:2px solid #86efac;border-radius:20px;padding:24px;margin-bottom:14px;text-align:center;">
-                    <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#16a34a,#22c55e);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;box-shadow:0 8px 20px rgba(22,163,74,.3);">
-                        <i class="bi bi-check-lg" style="font-size:32px;color:#fff;"></i>
-                    </div>
-                    <div style="font-size:20px;font-weight:900;color:#166534;margin-bottom:4px;">Payment Recorded!</div>
-                    <div id="paySuccessRef" style="font-size:13px;color:#64748b;margin-bottom:20px;line-height:1.6;"></div>
-                    <div style="display:flex;gap:10px;justify-content:center;">
-                        <button onclick="printLastReceipt()" style="padding:12px 22px;background:#fff;color:#16a34a;border:2px solid #86efac;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 2px 8px rgba(22,163,74,.1);">
-                            <i class="bi bi-printer-fill"></i> Print Receipt
-                        </button>
-                        <button onclick="backToStudentList()" style="padding:12px 22px;background:linear-gradient(135deg,#16a34a,#22c55e);color:#fff;border:none;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;box-shadow:0 4px 14px rgba(22,163,74,.35);">
-                            <i class="bi bi-plus-circle-fill"></i> New Payment
+                        
+                        <div id="xenditLinkResult" style="display:none;background:var(--pp-good-soft);border:1px solid var(--pp-good);border-radius:8px;padding:14px;">
+                            <div style="font-size:12px;font-weight:700;color:var(--pp-good);margin-bottom:10px;display:flex;align-items:center;gap:8px;"><i class="bi bi-check-circle-fill"></i> Payment link generated!</div>
+                            <div style="display:flex;gap:8px;margin-bottom:10px;">
+                                <input type="text" id="xenditLinkUrl" readonly class="pp-mono" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid var(--pp-good);background:#fff;font-size:11.5px;outline:none;color:var(--pp-good);">
+                                <button onclick="copyXenditLink()" style="padding:8px 14px;background:var(--pp-good);color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;font-family:inherit;"><i class="bi bi-clipboard" id="cashierCopyIcon"></i> Copy</button>
+                            </div>
+                            <div style="font-size:10.5px;color:var(--pp-soft);margin-bottom:10px;" id="xenditLinkExpiry"></div>
+                            <a id="xenditLinkOpenBtn" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:var(--pp-good);color:#fff;border-radius:8px;font-size:12px;font-weight:700;text-decoration:none;"><i class="bi bi-box-arrow-up-right"></i> Open Payment Page</a>
+                            <div id="xenditPollStatus" style="display:none;margin-top:10px;padding:8px 12px;border-radius:8px;font-size:11.5px;font-weight:600;"></div>
+                        </div>
+
+                        
+                        <div id="paySuccessBanner" style="display:none;text-align:center;">
+                            <div style="width:48px;height:48px;border-radius:50%;background:var(--pp-good);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
+                                <i class="bi bi-check-lg" style="font-size:22px;color:#fff;"></i>
+                            </div>
+                            <div style="font-size:15px;font-weight:700;color:var(--pp-good);margin-bottom:3px;">Payment Recorded!</div>
+                            <div id="paySuccessRef" style="font-size:12px;color:var(--pp-soft);margin-bottom:14px;line-height:1.5;"></div>
+                            <div style="display:flex;gap:8px;justify-content:center;">
+                                <button onclick="printLastReceipt()" style="padding:9px 16px;background:#fff;color:var(--pp-good);border:1px solid var(--pp-good);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:inherit;">
+                                    <i class="bi bi-printer-fill"></i> Print Receipt
+                                </button>
+                                <button onclick="backToStudentList()" style="padding:9px 16px;background:var(--pp-good);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;font-family:inherit;">
+                                    <i class="bi bi-plus-circle-fill"></i> New Payment
+                                </button>
+                            </div>
+                        </div>
+
+                        
+                        <button id="processBtn" onclick="handleProcessPayment()" class="pp-confirm-btn">
+                            <i class="bi bi-check-circle-fill" style="font-size:17px;"></i>
+                            <span id="processBtnLabel">Collect &amp; Record Payment</span>
                         </button>
                     </div>
                 </div>
-
-                
-                <button id="processBtn" onclick="handleProcessPayment()"
-                    style="width:100%;padding:22px;background:linear-gradient(135deg,#166534,#16a34a);color:#fff;border:none;border-radius:18px;font-size:18px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;transition:all .2s;letter-spacing:.3px;box-shadow:0 10px 28px rgba(22,163,74,.4);">
-                    <i class="bi bi-check-circle-fill" style="font-size:22px;"></i>
-                    <span id="processBtnLabel">Collect &amp; Record Payment</span>
-                </button>
 
                 
                 <input type="hidden" id="selectedEnrollmentId">
@@ -2616,12 +2633,12 @@ unset($__errorArgs, $__bag); ?>
             return;
         }
         box.innerHTML = txs.map(function(r){
-            return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 16px;border-top:1px solid #f1f5f9;">'
+            return '<div class="pp-log-row">'
                 + '<div style="min-width:0;">'
-                + '<div style="font-size:12.5px;font-weight:700;color:#1e293b;">₱' + r.amount + ' <span class="method-pill ' + (r.method.toLowerCase()==='cash'?'cash':'gcash') + '" style="margin-left:4px;font-size:9px;padding:2px 7px;">' + r.method + '</span></div>'
-                + '<div style="font-size:10.5px;color:#94a3b8;margin-top:2px;">' + r.type + ' &middot; ' + r.date + ' ' + r.time + '</div>'
+                + '<div class="pp-mono" style="font-size:12.5px;font-weight:600;">₱' + r.amount + ' <span style="font-family:\'Work Sans\',sans-serif;font-weight:500;color:var(--pp-faint);">· ' + r.method + '</span></div>'
+                + '<div class="pp-log-meta">' + r.type + ' &middot; ' + r.date + ' ' + r.time + '</div>'
                 + '</div>'
-                + '<span style="font-family:monospace;font-size:10.5px;background:#fffbeb;padding:3px 8px;border-radius:6px;color:#b45309;flex-shrink:0;">' + (r.or_no||'—') + '</span>'
+                + '<span class="pp-mono pp-log-ref">' + (r.or_no||'—') + '</span>'
                 + '</div>';
         }).join('');
     }
@@ -2658,7 +2675,7 @@ unset($__errorArgs, $__bag); ?>
         var dp = data.downpayment;
         var steps = [];
         if (dp && dp.amount > 0) {
-            steps.push({ label: 'DP', sub: '', cls: dp.paid ? 'paid' : 'next', icon: dp.paid ? 'bi-check-lg' : 'bi-flag-fill' });
+            steps.push({ name: 'Downpayment', sub: '', amount: dp.amount, cls: dp.paid ? 'paid' : 'next' });
         }
 
         // "Next" is already claimed by the DP step itself only when there IS a
@@ -2666,34 +2683,36 @@ unset($__errorArgs, $__bag); ?>
         // yet, so the first unpaid month below should.
         var foundNext = !!(dp && dp.amount > 0 && !dp.paid);
         installments.forEach(function(inst) {
-            var cls = 'upcoming', icon = '';
-            if (inst.status === 'paid') { cls = 'paid'; icon = 'bi-check-lg'; }
-            else if (inst.status === 'pending_approval') { cls = 'pending'; icon = 'bi-hourglass-split'; }
-            else if (inst.weeks_overdue > 0) { cls = 'overdue'; icon = 'bi-exclamation-lg'; }
-            else if (!foundNext) { cls = 'next'; icon = 'bi-flag-fill'; foundNext = true; }
+            var cls = 'faint';
+            if (inst.status === 'paid') { cls = 'paid'; }
+            else if (inst.status === 'pending_approval') { cls = ''; }
+            else if (inst.weeks_overdue > 0) { cls = 'overdue'; }
+            else if (!foundNext) { cls = 'next'; foundNext = true; }
 
             var d = inst.due_date ? new Date(inst.due_date + 'T00:00:00') : null;
             var sub = d ? d.toLocaleDateString('en-PH', { day: 'numeric', month: 'short' }) : '';
-            steps.push({ label: (inst.month_name || '').substring(0, 3), sub: sub, cls: cls, icon: icon });
+            var name = inst.month_name || '';
+            if (cls === 'next') name += ' — due ' + sub;
+            else if (cls === 'overdue') name += ' — overdue';
+            steps.push({ name: name, amount: inst.amount + (inst.late_fee||0), cls: cls, monthShort: (inst.month_name||'').substring(0,3) });
         });
 
-        var html = '<div class="pay-timeline">';
-        steps.forEach(function(s, i) {
-            if (i > 0) html += '<div class="pt-line ' + (steps[i - 1].cls === 'paid' ? 'paid' : '') + '"></div>';
-            html += '<div class="pt-step ' + s.cls + '">'
-                + '<div class="pt-dot">' + (s.icon ? '<i class="bi ' + s.icon + '"></i>' : '') + '</div>'
-                + '<div class="pt-label">' + s.label + '</div>'
-                + (s.sub ? '<div class="pt-sub">' + s.sub + '</div>' : '')
+        // Dotted-leader rows, like a real receipt itemizing each month
+        var html = steps.map(function(s) {
+            var tick = s.cls === 'paid' ? '<span class="pp-tick">✓</span>' : '';
+            return '<div class="pp-item-row ' + s.cls + '">' + tick
+                + '<span class="pp-name">' + s.name + '</span>'
+                + '<span class="pp-leader"></span>'
+                + '<span class="pp-amt pp-mono">₱' + Number(s.amount).toLocaleString('en-PH',{minimumFractionDigits:2}) + '</span>'
                 + '</div>';
-        });
-        html += '</div>';
+        }).join('');
 
-        var next = steps.find(function(s){ return s.cls === 'next'; });
-        var overdue = steps.filter(function(s){ return s.cls === 'overdue'; }).length;
-        html += '<div style="margin-top:8px;padding-top:10px;border-top:1px solid #f1f5f9;font-size:11.5px;color:#64748b;display:flex;gap:14px;flex-wrap:wrap;">';
-        if (overdue > 0) html += '<span style="color:#dc2626;font-weight:700;"><i class="bi bi-exclamation-triangle-fill me-1"></i>' + overdue + ' overdue</span>';
-        if (next) html += '<span style="color:#d97706;font-weight:700;"><i class="bi bi-flag-fill me-1"></i>Next due: ' + next.label + (next.sub ? ' (' + next.sub + ')' : '') + '</span>';
-        if (!next && overdue === 0) html += '<span style="color:#16a34a;font-weight:700;"><i class="bi bi-check-circle-fill me-1"></i>Fully paid</span>';
+        // Mini dot-strip beneath, same idea as the full timeline but compact
+        html += '<div class="pp-tmini">';
+        steps.forEach(function(s, i) {
+            if (i > 0) html += '<div class="pp-tm-seg ' + (steps[i-1].cls === 'paid' ? 'paid' : '') + '"></div>';
+            html += '<div class="pp-tm-dot ' + (s.cls === 'paid' ? 'paid' : (s.cls === 'next' ? 'next' : '')) + '" title="' + s.name + '"></div>';
+        });
         html += '</div>';
 
         body.innerHTML = html;
@@ -2842,18 +2861,12 @@ unset($__errorArgs, $__bag); ?>
         var summaryStrip = document.getElementById('planSummaryStrip');
         var optionsWrap  = document.getElementById('planOptionsWrap');
         if (state === 'confirmed') {
-            box.style.border   = '2px solid #16a34a';
-            header.style.background = 'linear-gradient(135deg,#f0fdf4,#fff)';
-            title.style.color  = '#166534';
-            title.innerHTML    = '<i class="bi bi-check-circle-fill" style="color:#16a34a;"></i> Payment Plan';
+            title.innerHTML    = 'Payment Plan';
             changeBtn.style.display = 'inline-flex';
             summaryStrip.style.display = 'block';
             optionsWrap.style.display  = 'none';
         } else {
-            box.style.border   = '2px solid #f97316';
-            header.style.background = 'linear-gradient(135deg,#fff7ed,#fff)';
-            title.style.color  = '#c2410c';
-            title.innerHTML    = '<i class="bi bi-clipboard-check-fill" style="color:#f97316;"></i> Select Payment Plan';
+            title.innerHTML    = 'Select Payment Plan';
             changeBtn.style.display = 'none';
             summaryStrip.style.display = 'none';
             optionsWrap.style.display  = 'block';
@@ -2919,7 +2932,7 @@ unset($__errorArgs, $__bag); ?>
                   + '</div>';
         });
         html += '<button id="confirmPlanBtn" onclick="confirmPaymentPlan()" '
-              + 'style="display:none;width:100%;margin-top:4px;padding:12px;background:linear-gradient(135deg,#1a3a6c,#2471a3);color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;font-family:\'Open Sans\',sans-serif;">'
+              + 'style="display:none;width:100%;margin-top:4px;padding:11px;background:#1a3a6c;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:\'Work Sans\',sans-serif;">'
               + '<i class="bi bi-check-circle-fill me-2"></i>Confirm Plan &amp; Continue</button>';
         list.innerHTML = html;
     }
@@ -3086,7 +3099,7 @@ unset($__errorArgs, $__bag); ?>
         loadInstallmentTimeline(s.enrollment_id, s.payment_type);
 
         var badge = document.getElementById('studentPayStatusBadge');
-        var statusMap = { paid: ['Fully Paid','rgba(22,163,74,.25)','#fff'], partial: ['Partially Paid','rgba(180,83,9,.25)','#fff'], unpaid: ['Unpaid','rgba(220,38,38,.25)','#fff'], pending: ['Pending','rgba(100,116,139,.2)','rgba(255,255,255,.8)'] };
+        var statusMap = { paid: ['Fully Paid','#e8f4ec','#1f7a4d'], partial: ['Partially Paid','#faeee0','#a85a1a'], unpaid: ['Unpaid','#fbe9e9','#b91c1c'], pending: ['Pending','#f1f0ec','#8b93a0'] };
         var st = statusMap[s.payment_status] || statusMap.pending;
         badge.textContent = st[0];
         badge.style.background = st[1];
@@ -3133,11 +3146,9 @@ unset($__errorArgs, $__bag); ?>
         var qBtns = document.getElementById('quickAmountBtns');
         if (btns.length > 0) {
             qBtns.innerHTML = btns.map(function(b) {
-                return '<button type="button" onclick="quickFillAmount(' + b.amount + ',\'' + b.type + '\',this)" '
-                    + 'style="padding:9px 16px;border-radius:10px;border:2px solid ' + b.color + ';background:#fff;color:' + b.color + ';'
-                    + 'font-size:12px;font-weight:800;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:7px;box-shadow:0 2px 8px rgba(0,0,0,.06);">'
-                    + '<i class="bi bi-lightning-fill"></i>' + b.label
-                    + '<span style="background:' + b.color + ';color:#fff;padding:2px 8px;border-radius:6px;font-size:11px;">₱' + Number(b.amount).toLocaleString('en-PH',{minimumFractionDigits:0}) + '</span>'
+                return '<button type="button" class="pp-preset" onclick="quickFillAmount(' + b.amount + ',\'' + b.type + '\',this)">'
+                    + '<span>' + b.label + '</span>'
+                    + '<span class="pp-amt pp-mono">₱' + Number(b.amount).toLocaleString('en-PH',{minimumFractionDigits:2}) + '</span>'
                     + '</button>';
             }).join('');
             qRow.style.display = 'block';
@@ -3159,12 +3170,14 @@ unset($__errorArgs, $__bag); ?>
         document.getElementById('paymentType').value = type;
         document.getElementById('paymentTypeLabel').textContent = type;
         document.querySelectorAll('#quickAmountBtns button').forEach(function(b) {
-            b.style.opacity = '0.5'; b.style.transform = 'scale(.95)';
+            b.classList.remove('active');
         });
-        if (btn) { btn.style.opacity = '1'; btn.style.transform = 'scale(1.06)'; }
-        var wrap = document.getElementById('amountInputWrap');
-        wrap.style.borderColor = '#16a34a'; wrap.style.background = '#fff';
-        setTimeout(function(){ wrap.style.borderColor = '#e2e8f0'; wrap.style.background = '#f8faff'; }, 800);
+        if (btn) { btn.classList.add('active'); }
+        var underline = document.querySelector('#amountInputWrap + .pp-amount-underline');
+        if (underline) {
+            underline.style.background = '#16a34a';
+            setTimeout(function(){ underline.style.background = ''; }, 800);
+        }
         updateTransactionSummary();
     }
 
@@ -3173,15 +3186,8 @@ unset($__errorArgs, $__bag); ?>
         var onlineBtn = document.getElementById('methodOnlineBtn');
         var isOnline  = method === 'online';
 
-        // Cash button — icon is inside a div now
-        cashBtn.style.borderColor = isOnline ? '#e2e8f0' : '#16a34a';
-        cashBtn.style.background  = isOnline ? '#fff'    : '#f0fdf4';
-        cashBtn.style.boxShadow   = isOnline ? 'none'    : '0 4px 14px rgba(22,163,74,.2)';
-
-        // Online button
-        onlineBtn.style.borderColor = isOnline ? '#2471a3' : '#e2e8f0';
-        onlineBtn.style.background  = isOnline ? '#eff6ff' : '#fff';
-        onlineBtn.style.boxShadow   = isOnline ? '0 4px 14px rgba(36,113,163,.2)' : 'none';
+        cashBtn.classList.toggle('active', !isOnline);
+        onlineBtn.classList.toggle('active', isOnline);
 
         document.getElementById('onlineMethodRow').style.display  = isOnline ? 'block' : 'none';
         document.getElementById('xenditLinkResult').style.display = 'none';
@@ -3190,30 +3196,25 @@ unset($__errorArgs, $__bag); ?>
             document.getElementById('paymentMethod').value = 'cash';
             document.getElementById('processBtnLabel').textContent = 'Collect & Record Payment';
             document.getElementById('processBtn').querySelector('i').className = 'bi bi-check-circle-fill';
-            document.getElementById('processBtn').style.background = 'linear-gradient(135deg,#166534,#16a34a)';
-            document.getElementById('processBtn').style.boxShadow  = '0 10px 28px rgba(22,163,74,.4)';
+            document.getElementById('processBtn').style.background = '#16a34a';
             // Reset online method selection
             document.querySelectorAll('.online-method-opt').forEach(function(b) {
-                b.style.borderColor = '#e2e8f0'; b.style.background = '#fff'; b.style.transform = 'scale(1)';
+                b.classList.remove('active');
             });
         } else {
             document.getElementById('paymentMethod').value = '';
             document.getElementById('processBtnLabel').textContent = 'Generate Payment Link';
             document.getElementById('processBtn').querySelector('i').className = 'bi bi-link-45deg';
-            document.getElementById('processBtn').style.background = 'linear-gradient(135deg,#1a3a6c,#2471a3)';
-            document.getElementById('processBtn').style.boxShadow  = '0 10px 28px rgba(26,58,108,.4)';
+            document.getElementById('processBtn').style.background = '#1a3a6c';
         }
         updateTransactionSummary();
     }
 
     function selectOnlineMethod(val) {
         document.getElementById('paymentMethod').value = val;
-        // Highlight selected e-wallet button
+        // Highlight selected e-wallet chip
         document.querySelectorAll('.online-method-opt').forEach(function(b) {
-            var isActive = b.dataset.method === val;
-            b.style.borderColor = isActive ? '#2471a3' : '#e2e8f0';
-            b.style.background  = isActive ? '#eff6ff' : '#fff';
-            b.style.transform   = isActive ? 'scale(1.06)' : 'scale(1)';
+            b.classList.toggle('active', b.dataset.method === val);
         });
         updateTransactionSummary();
     }
@@ -3224,7 +3225,7 @@ unset($__errorArgs, $__bag); ?>
         document.getElementById('paymentTypeLabel').textContent = 'Select type';
         document.getElementById('txnSummary').style.display = 'none';
         document.querySelectorAll('#quickAmountBtns button').forEach(function(b) {
-            b.style.opacity = '1'; b.style.transform = 'scale(1)';
+            b.classList.remove('active');
         });
     }
 
@@ -3306,13 +3307,13 @@ unset($__errorArgs, $__bag); ?>
             } else {
                 alert('❌ Error: ' + (data.message || 'Something went wrong.'));
                 btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-check-circle-fill" style="font-size:20px;"></i><span id="processBtnLabel">Collect & Record Payment</span>';
+                btn.innerHTML = '<i class="bi bi-check-circle-fill" style="font-size:17px;"></i><span id="processBtnLabel">Collect & Record Payment</span>';
             }
         })
         .catch(function() {
             alert('❌ Network error. Please try again.');
             btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-check-circle-fill" style="font-size:20px;"></i><span id="processBtnLabel">Collect & Record Payment</span>';
+            btn.innerHTML = '<i class="bi bi-check-circle-fill" style="font-size:17px;"></i><span id="processBtnLabel">Collect & Record Payment</span>';
         });
     }
 
@@ -3450,9 +3451,8 @@ unset($__errorArgs, $__bag); ?>
         document.getElementById('payProgressBar').style.width = '0%';
         var btn = document.getElementById('processBtn');
         btn.disabled = false;
-        btn.style.background = 'linear-gradient(135deg,#166534,#16a34a)';
-        btn.style.boxShadow  = '0 10px 28px rgba(22,163,74,.4)';
-        btn.innerHTML = '<i class="bi bi-check-circle-fill" style="font-size:22px;"></i><span id="processBtnLabel">Collect &amp; Record Payment</span>';
+        btn.style.background = '#16a34a';
+        btn.innerHTML = '<i class="bi bi-check-circle-fill" style="font-size:17px;"></i><span id="processBtnLabel">Collect &amp; Record Payment</span>';
     }
 
     function printLastReceipt() {

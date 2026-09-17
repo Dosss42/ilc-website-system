@@ -40,9 +40,9 @@ RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
 # Copy nginx config
 COPY docker/nginx.conf /etc/nginx/sites-enabled/default
 
-# Cache Laravel configs for production
-RUN php artisan config:cache \
-    && php artisan route:cache \
+# Cache routes/views for production (config:cache is done at container
+# start in entrypoint.sh, since env vars aren't available at build time)
+RUN php artisan route:cache \
     && php artisan view:cache
 
 # Expose port 80
