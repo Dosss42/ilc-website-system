@@ -21,6 +21,4 @@ Disallow: /api/
 # Search results pages are duplicate-ish content, not original pages worth indexing
 Disallow: /search
 
-# ── IMPORTANT: replace this with your real deployed domain once Railway
-#    assigns one (or once your custom domain is live) ──
-Sitemap: https://ilc-website-system.up.railway.app/
+Sitemap: https://ilc-website-system.up.railway.app/sitemap.xml
