@@ -13,6 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
 
+        // Trust Railway's edge proxy so the app correctly detects HTTPS,
+        // client IP, and host from forwarded headers.
+        $middleware->trustProxies(at: '*');
+
         // Enable Sanctum stateful API so session auth works for first-party SPA requests
         $middleware->statefulApi();
 
