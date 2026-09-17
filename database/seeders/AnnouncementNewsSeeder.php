@@ -11,12 +11,6 @@ class AnnouncementNewsSeeder extends Seeder
 {
     public function run(): void
     {
-        // Idempotent: skip if this batch already exists.
-        if (DB::table('announcements')->where('title', 'Enrollment for S.Y. 2027–2028 Now Open')->exists()) {
-            $this->command?->info('AnnouncementNewsSeeder: already seeded, skipping.');
-            return;
-        }
-
         $poster = User::where('email', 'superadmin@ilc.com')->first()
             ?? User::whereIn('role', ['superadmin', 'admin'])->orderBy('id')->first();
 
@@ -881,31 +875,39 @@ class AnnouncementNewsSeeder extends Seeder
   ),
 );
 
-        foreach ($announcements as $row) {
-            DB::table('announcements')->insert([
-                'teacher_id' => $poster->id,
-                'title'      => $row['title'],
-                'content'    => $row['content'],
-                'category'   => $row['category'],
-                'audience'   => $row['audience'],
-                'is_active'  => $row['is_active'],
-                'created_at' => Carbon::parse($row['created_at']),
-                'updated_at' => Carbon::parse($row['created_at']),
-            ]);
+        if (DB::table('announcements')->where('title', 'Enrollment for S.Y. 2027–2028 Now Open')->exists()) {
+            $this->command?->info('AnnouncementNewsSeeder: announcements already seeded, skipping.');
+        } else {
+            foreach ($announcements as $row) {
+                DB::table('announcements')->insert([
+                    'teacher_id' => $poster->id,
+                    'title'      => $row['title'],
+                    'content'    => $row['content'],
+                    'category'   => $row['category'],
+                    'audience'   => $row['audience'],
+                    'is_active'  => $row['is_active'],
+                    'created_at' => Carbon::parse($row['created_at']),
+                    'updated_at' => Carbon::parse($row['created_at']),
+                ]);
+            }
+            $this->command?->info('AnnouncementNewsSeeder: inserted ' . count($announcements) . ' announcements.');
         }
 
-        foreach ($news as $row) {
-            DB::table('news')->insert([
-                'posted_by'  => $poster->id,
-                'title'      => $row['title'],
-                'body'       => $row['body'],
-                'category'   => $row['category'],
-                'is_active'  => $row['is_active'],
-                'created_at' => Carbon::parse($row['created_at']),
-                'updated_at' => Carbon::parse($row['created_at']),
-            ]);
+        if (DB::table('news')->where('title', 'IEMELIF Learners Shine in Division Reading Assessment')->exists()) {
+            $this->command?->info('AnnouncementNewsSeeder: news already seeded, skipping.');
+        } else {
+            foreach ($news as $row) {
+                DB::table('news')->insert([
+                    'posted_by'  => $poster->id,
+                    'title'      => $row['title'],
+                    'body'       => $row['body'],
+                    'category'   => $row['category'],
+                    'is_active'  => $row['is_active'],
+                    'created_at' => Carbon::parse($row['created_at']),
+                    'updated_at' => Carbon::parse($row['created_at']),
+                ]);
+            }
+            $this->command?->info('AnnouncementNewsSeeder: inserted ' . count($news) . ' news articles.');
         }
-
-        $this->command?->info('AnnouncementNewsSeeder: inserted ' . count($announcements) . ' announcements and ' . count($news) . ' news articles.');
     }
 }
