@@ -1107,7 +1107,13 @@ class EnrollmentController extends Controller
             ->paginate(10, ['*'], 'news_page')
             ->withQueryString();
 
+        // Sidebar badge counts — unfiltered totals, independent of the
+        // paginated/filtered $students and $enrollments lists above.
+        $studentCount = User::where('role', 'student')->count();
+        $enrollmentCount = Enrollment::count();
+
         return view('adminDashboard', compact(
+            'studentCount', 'enrollmentCount',
             'enrollments', 'students', 'paymentEnrollments',
             'pendingPayments', 'totalCollected', 'pendingScreenshots', 'allDocuments',
             'paymentScreenshots',

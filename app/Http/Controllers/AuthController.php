@@ -127,7 +127,7 @@ class AuthController extends Controller
 
         ActivityLogger::log('login', $user->name . ' logged in', 'User', $user->id, ['role' => $user->role]);
 
-        $redirect = $this->redirectByRole($user);
+        $redirect = self::redirectByRole($user);
         return $redirect;
     }
 
@@ -152,7 +152,7 @@ class AuthController extends Controller
     // ══════════════════════════════════════════
     // HELPER — redirect by role
     // ══════════════════════════════════════════
-    private function redirectByRole(User $user)
+    public static function redirectByRole(User $user)
     {
         return match($user->role) {
             'superadmin' => redirect()->route('superadmin.dashboard'),

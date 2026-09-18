@@ -133,7 +133,14 @@ Route::post('/api/enrollment/submit', [EnrollmentController::class, 'submitApi']
 // ─────────────────────────────────────────
 
 // GET /login  → shows login_register.blade.php (login panel active)
-Route::get('/login',    fn() => view('login_register'))->name('login');
+// 'guest' bounces an already-logged-in user straight to their dashboard
+// instead of showing the login form again (e.g. after pressing mobile
+// back from a dashboard page). no-store keeps the browser from serving a
+// stale cached copy of this page via back/forward navigation.
+Route::get('/login', fn() => response()
+        ->view('login_register')
+        ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+    )->middleware('guest')->name('login');
 
 // Registration is enrollment-based only — redirect direct access to admission page
 Route::get('/register',  fn() => redirect()->route('admission'))->name('register');

@@ -27,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // ── Register role middleware aliases ──
         $middleware->alias([
+            'guest'       => \App\Http\Middleware\RedirectIfAuthenticated::class,
             'superadmin'  => \App\Http\Middleware\SuperAdminMiddleware::class,
             'admin'       => \App\Http\Middleware\AdminMiddleware::class,
             'teacher'     => \App\Http\Middleware\TeacherMiddleware::class,
