@@ -425,6 +425,20 @@
 
         .schedule-cell:hover { background: #f8fafc; }
 
+        .schedule-cell.drag-over {
+            background: var(--sch-blue-tint);
+            outline: 2px dashed var(--sch-blue);
+            outline-offset: -2px;
+        }
+
+        .schedule-cell-content.dragging {
+            opacity: 0.4;
+        }
+
+        .schedule-cell-content[draggable="true"]:active {
+            cursor: grabbing;
+        }
+
         .sched-conflict-badge {
             display: inline-flex;
             align-items: center;
@@ -10828,6 +10842,8 @@ function openWalkInEnrollmentModal() {
     // â”€â”€ Cached schedule data for current grid â”€â”€
     let _scheduleCache = [];
     let _scheduleCacheKey = '';
+    // â”€â”€ Entry currently being drag-and-dropped on the schedule grid â”€â”€
+    let _draggedScheduleEntry = null;
 
     // â”€â”€ Load Schedule Grid â”€â”€
 
@@ -10925,6 +10941,20 @@ function openWalkInEnrollmentModal() {
                     return sDay === day && sStart === slot.start && sEnd === slot.end;
                 });
 
+                // Drop target — every cell can be dropped onto (dragover must
+                // preventDefault or the browser rejects the drop outright).
+                cell.ondragover = (e) => {
+                    e.preventDefault();
+                    cell.classList.add('drag-over');
+                };
+                cell.ondragleave = () => cell.classList.remove('drag-over');
+                cell.ondrop = (e) => {
+                    e.preventDefault();
+                    cell.classList.remove('drag-over');
+                    if (!_draggedScheduleEntry) return;
+                    _handleScheduleDrop(_draggedScheduleEntry, day, slot.start, slot.end, grade, sectionId, term);
+                };
+
                 if (entry) {
                     const subjName = entry.subject ? entry.subject.name : (entry.subject_name || 'N/A');
                     const subjCode = entry.subject ? entry.subject.code : '';
@@ -10935,7 +10965,7 @@ function openWalkInEnrollmentModal() {
                     const warnBadge = hasConflict
                         ? `<div class="sched-conflict-badge" title="${reasons.map(r => r.replace(/"/g, '&quot;')).join(' | ')}"><i class="bi bi-exclamation-triangle-fill"></i> Conflict</div>`
                         : '';
-                    cell.innerHTML = `<div class="schedule-cell-content${hasConflict ? ' has-conflict' : ''}" style="cursor:pointer;" data-schedule-id="${entry.id}" data-subject-id="${entry.subject_id || ''}" data-section-id="${entry.section_id || ''}" data-room="${roomVal}" data-active="${entry.is_active ? 1 : 0}" data-term="${entry.term || term}">
+                    cell.innerHTML = `<div class="schedule-cell-content${hasConflict ? ' has-conflict' : ''}" draggable="true" style="cursor:grab;" data-schedule-id="${entry.id}" data-subject-id="${entry.subject_id || ''}" data-section-id="${entry.section_id || ''}" data-room="${roomVal}" data-active="${entry.is_active ? 1 : 0}" data-term="${entry.term || term}">
                         ${warnBadge}
                         <div class="subj-row">
                             ${subjCode ? `<span class="subj-code-pill">${subjCode}</span>` : ''}
@@ -10945,10 +10975,21 @@ function openWalkInEnrollmentModal() {
                         ${roomVal ? '<div class="room"><i class="bi bi-geo-alt-fill"></i>' + roomVal + '</div>' : ''}
                     </div>`;
                     cell.title = hasConflict ? 'Schedule conflict:\n' + reasons.join('\n') : '';
+                    const contentEl = cell.querySelector('.schedule-cell-content');
                     // Click on content to edit
-                    cell.querySelector('.schedule-cell-content').onclick = (e) => {
+                    contentEl.onclick = (e) => {
                         e.stopPropagation();
                         editScheduleFromCell(entry, day, slot, grade, sectionId, term);
+                    };
+                    // Drag this entry to another cell to move it
+                    contentEl.ondragstart = (e) => {
+                        _draggedScheduleEntry = entry;
+                        contentEl.classList.add('dragging');
+                        e.dataTransfer.effectAllowed = 'move';
+                    };
+                    contentEl.ondragend = () => {
+                        contentEl.classList.remove('dragging');
+                        _draggedScheduleEntry = null;
                     };
                 } else {
                     cell.innerHTML = `<div class="schedule-cell-empty"><i class="bi bi-plus-lg me-1"></i>Add</div>`;
@@ -17488,6 +17529,134 @@ function openWalkInEnrollmentModal() {
         return s1 < e2 && e1 > s2;
     }
 
+    // Shared by saveSchedule() (modal form) and the drag-and-drop handler —
+    // checks the in-memory schedule cache for teacher/room/section
+    // double-booking against the given day/time, excluding excludeId (the
+    // entry being edited/moved, so it doesn't conflict with itself).
+    function _findScheduleConflicts(sectionId, teacherId, roomVal, dayOfWeek, startTime, endTime, excludeId) {
+        const conflicts = [];
+        if (!_scheduleCache || !_scheduleCache.length || !startTime || !endTime) return conflicts;
+
+        _scheduleCache.forEach(s => {
+            if (excludeId && String(s.id) === String(excludeId)) return;
+            if (s.day_of_week !== dayOfWeek) return;
+            const sStart = (s.start_time || '').substring(0, 5);
+            const sEnd   = (s.end_time   || '').substring(0, 5);
+            if (!sStart || !sEnd) return;
+            if (!_timesOverlap(startTime, endTime, sStart, sEnd)) return;
+
+            if (teacherId && s.teacher_id && String(s.teacher_id) === String(teacherId)) {
+                const tName   = (s.teacher   && s.teacher.name)  ? s.teacher.name   : 'this teacher';
+                const subName = (s.subject   && s.subject.name)  ? s.subject.name   : 'a subject';
+                const secName = (s.section   && s.section.name)  ? s.section.name   : 'a section';
+                conflicts.push(`Teacher conflict: ${tName} is already teaching ${subName} (${secName}) on ${dayOfWeek} ${sStart}–${sEnd}.`);
+            }
+
+            if (roomVal && s.room && s.room.trim() === roomVal.trim()) {
+                const subName = (s.subject && s.subject.name) ? s.subject.name : 'a subject';
+                const secName = (s.section && s.section.name) ? s.section.name : 'a section';
+                conflicts.push(`Room conflict: ${roomVal} is already used for ${subName} (${secName}) on ${dayOfWeek} ${sStart}–${sEnd}.`);
+            }
+
+            if (String(s.section_id) === String(sectionId)) {
+                const subName = (s.subject && s.subject.name) ? s.subject.name : 'a subject';
+                const secName = (s.section && s.section.name) ? s.section.name : 'this section';
+                conflicts.push(`Section conflict: ${secName} already has ${subName} scheduled on ${dayOfWeek} ${sStart}–${sEnd}.`);
+            }
+        });
+
+        return conflicts;
+    }
+
+    // Drag-and-drop: move an existing schedule entry to a different
+    // day/time slot on the grid. Builds the update request directly from
+    // the entry's own cached data (section, subject, teacher, room, status)
+    // rather than the edit modal's fields, since the modal's room dropdown
+    // is populated dynamically per grade/section and isn't guaranteed to
+    // already contain the right options when the modal itself isn't open.
+    function _handleScheduleDrop(entry, newDay, newStart, newEnd, grade, sectionId, term) {
+        const sameSlot = entry.day_of_week === newDay
+            && (entry.start_time || '').substring(0, 5) === newStart
+            && (entry.end_time || '').substring(0, 5) === newEnd;
+        if (sameSlot) return;
+
+        // Scoped to the same section only — when viewing "All Sections",
+        // _scheduleCache holds every section's entries, and a different
+        // section already having a class at this day/time isn't actually
+        // a conflict for *this* one (that's what _findScheduleConflicts'
+        // room/teacher checks are for; section-double-booking there also
+        // already checks same-section only).
+        const occupied = _scheduleCache.find(s => {
+            if (String(s.id) === String(entry.id)) return false;
+            if (String(s.section_id) !== String(entry.section_id)) return false;
+            const sStart = (s.start_time || '').substring(0, 5);
+            const sEnd   = (s.end_time   || '').substring(0, 5);
+            return s.day_of_week === newDay && sStart === newStart && sEnd === newEnd;
+        });
+        if (occupied) {
+            showCustomAlert('warning', 'Slot Occupied', 'That time slot already has a class scheduled. Drag it onto an empty slot, or edit/delete the existing one first.');
+            return;
+        }
+
+        const conflicts = _findScheduleConflicts(
+            entry.section_id, entry.teacher_id, entry.room || '', newDay, newStart, newEnd, entry.id
+        );
+
+        const doMove = () => _submitScheduleDrop(entry, newDay, newStart, newEnd, conflicts);
+
+        if (conflicts.length > 0) {
+            document.getElementById('scheduleConflictConfirmMessage').innerHTML =
+                conflicts.map(c => c.replace(/</g, '&lt;')).join('<br>');
+            scheduleConflictConfirmCallback = doMove;
+            new bootstrap.Modal(document.getElementById('scheduleConflictConfirmModal')).show();
+            return;
+        }
+
+        doMove();
+    }
+
+    function _submitScheduleDrop(entry, newDay, newStart, newEnd, preSaveConflicts) {
+        const body = {
+            section_id: entry.section_id,
+            subject_id: entry.subject_id,
+            teacher_id: entry.teacher_id || null,
+            day_of_week: newDay,
+            term: entry.term,
+            start_time: newStart,
+            end_time: newEnd,
+            room: entry.room || '',
+            is_active: !!entry.is_active,
+        };
+
+        fetch(`/admin/schedules/${entry.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+            body: JSON.stringify(body),
+        })
+        .then(async r => {
+            const data = await r.json();
+            if (!r.ok) {
+                const msg = data.message || Object.values(data.errors || {}).flat().join('\n') || 'Failed to move schedule.';
+                showCustomAlert('error', 'Error', msg);
+                loadScheduleGrid();
+                return;
+            }
+            const serverReasons = data.conflict_reasons || [];
+            const allReasons = serverReasons.length ? serverReasons : preSaveConflicts;
+            if (data.has_conflict || allReasons.length) {
+                showCustomAlert('warning', 'Moved with a Schedule Conflict', 'Schedule moved, but it overlaps with another entry:\n' + allReasons.join('\n'));
+            } else {
+                showCustomAlert('success', 'Moved!', 'Schedule moved to the new slot.');
+            }
+            loadScheduleGrid();
+        })
+        .catch(err => {
+            console.error('_submitScheduleDrop() failed:', err);
+            showCustomAlert('error', 'Error', 'Failed to move schedule: ' + (err && err.message ? err.message : 'network or server error.'));
+            loadScheduleGrid();
+        });
+    }
+
     function saveSchedule() {
       try {
 
@@ -17511,41 +17680,7 @@ function openWalkInEnrollmentModal() {
         // Conflicts no longer silently block saving — if any are found, ask
         // for confirmation first ("Save Anyway"); the actual save request
         // only fires once the user confirms (or immediately, if clean).
-        const conflicts = [];
-        if (_scheduleCache && _scheduleCache.length && startTime && endTime) {
-            _scheduleCache.forEach(s => {
-                // Skip the current entry when editing
-                if (id && String(s.id) === String(id)) return;
-                // Must be same day to conflict
-                if (s.day_of_week !== dayOfWeek) return;
-                const sStart = (s.start_time || '').substring(0, 5);
-                const sEnd   = (s.end_time   || '').substring(0, 5);
-                if (!sStart || !sEnd) return;
-                if (!_timesOverlap(startTime, endTime, sStart, sEnd)) return;
-
-                // Teacher double-booked
-                if (teacherId && s.teacher_id && String(s.teacher_id) === String(teacherId)) {
-                    const tName   = (s.teacher   && s.teacher.name)  ? s.teacher.name   : 'this teacher';
-                    const subName = (s.subject   && s.subject.name)  ? s.subject.name   : 'a subject';
-                    const secName = (s.section   && s.section.name)  ? s.section.name   : 'a section';
-                    conflicts.push(`Teacher conflict: ${tName} is already teaching ${subName} (${secName}) on ${dayOfWeek} ${sStart}–${sEnd}.`);
-                }
-
-                // Room double-booked
-                if (roomVal && s.room && s.room.trim() === roomVal.trim()) {
-                    const subName = (s.subject && s.subject.name) ? s.subject.name : 'a subject';
-                    const secName = (s.section && s.section.name) ? s.section.name : 'a section';
-                    conflicts.push(`Room conflict: ${roomVal} is already used for ${subName} (${secName}) on ${dayOfWeek} ${sStart}–${sEnd}.`);
-                }
-
-                // Section double-booked
-                if (String(s.section_id) === String(sectionId)) {
-                    const subName = (s.subject && s.subject.name) ? s.subject.name : 'a subject';
-                    const secName = (s.section && s.section.name) ? s.section.name : 'this section';
-                    conflicts.push(`Section conflict: ${secName} already has ${subName} scheduled on ${dayOfWeek} ${sStart}–${sEnd}.`);
-                }
-            });
-        }
+        const conflicts = _findScheduleConflicts(sectionId, teacherId, roomVal, dayOfWeek, startTime, endTime, id);
 
         if (conflicts.length > 0) {
             document.getElementById('scheduleConflictConfirmMessage').innerHTML =

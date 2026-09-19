@@ -7,7 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/css/dashboard.css">
+    <link rel="stylesheet" href="/css/dashboard.css?v={{ filemtime(public_path('css/dashboard.css')) }}">
     <link rel="stylesheet" href="/css/global-scrollbar.css">
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
     <style>
@@ -223,6 +223,11 @@
             transition: background 0.3s;
         }
         .pay-step-line.done { background: #28a745; }
+        @media (max-width: 480px) {
+            .pay-step-label { font-size: 10px; }
+            .pay-step-num { width: 26px; height: 26px; font-size: 11px; }
+            .pay-step-line { margin: 0 4px; }
+        }
 
         /* Payment Option Cards */
         .payment-option-card {
@@ -470,6 +475,9 @@
 
 {{-- TOPBAR --}}
 <div class="dash-topbar">
+    <button type="button" class="sidebar-toggle-btn" onclick="toggleMobileSidebar()" aria-label="Menu">
+        <i class="bi bi-list"></i>
+    </button>
     <div class="topbar-brand">
         <div class="brand-logos">
             {{--  
@@ -595,6 +603,8 @@
         </form>
     </div>
 </div>
+
+<div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeMobileSidebar()"></div>
 
 {{-- MAIN CONTENT --}}
 <div class="dash-main" style="padding:0;">
@@ -1445,13 +1455,14 @@
                 </div>
             </div>
 
+            <div class="mobile-scroll-hint"><i class="bi bi-arrow-left-right"></i> Swipe to see more columns</div>
             <div style="overflow-x:auto;">
                 <table class="dash-table" id="gradesTable">
                     <thead>
                         <tr>
                             <th style="width:80px;">Code</th>
-                            <th>Subject</th>
-                            <th>Teacher</th>
+                            <th style="min-width:200px;">Subject</th>
+                            <th style="min-width:160px;">Teacher</th>
                             <th style="text-align:center;width:110px;">Final Grade</th>
                             <th style="text-align:center;width:160px;">Remarks</th>
                         </tr>
@@ -1480,6 +1491,7 @@
             <div class="content-card-header">
                 <h6 style="margin:0;"><i class="bi bi-sun-fill me-1" style="color:#f5a623;"></i> My Summer Class</h6>
             </div>
+            <div class="mobile-scroll-hint"><i class="bi bi-arrow-left-right"></i> Swipe to see more columns</div>
             <div style="overflow-x:auto;">
                 <table class="dash-table">
                     <thead>
@@ -1649,15 +1661,16 @@
 
             {{-- Schedule Table --}}
             <div class="content-card" id="scheduleTableCard">
+                <div class="mobile-scroll-hint"><i class="bi bi-arrow-left-right"></i> Swipe to see more columns</div>
                 <div style="overflow-x:auto;">
                     <table class="dash-table" id="scheduleTable">
                         <thead>
                             <tr>
                                 <th style="width:110px;">Day</th>
                                 <th style="width:150px;">Time</th>
-                                <th>Subject</th>
+                                <th style="min-width:200px;">Subject</th>
                                 <th style="width:110px;">Room</th>
-                                <th>Teacher</th>
+                                <th style="min-width:160px;">Teacher</th>
                             </tr>
                         </thead>
                         <tbody id="scheduleTableBody">
@@ -2170,7 +2183,7 @@
             {{-- Single bulk upload form --}}
             <form method="POST" action="{{ route('student.documents.upload.all') }}" enctype="multipart/form-data" id="bulk-doc-form">
                 @csrf
-                <div style="padding:18px;display:grid;grid-template-columns:repeat(2,1fr);gap:14px;">
+                <div class="doc-upload-grid" style="padding:18px;display:grid;grid-template-columns:repeat(2,1fr);gap:14px;">
                     @foreach($enrollDocTypes as $docType => $docInfo)
                         @php
                             $doc    = $enrollAllDocs->get($docType);
@@ -2593,7 +2606,7 @@
                 </div>
                 <div style="padding:20px;">
                     {{-- Fee stats --}}
-                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">
+                    <div class="fee-stat-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">
                         <div style="background:#e3f2fd;border-radius:10px;padding:14px;text-align:center;">
                             <div style="font-size:11px;color:#1565c0;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Total Fee</div>
                             <div style="font-size:18px;font-weight:700;color:#1565c0;">₱{{ number_format($pmtTotal,2) }}</div>
@@ -3051,7 +3064,7 @@
                 <div class="modal-body" style="padding:24px; background:#f8faff;">
 
                     {{-- Summary stats --}}
-                    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:20px;">
+                    <div class="fee-stat-grid" style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:20px;">
                         <div style="background:#fff; border-radius:10px; padding:14px; text-align:center; box-shadow:0 1px 4px rgba(0,0,0,.06);">
                             <div style="font-size:11px; color:var(--muted); font-weight:600; text-transform:uppercase; margin-bottom:4px;">Total Fee</div>
                             <div style="font-size:17px; font-weight:700; color:var(--blue);">₱{{ number_format($enrollment->total_fee ?? 0, 2) }}</div>
@@ -3858,7 +3871,17 @@
         display.textContent = age >= 0 ? age + ' yrs old' : '—';
     }
 
+    function toggleMobileSidebar() {
+        document.querySelector('.dash-sidebar').classList.toggle('mobile-open');
+        document.getElementById('sidebarBackdrop').classList.toggle('show');
+    }
+    function closeMobileSidebar() {
+        document.querySelector('.dash-sidebar').classList.remove('mobile-open');
+        document.getElementById('sidebarBackdrop').classList.remove('show');
+    }
+
     function showSection(name) {
+        closeMobileSidebar();
         sections.forEach(s => {
             const el = document.getElementById('section-' + s);
             if (el) el.style.display = s === name ? '' : 'none';

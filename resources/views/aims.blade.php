@@ -8,12 +8,12 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
-    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1780250000">
+    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1789758077">
     <style>
         body { font-family: 'Open Sans', sans-serif; -webkit-font-smoothing: antialiased; }
 
         .aims-hero {
-            background: linear-gradient(135deg, #0f2549 0%, #1a3a6c 60%, #1e4d8c 100%);
+            background: #1a3a6c;
             padding: 72px 0 60px;
             position: relative;
             overflow: hidden;
@@ -26,7 +26,7 @@
         .aims-badge {
             display: inline-flex; align-items: center; gap: 8px;
             background: rgba(197,160,89,.18); border: 1px solid rgba(197,160,89,.4);
-            color: #c5a059; padding: 6px 18px; border-radius: 20px;
+            color: #c5a059; padding: 6px 18px; border-radius: 4px;
             font-size: 11px; font-weight: 700; letter-spacing: 2px;
             text-transform: uppercase; margin-bottom: 18px;
         }
@@ -58,16 +58,33 @@
         }
 
         .role-card {
-            background: #fff; border-radius: 16px; padding: 28px 24px;
-            height: 100%; border: 1.5px solid #e8edf5;
-            box-shadow: 0 2px 14px rgba(26,58,108,.06);
-            transition: transform .2s, box-shadow .2s;
+            background: #fff; border-radius: 8px; padding: 24px 22px;
+            height: 100%; border: 1px solid #e2e8f0;
+            transition: border-color .2s;
         }
-        .role-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(26,58,108,.14); }
+        .role-card:hover { border-color: #1a3a6c; }
         .role-icon {
-            width: 56px; height: 56px; border-radius: 14px;
+            width: 30px; height: 30px;
             display: flex; align-items: center; justify-content: center;
-            font-size: 26px; margin-bottom: 16px; flex-shrink: 0;
+            font-size: 16px; flex-shrink: 0;
+            background: transparent !important;
+        }
+        .role-preview {
+            width: 100%; height: 130px;
+            border-radius: 6px; overflow: hidden;
+            margin-bottom: 16px; border: 1px solid #e2e8f0;
+            background: #f1f5f9; position: relative;
+        }
+        .role-preview img {
+            width: 100%; height: 100%;
+            object-fit: cover; object-position: top left;
+            display: block;
+        }
+        .role-preview .role-icon {
+            position: absolute; bottom: 8px; right: 8px;
+            width: 30px; height: 30px; border-radius: 6px;
+            font-size: 14px; margin: 0;
+            background: rgba(255,255,255,.92) !important;
         }
         .role-card h5 { font-size: 15px; font-weight: 800; color: #1a3a6c; margin-bottom: 8px; }
         .role-card p { font-size: 12.5px; color: #64748b; line-height: 1.7; margin-bottom: 14px; }
@@ -83,7 +100,7 @@
         }
         .how-step:last-child { border-bottom: none; }
         .step-num {
-            width: 40px; height: 40px; border-radius: 10px;
+            width: 40px; height: 40px; border-radius: 6px;
             background: #1a3a6c; color: #fff;
             display: flex; align-items: center; justify-content: center;
             font-size: 16px; font-weight: 800; flex-shrink: 0;
@@ -91,7 +108,7 @@
         .step-num.gold { background: #c5a059; color: #1a3a6c; }
 
         .faq-item {
-            border: 1.5px solid #e8edf5; border-radius: 12px;
+            border: 1px solid #e2e8f0; border-radius: 6px;
             margin-bottom: 10px; overflow: hidden;
         }
         .faq-q {
@@ -249,12 +266,12 @@
                     The official digital platform of IEMELIF Learning Center — connecting students, teachers, and administrators in one secure, easy-to-use system designed for the ILC community.
                 </p>
                 <div style="display:flex;gap:12px;flex-wrap:wrap;">
-                    <a href="{{ route('login') }}" style="display:inline-flex;align-items:center;gap:8px;background:#c5a059;color:#1a3a6c;font-weight:800;font-size:13px;padding:13px 30px;border-radius:10px;text-decoration:none;transition:background .2s,transform .15s;"
+                    <a href="{{ route('login') }}" style="display:inline-flex;align-items:center;gap:8px;background:#c5a059;color:#1a3a6c;font-weight:800;font-size:13px;padding:13px 30px;border-radius:6px;text-decoration:none;transition:background .2s,transform .15s;"
                        onmouseover="this.style.background='#d4b06a';this.style.transform='translateY(-2px)';"
                        onmouseout="this.style.background='#c5a059';this.style.transform='translateY(0)';">
                         <i class="bi bi-box-arrow-in-right" style="font-size:16px;"></i> Login to AIMS
                     </a>
-                    <a href="{{ route('admission') }}" style="display:inline-flex;align-items:center;gap:8px;background:transparent;color:#fff;font-weight:700;font-size:13px;padding:13px 28px;border-radius:10px;text-decoration:none;border:1.5px solid rgba(255,255,255,.4);transition:background .2s;"
+                    <a href="{{ route('admission') }}" style="display:inline-flex;align-items:center;gap:8px;background:transparent;color:#fff;font-weight:700;font-size:13px;padding:13px 28px;border-radius:6px;text-decoration:none;border:1.5px solid rgba(255,255,255,.4);transition:background .2s;"
                        onmouseover="this.style.background='rgba(255,255,255,.1)';"
                        onmouseout="this.style.background='transparent';">
                         <i class="bi bi-person-plus" style="font-size:15px;"></i> Enroll Now
@@ -262,27 +279,15 @@
                 </div>
             </div>
             <div class="col-lg-5">
-                <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:20px;padding:28px;">
-                    <p style="color:rgba(255,255,255,.5);font-size:10px;letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;">System Overview</p>
-                    @foreach([
-                        ['bi-person-fill','#60a5fa','Student Portal','View grades, schedule & payments'],
-                        ['bi-person-workspace','#4ade80','Teacher Portal','Grades, attendance & announcements'],
-                        ['bi-shield-check','#fbbf24','Admin Dashboard','Enrollments, sections & reports'],
-                        ['bi-cash-coin','#f9a8d4','Finance & Cashier','Payments, fees & collections'],
-                    ] as [$icon,$color,$title,$desc])
-                    <div style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.07);">
-                        <div style="width:36px;height:36px;border-radius:9px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                            <i class="bi {{ $icon }}" style="font-size:16px;color:{{ $color }};"></i>
-                        </div>
-                        <div>
-                            <p style="margin:0;color:#fff;font-size:13px;font-weight:700;">{{ $title }}</p>
-                            <p style="margin:0;color:rgba(255,255,255,.5);font-size:11px;">{{ $desc }}</p>
-                        </div>
-                        <i class="bi bi-check-circle-fill ms-auto" style="color:#4ade80;font-size:14px;"></i>
+                <div style="background:#1e2530;border-radius:8px;padding:10px 10px 0;box-shadow:0 12px 28px rgba(0,0,0,.25);transform:rotate(-1deg);">
+                    <div style="display:flex;gap:6px;padding:2px 6px 10px;">
+                        <span style="width:10px;height:10px;border-radius:50%;background:#ff5f57;display:block;"></span>
+                        <span style="width:10px;height:10px;border-radius:50%;background:#febc2e;display:block;"></span>
+                        <span style="width:10px;height:10px;border-radius:50%;background:#28c840;display:block;"></span>
                     </div>
-                    @endforeach
-                    <p style="margin:14px 0 0;text-align:center;color:rgba(255,255,255,.35);font-size:11px;">All portals run on the AIMS platform</p>
+                    <img src="{{ asset('images/aims-preview/student-portal.png') }}" alt="Student Portal in AIMS" style="width:100%;border-radius:6px 6px 0 0;display:block;">
                 </div>
+                <p style="margin:14px 0 0;text-align:center;color:rgba(255,255,255,.4);font-size:11px;">A real look at the Student Portal — no mockups, this is the actual system.</p>
             </div>
         </div>
     </div>
@@ -292,8 +297,7 @@
 <section style="background:#f6f8fb;padding:64px 0;">
     <div class="container">
         <div style="text-align:center;margin-bottom:44px;">
-            <p style="font-size:11px;font-weight:700;color:#c5a059;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Who Can Use AIMS</p>
-            <h2 class="aims-section-title">Built for Every ILC Role</h2>
+            <h2 class="aims-section-title">Who Uses AIMS?</h2>
             <div class="aims-divider mx-auto"></div>
             <p style="font-size:13.5px;color:#64748b;max-width:520px;margin:0 auto;">Each user type has a dedicated portal with tools and features designed specifically for their needs.</p>
         </div>
@@ -302,8 +306,11 @@
             {{-- Student --}}
             <div class="col-lg-3 col-md-6">
                 <div class="role-card">
-                    <div class="role-icon" style="background:#eff6ff;">
-                        <i class="bi bi-person-fill" style="color:#1a3a6c;"></i>
+                    <div class="role-preview">
+                        <img src="{{ asset('images/aims-preview/student-portal.png') }}" alt="Student Portal preview">
+                        <div class="role-icon" style="background:#eff6ff;">
+                            <i class="bi bi-person-fill" style="color:#1a3a6c;"></i>
+                        </div>
                     </div>
                     <h5>Students</h5>
                     <p>Access everything about your school life — grades, schedule, payments, and enrollment status — anytime from any device.</p>
@@ -316,8 +323,11 @@
             {{-- Teacher --}}
             <div class="col-lg-3 col-md-6">
                 <div class="role-card">
-                    <div class="role-icon" style="background:#f0fdf4;">
-                        <i class="bi bi-person-workspace" style="color:#16a34a;"></i>
+                    <div class="role-preview">
+                        <img src="{{ asset('images/aims-preview/teacher-portal.png') }}" alt="Teacher Portal preview">
+                        <div class="role-icon" style="background:#f0fdf4;">
+                            <i class="bi bi-person-workspace" style="color:#16a34a;"></i>
+                        </div>
                     </div>
                     <h5>Teachers</h5>
                     <p>Manage your classes efficiently — enter grades, take attendance, post announcements, and schedule meetings with parents.</p>
@@ -330,8 +340,11 @@
             {{-- Admin --}}
             <div class="col-lg-3 col-md-6">
                 <div class="role-card">
-                    <div class="role-icon" style="background:#fffbeb;">
-                        <i class="bi bi-shield-check" style="color:#d97706;"></i>
+                    <div class="role-preview">
+                        <img src="{{ asset('images/aims-preview/admin-portal.png') }}" alt="Admin Dashboard preview">
+                        <div class="role-icon" style="background:#fffbeb;">
+                            <i class="bi bi-shield-check" style="color:#d97706;"></i>
+                        </div>
                     </div>
                     <h5>Administrators</h5>
                     <p>Full control over school operations — enrollments, sections, teacher assignments, documents, and school-wide data.</p>
@@ -344,8 +357,11 @@
             {{-- Finance --}}
             <div class="col-lg-3 col-md-6">
                 <div class="role-card">
-                    <div class="role-icon" style="background:#fdf4ff;">
-                        <i class="bi bi-cash-coin" style="color:#9333ea;"></i>
+                    <div class="role-preview">
+                        <img src="{{ asset('images/aims-preview/finance-portal.png') }}" alt="Cashier Dashboard preview">
+                        <div class="role-icon" style="background:#fdf4ff;">
+                            <i class="bi bi-cash-coin" style="color:#9333ea;"></i>
+                        </div>
                     </div>
                     <h5>Finance &amp; Cashier</h5>
                     <p>Handle all tuition-related operations — from walk-in cash payments to online Xendit payment links and financial reports.</p>
@@ -366,8 +382,7 @@
 
             {{-- How to access --}}
             <div class="col-lg-6">
-                <p style="font-size:11px;font-weight:700;color:#c5a059;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Getting Started</p>
-                <h2 class="aims-section-title">How to Access AIMS</h2>
+                <h2 class="aims-section-title">Getting Your AIMS Account</h2>
                 <div class="aims-divider"></div>
 
                 <div class="how-step">
@@ -399,7 +414,7 @@
                     </div>
                 </div>
 
-                <a href="{{ route('login') }}" style="display:inline-flex;align-items:center;gap:8px;background:#1a3a6c;color:#fff;font-weight:700;font-size:13px;padding:12px 28px;border-radius:10px;text-decoration:none;margin-top:24px;transition:background .2s;"
+                <a href="{{ route('login') }}" style="display:inline-flex;align-items:center;gap:8px;background:#1a3a6c;color:#fff;font-weight:700;font-size:13px;padding:12px 28px;border-radius:6px;text-decoration:none;margin-top:24px;transition:background .2s;"
                    onmouseover="this.style.background='#2471a3';"
                    onmouseout="this.style.background='#1a3a6c';">
                     <i class="bi bi-box-arrow-in-right"></i> Go to Login
@@ -408,7 +423,6 @@
 
             {{-- FAQ --}}
             <div class="col-lg-6">
-                <p style="font-size:11px;font-weight:700;color:#c5a059;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">Common Questions</p>
                 <h2 class="aims-section-title">Frequently Asked Questions</h2>
                 <div class="aims-divider"></div>
 
@@ -434,25 +448,34 @@
     </div>
 </section>
 
-{{-- CTA Banner --}}
-<section style="background:linear-gradient(135deg,#0f2549,#1a3a6c);padding:56px 0;">
-    <div class="container" style="text-align:center;">
-        <div style="width:64px;height:64px;background:rgba(197,160,89,.15);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
-            <i class="bi bi-mortarboard-fill" style="font-size:28px;color:#c5a059;"></i>
-        </div>
-        <h2 style="color:#fff;font-size:26px;font-weight:800;margin-bottom:10px;">Ready to access <span style="color:#c5a059;">AIMS</span>?</h2>
-        <p style="color:rgba(255,255,255,.7);font-size:14px;max-width:480px;margin:0 auto 30px;line-height:1.7;">Log in using your school email and password. First time? Complete your enrollment to get started.</p>
-        <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;">
-            <a href="{{ route('login') }}" style="display:inline-flex;align-items:center;gap:8px;background:#c5a059;color:#1a3a6c;font-weight:800;font-size:13px;padding:13px 32px;border-radius:10px;text-decoration:none;transition:background .2s,transform .15s;"
-               onmouseover="this.style.background='#d4b06a';this.style.transform='translateY(-2px)';"
-               onmouseout="this.style.background='#c5a059';this.style.transform='translateY(0)';">
-                <i class="bi bi-box-arrow-in-right"></i> Login to AIMS
-            </a>
-            <a href="{{ route('admission') }}" style="display:inline-flex;align-items:center;gap:8px;background:transparent;color:#fff;font-weight:700;font-size:13px;padding:13px 28px;border-radius:10px;text-decoration:none;border:1.5px solid rgba(255,255,255,.35);transition:background .2s;"
-               onmouseover="this.style.background='rgba(255,255,255,.1)';"
-               onmouseout="this.style.background='transparent';">
-                <i class="bi bi-person-plus"></i> Start Enrollment
-            </a>
+{{-- Closing banner --}}
+<section style="background:#1a3a6c;padding:56px 0;">
+    <div class="container">
+        <div class="row align-items-center g-4">
+            <div class="col-lg-7">
+                <h2 style="color:#fff;font-size:26px;font-weight:800;margin-bottom:10px;">One login. Everything about your child's school life.</h2>
+                <p style="color:rgba(255,255,255,.7);font-size:14px;max-width:480px;margin:0 0 26px;line-height:1.7;">Log in using your school email and password. First time? Complete your enrollment and your AIMS account is created automatically.</p>
+                <div style="display:flex;gap:14px;flex-wrap:wrap;">
+                    <a href="{{ route('login') }}" style="display:inline-flex;align-items:center;gap:8px;background:#c5a059;color:#1a3a6c;font-weight:800;font-size:13px;padding:13px 32px;border-radius:6px;text-decoration:none;transition:background .2s,transform .15s;"
+                       onmouseover="this.style.background='#d4b06a';this.style.transform='translateY(-2px)';"
+                       onmouseout="this.style.background='#c5a059';this.style.transform='translateY(0)';">
+                        <i class="bi bi-box-arrow-in-right"></i> Login to AIMS
+                    </a>
+                    <a href="{{ route('admission') }}" style="display:inline-flex;align-items:center;gap:8px;background:transparent;color:#fff;font-weight:700;font-size:13px;padding:13px 28px;border-radius:6px;text-decoration:none;border:1.5px solid rgba(255,255,255,.35);transition:background .2s;"
+                       onmouseover="this.style.background='rgba(255,255,255,.1)';"
+                       onmouseout="this.style.background='transparent';">
+                        <i class="bi bi-person-plus"></i> Start Enrollment
+                    </a>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                    <img src="{{ asset('images/aims-preview/student-portal.png') }}" alt="" style="width:100%;height:90px;object-fit:cover;object-position:top left;border-radius:8px;border:1px solid rgba(255,255,255,.15);">
+                    <img src="{{ asset('images/aims-preview/teacher-portal.png') }}" alt="" style="width:100%;height:90px;object-fit:cover;object-position:top left;border-radius:8px;border:1px solid rgba(255,255,255,.15);">
+                    <img src="{{ asset('images/aims-preview/admin-portal.png') }}" alt="" style="width:100%;height:90px;object-fit:cover;object-position:top left;border-radius:8px;border:1px solid rgba(255,255,255,.15);">
+                    <img src="{{ asset('images/aims-preview/finance-portal.png') }}" alt="" style="width:100%;height:90px;object-fit:cover;object-position:top left;border-radius:8px;border:1px solid rgba(255,255,255,.15);">
+                </div>
+            </div>
         </div>
     </div>
 </section>

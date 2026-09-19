@@ -27,7 +27,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
-    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1780380004">
+    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1789758077">
     <link rel="stylesheet" href="{{ asset('css/home.css') }}?v=1780380004">
     <style>
         /* Custom Scrollbar Design */
@@ -349,7 +349,7 @@ document.addEventListener('keydown', function(e) {
 .hero-divider {
     width: 60px;
     height: 3px;
-    background: linear-gradient(90deg, #c5a059, #f5d08a, #c5a059);
+    background: #c5a059;
     border-radius: 2px;
     margin: 0 auto 24px;
     animation: heroFadeUp .9s .1s ease both;
@@ -365,7 +365,7 @@ document.addEventListener('keydown', function(e) {
 
 .hero-btn-primary {
     padding: 13px 32px;
-    background: linear-gradient(135deg, #c5a059, #e8c97a);
+    background: #c5a059;
     color: #0f2451;
     border: none;
     border-radius: 40px;
@@ -529,7 +529,7 @@ document.addEventListener('keydown', function(e) {
 <style>
 /* ── Stats Bar ── */
 .stats-bar {
-    background: linear-gradient(135deg, #0f2451 0%, #1a3a6c 60%, #2471a3 100%);
+    background: #1a3a6c;
     padding: 0;
     border-bottom: 3px solid #c5a059;
 }
@@ -888,7 +888,7 @@ document.addEventListener('keydown', function(e) {
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 4px;
-    background: linear-gradient(90deg, #1a3a6c 0%, #c5a059 50%, #1a3a6c 100%);
+    background: #c5a059;
 }
 
 /* Column headers */
@@ -936,7 +936,7 @@ document.addEventListener('keydown', function(e) {
     position: absolute;
     bottom: 0; left: 0; right: 0;
     height: 2px;
-    background: linear-gradient(90deg, #1a3a6c, #c5a059);
+    background: #c5a059;
     transform: scaleX(0);
     transform-origin: left;
     transition: transform .3s ease;
@@ -1002,7 +1002,7 @@ document.addEventListener('keydown', function(e) {
 
 /* Announcements panel */
 .ann-panel {
-    background: linear-gradient(160deg, #f0f4fb 0%, #e8eef8 100%);
+    background: #eef1f8;
     border-radius: 16px;
     padding: 22px 20px 20px;
     border: 1.5px solid #dde4f0;
@@ -1028,7 +1028,7 @@ document.addEventListener('keydown', function(e) {
 }
 .announcement-card.alt { background: #f8fafd; }
 .ann-date-box {
-    background: linear-gradient(135deg, #1a3a6c 0%, #2471a3 100%);
+    background: #1a3a6c;
     border-radius: 8px;
     text-align: center;
     padding: 7px 10px;
@@ -1221,19 +1221,12 @@ document.addEventListener('keydown', function(e) {
 <style>
 /* ── Enhanced VMG Section ── */
 .vmg-section {
-    background: linear-gradient(135deg, #0a1628 0%, #1a3a6c 55%, #0f2451 100%);
+    background: #1a3a6c;
     padding: 68px 0 76px;
     position: relative;
     overflow: hidden;
     border-top: none;
-}
-.vmg-section::before {
-    content: '';
-    position: absolute; inset: 0;
-    background:
-        radial-gradient(circle at 15% 50%, rgba(197,160,89,.07) 0%, transparent 55%),
-        radial-gradient(circle at 85% 50%, rgba(197,160,89,.05) 0%, transparent 55%);
-    pointer-events: none;
+    border-bottom: 3px solid #c5a059;
 }
 .vmg-section-header { text-align: center; margin-bottom: 48px; position: relative; }
 .vmg-section-title {
@@ -1284,7 +1277,7 @@ document.addEventListener('keydown', function(e) {
 }
 .vmg-icon-box {
     width: 46px; height: 46px;
-    background: linear-gradient(135deg, #c5a059 0%, #e8c97a 100%);
+    background: #c5a059;
     border-radius: 10px;
     display: flex;
     align-items: center;

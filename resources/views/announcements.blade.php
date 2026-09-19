@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
 
-    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1780250000">
+    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1789758077">
     <link rel="stylesheet" href="{{ asset('css/announcements.css') }}?v=1780250000">   {{-- announcements page only --}}
 <style>
 :root { --bs-font-sans-serif: 'Open Sans', sans-serif; --bs-body-font-family: 'Open Sans', sans-serif; }
