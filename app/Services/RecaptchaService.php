@@ -27,10 +27,11 @@ class RecaptchaService
         }
 
         try {
-            $response = Http::timeout(30)
-                ->withoutVerifying() // Skip SSL verification for local dev
-                ->retry(3, 1000) // Retry 3 times with 1 second delay
-                ->asForm()
+            $http = Http::timeout(30)->retry(3, 1000); // Retry 3 times with 1 second delay
+            if (app()->environment('local', 'development')) {
+                $http = $http->withoutVerifying(); // Skip SSL verification for local dev only
+            }
+            $response = $http->asForm()
                 ->post('https://www.google.com/recaptcha/api/siteverify', [
                     'secret' => $secretKey,
                     'response' => $token,

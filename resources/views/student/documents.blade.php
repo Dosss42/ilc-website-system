@@ -203,7 +203,7 @@
                                                 <div class="text-end">
                                                     <div class="mb-2">{{ $document->status_badge }}</div>
                                                     <div class="btn-group btn-group-sm">
-                                                        <a href="{{ asset('storage/' . $document->file_path) }}"
+                                                        <a href="{{ route('documents.view', $document) }}"
                                                            class="btn btn-outline-primary" target="_blank" title="View">
                                                             <i class="bi bi-eye"></i>
                                                         </a>

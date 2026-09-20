@@ -82,7 +82,13 @@ class ReportController extends Controller
      */
     public function financialReport(Request $request)
     {
-        $query = Enrollment::whereNotNull('payment_status');
+        // whereHas('user') excludes enrollments whose linked student has been
+        // archived (soft-deleted) — User's own default query scope filters
+        // those out automatically, so nothing extra is needed here. Without
+        // this, an archived student's enrollment still counted toward these
+        // figures while the dashboard's "total students" tile already
+        // excluded them, making the numbers visibly disagree.
+        $query = Enrollment::whereNotNull('payment_status')->whereHas('user');
 
         if ($request->filled('date_from')) {
             $query->whereDate('updated_at', '>=', $request->date_from);
@@ -241,15 +247,18 @@ class ReportController extends Controller
                     'new_today' => User::where('role', 'student')->whereDate('created_at', $today)->count(),
                     'new_this_month' => User::where('role', 'student')->whereMonth('created_at', $thisMonth->month)->count(),
                 ],
+                // whereHas('user') excludes archived (soft-deleted) students
+                // from every figure below, matching the 'students.total' tile
+                // above, which already excludes them via User's default scope.
                 'enrollments' => [
-                    'total' => Enrollment::count(),
-                    'pending' => Enrollment::where('status', 'pending')->count(),
-                    'approved_this_month' => Enrollment::where('status', 'approved')->whereMonth('created_at', $thisMonth->month)->count(),
+                    'total' => Enrollment::whereHas('user')->count(),
+                    'pending' => Enrollment::whereHas('user')->where('status', 'pending')->count(),
+                    'approved_this_month' => Enrollment::whereHas('user')->where('status', 'approved')->whereMonth('created_at', $thisMonth->month)->count(),
                 ],
                 'finance' => [
-                    'collected_today' => Enrollment::where('payment_status', 'paid')->whereDate('updated_at', $today)->sum('payment_amount'),
-                    'collected_this_month' => Enrollment::where('payment_status', 'paid')->whereMonth('updated_at', $thisMonth->month)->sum('payment_amount'),
-                    'outstanding_balance' => Enrollment::sum('remaining_balance'),
+                    'collected_today' => Enrollment::whereHas('user')->where('payment_status', 'paid')->whereDate('updated_at', $today)->sum('payment_amount'),
+                    'collected_this_month' => Enrollment::whereHas('user')->where('payment_status', 'paid')->whereMonth('updated_at', $thisMonth->month)->sum('payment_amount'),
+                    'outstanding_balance' => Enrollment::whereHas('user')->sum('remaining_balance'),
                 ],
                 'grades' => [
                     'total_entries' => Grade::count(),

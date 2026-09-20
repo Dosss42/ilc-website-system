@@ -2218,7 +2218,7 @@
                                         <div style="font-size:10px;color:#4ade80;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ $doc->original_name }}</div>
                                     @endif
                                     <button type="button"
-                                        onclick="openDocViewer('{{ asset('storage/' . $doc->file_path) }}','{{ addslashes($doc->original_name ?? $docInfo['label']) }}','{{ $docInfo['label'] }}')"
+                                        onclick="openDocViewer('{{ route('documents.view', $doc) }}','{{ addslashes($doc->original_name ?? $docInfo['label']) }}','{{ $docInfo['label'] }}','{{ $doc->mime_type }}')"
                                         style="margin-top:8px;display:inline-flex;align-items:center;gap:5px;background:#fff;color:#16a34a;border:1.5px solid #86efac;border-radius:20px;padding:4px 14px;font-size:11px;font-weight:700;cursor:pointer;">
                                         <i class="bi bi-eye-fill"></i> View
                                     </button>
@@ -2233,7 +2233,7 @@
                                     @endif
                                     <div style="font-size:10px;color:#3b82f6;margin-top:4px;">Usually 1–3 business days</div>
                                     <button type="button"
-                                        onclick="openDocViewer('{{ asset('storage/' . $doc->file_path) }}','{{ addslashes($doc->original_name ?? $docInfo['label']) }}','{{ $docInfo['label'] }}')"
+                                        onclick="openDocViewer('{{ route('documents.view', $doc) }}','{{ addslashes($doc->original_name ?? $docInfo['label']) }}','{{ $docInfo['label'] }}','{{ $doc->mime_type }}')"
                                         style="margin-top:8px;display:inline-flex;align-items:center;gap:5px;background:#fff;color:#1d4ed8;border:1.5px solid #93c5fd;border-radius:20px;padding:4px 14px;font-size:11px;font-weight:700;cursor:pointer;">
                                         <i class="bi bi-eye-fill"></i> View
                                     </button>
@@ -5767,16 +5767,20 @@ document.addEventListener('keydown', function(e) {
 </div>
 
 <script>
-function openDocViewer(url, filename, label) {
+function openDocViewer(url, filename, label, mimeType) {
     document.getElementById('spDvTitle').textContent    = label    || 'Document';
     document.getElementById('spDvSubtitle').textContent = filename || '';
     document.getElementById('spDvDownload').href        = url;
     document.getElementById('spDvDownload').download    = filename || 'document';
     document.getElementById('spDvOpen').href            = url;
 
-    var ext     = (url.split('?')[0].split('.').pop() || '').toLowerCase();
-    var isImage = ['jpg','jpeg','png','gif','webp','bmp'].includes(ext);
-    var isPdf   = ext === 'pdf';
+    // Detect type from the server-provided mime type, not the URL — the
+    // authenticated document URL (/documents/{id}/view) has no file
+    // extension to sniff, unlike the old direct public-storage link.
+    mimeType    = (mimeType || '').toLowerCase();
+    var ext     = (filename.split('.').pop() || '').toLowerCase();
+    var isImage = mimeType.startsWith('image/') || ['jpg','jpeg','png','gif','webp','bmp'].includes(ext);
+    var isPdf   = mimeType === 'application/pdf' || ext === 'pdf';
 
     document.getElementById('spDvImgWrap').style.display = isImage ? 'block' : 'none';
     document.getElementById('spDvPdfWrap').style.display = isPdf   ? 'block' : 'none';

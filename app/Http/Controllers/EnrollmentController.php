@@ -350,14 +350,23 @@ class EnrollmentController extends Controller
                 'trace' => $e->getTraceAsString(),
                 'request' => $request->all()
             ]);
+
+            // Defense in depth against the rare race window between the
+            // duplicate-check above and this INSERT (two near-simultaneous
+            // submissions) — surface the same friendly message the primary
+            // check produces instead of a raw SQL error to the applicant.
+            $message = ($e instanceof \Illuminate\Database\QueryException && $e->getCode() === '23000')
+                ? 'You already have an enrollment application for S.Y. ' . ($schoolYear ?? '') . '.'
+                : 'Submission failed: ' . $e->getMessage();
+
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Submission failed: ' . $e->getMessage()
-                ], 500);
+                    'message' => $message
+                ], 422);
             }
             return redirect()->back()
-                ->with('error', 'Submission failed: ' . $e->getMessage())
+                ->with('error', $message)
                 ->withInput();
         }
     }
@@ -622,10 +631,19 @@ class EnrollmentController extends Controller
                 'trace' => $e->getTraceAsString(),
                 'request' => $request->all()
             ]);
+
+            // Defense in depth against the rare race window between the
+            // duplicate-check above and this INSERT — surface the same
+            // friendly message the primary check produces instead of a raw
+            // SQL error.
+            $message = ($e instanceof \Illuminate\Database\QueryException && $e->getCode() === '23000')
+                ? 'This student already has an enrollment application for S.Y. ' . ($schoolYear ?? '') . '. Please check the Enrollment Management section.'
+                : 'Submission failed: ' . $e->getMessage();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Submission failed: ' . $e->getMessage()
-            ], 500);
+                'message' => $message
+            ], 422);
         }
     }
 
@@ -1152,6 +1170,18 @@ class EnrollmentController extends Controller
      */
     public function approve(Enrollment $enrollment)
     {
+        // Only a fresh application makes sense to approve — approving an
+        // already-approved/enrolled enrollment a second time would reset
+        // enrolled_at and flip status back to 'approved' without touching
+        // the section/payment records that already moved on from it.
+        if ($enrollment->status !== 'pending') {
+            $message = "This enrollment is already {$enrollment->status} and can no longer be approved through this action.";
+            if (request()->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 409);
+            }
+            return redirect()->back()->with('error', $message);
+        }
+
         try {
             $studentData = $enrollment->student_data;
 
@@ -1370,6 +1400,18 @@ class EnrollmentController extends Controller
      */
     public function decline(Request $request, Enrollment $enrollment)
     {
+        // Only a fresh application makes sense to decline — an enrollment
+        // that already progressed past 'pending' (approved/enrolled/etc.)
+        // should be handled via changeEnrollmentStatus() instead, not
+        // silently overwritten here.
+        if ($enrollment->status !== 'pending') {
+            $message = "This enrollment is already {$enrollment->status} and can no longer be declined through this action.";
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 409);
+            }
+            return redirect()->back()->with('error', $message);
+        }
+
         $validated = $request->validate([
             'reason' => 'required|string|max:500',
             'storage' => 'nullable|string|max:50',
@@ -1449,290 +1491,28 @@ class EnrollmentController extends Controller
      */
     private function assignSection(Enrollment $enrollment, User $user)
     {
-        try {
-            $gradeLevel = $enrollment->grade_level;
-            $schoolYear = $enrollment->school_year ?? (now()->year . '-' . (now()->year + 1));
-
-            // Find the least-filled active section with available capacity.
-            // Uses the live section_student count (via withCount), not the
-            // current_enrollment column, which can drift — see Section::
-            // getLiveEnrollmentCountAttribute() / DATABASE_NORMALIZATION_PLAN.md Phase 1.
-            $section = \App\Models\Section::where('grade_level', $gradeLevel)
-                ->where('school_year', $schoolYear)
-                ->where('is_active', true)
-                ->withCount('students')
-                ->get()
-                ->filter(fn ($s) => $s->students_count < ($s->max_students ?? 30))
-                ->sortBy('students_count')
-                ->first();
-
-            if ($section) {
-                // Update enrollment with section name
-                $enrollment->update([
-                    'section' => $section->name,
-                ]);
-
-                // Add student to section_student pivot table
-                // Check if already exists to avoid duplicates
-                $existing = DB::table('section_student')
-                    ->where('section_id', $section->id)
-                    ->where('user_id', $user->id)
-                    ->first();
-
-                if (!$existing) {
-                    DB::table('section_student')->insert([
-                        'section_id' => $section->id,
-                        'user_id' => $user->id,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                }
-
-                Log::info("Student {$user->id} assigned to section {$section->name} (Grade: {$gradeLevel})");
-            } else {
-                // No section found - log warning but don't fail approval
-                Log::warning("No active section found for grade level: {$gradeLevel}, school year: {$schoolYear}");
-                
-                // Admin will need to create section first or assign manually
-                // This is expected behavior for new school years before sections are created
-            }
-        } catch (\Exception $e) {
-            Log::error("Section assignment error: " . $e->getMessage());
-            // Don't fail the entire approval process if section assignment fails
-            // Admin can assign section manually later
-        }
+        // Delegates to the single shared, capacity-aware implementation —
+        // see PaymentService::assignSectionForEnrollment() for why this used
+        // to be three independent (and inconsistently safe) copies.
+        \App\Services\PaymentService::assignSectionForEnrollment($enrollment);
     }
 
-    /**
-     * Update enrollment payment status
-     */
-    public function updatePayment(Request $request, Enrollment $enrollment)
-    {
-        $validated = $request->validate([
-            'payment_status' => 'required|in:pending,paid,partial',
-            'payment_amount' => 'nullable|numeric|min:0',
-            'payment_method' => 'nullable|in:gcash,cash',
-            'payment_reference' => 'nullable|string|max:255',
-            'payment_option' => 'nullable|in:A,B,C,D',
-            'payment_type' => 'nullable|in:full,installment',
-            'payment_breakdown.downpayment' => 'nullable|numeric',
-            'payment_breakdown.monthly' => 'nullable|numeric',
-            'payment_breakdown.total' => 'nullable|numeric',
-        ]);
+    // updatePayment() was removed — it was an independently-written second
+    // implementation of admin payment recording, shadowed by a duplicate
+    // route registration (see routes/web.php) that made it unreachable in
+    // production; the live path is Finance\DashboardController::
+    // processAdminPayment(). Confirmed zero references anywhere before
+    // removal. It also carried its own bugs (an undefined-array-key on
+    // payment_method for plan-only changes, and a phantom ₱0.00 payment
+    // audit record for the same case) that are moot now that it's gone.
 
-        $oldAmount = (float) ($enrollment->payment_amount ?? 0);
-        $action = $request->input('payment_action', 'set');
-
-        // plan-only: preserve existing amount, just update plan type + status
-        if ($action === 'plan-only') {
-            $newTotal = $oldAmount;
-        } elseif ($action === 'increment') {
-            $incomingAmount = (float) ($validated['payment_amount'] ?? 0);
-            $newTotal = $oldAmount + $incomingAmount;
-        } else {
-            $incomingAmount = isset($validated['payment_amount']) && $validated['payment_amount'] !== null
-                ? (float) $validated['payment_amount']
-                : $oldAmount;
-            $newTotal = $incomingAmount;
-        }
-
-        // Save payment option and breakdown if provided (admin payment modal sends these)
-        $paymentOption = $request->input('payment_option');
-        $breakdown = $request->input('payment_breakdown');
-
-        if ($paymentOption) {
-            $validated['payment_option'] = $paymentOption;
-            $validated['payment_type'] = $paymentOption === 'A' ? 'full' : 'installment';
-        } elseif (!empty($validated['payment_type'])) {
-            // plan-only with installment: payment_option stays as-is, but payment_type is updated
-        }
-        if ($breakdown) {
-            if (isset($breakdown['downpayment']) && $breakdown['downpayment'] !== '') {
-                $validated['downpayment_amount'] = $breakdown['downpayment'];
-            }
-            if (isset($breakdown['monthly']) && $breakdown['monthly'] !== '') {
-                $validated['monthly_amount'] = $breakdown['monthly'];
-            }
-            if (isset($breakdown['total']) && $breakdown['total'] !== '' && $breakdown['total'] > 0) {
-                $validated['total_fee'] = $breakdown['total'];
-            }
-        }
-
-        $totalFee = (float) ($enrollment->total_fee ?? ($breakdown['total'] ?? 0));
-        $remainingBalance = max(0, $totalFee - $newTotal);
-
-        // If balance is fully paid, override status to 'paid'
-        if ($remainingBalance <= 0 && $newTotal > 0) {
-            $validated['payment_status'] = 'paid';
-        }
-
-        $updateData = [
-            'payment_status'    => $validated['payment_status'],
-            'payment_amount'    => $newTotal,
-            'payment_method'    => $validated['payment_method'] ?? $enrollment->payment_method,
-            'payment_reference' => $validated['payment_reference'] ?? $enrollment->payment_reference,
-            'payment_updated_at' => now(),
-            'remaining_balance' => $remainingBalance,
-        ];
-
-        // Save payment breakdown fields if they were set above
-        if (isset($validated['payment_option'])) {
-            $updateData['payment_option'] = $validated['payment_option'];
-        }
-        if (isset($validated['downpayment_amount'])) {
-            $updateData['downpayment_amount'] = $validated['downpayment_amount'];
-        }
-        if (isset($validated['monthly_amount'])) {
-            $updateData['monthly_amount'] = $validated['monthly_amount'];
-        }
-        if (isset($validated['total_fee'])) {
-            $updateData['total_fee'] = $validated['total_fee'];
-        }
-        if (isset($validated['payment_type'])) {
-            $updateData['payment_type'] = $validated['payment_type'];
-        }
-
-        // Only advance schedule when total amount actually increased AND it's an installment
-        $effectiveMonthly = (float) ($enrollment->monthly_amount ?? $validated['monthly_amount'] ?? 0);
-        if ($newTotal > $oldAmount && $effectiveMonthly > 0 && $validated['payment_status'] !== 'paid') {
-            $nextDate = $enrollment->next_installment_date;
-            if (!$nextDate) {
-                $nextDate = now();
-            } else {
-                if ($nextDate->isPast()) {
-                    $nextDate = now();
-                }
-            }
-            $schedule = $enrollment->installment_schedule ?? 30;
-            $updateData['next_installment_date'] = $nextDate->copy()->addDays($schedule);
-            $updateData['installment_number'] = ($enrollment->installment_number ?? 0) + 1;
-        }
-
-        if ($validated['payment_status'] === 'paid') {
-            $updateData['next_installment_date'] = null;
-            $updateData['remaining_balance'] = 0;
-        }
-
-        // Check if this is the first payment (downpayment) - if so, mark as enrolled
-        $downpaymentAmount = (float) ($enrollment->downpayment_amount ?? $validated['downpayment_amount'] ?? 0);
-        $isFirstPayment = $oldAmount == 0 && $newTotal > 0;
-        $isDownpaymentPaid = $newTotal >= $downpaymentAmount && $downpaymentAmount > 0;
-        
-        // Advance enrollment status when admin makes a payment
-        // Admin payment implies approval, so pending → enrolled directly
-        if (in_array($enrollment->status, ['pending', 'approved']) && ($isFirstPayment || $isDownpaymentPaid || $validated['payment_status'] === 'paid')) {
-            if ($enrollment->status === 'pending') {
-                $updateData['approved_at'] = now();
-            }
-            $updateData['status'] = 'enrolled';
-            $updateData['enrolled_at'] = now();
-            
-            // Assign section only when student is officially enrolled (after payment)
-            if ($enrollment->user_id) {
-                $user = User::find($enrollment->user_id);
-                if ($user) {
-                    $this->assignSection($enrollment, $user);
-                }
-            }
-        }
-
-        $enrollment->update($updateData);
-
-        // Create a payment record in StudentDocument for admin finance management payments
-        $methodLabel = $validated['payment_method'] === 'gcash' ? 'GCash' : 'Cash';
-        StudentDocument::create([
-            'user_id'       => $enrollment->user_id,
-            'enrollment_id' => $enrollment->id,
-            'document_type' => 'payment_screenshot',
-            'file_path'     => null,
-            'original_name' => null,
-            'mime_type'     => null,
-            'file_size'     => null,
-            'description'   => 'Admin payment via ' . $methodLabel . ' - ₱' . number_format($incomingAmount, 2) . ($validated['payment_reference'] ? ' (Ref: ' . $validated['payment_reference'] . ')' : ''),
-            'status'        => 'approved',
-            'reviewed_by'   => Auth::id(),
-            'reviewed_at'   => now(),
-        ]);
-
-        // Create installment schedule records if this is an installment plan and they don't exist yet
-        $enrollment->refresh();
-        $isInstallment = $enrollment->payment_type === 'installment' || in_array($enrollment->payment_option, ['B', 'C', 'D']);
-        if ($isInstallment && $enrollment->monthly_amount > 0 && $enrollment->paymentInstallments()->count() === 0) {
-            // Fix missing payment_type for legacy data
-            if (!$enrollment->payment_type) {
-                $enrollment->update(['payment_type' => 'installment']);
-                $enrollment->refresh();
-            }
-            PaymentService::createInstallments($enrollment);
-
-            // Set next installment date to first pending installment
-            $firstInstallment = $enrollment->paymentInstallments()->orderBy('due_date')->first();
-            if ($firstInstallment && !$enrollment->next_installment_date) {
-                $enrollment->update(['next_installment_date' => $firstInstallment->due_date]);
-            }
-        }
-
-        if ($request->expectsJson()) {
-            return response()->json(['success' => true, 'message' => 'Payment updated successfully.']);
-        }
-
-        return redirect()->back()
-            ->with('success', 'Payment information updated successfully.');
-    }
-
-    /**
-     * Delete enrollment (admin only)
-     */
-    public function destroy(Enrollment $enrollment)
-    {
-        try {
-            // Delete physical document files from storage, then remove DB rows
-            $filePaths = DB::table('student_documents')
-                ->where('enrollment_id', $enrollment->id)
-                ->orWhere(function($q) use ($enrollment) {
-                    if ($enrollment->user_id) {
-                        $q->where('user_id', $enrollment->user_id);
-                    }
-                })
-                ->pluck('file_path')
-                ->filter()
-                ->toArray();
-
-            foreach ($filePaths as $path) {
-                if (Storage::disk('public')->exists($path)) {
-                    Storage::disk('public')->delete($path);
-                }
-            }
-
-            DB::table('student_documents')
-                ->where('enrollment_id', $enrollment->id)
-                ->orWhere(function($q) use ($enrollment) {
-                    if ($enrollment->user_id) {
-                        $q->where('user_id', $enrollment->user_id);
-                    }
-                })
-                ->delete();
-
-            // Delete associated student account if linked
-            if ($enrollment->user_id) {
-                $linkedUser = User::find($enrollment->user_id);
-                if ($linkedUser && $linkedUser->role === 'student') {
-                    $this->removeStudentFromSections($linkedUser->id);
-                    $linkedUser->enrollments()->delete();
-                    $linkedUser->delete();
-                }
-            }
-
-            $enrollment->delete();
-
-            return redirect()->route('admin.enrollments.index')
-                ->with('success', 'Enrollment record deleted successfully.');
-
-        } catch (\Exception $e) {
-            return redirect()->back()
-                ->with('error', 'Error deleting enrollment: ' . $e->getMessage());
-        }
-    }
+    // destroy() was removed — it cascaded a single-enrollment delete into
+    // hard-deleting the linked student's User account, every enrollment
+    // they've ever had, and (via DB cascade) their entire payment history,
+    // with no confirmation step. It had zero references anywhere (no route,
+    // no internal caller, no test) and existed only as a landmine for a
+    // future Route::delete(...) wired up without realizing what it did.
+    // Use deleteStudent() for the real, confirmation-gated archive flow.
 
     /**
      * Change section assignment for an enrollment
@@ -1911,6 +1691,17 @@ class EnrollmentController extends Controller
      */
     public function approveDocument(Request $request, StudentDocument $document)
     {
+        // Idempotency guard — a double-click, a network retry, or two staff
+        // members approving the same item within seconds would otherwise
+        // double-credit the payment amount below (mirrors the existing
+        // guard in deleteDocument(), which only allows acting on 'pending').
+        if ($document->status === 'approved') {
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'This document has already been approved.'], 409);
+            }
+            return redirect()->back()->with('error', 'This document has already been approved.');
+        }
+
         $document->update([
             'status' => 'approved',
             'reviewed_by' => Auth::id(),
@@ -1921,10 +1712,14 @@ class EnrollmentController extends Controller
 
         // If it's a payment screenshot, always process payment on approval
         if ($document->document_type === 'payment_screenshot' && $document->enrollment_id) {
-            $enrollment = Enrollment::find($document->enrollment_id);
-            if ($enrollment) {
+            if (Enrollment::where('id', $document->enrollment_id)->exists()) {
                 DB::beginTransaction();
                 try {
+                    // Row-locked re-fetch — see PaymentService::lockEnrollment()
+                    // — so a concurrent approval for this same enrollment
+                    // can't compute from the same stale payment_amount.
+                    $enrollment = \App\Services\PaymentService::lockEnrollment($document->enrollment_id);
+
                     // Get payment amount from linked installment or calculate from document
                     $paymentAmount = 0;
                     $installment = $document->paymentInstallment;
@@ -2100,8 +1895,8 @@ class EnrollmentController extends Controller
             }
 
             // Delete the document file if exists
-            if ($document->file_path && Storage::disk('public')->exists($document->file_path)) {
-                Storage::disk('public')->delete($document->file_path);
+            if ($document->file_path && Storage::disk('local')->exists($document->file_path)) {
+                Storage::disk('local')->delete($document->file_path);
             }
 
             // Soft delete the document
@@ -2171,7 +1966,14 @@ class EnrollmentController extends Controller
             ? [$enrollmentStatus]
             : ['approved', 'enrolled'];
 
+        // Scoped to the current school year — without this, every
+        // returning/re-enrolled student adds another row per year, so this
+        // query grew with all-time enrollment history instead of current
+        // enrollment count.
+        $schoolYear = Setting::get('current_school_year') ?: $this->getCurrentSchoolYear();
+
         $enrollmentQuery = Enrollment::whereNotNull('user_id')
+            ->where('school_year', $schoolYear)
             ->whereIn('status', $allowedStatuses);
 
         // Filter by payment status (supports comma-separated values)
@@ -2379,7 +2181,7 @@ class EnrollmentController extends Controller
             })
             ->pluck('file_path')->filter()->toArray();
         foreach ($filePaths as $path) {
-            if (Storage::disk('public')->exists($path)) Storage::disk('public')->delete($path);
+            if (Storage::disk('local')->exists($path)) Storage::disk('local')->delete($path);
         }
 
         // Delete profile photo
@@ -2837,14 +2639,34 @@ class EnrollmentController extends Controller
      */
     public function changeEnrollmentStatus(Request $request, Enrollment $enrollment)
     {
+        // 'enrolled' is deliberately not an allowed target here — that
+        // transition must only happen through the real payment flow
+        // (updatePayment() / processAdminPayment() / PaymentService), which
+        // enforces the actual payment requirement and assigns a section.
+        // This endpoint is for admin corrections (dropped, ghost,
+        // transferred, completed, declined, or reverting to pending/approved).
         $request->validate([
-            'status'  => 'required|in:pending,approved,enrolled,declined,completed,dropped,ghost,transferred',
+            'status'  => 'required|in:pending,approved,declined,completed,dropped,ghost,transferred',
             'remarks' => 'nullable|string|max:500',
         ]);
+
+        if ($enrollment->status === $request->status) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Status is already ' . ucfirst($request->status) . '.',
+            ]);
+        }
 
         $enrollment->update([
             'status' => $request->status,
         ]);
+
+        ActivityLogger::log(
+            'update',
+            "Changed enrollment status to {$request->status}" . ($request->remarks ? " ({$request->remarks})" : ''),
+            'Enrollment',
+            $enrollment->id
+        );
 
         return response()->json([
             'success' => true,

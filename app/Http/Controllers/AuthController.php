@@ -55,9 +55,12 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        // Account lockout: block after 5 failed attempts for 15 minutes
-        $lockKey    = 'login_attempts_' . md5($request->ip() . $request->email);
-        $unlockKey  = 'login_unlock_'   . md5($request->ip() . $request->email);
+        // Account lockout: block after 5 failed attempts for 15 minutes.
+        // Keyed by email only (not IP) — an IP-inclusive key lets an
+        // attacker rotate source IP for a fresh 5-attempt budget against
+        // the same target account every time.
+        $lockKey    = 'login_attempts_' . md5($request->email);
+        $unlockKey  = 'login_unlock_'   . md5($request->email);
         $attempts   = cache()->get($lockKey, 0);
 
         if ($attempts >= 5) {
@@ -115,6 +118,20 @@ class AuthController extends Controller
             \Log::info('User deactivated', ['user_id' => $user->id]);
             Auth::logout();
             return back()->withErrors(['email' => 'Your account is deactivated. Contact the administrator.']);
+        }
+
+        // Finance/cashier accounts use dedicated guards (Auth::guard('finance')
+        // / Auth::guard('cashier')) with their own sessions and dashboards —
+        // Auth::attempt() above only checked the default 'web' guard, which is
+        // blind to role, so a correct finance/cashier password would otherwise
+        // succeed here too and leave a stray 'web' session that finance./
+        // cashier.dashboard's middleware doesn't recognize. Send them to the
+        // right login page instead of leaving that dead end.
+        if (in_array($user->role, ['finance', 'cashier'])) {
+            $roleLabel = ucfirst($user->role);
+            Auth::logout();
+            return redirect()->route($user->role . '.login')
+                ->withErrors(['email' => "Please use the {$roleLabel} login page for this account."]);
         }
 
         // Block unverified emails (except for admin roles)

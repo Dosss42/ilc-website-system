@@ -4,12 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Grade;
+use App\Models\Section;
+use App\Traits\ChecksTeacherOwnership;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class GradeController extends Controller
 {
+    use ChecksTeacherOwnership;
+
     public function getStudentGrades(Request $request)
     {
         $user = Auth::user();
@@ -66,6 +70,7 @@ class GradeController extends Controller
         }
 
         $request->validate([
+            'section_id'            => 'required|exists:sections,id',
             'grades'                => 'required|array',
             'grades.*.student_id'  => 'required|exists:users,id',
             'grades.*.subject_id'  => 'nullable|exists:subjects,id',
@@ -73,6 +78,23 @@ class GradeController extends Controller
             'grades.*.grade'       => 'nullable|numeric|min:0|max:100',
             'grades.*.school_year' => 'nullable|string|max:20',
         ]);
+
+        $sectionId = (int) $request->section_id;
+
+        // Same ownership rule the web route (Teacher\DashboardController::
+        // saveGrades()) enforces — this endpoint previously only checked
+        // isTeacher(), letting any teacher account write a grade for any
+        // student in any subject.
+        $validStudentIds = Section::find($sectionId)?->students->pluck('id')->all() ?? [];
+
+        foreach ($request->grades as $gradeData) {
+            if (!in_array($gradeData['student_id'], $validStudentIds)) {
+                return response()->json(['success' => false, 'message' => 'One or more students are not members of this section.'], 403);
+            }
+            if (!$this->teacherOwnsSubjectInSection($user->id, $sectionId, $gradeData['subject_id'] ?? null)) {
+                return response()->json(['success' => false, 'message' => 'Not assigned to this subject in section.'], 403);
+            }
+        }
 
         DB::beginTransaction();
         try {

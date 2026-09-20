@@ -662,34 +662,109 @@ class PaymentService
             ]);
         }
 
-        if (in_array($enrollment->status, ['approved', 'pending']) && $totalPaid > 0) {
+        $threshold = self::requiredEnrollmentThreshold($enrollment);
+        $meetsThreshold = $threshold > 0 ? $totalPaid >= $threshold : $totalPaid > 0;
+        if (in_array($enrollment->status, ['approved', 'pending']) && $meetsThreshold) {
             $enrollment->update(['status' => 'enrolled', 'enrolled_at' => now()]);
+            self::assignSectionForEnrollment($enrollment);
+        }
+    }
 
+    /**
+     * The minimum payment required before an enrollment may officially
+     * become 'enrolled' — previously any nonzero payment (even ₱1) was
+     * treated as sufficient here and in Finance\DashboardController::
+     * updateEnrollmentPaymentStatus(), letting a token payment reserve a
+     * seat ahead of families paying the real required amount. Returns 0
+     * when the fee plan isn't known yet, so callers can fall back to their
+     * prior "any payment counts" behavior for that edge case rather than
+     * blocking enrollment entirely on an enrollment with no fee data.
+     */
+    public static function requiredEnrollmentThreshold(Enrollment $enrollment): float
+    {
+        $downpayment = (float) ($enrollment->downpayment_amount ?? 0);
+        if ($downpayment > 0) {
+            return $downpayment;
+        }
+        return (float) ($enrollment->total_fee ?? 0);
+    }
+
+    /**
+     * Single source of truth for "find an active section for this grade
+     * level/school year that still has room, and assign the student to it."
+     *
+     * Previously implemented independently three times: here, in
+     * Finance\DashboardController::updateEnrollmentPaymentStatus(), and in
+     * EnrollmentController::assignSection() — only the EnrollmentController
+     * copy actually respected each section's max_students capacity. The
+     * other two took the first matching section regardless of how full it
+     * already was, letting a section be silently over-filled through the
+     * most commonly-used payment paths (admin/finance recording, cashier
+     * cash, Xendit). All three now delegate here.
+     */
+    /**
+     * Re-fetch an Enrollment with a row lock, for the payment-mutation
+     * methods that read payment_amount/remaining_balance, compute a new
+     * absolute total in PHP, and write it back — not an atomic increment().
+     * Two staff members recording a payment for the same enrollment at
+     * nearly the same time could otherwise both compute from the same stale
+     * starting amount, and the second write would silently lose the first's
+     * payment. Must be called inside a DB transaction (same pattern already
+     * used correctly for PaymentTransaction rows in completeXenditPayment()/
+     * reconcileXenditInvoice()) — the lock is only held until that
+     * transaction commits or rolls back.
+     */
+    public static function lockEnrollment(int $enrollmentId): Enrollment
+    {
+        return Enrollment::where('id', $enrollmentId)->lockForUpdate()->firstOrFail();
+    }
+
+    public static function assignSectionForEnrollment(Enrollment $enrollment): void
+    {
+        try {
             $gradeLevel = $enrollment->grade_level ?? ($enrollment->student_data['grade_level'] ?? null);
             $schoolYear = $enrollment->school_year ?? (now()->year . '-' . (now()->year + 1));
 
-            if ($gradeLevel && $enrollment->user_id) {
-                $section = \App\Models\Section::where('grade_level', $gradeLevel)
-                    ->where('school_year', $schoolYear)
-                    ->where('is_active', true)
-                    ->first();
-
-                if ($section) {
-                    $enrollment->update(['section' => $section->name]);
-                    $exists = DB::table('section_student')
-                        ->where('section_id', $section->id)
-                        ->where('user_id', $enrollment->user_id)
-                        ->exists();
-                    if (!$exists) {
-                        DB::table('section_student')->insert([
-                            'section_id' => $section->id,
-                            'user_id'    => $enrollment->user_id,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
-                }
+            if (!$gradeLevel || !$enrollment->user_id) {
+                return;
             }
+
+            // Find the least-filled active section with available capacity.
+            // Uses the live section_student count (via withCount), not the
+            // current_enrollment column, which can drift.
+            $section = \App\Models\Section::where('grade_level', $gradeLevel)
+                ->where('school_year', $schoolYear)
+                ->where('is_active', true)
+                ->withCount('students')
+                ->get()
+                ->filter(fn ($s) => $s->students_count < ($s->max_students ?? 30))
+                ->sortBy('students_count')
+                ->first();
+
+            if (!$section) {
+                Log::warning("No active section with capacity for grade level: {$gradeLevel}, school year: {$schoolYear}");
+                return;
+            }
+
+            $enrollment->update(['section' => $section->name]);
+
+            $exists = DB::table('section_student')
+                ->where('section_id', $section->id)
+                ->where('user_id', $enrollment->user_id)
+                ->exists();
+
+            if (!$exists) {
+                DB::table('section_student')->insert([
+                    'section_id' => $section->id,
+                    'user_id'    => $enrollment->user_id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
+            Log::info("Student {$enrollment->user_id} assigned to section {$section->name} (Grade: {$gradeLevel})");
+        } catch (\Exception $e) {
+            Log::error("Section assignment error: " . $e->getMessage());
         }
     }
 

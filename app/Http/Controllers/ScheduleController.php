@@ -131,13 +131,58 @@ class ScheduleController extends Controller
             return;
         }
 
-        TeacherAssignment::firstOrCreate([
-            'teacher_id'  => $schedule->teacher_id,
-            'subject_id'  => $schedule->subject_id,
-            'section_id'  => $schedule->section_id,
-            'school_year' => $schoolYear,
-            'is_advisory' => false,
-        ]);
+        // Match only on the 4 columns the DB's real unique index covers
+        // (teacher_id, subject_id, section_id, school_year) — is_advisory
+        // isn't part of that index. Including it in the search criteria (as
+        // this used to) means an existing advisory row for this exact
+        // combination wouldn't be found, and the resulting INSERT would
+        // collide with the unique index instead (e.g. an advisory teacher
+        // who is also scheduled to teach this exact subject in their own
+        // section). is_advisory is only set when actually creating a new
+        // row, leaving an existing row's flag (advisory or not) untouched.
+        TeacherAssignment::firstOrCreate(
+            [
+                'teacher_id'  => $schedule->teacher_id,
+                'subject_id'  => $schedule->subject_id,
+                'section_id'  => $schedule->section_id,
+                'school_year' => $schoolYear,
+            ],
+            [
+                'is_advisory' => false,
+            ]
+        );
+    }
+
+    /**
+     * The single source of truth for "do these two schedule slots conflict,
+     * and if so, how" — both detectConflicts() (checks a candidate against
+     * the DB, one rule at a time) and flagConflicts() (compares pairs of
+     * already-loaded schedules in memory) call this instead of each keeping
+     * their own copy of the rules, which is exactly how the two drifted
+     * apart before (detectConflicts()'s room check was missing the
+     * same-section exclusion flagConflicts() already had). $a/$b only need
+     * teacher_id/room/section_id — callers are responsible for already
+     * having matched on day/term/overlapping time before calling this.
+     */
+    private function conflictType(array $a, array $b): ?string
+    {
+        if (!empty($a['teacher_id']) && !empty($b['teacher_id'])
+            && (string) $a['teacher_id'] === (string) $b['teacher_id']
+            && (string) $a['section_id'] !== (string) $b['section_id']) {
+            return 'teacher';
+        }
+
+        if (!empty($a['room']) && !empty($b['room'])
+            && $a['room'] === $b['room']
+            && (string) $a['section_id'] !== (string) $b['section_id']) {
+            return 'room';
+        }
+
+        if ((string) $a['section_id'] === (string) $b['section_id']) {
+            return 'section';
+        }
+
+        return null;
     }
 
     /**
@@ -156,42 +201,24 @@ class ScheduleController extends Controller
             ->where('is_active', true)
             ->where('start_time', '<', $data['end_time'])
             ->where('end_time', '>', $data['start_time'])
-            ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId));
+            ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
+            ->with(['section:id,name,grade_level', 'subject:id,name'])
+            ->get();
 
-        // 1. Teacher conflict — only flag when teacher is on a DIFFERENT section at the same time.
-        //    Same section is fine (e.g. Nursery/Kinder advisory teacher teaching multiple subjects).
-        if (!empty($data['teacher_id'])) {
-            $teacherConflict = (clone $base)
-                ->where('teacher_id', $data['teacher_id'])
-                ->where('section_id', '!=', $data['section_id'])
-                ->with(['section:id,name,grade_level', 'subject:id,name'])
-                ->first();
+        foreach ($base as $candidate) {
+            $type = $this->conflictType($data, [
+                'teacher_id' => $candidate->teacher_id,
+                'room'       => $candidate->room,
+                'section_id' => $candidate->section_id,
+            ]);
 
-            if ($teacherConflict) {
-                $conflicts[] = "Teacher is already assigned to another section ({$teacherConflict->section->name} - {$teacherConflict->subject->name}, {$teacherConflict->start_time}–{$teacherConflict->end_time}) on {$data['day_of_week']}.";
+            if ($type === 'teacher') {
+                $conflicts[] = "Teacher is already assigned to another section ({$candidate->section->name} - {$candidate->subject->name}, {$candidate->start_time}–{$candidate->end_time}) on {$data['day_of_week']}.";
+            } elseif ($type === 'room' && !empty($data['room'])) {
+                $conflicts[] = "Room \"{$data['room']}\" is already occupied by {$candidate->section->name} - {$candidate->subject->name} ({$candidate->start_time}–{$candidate->end_time}) on {$data['day_of_week']}.";
+            } elseif ($type === 'section') {
+                $conflicts[] = "This section already has {$candidate->subject->name} scheduled at {$candidate->start_time}–{$candidate->end_time} on {$data['day_of_week']}.";
             }
-        }
-
-        // 2. Room conflict
-        if (!empty($data['room'])) {
-            $roomConflict = (clone $base)
-                ->where('room', $data['room'])
-                ->with(['section:id,name', 'subject:id,name'])
-                ->first();
-
-            if ($roomConflict) {
-                $conflicts[] = "Room \"{$data['room']}\" is already occupied by {$roomConflict->section->name} - {$roomConflict->subject->name} ({$roomConflict->start_time}–{$roomConflict->end_time}) on {$data['day_of_week']}.";
-            }
-        }
-
-        // 3. Section conflict
-        $sectionConflict = (clone $base)
-            ->where('section_id', $data['section_id'])
-            ->with(['subject:id,name'])
-            ->first();
-
-        if ($sectionConflict) {
-            $conflicts[] = "This section already has {$sectionConflict->subject->name} scheduled at {$sectionConflict->start_time}–{$sectionConflict->end_time} on {$data['day_of_week']}.";
         }
 
         return $conflicts;
@@ -241,11 +268,16 @@ class ScheduleController extends Controller
                     $bName = optional($b->subject)->name ?? 'a subject';
                     $bSec  = optional($b->section)->name ?? 'another section';
 
-                    if ($a->teacher_id && $b->teacher_id && $a->teacher_id === $b->teacher_id && $a->section_id !== $b->section_id) {
+                    $type = $this->conflictType(
+                        ['teacher_id' => $a->teacher_id, 'room' => $a->room, 'section_id' => $a->section_id],
+                        ['teacher_id' => $b->teacher_id, 'room' => $b->room, 'section_id' => $b->section_id]
+                    );
+
+                    if ($type === 'teacher') {
                         $reasonsById[$a->id][] = "Teacher also teaches {$bName} ({$bSec}) at this time.";
-                    } elseif ($a->room && $b->room && $a->room === $b->room && $a->section_id !== $b->section_id) {
+                    } elseif ($type === 'room') {
                         $reasonsById[$a->id][] = "Room \"{$a->room}\" is also used by {$bSec} - {$bName} at this time.";
-                    } elseif ($a->section_id === $b->section_id) {
+                    } elseif ($type === 'section') {
                         $reasonsById[$a->id][] = "This section also has {$bName} scheduled at this time.";
                     }
                 }
@@ -336,7 +368,36 @@ class ScheduleController extends Controller
         $desc = "Deleted schedule: " . ($schedule->subject->name ?? '—') . ' for ' . ($schedule->section->name ?? '—')
               . " on {$schedule->day_of_week} " . substr($schedule->start_time, 0, 5) . '–' . substr($schedule->end_time, 0, 5);
         $scheduleId = $schedule->id;
+        $teacherId  = $schedule->teacher_id;
+        $subjectId  = $schedule->subject_id;
+        $sectionId  = $schedule->section_id;
+        $schoolYear = $schedule->section->school_year ?? null;
+
         $schedule->delete();
+
+        // ensureTeacherAssignment() creates a TeacherAssignment row when a
+        // schedule is saved — mirror that here so deleting the last schedule
+        // that justified it doesn't leave a reassigned teacher with
+        // permanent grade-entry access to a section they no longer teach.
+        // Never touches is_advisory rows — those are a standing role, not
+        // tied to any one schedule slot.
+        if ($teacherId && $subjectId && $schoolYear) {
+            $stillJustified = Schedule::where('teacher_id', $teacherId)
+                ->where('subject_id', $subjectId)
+                ->where('section_id', $sectionId)
+                ->where('is_active', true)
+                ->exists();
+
+            if (!$stillJustified) {
+                TeacherAssignment::where('teacher_id', $teacherId)
+                    ->where('subject_id', $subjectId)
+                    ->where('section_id', $sectionId)
+                    ->where('school_year', $schoolYear)
+                    ->where('is_advisory', false)
+                    ->delete();
+            }
+        }
+
         ActivityLogger::log('delete', $desc, 'Schedule', $scheduleId);
         return response()->json(['success' => true]);
     }

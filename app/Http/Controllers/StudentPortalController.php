@@ -757,7 +757,7 @@ class StudentPortalController extends Controller
                 $q->where('enrollment_id', $enrollment->id)->orWhere('user_id', $user->id);
             })->where('document_type', $docType)->where('status', 'rejected')->delete();
 
-            $path = $file->store('student_documents/' . (int) $enrollment->id, 'public');
+            $path = $file->store('student_documents/' . (int) $enrollment->id, 'local');
 
             StudentDocument::create([
                 'user_id'       => $user->id,
@@ -895,7 +895,7 @@ class StudentPortalController extends Controller
 
         // ── 9. Store with Laravel-generated UUID filename ─────────────────
         // Using storeAs with a generated name prevents filename-based attacks.
-        $storedPath = $file->store('student_documents/' . (int) $enrollment->id, 'public');
+        $storedPath = $file->store('student_documents/' . (int) $enrollment->id, 'local');
 
         StudentDocument::create([
             'user_id'       => $user->id,
@@ -932,8 +932,8 @@ class StudentPortalController extends Controller
         // Delete file from storage — validate path stays within expected directory
         $safePath = ltrim($document->file_path, '/');
         if ($safePath && str_starts_with($safePath, 'student_documents/')) {
-            if (Storage::disk('public')->exists($safePath)) {
-                Storage::disk('public')->delete($safePath);
+            if (Storage::disk('local')->exists($safePath)) {
+                Storage::disk('local')->delete($safePath);
             }
         }
 
@@ -1189,25 +1189,83 @@ class StudentPortalController extends Controller
                         ->where('user_id', $user->id)
                         ->firstOrFail();
 
-        // Save payment plan to enrollment if provided and not already set
+        // ── Determine the authoritative fee plan server-side ──────────────
+        // total_fee / downpayment_amount / monthly_amount / amount used to
+        // be trusted directly from the request, which let a student set
+        // their own tuition amount and pay whatever they liked while still
+        // being marked fully enrolled. FeeCalculator is the same single
+        // source of truth already used by calculatePaymentBreakdown() and
+        // FeeController — every money figure below now comes from there,
+        // never from client input.
+        $paymentOption = $enrollment->payment_option ?: $request->payment_option;
+        $gradeLevel    = $enrollment->grade_level ?? ($enrollment->student_data['grade_level'] ?? null);
+        $calc          = ($gradeLevel && $paymentOption)
+            ? \App\Services\FeeCalculator::calculate($gradeLevel, $paymentOption)
+            : null;
+
+        // Save payment plan to enrollment if provided and not already set —
+        // from the computed breakdown, never from client input.
         $planUpdate = [];
-        if ($request->payment_option && !$enrollment->payment_option) {
-            $planUpdate['payment_option'] = $request->payment_option;
-            $planUpdate['payment_type']   = $request->payment_option === 'A' ? 'full' : 'installment';
+        if ($paymentOption && !$enrollment->payment_option) {
+            $planUpdate['payment_option'] = $paymentOption;
+            $planUpdate['payment_type']   = $paymentOption === 'A' ? 'full' : 'installment';
         }
-        if ($request->total_fee > 0 && !$enrollment->total_fee) {
-            $planUpdate['total_fee']          = $request->total_fee;
-            $planUpdate['remaining_balance']  = max(0, $request->total_fee - ($enrollment->payment_amount ?? 0));
-        }
-        if ($request->downpayment_amount > 0 && !$enrollment->downpayment_amount) {
-            $planUpdate['downpayment_amount'] = $request->downpayment_amount;
-        }
-        if ($request->monthly_amount > 0 && !$enrollment->monthly_amount) {
-            $planUpdate['monthly_amount'] = $request->monthly_amount;
+        if ($calc && !$enrollment->total_fee) {
+            $planUpdate['total_fee']          = $calc['total_due'];
+            $planUpdate['remaining_balance']  = max(0, $calc['total_due'] - ($enrollment->payment_amount ?? 0));
+            if (isset($calc['downpayment'])) {
+                $planUpdate['downpayment_amount'] = $calc['downpayment'];
+            }
+            if (isset($calc['monthly_amount'])) {
+                $planUpdate['monthly_amount'] = $calc['monthly_amount'];
+            }
         }
         if (!empty($planUpdate)) {
             $enrollment->update($planUpdate);
             $enrollment->refresh();
+        }
+
+        // ── Determine the amount THIS invoice is actually for ─────────────
+        // Never trust $request->amount — recompute what's actually owed
+        // right now instead of letting the client name their own price.
+        $alreadyPaid    = (float) ($enrollment->payment_amount ?? 0);
+        $expectedAmount = null;
+
+        if ($alreadyPaid <= 0) {
+            // First payment: full price for Option A, downpayment otherwise.
+            $planCalc = $calc ?? (
+                ($gradeLevel && $enrollment->payment_option)
+                    ? \App\Services\FeeCalculator::calculate($gradeLevel, $enrollment->payment_option)
+                    : null
+            );
+            if ($planCalc) {
+                $activeOption   = $enrollment->payment_option ?: $paymentOption;
+                $expectedAmount = $activeOption === 'A' ? $planCalc['total_due'] : ($planCalc['downpayment'] ?? null);
+            }
+        } else {
+            // Later payment: the next unpaid installment, capped at what's
+            // actually still owed (same formula approveDocument() uses).
+            $installment = $enrollment->paymentInstallments()
+                ->where('status', 'pending')
+                ->orderBy('due_date')
+                ->first();
+            $remaining = (float) ($enrollment->remaining_balance ?? 0);
+
+            if ($installment) {
+                $expectedAmount = (float) $installment->amount + (float) ($installment->late_fee ?? 0);
+                if ($remaining > 0) {
+                    $expectedAmount = min($expectedAmount, $remaining);
+                }
+            } elseif ($remaining > 0) {
+                $expectedAmount = $remaining;
+            }
+        }
+
+        if (!$expectedAmount || $expectedAmount <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unable to determine the amount due. Please refresh the page and try again, or contact the Finance Office.',
+            ], 422);
         }
 
         $externalId = 'STU-' . $user->id . '-' . $enrollment->id . '-' . time();
@@ -1222,7 +1280,7 @@ class StudentPortalController extends Controller
         $response = \Illuminate\Support\Facades\Http::withBasicAuth($apiKey, '')
             ->post('https://api.xendit.co/v2/invoices', [
                 'external_id'          => $externalId,
-                'amount'               => (int) $request->amount,
+                'amount'               => (int) round($expectedAmount),
                 'description'          => 'ILC Tuition — ' . $request->payment_type . ' (' . $user->name . ')',
                 'invoice_duration'     => 86400,
                 'currency'             => 'PHP',
@@ -1251,7 +1309,7 @@ class StudentPortalController extends Controller
             'user_id'            => $user->id,
             'payment_type'       => 'online',
             'payment_method'     => $request->payment_method,
-            'amount'             => $request->amount,
+            'amount'             => $expectedAmount,
             'reference_number'   => $externalId,
             'xendit_invoice_id'  => $invoice['id'],
             'xendit_invoice_url' => $invoice['invoice_url'],

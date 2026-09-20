@@ -242,7 +242,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::get('/{enrollment}', [EnrollmentController::class, 'adminShow'])->name('show');
         Route::post('/{enrollment}/approve', [EnrollmentController::class, 'approve'])->name('approve');
         Route::post('/{enrollment}/decline', [EnrollmentController::class, 'decline'])->name('decline');
-        Route::post('/{enrollment}/payment', [EnrollmentController::class, 'updatePayment'])->name('payment');
+        // NOTE: admin.enrollments.payment is registered later (below, alongside
+        // the finance.* group) pointing to Finance\DashboardController@processAdminPayment
+        // — that registration wins for both dispatch and route(name) resolution
+        // since it shares this exact name+URI. A dead duplicate registration to
+        // EnrollmentController::updatePayment() used to sit here; removed along
+        // with that now-fully-unreferenced method.
         Route::post('/{enrollment}/change-section', [EnrollmentController::class, 'changeSection'])->name('changeSection');
         Route::post('/walk-in', [EnrollmentController::class, 'walkInEnrollment'])->name('walk-in');
     });

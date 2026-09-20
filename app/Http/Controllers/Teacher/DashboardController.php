@@ -14,6 +14,7 @@ use App\Models\Announcement;
 use App\Models\ParentTeacherConference;
 use App\Models\OtpVerification;
 use App\Mail\PasswordChangeOtpMail;
+use App\Traits\ChecksTeacherOwnership;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +24,8 @@ use Illuminate\Support\Str;
 
 class DashboardController extends Controller
 {
+    use ChecksTeacherOwnership;
+
     public function index()
     {
         $teacher = Auth::user();
@@ -190,50 +193,8 @@ class DashboardController extends Controller
         return $year . '-' . ($year + 1);
     }
 
-    private function teacherOwnsSection(int $teacherId, int $sectionId): bool
-    {
-        // Check active schedules first (primary source for subject teachers)
-        $inSchedule = Schedule::where('teacher_id', $teacherId)
-            ->where('section_id', $sectionId)
-            ->where('is_active', true)
-            ->exists();
-        if ($inSchedule) return true;
-
-        // Fallback: advisory assignment (class advisers can also manage their section)
-        return TeacherAssignment::where('teacher_id', $teacherId)
-            ->where('section_id', $sectionId)
-            ->where('is_advisory', true)
-            ->exists();
-    }
-
-    private function teacherOwnsSubjectInSection(int $teacherId, int $sectionId, ?int $subjectId): bool
-    {
-        if (!$subjectId) {
-            // No subject filter — check if teacher has any schedule for this section
-            return Schedule::where('teacher_id', $teacherId)
-                ->where('section_id', $sectionId)
-                ->where('is_active', true)
-                ->exists()
-                || TeacherAssignment::where('teacher_id', $teacherId)
-                    ->where('section_id', $sectionId)
-                    ->where('is_advisory', true)
-                    ->exists();
-        }
-
-        // Check schedule for this exact subject
-        $inSchedule = Schedule::where('teacher_id', $teacherId)
-            ->where('section_id', $sectionId)
-            ->where('subject_id', $subjectId)
-            ->where('is_active', true)
-            ->exists();
-        if ($inSchedule) return true;
-
-        // Advisory teachers can enter general grades for their section
-        return TeacherAssignment::where('teacher_id', $teacherId)
-            ->where('section_id', $sectionId)
-            ->where('is_advisory', true)
-            ->exists();
-    }
+    // teacherOwnsSection() / teacherOwnsSubjectInSection() now live in
+    // App\Traits\ChecksTeacherOwnership, shared with Api\GradeController.
 
     // ── MY STUDENTS: load student list with grades ──
 
@@ -360,6 +321,7 @@ class DashboardController extends Controller
         $isDraft = (bool) $request->input('draft', false);
 
         $validated = $request->validate([
+            'section_id'                      => 'required|exists:sections,id',
             'grades'                          => 'required|array',
             'grades.*.student_id'            => 'required|exists:users,id',
             'grades.*.subject_id'            => 'nullable|exists:subjects,id',
@@ -371,15 +333,26 @@ class DashboardController extends Controller
         ]);
 
         $schoolYear = $this->getCurrentSchoolYear();
+        $sectionId  = (int) $validated['section_id'];
+
+        // Only students actually in this section may be graded through it —
+        // an owned section/subject alone doesn't imply an arbitrary
+        // student_id in the payload actually belongs to that section.
+        $validStudentIds = Section::find($sectionId)?->students->pluck('id')->all() ?? [];
 
         // Ownership check — same for both draft and submit
         foreach ($validated['grades'] as $gradeData) {
+            if (!in_array($gradeData['student_id'], $validStudentIds)) {
+                return response()->json(['success' => false, 'message' => 'One or more students are not members of this section.'], 403);
+            }
+
             if (!$this->teacherOwnsSubjectInSection(
                 $teacher->id,
-                $request->input('section_id', 0),
+                $sectionId,
                 $gradeData['subject_id'] ?? null
             )) {
                 $hasAssignment = TeacherAssignment::where('teacher_id', $teacher->id)
+                    ->where('section_id', $sectionId)
                     ->where(fn($q) => $q->where('subject_id', $gradeData['subject_id'] ?? null)
                         ->orWhereNull('subject_id'))
                     ->exists();

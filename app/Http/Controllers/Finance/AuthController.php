@@ -45,9 +45,11 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        // Rate limiting: block after 5 failed attempts for 15 minutes
-        $lockKey   = 'finance_login_attempts_' . md5($request->ip() . $request->email);
-        $unlockKey = 'finance_login_unlock_'   . md5($request->ip() . $request->email);
+        // Rate limiting: block after 5 failed attempts for 15 minutes.
+        // Keyed by email only — an IP-inclusive key would let an attacker
+        // rotate source IP for a fresh 5-attempt budget every time.
+        $lockKey   = 'finance_login_attempts_' . md5($request->email);
+        $unlockKey = 'finance_login_unlock_'   . md5($request->email);
         $attempts  = cache()->get($lockKey, 0);
 
         if ($attempts >= 5) {

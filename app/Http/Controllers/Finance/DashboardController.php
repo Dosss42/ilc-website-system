@@ -698,6 +698,18 @@ class DashboardController extends Controller
             return redirect()->back()->with('error', 'Payment not found.');
         }
 
+        // Idempotency guard — a double-click, a network retry, or two staff
+        // members approving the same transaction within seconds would
+        // otherwise double-credit the enrollment's payment amount below
+        // (mirrors PaymentService::completeXenditPayment()'s existing guard).
+        if ($payment->status === 'completed') {
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'This payment has already been processed.'], 409);
+            }
+            return redirect()->back()->with('error', 'This payment has already been processed.');
+        }
+
+        DB::beginTransaction();
         try {
             $payment->update([
                 'status' => 'completed',
@@ -706,8 +718,12 @@ class DashboardController extends Controller
             ]);
 
             // If enrollment exists, update payment amounts
-            if ($payment->enrollment) {
-                $enrollment = $payment->enrollment;
+            if ($payment->enrollment_id) {
+                // Row-locked re-fetch — see PaymentService::lockEnrollment()
+                // — this method had no transaction or lock at all, so two
+                // approvals landing at nearly the same time could each
+                // compute from the same stale payment_amount.
+                $enrollment = PaymentService::lockEnrollment($payment->enrollment_id);
 
                 // Get amount from payment record
                 $docAmount = floatval($payment->amount);
@@ -848,8 +864,8 @@ class DashboardController extends Controller
             }
 
             // Update enrollment payment status
-            if ($payment->enrollment) {
-                $this->updateEnrollmentPaymentStatus($payment->enrollment);
+            if ($payment->enrollment_id && isset($enrollment)) {
+                $this->updateEnrollmentPaymentStatus($enrollment);
             }
 
             ActivityLogger::log(
@@ -858,6 +874,8 @@ class DashboardController extends Controller
                 'PaymentTransaction',
                 $payment->id
             );
+
+            DB::commit();
 
             // Return JSON for AJAX requests, otherwise redirect
             if ($request->ajax() || $request->wantsJson()) {
@@ -869,6 +887,7 @@ class DashboardController extends Controller
 
             return redirect()->back()->with('success', 'Payment approved successfully.');
         } catch (\Exception $e) {
+            DB::rollBack();
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
@@ -1014,102 +1033,120 @@ class DashboardController extends Controller
             'installment_id'   => 'nullable|integer|exists:payment_installments,id',
             'payment_method'   => 'required|in:cash,gcash',
             'amount'           => 'required|numeric|min:1',
-            'reference_number' => 'nullable|string|max:100',
+            // Same reasoning as processAdminPayment(): GCash always has a
+            // real reference number, cash doesn't.
+            'reference_number' => 'required_if:payment_method,gcash|nullable|string|max:100',
         ]);
 
         $methodLabel = $request->payment_method === 'gcash' ? 'GCash' : 'Cash';
         $amountPaid  = floatval($request->amount);
 
-        // Check if this is a downpayment (not yet fully paid)
-        $downpaymentAmount = floatval($enrollment->downpayment_amount ?? 0);
-        $alreadyPaid       = floatval($enrollment->payment_amount ?? 0);
-        $isDownpayment     = $downpaymentAmount > 0 && $alreadyPaid < $downpaymentAmount;
+        DB::beginTransaction();
+        try {
+            // Row-locked re-fetch — see PaymentService::lockEnrollment() —
+            // this method previously had no transaction at all, so two
+            // walk-in payments for the same enrollment could both compute
+            // from the same stale payment_amount.
+            $enrollment = PaymentService::lockEnrollment($enrollment->id);
 
-        $installment = null;
-        $installmentMonth = null;
+            // Check if this is a downpayment (not yet fully paid)
+            $downpaymentAmount = floatval($enrollment->downpayment_amount ?? 0);
+            $alreadyPaid       = floatval($enrollment->payment_amount ?? 0);
+            $isDownpayment     = $downpaymentAmount > 0 && $alreadyPaid < $downpaymentAmount;
 
-        // Only process installment if provided and not a downpayment
-        if ($request->installment_id && !$isDownpayment) {
-            $installment = PaymentInstallment::find($request->installment_id);
+            $installment = null;
+            $installmentMonth = null;
 
-            if (!$installment || $installment->enrollment_id !== $enrollment->id) {
-                return redirect()->back()->with('error', 'Invalid installment record.');
+            // Only process installment if provided and not a downpayment
+            if ($request->installment_id && !$isDownpayment) {
+                $installment = PaymentInstallment::find($request->installment_id);
+
+                if (!$installment || $installment->enrollment_id !== $enrollment->id) {
+                    DB::rollBack();
+                    return redirect()->back()->with('error', 'Invalid installment record.');
+                }
+
+                if ($installment->status === 'paid') {
+                    DB::rollBack();
+                    return redirect()->back()->with('error', 'This installment is already paid.');
+                }
+
+                if ($installment->status === 'pending_approval') {
+                    DB::rollBack();
+                    return redirect()->back()->with('error', 'This installment has a student-submitted payment awaiting approval. Approve or reject it first.');
+                }
+
+                $installmentMonth = $installment->month_name;
+            } elseif ($isDownpayment) {
+                $installmentMonth = 'Downpayment';
             }
 
-            if ($installment->status === 'paid') {
-                return redirect()->back()->with('error', 'This installment is already paid.');
-            }
-
-            if ($installment->status === 'pending_approval') {
-                return redirect()->back()->with('error', 'This installment has a student-submitted payment awaiting approval. Approve or reject it first.');
-            }
-
-            $installmentMonth = $installment->month_name;
-        } elseif ($isDownpayment) {
-            $installmentMonth = 'Downpayment';
-        }
-
-        // Create an already-approved payment transaction so it appears in payment history
-        $payment = PaymentTransaction::create([
-            'user_id'       => $enrollment->user_id,
-            'enrollment_id' => $enrollment->id,
-            'payment_type'  => $isDownpayment ? 'downpayment' : 'walkin',
-            'payment_method' => $request->payment_method,
-            'amount'        => $amountPaid,
-            'reference_number' => $request->reference_number,
-            'description'   => 'Walk-in payment via ' . $methodLabel . ' - ' . ($installmentMonth ?? 'Payment') . ' - ₱' . number_format($amountPaid, 2),
-            'status'        => 'completed',
-            'installment_month' => $installmentMonth,
-            'installment_id' => $installment ? $installment->id : null,
-            'processed_by'  => $this->actingStaffId(),
-            'processed_at'  => now(),
-        ]);
-
-        // Mark the installment as paid immediately (only if not a downpayment)
-        if ($installment && !$isDownpayment) {
-            $installment->update([
-                'status'           => 'paid',
-                'paid_at'          => now(),
-                'payment_method'   => $request->payment_method,
+            // Create an already-approved payment transaction so it appears in payment history
+            $payment = PaymentTransaction::create([
+                'user_id'       => $enrollment->user_id,
+                'enrollment_id' => $enrollment->id,
+                'payment_type'  => $isDownpayment ? 'downpayment' : 'walkin',
+                'payment_method' => $request->payment_method,
+                'amount'        => $amountPaid,
                 'reference_number' => $request->reference_number,
-                'payment_transaction_id' => $payment->id,
-                'amount_paid'      => $amountPaid,
+                'description'   => 'Walk-in payment via ' . $methodLabel . ' - ' . ($installmentMonth ?? 'Payment') . ' - ₱' . number_format($amountPaid, 2),
+                'status'        => 'completed',
+                'installment_month' => $installmentMonth,
+                'installment_id' => $installment ? $installment->id : null,
+                'processed_by'  => $this->actingStaffId(),
+                'processed_at'  => now(),
             ]);
-        }
 
-        // Update enrollment totals
-        $alreadyPaid      = floatval($enrollment->payment_amount ?? 0);
-        $newPaid          = $alreadyPaid + $amountPaid;
-        $totalFee         = floatval($enrollment->total_fee ?? 0);
-        $remainingBalance = max(0, $totalFee - $newPaid);
-
-        $updateData = [
-            'payment_amount'    => $newPaid,
-            'remaining_balance' => $remainingBalance,
-            'payment_status'    => $remainingBalance <= 0 ? 'paid' : 'partial',
-        ];
-
-        if ($remainingBalance <= 0) {
-            $updateData['next_installment_date'] = null;
-        } else {
-            $next = $enrollment->paymentInstallments()
-                ->whereIn('status', ['pending', 'overdue'])
-                ->orderBy('due_date')
-                ->first();
-            if ($next) {
-                $updateData['next_installment_date'] = $next->due_date;
+            // Mark the installment as paid immediately (only if not a downpayment)
+            if ($installment && !$isDownpayment) {
+                $installment->update([
+                    'status'           => 'paid',
+                    'paid_at'          => now(),
+                    'payment_method'   => $request->payment_method,
+                    'reference_number' => $request->reference_number,
+                    'payment_transaction_id' => $payment->id,
+                    'amount_paid'      => $amountPaid,
+                ]);
             }
+
+            // Update enrollment totals
+            $newPaid          = $alreadyPaid + $amountPaid;
+            $totalFee         = floatval($enrollment->total_fee ?? 0);
+            $remainingBalance = max(0, $totalFee - $newPaid);
+
+            $updateData = [
+                'payment_amount'    => $newPaid,
+                'remaining_balance' => $remainingBalance,
+                'payment_status'    => $remainingBalance <= 0 ? 'paid' : 'partial',
+            ];
+
+            if ($remainingBalance <= 0) {
+                $updateData['next_installment_date'] = null;
+            } else {
+                $next = $enrollment->paymentInstallments()
+                    ->whereIn('status', ['pending', 'overdue'])
+                    ->orderBy('due_date')
+                    ->first();
+                if ($next) {
+                    $updateData['next_installment_date'] = $next->due_date;
+                }
+            }
+
+            $enrollment->update($updateData);
+
+            // Reconcile installment statuses for installment plans
+            if ($enrollment->payment_type === 'installment' || in_array($enrollment->payment_option, ['B', 'C', 'D'])) {
+                \App\Services\PaymentService::reconcileInstallmentStatuses($enrollment);
+            }
+
+            // Update enrollment status (approved -> enrolled)
+            $this->updateEnrollmentPaymentStatus($enrollment);
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Payment recording failed: ' . $e->getMessage());
         }
-
-        $enrollment->update($updateData);
-
-        // Reconcile installment statuses for installment plans
-        if ($enrollment->payment_type === 'installment' || in_array($enrollment->payment_option, ['B', 'C', 'D'])) {
-            \App\Services\PaymentService::reconcileInstallmentStatuses($enrollment);
-        }
-
-        // Update enrollment status (approved -> enrolled)
-        $this->updateEnrollmentPaymentStatus($enrollment);
 
         $monthDisplay = $installmentMonth ?? ($isDownpayment ? 'Downpayment' : 'Payment');
 
@@ -1133,13 +1170,22 @@ class DashboardController extends Controller
         $request->validate([
             'payment_method' => 'required|in:gcash,cash',
             'payment_amount' => 'required|numeric|min:1',
-            'payment_reference' => 'nullable|string|max:255',
+            // GCash is an electronic transfer that always has a real
+            // reference number — require it as a minimal evidence trail;
+            // cash has no such concept, so it stays optional there.
+            'payment_reference' => 'required_if:payment_method,gcash|nullable|string|max:255',
             'payment_option' => 'nullable|in:A,B,C,D',
             'installment_id' => 'nullable|integer|exists:payment_installments,id',
         ]);
 
         DB::beginTransaction();
         try {
+            // Row-locked re-fetch — see PaymentService::lockEnrollment() —
+            // so a concurrent payment for this same enrollment can't read
+            // the same stale payment_amount this method is about to compute
+            // a new absolute total from.
+            $enrollment = PaymentService::lockEnrollment($enrollment->id);
+
             $methodLabel = $request->payment_method === 'gcash' ? 'GCash' : 'Cash';
             $amountPaid = (float) $request->payment_amount;
 
@@ -1609,47 +1655,21 @@ class DashboardController extends Controller
             ]);
         }
 
-        // If enrollment is 'approved' or 'pending' and any payment has been approved, mark as 'enrolled'
-        if (in_array($enrollment->status, ['approved', 'pending', 'completed']) && ($totalPaid > 0 || $hasApprovedPayments)) {
+        // If enrollment is 'approved' or 'pending' and the payment meets the
+        // required minimum (downpayment for installment plans, full fee for
+        // a one-shot plan — see PaymentService::requiredEnrollmentThreshold()),
+        // mark as 'enrolled'. Previously any nonzero payment sufficed here.
+        $threshold = PaymentService::requiredEnrollmentThreshold($enrollment);
+        $meetsThreshold = $threshold > 0 ? $totalPaid >= $threshold : ($totalPaid > 0 || $hasApprovedPayments);
+        if (in_array($enrollment->status, ['approved', 'pending', 'completed']) && $meetsThreshold) {
             $enrollment->update([
                 'status'      => 'enrolled',
                 'enrolled_at' => now(),
             ]);
 
-            // Auto-assign student to section based on grade level
-            if ($enrollment->user_id) {
-                $user = \App\Models\User::find($enrollment->user_id);
-                if ($user) {
-                    // Support both direct grade_level column and student_data JSON
-                    $gradeLevel = $enrollment->grade_level
-                        ?? ($enrollment->student_data['grade_level'] ?? null);
-                    $schoolYear = $enrollment->school_year
-                        ?? (now()->year . '-' . (now()->year + 1));
-
-                    if ($gradeLevel) {
-                        $section = \App\Models\Section::where('grade_level', $gradeLevel)
-                            ->where('school_year', $schoolYear)
-                            ->where('is_active', true)
-                            ->first();
-
-                        if ($section) {
-                            $enrollment->update(['section' => $section->name]);
-                            $exists = \Illuminate\Support\Facades\DB::table('section_student')
-                                ->where('section_id', $section->id)
-                                ->where('user_id', $user->id)
-                                ->exists();
-                            if (!$exists) {
-                                \Illuminate\Support\Facades\DB::table('section_student')->insert([
-                                    'section_id' => $section->id,
-                                    'user_id'    => $user->id,
-                                    'created_at' => now(),
-                                    'updated_at' => now(),
-                                ]);
-                            }
-                        }
-                    }
-                }
-            }
+            // Auto-assign student to section based on grade level (capacity-aware
+            // — see PaymentService::assignSectionForEnrollment()).
+            PaymentService::assignSectionForEnrollment($enrollment);
         }
     }
 
@@ -1729,11 +1749,11 @@ class DashboardController extends Controller
             abort(404, 'File not found.');
         }
 
-        if (!Storage::disk('public')->exists($document->file_path)) {
+        if (!Storage::disk('local')->exists($document->file_path)) {
             abort(404, 'File not found.');
         }
 
-        $path = Storage::disk('public')->path($document->file_path);
+        $path = Storage::disk('local')->path($document->file_path);
         return response()->file($path);
     }
 }

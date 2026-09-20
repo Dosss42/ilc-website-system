@@ -41,8 +41,10 @@ class CashierController extends Controller
             'password' => 'required',
         ]);
 
-        $lockKey   = 'cashier_login_' . md5($request->ip() . $request->email);
-        $unlockKey = 'cashier_unlock_' . md5($request->ip() . $request->email);
+        // Keyed by email only — an IP-inclusive key would let an attacker
+        // rotate source IP for a fresh 5-attempt budget every time.
+        $lockKey   = 'cashier_login_' . md5($request->email);
+        $unlockKey = 'cashier_unlock_' . md5($request->email);
         $attempts  = cache()->get($lockKey, 0);
 
         if ($attempts >= 5) {
@@ -609,21 +611,29 @@ class CashierController extends Controller
 
         $externalId = 'ILC-' . $request->enrollment_id . '-' . time();
 
-        $response = Http::withBasicAuth($apiKey, '')
-            ->post('https://api.xendit.co/v2/invoices', [
-                'external_id'          => $externalId,
-                'amount'               => (int) $request->amount,
-                'description'          => 'ILC Tuition — ' . $request->payment_type . ' (' . $request->student_name . ')',
-                'invoice_duration'     => 86400,
-                'currency'             => 'PHP',
-                'customer'             => [
-                    'given_names' => $request->student_name,
-                    'email'       => $request->student_email ?? '',
-                ],
-                'payment_methods'      => $this->xenditMethodsFor($request->payment_method),
-                'success_redirect_url' => route('cashier.dashboard'),
-                'failure_redirect_url' => route('cashier.dashboard'),
-            ]);
+        try {
+            $response = Http::withBasicAuth($apiKey, '')
+                ->post('https://api.xendit.co/v2/invoices', [
+                    'external_id'          => $externalId,
+                    'amount'               => (int) $request->amount,
+                    'description'          => 'ILC Tuition — ' . $request->payment_type . ' (' . $request->student_name . ')',
+                    'invoice_duration'     => 86400,
+                    'currency'             => 'PHP',
+                    'customer'             => [
+                        'given_names' => $request->student_name,
+                        'email'       => $request->student_email ?? '',
+                    ],
+                    'payment_methods'      => $this->xenditMethodsFor($request->payment_method),
+                    'success_redirect_url' => route('cashier.dashboard'),
+                    'failure_redirect_url' => route('cashier.dashboard'),
+                ]);
+        } catch (\Throwable $e) {
+            Log::error('Xendit invoice request failed (network/connection error)', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Could not reach the payment service. Please check your connection and try again.',
+            ], 422);
+        }
 
         if (!$response->successful()) {
             Log::error('Xendit invoice failed', ['response' => $response->json()]);
@@ -706,7 +716,7 @@ class CashierController extends Controller
 
     public function xenditWebhook(Request $request)
     {
-        if ($request->header('x-callback-token') !== config('services.xendit.webhook_token')) {
+        if (!hash_equals((string) config('services.xendit.webhook_token'), (string) $request->header('x-callback-token'))) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
