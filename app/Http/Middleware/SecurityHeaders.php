@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class SecurityHeaders
@@ -11,6 +12,16 @@ class SecurityHeaders
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);
+
+        // Stop an authenticated page (dashboard, grades, payment info) from
+        // being served out of the browser's cache after logout — e.g.
+        // pressing Back on a shared/lab computer. Scoped to requests that
+        // are actually authenticated on any guard, so public pages (home,
+        // announcements, the login forms themselves) keep normal caching.
+        if (Auth::check() || Auth::guard('finance')->check() || Auth::guard('cashier')->check()) {
+            $response->headers->set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+            $response->headers->set('Pragma', 'no-cache');
+        }
 
         // Prevent clickjacking
         $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
