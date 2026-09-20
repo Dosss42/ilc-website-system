@@ -16,6 +16,14 @@ use Illuminate\Support\Facades\DB;
  * the standard generated-column workaround instead: a stored column that is
  * NULL for declined rows (NULLs never collide in a MySQL unique index) and
  * equal to user_id otherwise, with the unique index moved onto that column.
+ *
+ * Every step below is guarded with an existence check. MySQL/MariaDB DDL
+ * auto-commits per statement (no transactional rollback on ALTER TABLE), so
+ * if this migration fails partway through on one environment, an earlier
+ * step's change persists even though Laravel never marks the migration as
+ * run — the next deploy then retries from the top and fails immediately on
+ * the step that already succeeded. Guarding each step makes this migration
+ * safe to resume from wherever it previously got stuck.
  */
 return new class extends Migration
 {
@@ -26,36 +34,64 @@ return new class extends Migration
         // enrollments_user_id_foreign FK constraint — MySQL won't allow
         // dropping it without a replacement index for that FK to fall back
         // on first.
-        Schema::table('enrollments', function (Blueprint $table) {
-            $table->index('user_id', 'idx_enrollments_user_id');
-        });
+        if (!$this->indexExists('enrollments', 'idx_enrollments_user_id')) {
+            Schema::table('enrollments', function (Blueprint $table) {
+                $table->index('user_id', 'idx_enrollments_user_id');
+            });
+        }
 
-        Schema::table('enrollments', function (Blueprint $table) {
-            $table->dropUnique('unique_enrollment_per_user_year');
-        });
+        if ($this->indexExists('enrollments', 'unique_enrollment_per_user_year')) {
+            Schema::table('enrollments', function (Blueprint $table) {
+                $table->dropUnique('unique_enrollment_per_user_year');
+            });
+        }
 
-        DB::statement("
-            ALTER TABLE enrollments
-            ADD COLUMN active_enrollment_user_id BIGINT UNSIGNED
-            GENERATED ALWAYS AS (CASE WHEN status = 'declined' THEN NULL ELSE user_id END) STORED
-            AFTER user_id
-        ");
+        if (!Schema::hasColumn('enrollments', 'active_enrollment_user_id')) {
+            DB::statement("
+                ALTER TABLE enrollments
+                ADD COLUMN active_enrollment_user_id BIGINT UNSIGNED
+                GENERATED ALWAYS AS (CASE WHEN status = 'declined' THEN NULL ELSE user_id END) STORED
+                AFTER user_id
+            ");
+        }
 
-        Schema::table('enrollments', function (Blueprint $table) {
-            $table->unique(['active_enrollment_user_id', 'school_year'], 'unique_active_enrollment_per_user_year');
-        });
+        if (!$this->indexExists('enrollments', 'unique_active_enrollment_per_user_year')) {
+            Schema::table('enrollments', function (Blueprint $table) {
+                $table->unique(['active_enrollment_user_id', 'school_year'], 'unique_active_enrollment_per_user_year');
+            });
+        }
     }
 
     public function down(): void
     {
-        Schema::table('enrollments', function (Blueprint $table) {
-            $table->dropUnique('unique_active_enrollment_per_user_year');
-            $table->dropColumn('active_enrollment_user_id');
-        });
+        if ($this->indexExists('enrollments', 'unique_active_enrollment_per_user_year')) {
+            Schema::table('enrollments', function (Blueprint $table) {
+                $table->dropUnique('unique_active_enrollment_per_user_year');
+            });
+        }
 
-        Schema::table('enrollments', function (Blueprint $table) {
-            $table->unique(['user_id', 'school_year'], 'unique_enrollment_per_user_year');
-            $table->dropIndex('idx_enrollments_user_id');
-        });
+        if (Schema::hasColumn('enrollments', 'active_enrollment_user_id')) {
+            Schema::table('enrollments', function (Blueprint $table) {
+                $table->dropColumn('active_enrollment_user_id');
+            });
+        }
+
+        if (!$this->indexExists('enrollments', 'unique_enrollment_per_user_year')) {
+            Schema::table('enrollments', function (Blueprint $table) {
+                $table->unique(['user_id', 'school_year'], 'unique_enrollment_per_user_year');
+            });
+        }
+
+        if ($this->indexExists('enrollments', 'idx_enrollments_user_id')) {
+            Schema::table('enrollments', function (Blueprint $table) {
+                $table->dropIndex('idx_enrollments_user_id');
+            });
+        }
+    }
+
+    private function indexExists(string $table, string $indexName): bool
+    {
+        $result = DB::select('SHOW INDEX FROM `' . $table . '` WHERE Key_name = ?', [$indexName]);
+        return count($result) > 0;
     }
 };
