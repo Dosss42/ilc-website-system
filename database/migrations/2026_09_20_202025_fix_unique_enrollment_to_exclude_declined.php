@@ -47,11 +47,19 @@ return new class extends Migration
         }
 
         if (!Schema::hasColumn('enrollments', 'active_enrollment_user_id')) {
+            // VIRTUAL, not STORED, and no explicit column position: adding a
+            // STORED generated column forces a full table rebuild in MySQL
+            // (unlike MariaDB, which allows it directly), and MySQL 8
+            // refuses that rebuild on a table with foreign key constraints
+            // — error 1215, even though no FK is actually being touched.
+            // A VIRTUAL column added at the end is an instant, metadata-only
+            // operation on both engines, and works identically for a unique
+            // index (InnoDB supports indexing virtual generated columns on
+            // both MySQL 5.7+/MariaDB 10.2+).
             DB::statement("
                 ALTER TABLE enrollments
                 ADD COLUMN active_enrollment_user_id BIGINT UNSIGNED
-                GENERATED ALWAYS AS (CASE WHEN status = 'declined' THEN NULL ELSE user_id END) STORED
-                AFTER user_id
+                GENERATED ALWAYS AS (CASE WHEN status = 'declined' THEN NULL ELSE user_id END) VIRTUAL
             ");
         }
 
