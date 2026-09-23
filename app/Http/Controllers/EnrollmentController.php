@@ -94,8 +94,9 @@ class EnrollmentController extends Controller
         dispatch(function () use ($email, $otp) {
             try {
                 Mail::to($email)->send(new EnrollmentOtpMail($otp, $email));
+                Log::info('OTP mail sent', ['email' => $email]);
             } catch (\Exception $e) {
-                Log::error('OTP mail failed: ' . $e->getMessage());
+                Log::error('OTP mail failed: ' . get_class($e) . ': ' . $e->getMessage(), ['email' => $email]);
             }
         })->afterResponse();
 

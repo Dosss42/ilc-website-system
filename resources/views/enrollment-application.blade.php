@@ -1850,44 +1850,23 @@ async function restoreEnrollmentDraft() {
     const form = document.getElementById('appForm');
     if (!form) return;
 
-    // Restore simple fields first (not cascade dropdowns)
-    const cascades = ['province','city','barangay'];
+    // Restore simple fields first (address cascade handled separately below)
+    const cascades = ['region','province','city','barangay'];
     SAVE_FIELDS.forEach(name => {
         if (cascades.includes(name)) return;
         const el = form.querySelector(`[name="${name}"]`);
         if (el && data[name]) el.value = data[name];
     });
 
-    // Restore cascade: set region, wait for provinces, then set the rest
-    if (data.region) {
-        const regionEl = document.getElementById('enroll-region');
-        if (regionEl) {
-            regionEl.value = data.region;
-            regionEl.dispatchEvent(new Event('change'));
-
-            // Wait for cascade to populate then restore province → city → barangay
-            const restoreCascade = (selectId, value, nextFn) => {
-                if (!value) { if (nextFn) nextFn(); return; }
-                const sel = document.getElementById(selectId);
-                if (!sel) { if (nextFn) nextFn(); return; }
-                const trySet = (attempts) => {
-                    if (sel.querySelector(`option[value="${value}"]`)) {
-                        sel.value = value;
-                        sel.dispatchEvent(new Event('change'));
-                        if (nextFn) setTimeout(nextFn, 400);
-                    } else if (attempts < 15) {
-                        setTimeout(() => trySet(attempts + 1), 300);
-                    }
-                };
-                setTimeout(() => trySet(0), 300);
-            };
-
-            restoreCascade('enroll-province', data.province, () =>
-                restoreCascade('enroll-city', data.city, () =>
-                    restoreCascade('enroll-barangay', data.barangay, null)
-                )
-            );
-        }
+    // Restore the region/province/city/barangay cascade. PHAddress.setValues()
+    // awaits the JSON preload before touching the selects, avoiding a race
+    // where a plain regionEl.value= assignment silently no-ops because the
+    // region <select> still only has its "Loading regions..." placeholder.
+    if (data.region || data.province || data.city || data.barangay) {
+        await PHAddress.setValues(
+            { region: 'enroll-region', province: 'enroll-province', city: 'enroll-city', barangay: 'enroll-barangay' },
+            { region: data.region, province: data.province, city: data.city, barangay: data.barangay }
+        );
     }
 
     // Show restored banner
@@ -1972,27 +1951,323 @@ document.addEventListener('DOMContentLoaded', function () {
         <div id="modal-tc-box" style="height:300px;overflow-y:auto;padding:20px 24px;font-size:12.5px;color:#444;line-height:1.8;">
             <div id="modal-tc-pane-terms">
                 <p style="font-weight:700;color:#1a3a6c;margin:0 0 10px;">IEMELIF LEARNING CENTER — Terms and Conditions</p>
-                <p><strong>1. Acceptance of Terms</strong><br>By submitting this enrollment application, you agree to be bound by these Terms and Conditions. If you do not agree, please do not submit.</p>
-                <p><strong>2. Eligibility</strong><br>This system is available to students seeking enrollment, parents/guardians, and authorized school staff. You must be at least 18 years old or have parental consent to apply on behalf of a minor.</p>
-                <p><strong>3. Account Responsibilities</strong><br>You are responsible for keeping your credentials secure. Provide accurate and complete information at all times. Notify the school immediately of any unauthorized access.</p>
-                <p><strong>4. Enrollment Policies</strong><br>Submission of an application does not guarantee enrollment. ILC reserves the right to accept or reject applications, request additional documents, or cancel enrollment for non-compliance. Required documents include: PSA Birth Certificate, Report Card/Form 138, Good Moral Certificate, ID photos, and other documents as required.</p>
-                <p><strong>5. Payment Terms</strong><br>Enrollment is complete upon submission of documents and payment of fees. ILC accepts Cash, GCash, and bank transfer. Late payments may incur penalties. Refund policy: full refund before classes start; partial within the first week; none thereafter.</p>
-                <p><strong>6. Academic Conduct</strong><br>Students must adhere to the school code of conduct, attend regularly, maintain academic honesty, and respect all members of the school community. Academic dishonesty may result in disciplinary action.</p>
-                <p><strong>7. System Use</strong><br>The online system must be used for enrollment purposes only. Hacking, uploading malware, harassment, or commercial use is strictly prohibited.</p>
-                <p><strong>8. Data Privacy</strong><br>Personal information collected is used solely for enrollment processing and school administration, in compliance with RA 10173 (Data Privacy Act of 2012).</p>
-                <p><strong>9. Amendments</strong><br>ILC reserves the right to modify these terms at any time. Continued use of the system constitutes acceptance of any changes.</p>
+                <p style="color:#888;font-size:11px;">Online Enrollment System</p>
+
+                <p><strong>1. Acceptance of Terms</strong><br>By accessing, registering, and using the ILC Online Enrollment System, you agree to be bound by these Terms and Conditions. If you do not agree to these terms, please do not use this system.</p>
+
+                <p><strong>2. Eligibility</strong><br>The ILC Online Enrollment System is available to:</p>
+                <ul>
+                    <li>Students seeking enrollment at Immaculate Learning Center</li>
+                    <li>Parents or legal guardians of students</li>
+                    <li>Authorized school staff and administrators</li>
+                </ul>
+                <p>You must be at least 18 years old or have parental consent to use this system on behalf of a minor.</p>
+
+                <p><strong>3. User Account Responsibilities</strong></p>
+                <p><strong>3.1 Account Creation</strong><br>Users are responsible for maintaining the confidentiality of their account credentials. You agree to:</p>
+                <ul>
+                    <li>Keep your password secure and not share it with anyone</li>
+                    <li>Notify the school immediately if you suspect unauthorized access</li>
+                    <li>Provide accurate and complete information during registration</li>
+                    <li>Update your information when it changes</li>
+                </ul>
+                <p><strong>3.2 Account Security</strong><br>You are solely responsible for all activities that occur under your account. ILC is not liable for any loss or damage arising from your failure to secure your account.</p>
+
+                <p><strong>4. Enrollment Policies</strong></p>
+                <p><strong>4.1 Application Process</strong><br>Enrollment applications are subject to review and approval by ILC. Submission of an application does not guarantee enrollment. The school reserves the right to:</p>
+                <ul>
+                    <li>Accept or reject enrollment applications</li>
+                    <li>Request additional documentation</li>
+                    <li>Cancel enrollment for non-compliance with requirements</li>
+                </ul>
+                <p><strong>4.2 Required Documents</strong><br>Students must submit all required documents as specified in the enrollment checklist, including but not limited to:</p>
+                <ul>
+                    <li>Birth certificate (NSO/PSA copy)</li>
+                    <li>Report cards or Form 138</li>
+                    <li>Good moral certificate</li>
+                    <li>Recent ID photos</li>
+                    <li>Other documents as required by the school</li>
+                </ul>
+                <p><strong>4.3 Enrollment Payment</strong><br>Enrollment is considered complete upon:</p>
+                <ul>
+                    <li>Submission of all required documents</li>
+                    <li>Payment of enrollment fees or down payment</li>
+                    <li>Approval of the application by the school administration</li>
+                </ul>
+                <p>Payment plans are available as per the school's fee schedule. Failure to pay fees on time may result in enrollment cancellation.</p>
+
+                <p><strong>5. Payment Terms</strong></p>
+                <p><strong>5.1 Payment Methods</strong><br>ILC accepts payment through:</p>
+                <ul>
+                    <li>Cash (at the school's finance office)</li>
+                    <li>GCash</li>
+                    <li>Bank transfer (details provided upon request)</li>
+                </ul>
+                <p><strong>5.2 Payment Deadlines and Late Fees</strong><br>For students under an installment payment plan, each monthly installment is due on the date shown in the student's Payment Schedule, visible at all times in the Student Portal. If a payment is not received by the due date, the following applies automatically:</p>
+                <ul>
+                    <li><strong>1 week</strong> past the due date — a warning notice is sent by email.</li>
+                    <li><strong>2 weeks</strong> past the due date — a follow-up reminder is sent (grace period; no fee yet).</li>
+                    <li><strong>3 weeks</strong> past the due date — a late fee of <strong>₱500</strong> is added to that installment, and a confirmation notice is sent.</li>
+                </ul>
+                <p>Weekly reminders continue automatically for as long as an installment remains unpaid. A late fee alone does not affect a student's ability to attend class; see Sections 5.4 and 5.5 for what happens if payments fall further behind.</p>
+                <p><strong>5.3 Refund Policy</strong><br>Refunds are subject to the school's refund policy:</p>
+                <ul>
+                    <li>Full refund if withdrawal is made before the start of classes</li>
+                    <li>Partial refund if withdrawal is made within the first week of classes</li>
+                    <li>No refund for withdrawals after the first week of classes</li>
+                    <li>Special circumstances may be considered on a case-by-case basis</li>
+                </ul>
+                <p><strong>5.4 Promissory Note</strong><br>A <strong>Promissory Note</strong> is a written agreement between the parent/guardian and the school's Finance Office, stating a specific amount the family will pay by a specific promised date. It may be requested by the parent/guardian, or offered by the school, and becomes required once an account reaches the condition described in Section 5.5.</p>
+                <ul>
+                    <li>While a Promissory Note is active and its promised date has not yet passed, the account is considered in good standing.</li>
+                    <li>If the promised date passes without full payment, the note is considered <strong>broken</strong>. This may result in the restriction described in Section 5.5 being applied or re-applied, and may be subject to additional terms set by the Finance Office.</li>
+                    <li>Only Finance staff or the school Administrator may issue, extend, or resolve a Promissory Note — it cannot be self-certified by a parent/guardian.</li>
+                    <li>A copy of every Promissory Note is available to the parent/guardian upon request.</li>
+                </ul>
+                <p><strong>5.5 Exam Permit</strong><br>An <strong>Exam Permit</strong> is the school's permission for a student to sit for periodic/quarterly exams.</p>
+                <ul>
+                    <li>The Exam Permit is withheld when payments are <strong>three (3) consecutive months</strong> behind schedule and there is no Promissory Note in good standing, or when a Promissory Note on the account has been broken (Section 5.4).</li>
+                    <li>Withholding the Exam Permit is a restriction on taking the exam, separate from the late fee described in Section 5.2.</li>
+                    <li>The Exam Permit is automatically restored as soon as the account balance is brought current, or a new Promissory Note is signed before its promised date, or the Finance Office confirms the balance has been settled — no separate request is needed.</li>
+                    <li>This restriction applies specifically to periodic/quarterly exams and does not affect a student's ability to attend regular classes.</li>
+                    <li>Parents/guardians may contact the Finance Office at any time to check their account status or arrange a Promissory Note before this restriction applies.</li>
+                </ul>
+
+                <p><strong>6. Academic Integrity and Conduct</strong></p>
+                <p><strong>6.1 Student Conduct</strong><br>Students enrolled at ILC are expected to:</p>
+                <ul>
+                    <li>Adhere to the school's code of conduct and student handbook</li>
+                    <li>Respect teachers, staff, and fellow students</li>
+                    <li>Attend classes regularly and complete assignments on time</li>
+                    <li>Maintain academic honesty in all school work</li>
+                </ul>
+                <p><strong>6.2 Academic Honesty</strong><br>Cheating, plagiarism, or any form of academic dishonesty is strictly prohibited and may result in disciplinary action, including suspension or expulsion.</p>
+
+                <p><strong>7. Use of School Systems</strong></p>
+                <p><strong>7.1 Acceptable Use</strong><br>The ILC Online Enrollment System and other school-provided technology must be used for educational purposes only. Prohibited activities include:</p>
+                <ul>
+                    <li>Attempting to hack, disrupt, or damage school systems</li>
+                    <li>Uploading malicious software or viruses</li>
+                    <li>Sharing copyrighted material without permission</li>
+                    <li>Using the system for commercial purposes</li>
+                    <li>Harassing or threatening other users</li>
+                </ul>
+                <p><strong>7.2 Monitoring</strong><br>ILC reserves the right to monitor system usage for security and compliance purposes. Users have no expectation of privacy when using school systems.</p>
+
+                <p><strong>8. Privacy and Data Protection</strong><br>ILC is committed to protecting your personal information. Our Privacy Policy, shown in the tab above, details how we collect, use, store, and protect your data. By using this system, you consent to our data practices as outlined in our Privacy Policy.</p>
+
+                <p><strong>9. Intellectual Property</strong><br>All content on the ILC Online Enrollment System, including text, graphics, logos, and software, is the property of Immaculate Learning Center and is protected by copyright laws. Users may not reproduce, distribute, or create derivative works without explicit permission.</p>
+
+                <p><strong>10. Communication</strong><br>By enrolling, you agree to receive communications from ILC through:</p>
+                <ul>
+                    <li>Email (enrollment updates, announcements, reminders)</li>
+                    <li>SMS (important alerts and notifications)</li>
+                    <li>Phone calls (for urgent matters)</li>
+                </ul>
+                <p>You may opt out of non-essential communications by contacting the school administration.</p>
+
+                <p><strong>11. Termination</strong><br>ILC reserves the right to suspend or terminate access to the enrollment system and cancel enrollment for:</p>
+                <ul>
+                    <li>Violation of these Terms and Conditions</li>
+                    <li>Non-payment of fees</li>
+                    <li>Providing false or misleading information</li>
+                    <li>Behavior that disrupts the learning environment</li>
+                    <li>Other violations of school policies</li>
+                </ul>
+
+                <p><strong>12. Limitation of Liability</strong><br>ILC shall not be liable for any indirect, incidental, special, or consequential damages arising from the use or inability to use the enrollment system, including but not limited to loss of data, loss of enrollment opportunities, or business interruption.</p>
+
+                <p><strong>13. Modifications to Terms</strong><br>ILC reserves the right to modify these Terms and Conditions at any time. Changes will be posted on this page with an updated revision date. Continued use of the system after changes constitutes acceptance of the new terms.</p>
+
+                <p><strong>14. Governing Law</strong><br>These Terms and Conditions are governed by the laws of the Republic of the Philippines. Any disputes arising from these terms shall be resolved in the appropriate courts of the Philippines.</p>
+
+                <p><strong>15. Contact Information</strong><br>For questions about these Terms and Conditions or the enrollment process, please contact:</p>
+                <p style="background:#e8f0fb;padding:10px 12px;border-left:3px solid #1a3a6c;border-radius:4px;">
+                    <strong>Immaculate Learning Center</strong><br>
+                    Address: Brgy Poblacion Central General Tinio Nueva Ecija<br>
+                    Phone: 0951-989-9685<br>
+                    Email: Iemelif_learningcenter@gmail.com<br>
+                    Office Hours: Monday – Friday 7:30 AM – 5:00 PM
+                </p>
+
+                <p><strong>16. Agreement</strong><br>By clicking "I Agree" or using the ILC Online Enrollment System, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions.</p>
+
                 <p style="color:#888;font-size:11px;">Full document: <a href="{{ route('terms') }}" target="_blank" style="color:var(--ilc-blue);">View complete Terms &amp; Conditions</a></p>
             </div>
             <div id="modal-tc-pane-privacy" style="display:none;">
                 <p style="font-weight:700;color:#1a3a6c;margin:0 0 10px;">IEMELIF LEARNING CENTER — Privacy Policy</p>
-                <p>ILC is committed to protecting the privacy and personal data of students, parents, and guardians in compliance with <strong>Republic Act No. 10173 (Data Privacy Act of 2012)</strong>.</p>
-                <p><strong>1. Data We Collect</strong><br>We collect: full name, birthdate, address, contact details, email, guardian information, academic records, and payment information — necessary for enrollment processing and school administration.</p>
-                <p><strong>2. How We Use Your Data</strong><br>Your personal data is used for: processing enrollment applications, communicating school announcements, maintaining academic records, managing payments, and complying with legal obligations. We do not sell or share your data with third parties for commercial purposes.</p>
-                <p><strong>3. Data Storage &amp; Security</strong><br>Your data is stored securely in our school database with appropriate safeguards. We implement technical and organizational measures to protect your information from unauthorized access, loss, or disclosure.</p>
-                <p><strong>4. Data Retention</strong><br>Academic and enrollment records are retained for the duration required by DepEd regulations and applicable laws. You may request deletion of non-essential data after leaving the institution.</p>
-                <p><strong>5. Your Rights</strong><br>Under RA 10173, you have the right to: access your personal data, correct inaccurate data, object to processing, request deletion (subject to legal obligations), and file a complaint with the National Privacy Commission.</p>
-                <p><strong>6. Consent</strong><br>By submitting this enrollment application, you give your informed consent to the collection, use, and processing of your personal data as described in this policy.</p>
-                <p><strong>7. Contact</strong><br>For data privacy concerns, contact the school Data Privacy Officer at the school office in General Tinio, Nueva Ecija.</p>
+                <p style="color:#888;font-size:11px;">Online Enrollment System</p>
+
+                <p>IEMELIF Learning Center ("ILC", "we", "us", or "our") is committed to protecting the privacy and personal data of our students, parents, guardians, and all users of our Online Enrollment System. This Privacy Policy explains how we collect, use, store, share, and protect your personal information in compliance with <strong>Republic Act No. 10173</strong>, otherwise known as the <strong>Data Privacy Act of 2012</strong>, and its Implementing Rules and Regulations.</p>
+                <p>By using the ILC Online Enrollment System and submitting an enrollment application, you acknowledge that you have read and understood this Privacy Policy and you consent to the collection, use, and processing of your personal data as described herein.</p>
+
+                <p><strong>1. Data Controller Information</strong><br>The personal data you provide through this system is collected and controlled by:</p>
+                <p style="background:#e8f0fb;padding:10px 12px;border-left:3px solid #1a3a6c;border-radius:4px;">
+                    <strong>IEMELIF Learning Center</strong><br>
+                    General Tinio, Nueva Ecija, Philippines<br>
+                    Phone: 0951-989-9685<br>
+                    Email: Iemelif_learningcenter@gmail.com<br>
+                    Data Protection Officer: Mrs. Teofila Guillermo
+                </p>
+
+                <p><strong>2. Personal Data We Collect</strong><br>When you use our Online Enrollment System, we collect the following categories of personal data:</p>
+                <p><strong>2.1 Student Information</strong></p>
+                <ul>
+                    <li>Full name (first, middle, last, suffix)</li>
+                    <li>Date of birth, place of birth, and age</li>
+                    <li>Gender and nationality</li>
+                    <li>Learner's Reference Number (LRN)</li>
+                    <li>Grade level and student type (new, transferee, or returning)</li>
+                    <li>Previous school attended and last grade completed</li>
+                </ul>
+                <p><strong>2.2 Contact and Address Information</strong></p>
+                <ul>
+                    <li>Home address (province, city/municipality, barangay, street address, ZIP code)</li>
+                    <li>Contact numbers</li>
+                    <li>Email address</li>
+                </ul>
+                <p><strong>2.3 Parent and Guardian Information</strong></p>
+                <ul>
+                    <li>Full name of mother, father, and/or legal guardian</li>
+                    <li>Relationship to the student</li>
+                    <li>Occupation and age</li>
+                    <li>Contact number and email address</li>
+                </ul>
+                <p><strong>2.4 Health Information</strong></p>
+                <ul>
+                    <li>Blood type</li>
+                    <li>Known allergies</li>
+                    <li>Existing medical conditions or special health needs</li>
+                </ul>
+                <p style="background:#fff8e1;padding:10px 12px;border-left:3px solid #f59e0b;border-radius:4px;"><strong>Note:</strong> Health information is considered sensitive personal data under the Data Privacy Act of 2012. It is collected solely for the safety and well-being of the student and is treated with the highest level of confidentiality.</p>
+                <p><strong>2.5 Financial Information</strong></p>
+                <ul>
+                    <li>Selected payment option (A, B, C, or D)</li>
+                    <li>Payment amounts and outstanding balances</li>
+                    <li>Payment method (cash or GCash)</li>
+                    <li>Payment reference numbers</li>
+                    <li>Payment screenshots submitted for verification</li>
+                </ul>
+                <p><strong>2.6 Submitted Documents</strong></p>
+                <ul>
+                    <li>Birth Certificate (PSA/NSO copy)</li>
+                    <li>Form 137 (Permanent Record)</li>
+                    <li>Form 138 (Report Card)</li>
+                    <li>Certificate of Good Moral Character</li>
+                    <li>Barangay Clearance</li>
+                    <li>Other documents required for enrollment</li>
+                </ul>
+                <p><strong>2.7 System and Account Data</strong></p>
+                <ul>
+                    <li>Student portal login credentials (email and encrypted password)</li>
+                    <li>Account activity and login history</li>
+                    <li>Enrollment application status and history</li>
+                </ul>
+
+                <p><strong>3. Purpose and Legal Basis for Processing</strong><br>We collect and process your personal data for the following purposes:</p>
+                <ul>
+                    <li>Processing and managing your enrollment application — fulfillment of a contract / legal obligation</li>
+                    <li>Verifying student eligibility and reviewing documents — legitimate interest / legal obligation</li>
+                    <li>Creating and managing student portal accounts — fulfillment of a contract</li>
+                    <li>Processing payments and managing tuition accounts — fulfillment of a contract / legal obligation</li>
+                    <li>Maintaining health records for student safety — protection of vital interests / consent</li>
+                    <li>Sending enrollment updates, notifications, and reminders — legitimate interest / consent</li>
+                    <li>Assigning students to grade sections and schedules — fulfillment of a contract</li>
+                    <li>Compliance with DepEd and government reporting requirements — legal obligation</li>
+                    <li>Improving our enrollment system and services — legitimate interest</li>
+                </ul>
+
+                <p><strong>4. How We Use Your Personal Data</strong><br>Your personal data is used exclusively for school-related purposes, including:</p>
+                <ul>
+                    <li>Reviewing, approving, or declining enrollment applications</li>
+                    <li>Creating and managing student accounts in our portal system</li>
+                    <li>Assigning students to appropriate grade levels and class sections</li>
+                    <li>Generating enrollment records, clearances, and official school documents</li>
+                    <li>Processing and tracking tuition payments and installment schedules</li>
+                    <li>Communicating enrollment status, payment reminders, and school announcements</li>
+                    <li>Monitoring student health needs to ensure a safe learning environment</li>
+                    <li>Complying with reporting obligations to the Department of Education (DepEd) and other government agencies</li>
+                    <li>Conducting academic performance tracking and promotion</li>
+                </ul>
+
+                <p><strong>5. Data Sharing and Disclosure</strong><br>We do <strong>not</strong> sell, rent, or trade your personal data to any third party. Your data may only be shared in the following circumstances:</p>
+                <p><strong>5.1 Within the School</strong><br>Your data is accessible only to authorized school personnel whose roles require it, including school administrators, finance staff, class advisers, and the school principal. Access is role-based and limited to what is necessary.</p>
+                <p><strong>5.2 Government Agencies</strong><br>We may be required by law to share certain student data with government agencies such as the Department of Education (DepEd), the Philippine Statistics Authority (PSA), or local government units, strictly for compliance and reporting purposes.</p>
+                <p><strong>5.3 Emergency Situations</strong><br>In the event of a medical emergency or situation involving the safety of a student, relevant health and contact information may be disclosed to emergency responders, medical professionals, or authorized family members.</p>
+                <p><strong>5.4 Legal Requirements</strong><br>We may disclose your information if required to do so by a court order, subpoena, or other valid legal process, or when disclosure is necessary to protect our legal rights or the rights of others.</p>
+
+                <p><strong>6. Data Retention</strong><br>We retain your personal data for as long as is necessary to fulfill the purposes for which it was collected, and in accordance with applicable laws and regulations:</p>
+                <ul>
+                    <li><strong>Enrollment records</strong> — retained for the duration of the student's enrollment and for a minimum of <strong>10 years</strong> after the student's graduation or departure, in compliance with DepEd records management guidelines.</li>
+                    <li><strong>Payment records</strong> — retained for a minimum of <strong>5 years</strong> for audit and financial compliance purposes.</li>
+                    <li><strong>Health records</strong> — retained for the duration of enrollment and <strong>3 years</strong> thereafter.</li>
+                    <li><strong>Uploaded documents</strong> — retained for the duration of the student's enrollment and may be deleted upon the student's request after graduation, subject to school policy.</li>
+                    <li><strong>Account credentials</strong> — deactivated upon graduation or withdrawal and purged after the applicable retention period.</li>
+                </ul>
+                <p>Rejected or withdrawn applications are retained for a minimum of <strong>1 year</strong> for reference purposes, after which they are securely deleted or anonymized.</p>
+
+                <p><strong>7. Data Security</strong><br>ILC implements appropriate technical and organizational security measures to protect your personal data against unauthorized access, disclosure, alteration, or destruction. These measures include:</p>
+                <ul>
+                    <li>Encrypted storage of passwords and sensitive data</li>
+                    <li>Role-based access controls limiting data access to authorized personnel only</li>
+                    <li>Secure file storage for uploaded documents and payment screenshots</li>
+                    <li>Regular system monitoring and security reviews</li>
+                    <li>Use of HTTPS/SSL encryption for data transmitted through the enrollment portal</li>
+                </ul>
+                <p>While we take every reasonable precaution, no system can guarantee absolute security. In the event of a data breach that poses a risk to your rights and freedoms, we will notify the National Privacy Commission (NPC) and affected individuals in accordance with the Data Privacy Act of 2012.</p>
+
+                <p><strong>8. Your Rights as a Data Subject</strong><br>Under the Data Privacy Act of 2012 (RA 10173), you have the following rights regarding your personal data:</p>
+                <ul>
+                    <li><strong>Right to be Informed</strong> — You have the right to know what personal data we collect, how it is used, and to whom it may be disclosed.</li>
+                    <li><strong>Right to Access</strong> — You may request a copy of the personal data we hold about you at any time.</li>
+                    <li><strong>Right to Rectification</strong> — You may request correction of inaccurate or incomplete personal data. Students or parents should inform the school registrar of any changes.</li>
+                    <li><strong>Right to Erasure or Blocking</strong> — You may request the deletion or blocking of your personal data under certain circumstances, subject to the school's legal retention obligations.</li>
+                    <li><strong>Right to Object</strong> — You may object to the processing of your personal data for specific purposes, such as marketing or non-essential communications.</li>
+                    <li><strong>Right to Data Portability</strong> — You may request that we provide your personal data in a structured, commonly used, and machine-readable format.</li>
+                    <li><strong>Right to Lodge a Complaint</strong> — You have the right to file a complaint with the National Privacy Commission (NPC) if you believe your data privacy rights have been violated.</li>
+                </ul>
+                <p>To exercise any of these rights, please contact our Data Protection Officer using the contact details in Section 1. We will respond to your request within <strong>15 working days</strong> of receipt.</p>
+
+                <p><strong>9. Children's Privacy</strong><br>The ILC Online Enrollment System is used to enroll minor students. The personal data of minors is collected with the full knowledge and consent of their parent or legal guardian, who is responsible for completing and submitting the enrollment application on the student's behalf.</p>
+                <p>Parents and guardians have the right to access, correct, or request the deletion of their child's personal data at any time, subject to applicable laws and school policies.</p>
+
+                <p><strong>10. Cookies and System Data</strong><br>Our enrollment system uses session cookies to maintain your login session and ensure secure access. These cookies are temporary and are deleted when you close your browser or log out. We do not use cookies for tracking or advertising purposes.</p>
+
+                <p><strong>11. Third-Party Services</strong><br>Our enrollment system may use the following third-party services for technical functionality:</p>
+                <ul>
+                    <li><strong>GCash</strong> — for processing online payments. Payments made through GCash are subject to GCash's own privacy policy and terms of service.</li>
+                    <li><strong>Email service providers</strong> — for sending enrollment notifications and updates. Only the necessary information (name, email address) is shared for delivery purposes.</li>
+                </ul>
+                <p>ILC is not responsible for the privacy practices of these third-party services. We encourage you to review their respective privacy policies.</p>
+
+                <p><strong>12. Changes to This Privacy Policy</strong><br>ILC reserves the right to update or modify this Privacy Policy at any time to reflect changes in our practices, legal requirements, or system improvements. Any changes will be posted on this page with a revised effective date. Continued use of the enrollment system after any changes constitutes your acceptance of the updated policy.</p>
+                <p>For significant changes, we will notify parents and guardians through the contact information provided during enrollment.</p>
+
+                <p><strong>13. Contact and Complaints</strong><br>If you have questions, concerns, or requests regarding this Privacy Policy or how we handle your personal data, please contact us:</p>
+                <p style="background:#e8f0fb;padding:10px 12px;border-left:3px solid #1a3a6c;border-radius:4px;">
+                    <strong>IEMELIF Learning Center</strong><br>
+                    General Tinio, Nueva Ecija, Philippines<br>
+                    Phone: 0951-989-9685<br>
+                    Email: Iemelif_learningcenter@gmail.com<br>
+                    Data Protection Officer: Mrs. Teofila Guillermo<br>
+                    Office Hours: Monday to Friday, 8:00 AM – 5:00 PM
+                </p>
+                <p>If you are not satisfied with our response, you have the right to file a complaint with the <strong>National Privacy Commission (NPC)</strong>:</p>
+                <p style="background:#e8f0fb;padding:10px 12px;border-left:3px solid #1a3a6c;border-radius:4px;">
+                    National Privacy Commission<br>
+                    3/F, Core G, GSIS Complex, Roxas Boulevard, Pasay City, 1308 Philippines<br>
+                    Website: <a href="https://www.privacy.gov.ph" target="_blank" style="color:var(--ilc-blue);">www.privacy.gov.ph</a><br>
+                    Email: info@privacy.gov.ph
+                </p>
+
+                <p><strong>14. Consent</strong><br>By submitting an enrollment application through this system and checking the "I agree" checkbox, you confirm that:</p>
+                <ul>
+                    <li>You have read and understood this Privacy Policy in full.</li>
+                    <li>You consent to the collection, use, and processing of the personal data described in this policy for the stated purposes.</li>
+                    <li>You are at least 18 years old, or you are acting as the parent or legal guardian of the student being enrolled.</li>
+                    <li>All information provided is true, accurate, and complete to the best of your knowledge.</li>
+                </ul>
+
                 <p style="color:#888;font-size:11px;">Full document: <a href="{{ route('privacy') }}" target="_blank" style="color:var(--ilc-blue);">View complete Privacy Policy</a></p>
             </div>
         </div>
