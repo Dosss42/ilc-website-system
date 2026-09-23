@@ -82,15 +82,22 @@ class EnrollmentController extends Controller
             'expires_at' => now()->addMinutes(3),
         ]);
 
-        try {
-            Mail::to($email)->send(new EnrollmentOtpMail($otp, $email));
-        } catch (\Exception $e) {
-            Log::error('OTP mail failed: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to send email. Please check your Gmail address and try again.',
-            ], 500);
-        }
+        // Deferred to after the response is sent — Mail::send() is a
+        // synchronous SMTP round-trip, and on Railway (no queue worker
+        // running, so ->queue() would silently never send at all) a slow or
+        // unreachable connection to smtp.gmail.com could block this request
+        // long enough for it to time out before the browser ever got a
+        // response, surfacing as a generic "check your internet" error even
+        // though the OTP row was already created successfully. Same
+        // afterResponse() pattern already used for the enrollment-approved
+        // email in approve() below.
+        dispatch(function () use ($email, $otp) {
+            try {
+                Mail::to($email)->send(new EnrollmentOtpMail($otp, $email));
+            } catch (\Exception $e) {
+                Log::error('OTP mail failed: ' . $e->getMessage());
+            }
+        })->afterResponse();
 
         return response()->json([
             'success' => true,
@@ -1427,12 +1434,25 @@ class EnrollmentController extends Controller
                 'decline_storage' => $validated['storage'] ?? 'pending',
             ]);
 
-            // Try to send decline email, but don't fail if it doesn't work
+            // Deferred to after the response — same reasoning as sendOtp()
+            // and approve(): ->queue() needs a running queue worker, which
+            // Railway doesn't run (only php-fpm + nginx), so a queued email
+            // would sit in the jobs table and never actually send.
+            // dispatch(...)->afterResponse() runs it right after the
+            // response goes out, with no worker required.
             try {
                 $studentData = $enrollment->student_data;
-                Mail::to($studentData['student_email'] ?? '')->queue(new EnrollmentDeclined($enrollment, $validated['reason']));
+                $recipientEmail = $studentData['student_email'] ?? '';
+                $declineReason = $validated['reason'];
+                dispatch(function () use ($recipientEmail, $enrollment, $declineReason) {
+                    try {
+                        Mail::to($recipientEmail)->send(new EnrollmentDeclined($enrollment, $declineReason));
+                    } catch (\Exception $mailException) {
+                        Log::warning('Failed to send decline email: ' . $mailException->getMessage());
+                    }
+                })->afterResponse();
             } catch (\Exception $mailException) {
-                Log::warning('Failed to send decline email: ' . $mailException->getMessage());
+                Log::warning('Failed to dispatch decline email: ' . $mailException->getMessage());
                 // Continue without failing the entire decline process
             }
 
