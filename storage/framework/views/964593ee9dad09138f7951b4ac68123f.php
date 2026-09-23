@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
     <title>Enrollment Application - IEMELIF Learning Center</title>
     
 
@@ -455,12 +455,9 @@
 <header class="top-header">
     <div class="container">
         <div class="d-flex align-items-center gap-3">
-        {{--    <div class="school-logo">
-                <a class="nav-link" href="{{ route('home') }}">
-                    <img src="/images/logo1.png" alt="Logo 1"></a>
-            </div>--}}
+        
             <div class="school-logo">
-                <a class="nav-link" href="{{ route('home') }}">
+                <a class="nav-link" href="<?php echo e(route('home')); ?>">
                     <img src="/images/logo.png" alt="Logo 2"></a>
             </div>
             <div class="school-title">
@@ -500,23 +497,23 @@
             <div style="padding:24px 28px;">
                 <!-- Step progress circles -->
                 <div style="display:flex;align-items:center;justify-content:center;gap:0;margin-bottom:10px;">
-                    @for($i=0;$i<5;$i++)
+                    <?php for($i=0;$i<5;$i++): ?>
                         <span class="eskel" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;display:block;"></span>
-                        @if($i<4)<span class="eskel" style="flex:1;max-width:80px;height:3px;border-radius:2px;display:block;"></span>@endif
-                    @endfor
+                        <?php if($i<4): ?><span class="eskel" style="flex:1;max-width:80px;height:3px;border-radius:2px;display:block;"></span><?php endif; ?>
+                    <?php endfor; ?>
                 </div>
                 <!-- Step labels -->
                 <div style="display:flex;justify-content:space-between;margin-bottom:28px;">
-                    @for($i=0;$i<5;$i++)
+                    <?php for($i=0;$i<5;$i++): ?>
                     <span class="eskel" style="height:10px;width:60px;border-radius:4px;display:block;"></span>
-                    @endfor
+                    <?php endfor; ?>
                 </div>
 
                 <!-- Section label -->
                 <span class="eskel" style="height:16px;width:180px;display:block;border-radius:4px;margin-bottom:20px;"></span>
 
                 <!-- Form fields — 2-column grid rows -->
-                @for($r=0;$r<4;$r++)
+                <?php for($r=0;$r<4;$r++): ?>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
                     <div>
                         <span class="eskel" style="height:11px;width:80px;display:block;border-radius:3px;margin-bottom:6px;"></span>
@@ -527,7 +524,7 @@
                         <span class="eskel" style="height:42px;width:100%;display:block;border-radius:8px;"></span>
                     </div>
                 </div>
-                @endfor
+                <?php endfor; ?>
 
                 <!-- Full-width field -->
                 <div style="margin-bottom:14px;">
@@ -551,9 +548,9 @@
 <div style="background:var(--ilc-blue); padding:30px 0; text-align:center; border-bottom:4px solid var(--ilc-gold);">
     <h2 style="color:#fff; font-size:24px; font-weight:700; text-transform:uppercase; letter-spacing:2px; margin:0;">Enrollment Application</h2>
     <div class="nav-breadcrumb" style="background: rgba(255, 255, 255, 0.1); padding: 8px 16px; border-radius: 20px; display: inline-flex; align-items: center; gap: 8px; margin-top: 15px;">
-        <a href="{{ route('home') }}" style="color:rgba(255,255,255,0.8); text-decoration:none; font-size:12px;">Home</a>
+        <a href="<?php echo e(route('home')); ?>" style="color:rgba(255,255,255,0.8); text-decoration:none; font-size:12px;">Home</a>
         <span style="color:rgba(255,255,255,0.6);">|</span>
-        <a href="{{ route('admission') }}" style="color:rgba(255,255,255,0.8); text-decoration:none; font-size:12px;">Enrollment</a>
+        <a href="<?php echo e(route('admission')); ?>" style="color:rgba(255,255,255,0.8); text-decoration:none; font-size:12px;">Enrollment</a>
         <span style="color:rgba(255,255,255,0.6);">|</span>
         <span style="color:#fff; font-size:12px;">Application Form</span>
     </div>
@@ -587,7 +584,7 @@
             <span class="step-label" id="slb5">Review</span>
         </div>
 
-        {{-- Draft restored banner --}}
+        
         <div id="draft-banner" style="display:none;background:#e8f4ff;border:1.5px solid #93c5fd;border-radius:10px;padding:12px 18px;margin-bottom:16px;display:none;align-items:center;gap:12px;">
             <i class="bi bi-floppy-fill" style="font-size:18px;color:#1d4ed8;flex-shrink:0;"></i>
             <div style="flex:1;">
@@ -599,8 +596,8 @@
             </button>
         </div>
 
-        <form id="appForm" action="{{ route('enrollment.submit') }}" method="POST">
-            @csrf
+        <form id="appForm" action="<?php echo e(route('enrollment.submit')); ?>" method="POST">
+            <?php echo csrf_field(); ?>
 
             <!-- STEP 1: Personal Information -->
             <div id="appStep1" class="form-step">
@@ -636,7 +633,7 @@
                 <div class="row g-3 mb-3">
                     <div class="col-md-3">
                         <label class="app-label">Date of Birth *</label>
-                        <input type="date" name="birthdate" class="app-input" required max="{{ date('Y-m-d') }}">
+                        <input type="date" name="birthdate" class="app-input" required max="<?php echo e(date('Y-m-d')); ?>">
                     </div>
                     <div class="col-md-3">
                         <label class="app-label">Gender *</label>
@@ -945,12 +942,12 @@
                     <button type="button" class="btn-step-back" onclick="appStep(4)">
                         <i class="bi bi-arrow-left-short"></i> Back
                     </button>
-                    {{-- Triggers OTP flow instead of direct submit --}}
+                    
                     <button type="button" class="btn-step-submit" id="otpTriggerBtn" onclick="startOtpFlow()">
                         <i class="bi bi-shield-check"></i> Verify Email & Submit
                     </button>
                 </div>
-                {{-- Hidden OTP token injected after verification --}}
+                
                 <input type="hidden" name="otp_token" id="otp_token_input">
             </div>
 
@@ -958,12 +955,12 @@
     </div>
 </div>
 
-{{-- ── OTP VERIFICATION MODAL ── --}}
+
 <div id="otpModal" style="display:none;position:fixed;inset:0;z-index:99999;align-items:center;justify-content:center;">
     <div style="position:absolute;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);"></div>
     <div style="position:relative;width:100%;max-width:420px;margin:16px;border-radius:20px;overflow:hidden;box-shadow:0 32px 80px rgba(0,0,0,.3);">
 
-        {{-- Header --}}
+        
         <div style="background:linear-gradient(135deg,#1a3a6c,#2471a3);padding:24px 28px;text-align:center;">
             <div style="width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">
                 <i class="bi bi-envelope-check-fill" style="font-size:26px;color:#fff;"></i>
@@ -972,40 +969,40 @@
             <div id="otpModalEmail" style="font-size:12px;color:rgba(255,255,255,.7);margin-top:4px;"></div>
         </div>
 
-        {{-- Body --}}
+        
         <div style="background:#fff;padding:28px;">
             <p style="font-size:13px;color:#374151;text-align:center;margin-bottom:20px;line-height:1.6;">
                 We sent a <strong>6-digit verification code</strong> to your Gmail. Enter it below to complete your enrollment application.
             </p>
 
-            {{-- OTP input boxes --}}
+            
             <div style="display:flex;justify-content:center;gap:10px;margin-bottom:6px;" id="otpBoxes">
-                @for($i = 0; $i < 6; $i++)
+                <?php for($i = 0; $i < 6; $i++): ?>
                 <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]"
                     class="otp-box"
                     style="width:46px;height:56px;text-align:center;font-size:24px;font-weight:800;border:2px solid #e2e8f0;border-radius:10px;color:#1a3a6c;outline:none;transition:border-color .2s;"
-                    oninput="otpBoxInput(this, {{ $i }})"
-                    onkeydown="otpBoxKeydown(event, {{ $i }})"
-                    onpaste="{{ $i === 0 ? 'otpPaste(event)' : 'return false;' }}"
+                    oninput="otpBoxInput(this, <?php echo e($i); ?>)"
+                    onkeydown="otpBoxKeydown(event, <?php echo e($i); ?>)"
+                    onpaste="<?php echo e($i === 0 ? 'otpPaste(event)' : 'return false;'); ?>"
                     onfocus="this.style.borderColor='#2471a3'"
                     onblur="this.style.borderColor='#e2e8f0'">
-                @endfor
+                <?php endfor; ?>
             </div>
 
-            {{-- Error message --}}
+            
             <div id="otpError" style="display:none;text-align:center;font-size:12px;color:#dc2626;margin-bottom:12px;padding:8px;background:#fef2f2;border-radius:8px;"></div>
 
-            {{-- Success message --}}
+            
             <div id="otpSuccess" style="display:none;text-align:center;font-size:12px;color:#16a34a;margin-bottom:12px;padding:8px;background:#f0fdf4;border-radius:8px;">
                 <i class="bi bi-check-circle-fill me-1"></i> Email verified! Submitting your application...
             </div>
 
-            {{-- Expiry countdown --}}
+            
             <div style="text-align:center;font-size:12px;color:#94a3b8;margin-bottom:20px;">
                 Code expires in <span id="otpCountdown" style="font-weight:700;color:#1a3a6c;">3:00</span>
             </div>
 
-            {{-- Buttons --}}
+            
             <button type="button" id="otpVerifyBtn" onclick="submitOtpCode()"
                 style="width:100%;padding:13px;background:linear-gradient(135deg,#1a3a6c,#2471a3);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px;">
                 <i class="bi bi-shield-check"></i> Verify Code
@@ -1031,7 +1028,7 @@ var _otpTimer    = null;
 var _otpSeconds  = 180; // 3 minutes
 var _otpVerified = false;
 var csrfTokenEnroll = document.querySelector('meta[name="csrf-token"]') ?
-    document.querySelector('meta[name="csrf-token"]').content : '{{ csrf_token() }}';
+    document.querySelector('meta[name="csrf-token"]').content : '<?php echo e(csrf_token()); ?>';
 
 // ── T&C / Privacy tab switcher ──
 function tcTab(tab) {
@@ -1088,7 +1085,7 @@ function sendOtpRequest() {
     var btn = document.getElementById('otpResendBtn');
     if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
 
-    fetch('{{ route("enrollment.send-otp") }}', {
+    fetch('<?php echo e(route("enrollment.send-otp")); ?>', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfTokenEnroll, 'Accept': 'application/json' },
         body: JSON.stringify({ email: _otpEmail })
@@ -1124,7 +1121,7 @@ function submitOtpCode() {
     btn.disabled = true;
     btn.innerHTML = '<span style="width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;display:inline-block;animation:otpSpin .7s linear infinite;"></span> Verifying...';
 
-    fetch('{{ route("enrollment.verify-otp") }}', {
+    fetch('<?php echo e(route("enrollment.verify-otp")); ?>', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfTokenEnroll, 'Accept': 'application/json' },
         body: JSON.stringify({ email: _otpEmail, code: code })
@@ -1632,7 +1629,7 @@ document.addEventListener('keydown', function(e) {
                         showNotification(data.message || 'Application submitted successfully! Your reference number is: ' + (data.reference_number || ''), 'success');
                         this.reset();
                         setTimeout(function() {
-                            window.location.href = '{{ route("home") }}#enrollment';
+                            window.location.href = '<?php echo e(route("home")); ?>#enrollment';
                         }, 2500);
                     } else {
                         showNotification(data.message || 'Submission failed. Please try again.', 'error');
@@ -1645,7 +1642,7 @@ document.addEventListener('keydown', function(e) {
                     showNotification('Application submitted successfully!', 'success');
                     this.reset();
                     setTimeout(function() {
-                        window.location.href = '{{ route("home") }}#enrollment';
+                        window.location.href = '<?php echo e(route("home")); ?>#enrollment';
                     }, 2500);
                 });
             } else if (response.status === 422) {
@@ -1914,7 +1911,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
-</div>{{-- /real-enr-content --}}
+</div>
 
 <script>
 (function () {
@@ -1944,7 +1941,7 @@ document.addEventListener('DOMContentLoaded', function () {
 <div id="tcModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);overflow-y:auto;padding:24px 16px;">
     <div style="background:#fff;border-radius:16px;max-width:640px;margin:0 auto;box-shadow:0 20px 60px rgba(0,0,0,0.25);overflow:hidden;">
 
-        {{-- Modal header --}}
+        
         <div style="background:var(--ilc-blue);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;">
             <div style="display:flex;align-items:center;gap:12px;color:#fff;">
                 <i class="bi bi-shield-check" style="font-size:24px;color:var(--ilc-gold);"></i>
@@ -1956,7 +1953,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <button type="button" onclick="closeTcModal()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;opacity:0.7;line-height:1;" title="Cancel">&times;</button>
         </div>
 
-        {{-- Tab switcher --}}
+        
         <div style="display:flex;border-bottom:2px solid #e5e7eb;">
             <button type="button" id="modal-tc-tab-terms" onclick="modalTcTab('terms')"
                 style="flex:1;padding:12px 0;font-size:13px;font-weight:700;border:none;background:#fff;color:var(--ilc-blue);border-bottom:3px solid var(--ilc-blue);cursor:pointer;transition:all 0.2s;">
@@ -1968,7 +1965,7 @@ document.addEventListener('DOMContentLoaded', function () {
             </button>
         </div>
 
-        {{-- Scrollable content --}}
+        
         <div id="modal-tc-box" style="height:300px;overflow-y:auto;padding:20px 24px;font-size:12.5px;color:#444;line-height:1.8;">
             <div id="modal-tc-pane-terms">
                 <p style="font-weight:700;color:#1a3a6c;margin:0 0 10px;">IEMELIF LEARNING CENTER — Terms and Conditions</p>
@@ -1981,7 +1978,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <p><strong>7. System Use</strong><br>The online system must be used for enrollment purposes only. Hacking, uploading malware, harassment, or commercial use is strictly prohibited.</p>
                 <p><strong>8. Data Privacy</strong><br>Personal information collected is used solely for enrollment processing and school administration, in compliance with RA 10173 (Data Privacy Act of 2012).</p>
                 <p><strong>9. Amendments</strong><br>ILC reserves the right to modify these terms at any time. Continued use of the system constitutes acceptance of any changes.</p>
-                <p style="color:#888;font-size:11px;">Full document: <a href="{{ route('terms') }}" target="_blank" style="color:var(--ilc-blue);">View complete Terms &amp; Conditions</a></p>
+                <p style="color:#888;font-size:11px;">Full document: <a href="<?php echo e(route('terms')); ?>" target="_blank" style="color:var(--ilc-blue);">View complete Terms &amp; Conditions</a></p>
             </div>
             <div id="modal-tc-pane-privacy" style="display:none;">
                 <p style="font-weight:700;color:#1a3a6c;margin:0 0 10px;">IEMELIF LEARNING CENTER — Privacy Policy</p>
@@ -1993,16 +1990,16 @@ document.addEventListener('DOMContentLoaded', function () {
                 <p><strong>5. Your Rights</strong><br>Under RA 10173, you have the right to: access your personal data, correct inaccurate data, object to processing, request deletion (subject to legal obligations), and file a complaint with the National Privacy Commission.</p>
                 <p><strong>6. Consent</strong><br>By submitting this enrollment application, you give your informed consent to the collection, use, and processing of your personal data as described in this policy.</p>
                 <p><strong>7. Contact</strong><br>For data privacy concerns, contact the school Data Privacy Officer at the school office in General Tinio, Nueva Ecija.</p>
-                <p style="color:#888;font-size:11px;">Full document: <a href="{{ route('privacy') }}" target="_blank" style="color:var(--ilc-blue);">View complete Privacy Policy</a></p>
+                <p style="color:#888;font-size:11px;">Full document: <a href="<?php echo e(route('privacy')); ?>" target="_blank" style="color:var(--ilc-blue);">View complete Privacy Policy</a></p>
             </div>
         </div>
 
-        {{-- Scroll hint --}}
+        
         <div id="modal-tc-scroll-hint" style="text-align:center;font-size:11px;color:#9ca3af;padding:6px 24px 0;display:flex;align-items:center;justify-content:center;gap:6px;">
             <i class="bi bi-arrow-down-circle"></i> Scroll down to read the full document
         </div>
 
-        {{-- Checkbox --}}
+        
         <div style="padding:16px 24px 0;">
             <label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;color:#374151;cursor:not-allowed;padding:14px 16px;background:#f8fafc;border:1.5px solid #d1d5db;border-radius:10px;transition:border-color 0.2s;opacity:0.6;" id="modal-tc-label">
                 <input type="checkbox" id="modal-tc-checkbox" disabled
@@ -2012,7 +2009,7 @@ document.addEventListener('DOMContentLoaded', function () {
             </label>
         </div>
 
-        {{-- Footer buttons --}}
+        
         <div style="display:flex;gap:12px;padding:20px 24px;justify-content:flex-end;">
             <button type="button" onclick="closeTcModal()"
                 style="padding:11px 24px;border-radius:8px;border:1.5px solid #d1d5db;background:#fff;color:#6b7280;font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s;">
@@ -2145,3 +2142,4 @@ document.getElementById('tcModal').addEventListener('click', function(e) {
 
 </body>
 </html>
+<?php /**PATH C:\Users\ron28\Desktop\ILC SYSTEM\ilc-website-system\resources\views/enrollment-application.blade.php ENDPATH**/ ?>

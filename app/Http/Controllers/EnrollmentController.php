@@ -79,7 +79,7 @@ class EnrollmentController extends Controller
             'token'      => $token,
             'attempts'   => 0,
             'verified'   => false,
-            'expires_at' => now()->addMinutes(10),
+            'expires_at' => now()->addMinutes(3),
         ]);
 
         try {
