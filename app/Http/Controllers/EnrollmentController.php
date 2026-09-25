@@ -82,23 +82,24 @@ class EnrollmentController extends Controller
             'expires_at' => now()->addMinutes(3),
         ]);
 
-        // Deferred to after the response is sent — Mail::send() is a
-        // synchronous SMTP round-trip, and on Railway (no queue worker
-        // running, so ->queue() would silently never send at all) a slow or
-        // unreachable connection to smtp.gmail.com could block this request
-        // long enough for it to time out before the browser ever got a
-        // response, surfacing as a generic "check your internet" error even
-        // though the OTP row was already created successfully. Same
-        // afterResponse() pattern already used for the enrollment-approved
-        // email in approve() below.
+        // Sent via the real queue (a supervised `queue:work` worker runs
+        // alongside php-fpm/nginx on Railway — see docker/entrypoint.sh)
+        // rather than dispatch(...)->afterResponse(). The job is durably
+        // stored in the `jobs` table first, so if the worker ever fails or
+        // gets killed mid-send, Laravel records the exception in
+        // `failed_jobs` instead of the attempt just vanishing with no trace
+        // — which is what we saw happen with afterResponse() on Railway.
+        Log::info('OTP mail dispatch registered', ['email' => $email]);
+
         dispatch(function () use ($email, $otp) {
+            Log::info('OTP mail closure entered', ['email' => $email]);
             try {
                 Mail::to($email)->send(new EnrollmentOtpMail($otp, $email));
                 Log::info('OTP mail sent', ['email' => $email]);
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 Log::error('OTP mail failed: ' . get_class($e) . ': ' . $e->getMessage(), ['email' => $email]);
             }
-        })->afterResponse();
+        });
 
         return response()->json([
             'success' => true,
@@ -1348,7 +1349,9 @@ class EnrollmentController extends Controller
 
             // Section assignment happens when Finance processes payment → updateEnrollmentPaymentStatus()
 
-            // Send approval email after the response is returned so the admin is not blocked
+            // Sent via the real queue (see docker/entrypoint.sh's supervised
+            // queue:work worker) so the admin isn't blocked, and so a failed
+            // send lands in `failed_jobs` instead of vanishing silently.
             if ($password) {
                 $recipientEmail = ($studentData['is_walk_in'] ?? false)
                     ? ($studentData['guardian_email'] ?? $studentData['student_email'] ?? '')
@@ -1361,10 +1364,10 @@ class EnrollmentController extends Controller
                 dispatch(function () use ($capturedEmail, $capturedEnrollment, $capturedPassword) {
                     try {
                         Mail::to($capturedEmail)->send(new EnrollmentApproved($capturedEnrollment, $capturedPassword));
-                    } catch (\Exception $mailException) {
-                        Log::warning('Failed to send approval email: ' . $mailException->getMessage());
+                    } catch (\Throwable $mailException) {
+                        Log::warning('Failed to send approval email: ' . get_class($mailException) . ': ' . $mailException->getMessage());
                     }
-                })->afterResponse();
+                });
             }
 
             $msg = $existingUser
@@ -1435,12 +1438,9 @@ class EnrollmentController extends Controller
                 'decline_storage' => $validated['storage'] ?? 'pending',
             ]);
 
-            // Deferred to after the response — same reasoning as sendOtp()
-            // and approve(): ->queue() needs a running queue worker, which
-            // Railway doesn't run (only php-fpm + nginx), so a queued email
-            // would sit in the jobs table and never actually send.
-            // dispatch(...)->afterResponse() runs it right after the
-            // response goes out, with no worker required.
+            // Sent via the real queue (see docker/entrypoint.sh's supervised
+            // queue:work worker) — a failed send lands in `failed_jobs`
+            // instead of vanishing silently, unlike dispatch(...)->afterResponse().
             try {
                 $studentData = $enrollment->student_data;
                 $recipientEmail = $studentData['student_email'] ?? '';
@@ -1448,10 +1448,10 @@ class EnrollmentController extends Controller
                 dispatch(function () use ($recipientEmail, $enrollment, $declineReason) {
                     try {
                         Mail::to($recipientEmail)->send(new EnrollmentDeclined($enrollment, $declineReason));
-                    } catch (\Exception $mailException) {
-                        Log::warning('Failed to send decline email: ' . $mailException->getMessage());
+                    } catch (\Throwable $mailException) {
+                        Log::warning('Failed to send decline email: ' . get_class($mailException) . ': ' . $mailException->getMessage());
                     }
-                })->afterResponse();
+                });
             } catch (\Exception $mailException) {
                 Log::warning('Failed to dispatch decline email: ' . $mailException->getMessage());
                 // Continue without failing the entire decline process
