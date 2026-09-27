@@ -218,6 +218,12 @@
                     <option value="{{ $sec->name }}">{{ $sec->name }}</option>
                 @endforeach
             </select>
+            <select id="financeSortFilter" onchange="changeFinanceSort()">
+                <option value="newest" {{ ($sort ?? 'newest') === 'newest' ? 'selected' : '' }}>Newest First</option>
+                <option value="oldest" {{ ($sort ?? '') === 'oldest' ? 'selected' : '' }}>Oldest First</option>
+                <option value="name_asc" {{ ($sort ?? '') === 'name_asc' ? 'selected' : '' }}>Name (A-Z)</option>
+                <option value="name_desc" {{ ($sort ?? '') === 'name_desc' ? 'selected' : '' }}>Name (Z-A)</option>
+            </select>
             <span class="toolbar-count"><span id="financeVisibleCount">{{ ($allStudentsPayment ?? collect())->count() }}</span> of {{ ($allStudentsPayment ?? collect())->count() }} students</span>
         </div>
     </div>
@@ -413,6 +419,12 @@
 
 @section('scripts')
 <script>
+function changeFinanceSort() {
+    const url = new URL(window.location.href);
+    url.searchParams.set('sort', document.getElementById('financeSortFilter').value);
+    window.location.href = url.toString();
+}
+
 function filterFinanceTable() {
     const search  = (document.getElementById('financeSearchInput').value || '').toLowerCase();
     const pay     = (document.getElementById('financePayFilter').value || '').toLowerCase();

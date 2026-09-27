@@ -449,7 +449,7 @@ function filterPayments() {
     const status = (document.getElementById('payFilterStatus')?.value || 'all').toLowerCase();
     const method = (document.getElementById('payFilterMethod')?.value || 'all').toLowerCase();
     const search = (document.getElementById('payFilterSearch')?.value || '').toLowerCase();
-    document.querySelectorAll('#paymentsTable tbody tr[data-status]').forEach(row => {
+    document.querySelectorAll('#walkInPaymentsTable tbody tr[data-status]').forEach(row => {
         const matchYear   = year   === 'all' || row.dataset.year   === year;
         const matchStatus = status === 'all' || row.dataset.status === status;
         const matchMethod = method === 'all' || row.dataset.method === method;

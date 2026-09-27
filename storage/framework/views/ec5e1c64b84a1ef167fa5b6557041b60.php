@@ -1696,7 +1696,7 @@ function openWalkInEnrollmentModal() {
                 <form method="GET" action="<?php echo e(url()->current()); ?>" class="row g-3" id="student-filter-form">
                     <input type="hidden" name="section" value="students">
                     <div class="col-md-4">
-                        <input type="text" name="student_search" class="form-fld" placeholder="Search student name, LRN, or email..." value="<?php echo e($studentSearch ?? ''); ?>" onchange="this.form.submit()">
+                        <input type="text" name="student_search" class="form-fld" placeholder="Search student name, LRN, or email..." value="<?php echo e($studentSearch ?? ''); ?>" oninput="debounceFormSubmit(this)">
                     </div>
                     <div class="col-md-2">
                         <select name="student_grade" class="form-fld" onchange="this.form.submit()">
@@ -3613,6 +3613,23 @@ function openWalkInEnrollmentModal() {
 
         <div class="content-card mb-4">
             <div class="p-3">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" id="enrollmentSearchInput" class="form-fld"
+                                   placeholder="Search by name, email, or reference number..."
+                                   value="<?php echo e($enrollmentSearch ?? ''); ?>"
+                                   oninput="debouncedEnrollmentSearch()"
+                                   onkeydown="if(event.key==='Enter'){ event.preventDefault(); clearTimeout(_enrollmentSearchTimer); filterEnrollments(); }">
+                        </div>
+                    </div>
+                    <?php if(($enrollmentSearch ?? '') !== ''): ?>
+                    <div class="col-md-2">
+                        <button type="button" class="btn-dash btn-secondary w-100" onclick="clearEnrollmentSearch()"><i class="bi bi-x-lg"></i> Clear</button>
+                    </div>
+                    <?php endif; ?>
+                </div>
                 <div class="row g-3">
                     <div class="col-md-3">
                         <select class="form-fld" id="statusFilter" data-sort="<?php echo e($sort ?? 'newest'); ?>" data-grade="<?php echo e($gradeFilter ?? 'all'); ?>" onchange="filterEnrollments()">
@@ -4268,7 +4285,7 @@ function openWalkInEnrollmentModal() {
             <div style="padding:16px 20px; display:flex; flex-wrap:wrap; gap:12px; align-items:end;">
                 <div style="flex:1; min-width:140px;">
                     <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">School Year</label>
-                    <select id="payFilterYear" class="form-select" style="font-size:13px; padding:8px 12px;">
+                    <select id="payFilterYear" class="form-select" style="font-size:13px; padding:8px 12px;" onchange="filterPaymentTable()">
                         <option value="all">All Years</option>
                         <?php $__currentLoopData = $schoolYears; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $year): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                             <option value="<?php echo e($year); ?>"><?php echo e($year); ?></option>
@@ -4277,7 +4294,7 @@ function openWalkInEnrollmentModal() {
                 </div>
                 <div style="flex:1; min-width:140px;">
                     <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">Status</label>
-                    <select id="payFilterStatus" class="form-select" style="font-size:13px; padding:8px 12px;">
+                    <select id="payFilterStatus" class="form-select" style="font-size:13px; padding:8px 12px;" onchange="filterPaymentTable()">
                         <option value="all">All Status</option>
                         <option value="pending">Pending</option>
                         <option value="approved">Approved</option>
@@ -4286,7 +4303,7 @@ function openWalkInEnrollmentModal() {
                 </div>
                 <div style="flex:1; min-width:140px;">
                     <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">Payment Method</label>
-                    <select id="payFilterMethod" class="form-select" style="font-size:13px; padding:8px 12px;">
+                    <select id="payFilterMethod" class="form-select" style="font-size:13px; padding:8px 12px;" onchange="filterPaymentTable()">
                         <option value="all">All Methods</option>
                         <option value="gcash">GCash</option>
                         <option value="cash">Cash</option>
@@ -4294,7 +4311,7 @@ function openWalkInEnrollmentModal() {
                 </div>
                 <div style="flex:1; min-width:180px;">
                     <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">Search Student</label>
-                    <input type="text" id="payFilterSearch" class="form-control" placeholder="Search by name or email..." style="font-size:13px; padding:8px 12px;">
+                    <input type="text" id="payFilterSearch" class="form-control" placeholder="Search by name or email..." style="font-size:13px; padding:8px 12px;" oninput="filterPaymentTable()">
                 </div>
                 <div>
                     <button type="button" class="btn-dash btn-secondary" onclick="resetPaymentFilters()" style="padding:8px 16px; font-size:13px;">
@@ -4707,7 +4724,7 @@ function openWalkInEnrollmentModal() {
             <div style="padding:16px 20px; display:flex; flex-wrap:wrap; gap:12px; align-items:end;">
                 <div style="flex:1; min-width:140px;">
                     <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">School Year</label>
-                    <select id="instFilterYear" class="form-select" style="font-size:13px; padding:8px 12px;">
+                    <select id="instFilterYear" class="form-select" style="font-size:13px; padding:8px 12px;" onchange="filterInstallments()">
                         <option value="all">All Years</option>
                         <?php $__currentLoopData = $schoolYears; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $year): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                             <option value="<?php echo e($year); ?>"><?php echo e($year); ?></option>
@@ -4716,7 +4733,7 @@ function openWalkInEnrollmentModal() {
                 </div>
                 <div style="flex:1; min-width:140px;">
                     <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">Payment Status</label>
-                    <select id="instFilterStatus" class="form-select" style="font-size:13px; padding:8px 12px;">
+                    <select id="instFilterStatus" class="form-select" style="font-size:13px; padding:8px 12px;" onchange="filterInstallments()">
                         <option value="all">All Status</option>
                         <option value="paid">Paid</option>
                         <option value="partial">Partial</option>
@@ -4725,7 +4742,7 @@ function openWalkInEnrollmentModal() {
                 </div>
                 <div style="flex:1; min-width:140px;">
                     <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">Overdue Status</label>
-                    <select id="instFilterOverdue" class="form-select" style="font-size:13px; padding:8px 12px;">
+                    <select id="instFilterOverdue" class="form-select" style="font-size:13px; padding:8px 12px;" onchange="filterInstallments()">
                         <option value="all">All Students</option>
                         <option value="yes">Overdue</option>
                         <option value="no">Not Overdue</option>
@@ -4733,7 +4750,7 @@ function openWalkInEnrollmentModal() {
                 </div>
                 <div style="flex:1; min-width:180px;">
                     <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">Search Student</label>
-                    <input type="text" id="instFilterSearch" class="form-control" placeholder="Search by name or email..." style="font-size:13px; padding:8px 12px;">
+                    <input type="text" id="instFilterSearch" class="form-control" placeholder="Search by name or email..." style="font-size:13px; padding:8px 12px;" oninput="filterInstallments()">
                 </div>
                 <div>
                     <button type="button" class="btn-dash btn-secondary" onclick="resetInstallmentFilters()" style="padding:8px 16px; font-size:13px;">
@@ -6227,7 +6244,7 @@ function openWalkInEnrollmentModal() {
             <div class="module-toolbar">
                 <div class="toolbar-search">
                     <i class="bi bi-search"></i>
-                    <input type="text" name="guidance_search" placeholder="Search student name..." value="<?php echo e($guidanceSearch ?? ''); ?>" onchange="this.form.submit()">
+                    <input type="text" name="guidance_search" placeholder="Search student name..." value="<?php echo e($guidanceSearch ?? ''); ?>" oninput="debounceFormSubmit(this)">
                 </div>
                 <div class="toolbar-filter">
                     <select name="guidance_concern" onchange="this.form.submit()">
@@ -18793,28 +18810,35 @@ function openWalkInEnrollmentModal() {
         document.getElementById('subjectVisibleCount').textContent = visible;
     }
 
+    let _enrollmentSearchTimer = null;
+    function debouncedEnrollmentSearch() {
+        clearTimeout(_enrollmentSearchTimer);
+        _enrollmentSearchTimer = setTimeout(filterEnrollments, 600);
+    }
+
     function filterEnrollments() {
         const statusValue = document.getElementById('statusFilter').value;
-        const sortValue = document.getElementById('statusFilter').dataset.sort;
-        const gradeValue = document.getElementById('statusFilter').dataset.grade;
+        const gradeValue = document.getElementById('gradeFilter').value;
+        const sortValue = document.getElementById('enrollmentSortFilter').value;
+        const searchInput = document.getElementById('enrollmentSearchInput');
+        const searchValue = searchInput ? searchInput.value.trim() : '';
         const url = new URL(window.location.pathname, window.location.origin);
         url.searchParams.set('status', statusValue);
-        url.searchParams.set('sort', sortValue);
         url.searchParams.set('grade', gradeValue);
+        url.searchParams.set('sort', sortValue);
+        if (searchValue) url.searchParams.set('enrollment_search', searchValue);
+        else url.searchParams.delete('enrollment_search');
         url.searchParams.set('section', 'enrollment');
         window.location.href = url.toString();
     }
 
     function filterEnrollmentsGrade() {
-        const gradeValue = document.getElementById('gradeFilter').value;
-        const sortValue = document.getElementById('gradeFilter').dataset.sort;
-        const statusValue = document.getElementById('gradeFilter').dataset.status;
-        const url = new URL(window.location.pathname, window.location.origin);
-        url.searchParams.set('grade', gradeValue);
-        url.searchParams.set('sort', sortValue);
-        url.searchParams.set('status', statusValue);
-        url.searchParams.set('section', 'enrollment');
-        window.location.href = url.toString();
+        filterEnrollments();
+    }
+
+    function clearEnrollmentSearch() {
+        document.getElementById('enrollmentSearchInput').value = '';
+        filterEnrollments();
     }
 
     function filterScheduleTable() {
@@ -19016,19 +19040,22 @@ function openWalkInEnrollmentModal() {
 
         const year = document.getElementById('payFilterYear').value;
 
-        const rows = document.querySelectorAll('#paymentTable tbody tr[data-search]');
+        // Covers both the Online Payments (#paymentsTable) and Cash
+        // Transactions (#walkInPaymentsTable) tabs — rows use data-student,
+        // not data-search (which doesn't exist on any row).
+        const rows = document.querySelectorAll('#paymentsTable tbody tr[data-student], #walkInPaymentsTable tbody tr[data-student]');
 
         let visible = 0;
 
         rows.forEach(row => {
 
-            const matchSearch = !search || row.dataset.search.includes(search);
+            const matchSearch = !search || (row.dataset.student || '').includes(search);
 
-            const matchStatus = !status || row.dataset.status === status;
+            const matchStatus = status === 'all' || row.dataset.status === status;
 
-            const matchMethod = !method || row.dataset.method === method;
+            const matchMethod = method === 'all' || row.dataset.method === method;
 
-            const matchYear = !year || row.dataset.year === year;
+            const matchYear = year === 'all' || row.dataset.year === year;
 
             const show = matchSearch && matchStatus && matchMethod && matchYear;
 
@@ -19042,6 +19069,60 @@ function openWalkInEnrollmentModal() {
 
         if (counter) counter.textContent = visible;
 
+    }
+
+    // Mirrors the working filterInstallments()/resetInstallmentFilters() in
+    // resources/views/finance/installments.blade.php — this dashboard's
+    // #installmentsTable rows use the identical data-year/data-status/
+    // data-overdue/data-student attributes, so the same logic applies as-is.
+    function filterInstallments() {
+        const year    = document.getElementById('instFilterYear').value.toLowerCase();
+        const status  = document.getElementById('instFilterStatus').value.toLowerCase();
+        const overdue = document.getElementById('instFilterOverdue').value.toLowerCase();
+        const search  = document.getElementById('instFilterSearch').value.toLowerCase();
+        const rows    = document.querySelectorAll('#installmentsTable tbody tr[data-student]');
+        let visible   = 0;
+
+        rows.forEach(row => {
+            const rowYear    = (row.dataset.year    || '').toLowerCase();
+            const rowStatus  = (row.dataset.status  || '').toLowerCase();
+            const rowOverdue = (row.dataset.overdue || '').toLowerCase();
+            const rowStudent = (row.dataset.student || '').toLowerCase();
+
+            const matchYear    = year    === 'all' || rowYear    === year;
+            const matchStatus  = status  === 'all' || rowStatus  === status;
+            const matchOverdue = overdue === 'all' || rowOverdue === overdue;
+            const matchSearch  = !search || rowStudent.includes(search);
+
+            if (matchYear && matchStatus && matchOverdue && matchSearch) {
+                row.style.display = '';
+                visible++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        const countEl = document.getElementById('instRowCount');
+        if (countEl) countEl.textContent = visible + ' student(s) found';
+
+        const emptyRow = document.getElementById('instEmptyRow');
+        if (emptyRow) emptyRow.style.display = visible === 0 ? '' : 'none';
+    }
+
+    function resetInstallmentFilters() {
+        document.getElementById('instFilterYear').value    = 'all';
+        document.getElementById('instFilterStatus').value  = 'all';
+        document.getElementById('instFilterOverdue').value = 'all';
+        document.getElementById('instFilterSearch').value  = '';
+        filterInstallments();
+    }
+
+    // Shared helper for server-side (GET form reload) search boxes — e.g.
+    // Student Management and Guidance search — so typing auto-searches
+    // ~600ms after the last keystroke instead of requiring blur/Enter.
+    function debounceFormSubmit(el, ms) {
+        clearTimeout(el._debounceTimer);
+        el._debounceTimer = setTimeout(() => el.form.submit(), ms || 600);
     }
 
     function validateWalkinGmail(input) {

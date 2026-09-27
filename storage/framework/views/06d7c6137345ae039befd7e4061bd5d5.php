@@ -686,12 +686,12 @@ document.addEventListener('keydown', function(e) {
             </div>
             <div class="stat-item">
                 <i class="bi bi-mortarboard-fill stat-icon"></i>
-                <div class="stat-number" data-count="8" data-suffix="">8</div>
+                <div class="stat-number" data-count="6" data-suffix="">6</div>
                 <div class="stat-label">Grade Levels</div>
             </div>
             <div class="stat-item">
                 <i class="bi bi-geo-alt-fill stat-icon"></i>
-                <div class="stat-number">GTN</div>
+                <div class="stat-number">GTNE</div>
                 <div class="stat-label">General Tinio, N.E.</div>
             </div>
         </div>

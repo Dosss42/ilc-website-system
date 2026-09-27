@@ -1437,7 +1437,7 @@
                     </select>
                     <div class="topbar-search" style="flex:1;max-width:240px;">
                         <i class="bi bi-search"></i>
-                        <input type="text" id="historySearchInput" placeholder="Search student or reference…" oninput="loadHistory()">
+                        <input type="text" id="historySearchInput" placeholder="Search student or reference…" oninput="debouncedLoadHistory()">
                     </div>
                 </div>
             </div>
@@ -2725,6 +2725,12 @@
         document.getElementById('historyStudentChip').style.display = 'none';
         document.getElementById('historyPageSub').textContent = 'All transactions processed through this cashier terminal.';
         loadHistory();
+    }
+
+    var _historyDebounceTimer = null;
+    function debouncedLoadHistory() {
+        clearTimeout(_historyDebounceTimer);
+        _historyDebounceTimer = setTimeout(loadHistory, 600);
     }
 
     function loadHistory() {

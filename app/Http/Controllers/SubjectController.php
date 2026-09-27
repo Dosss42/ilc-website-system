@@ -17,7 +17,7 @@ class SubjectController extends Controller
         if ($request->filled('is_active')) {
             $query->where('is_active', filter_var($request->is_active, FILTER_VALIDATE_BOOLEAN));
         }
-        $subjects = $query->orderBy('name')->get();
+        $subjects = $query->orderByDesc('created_at')->get();
         return response()->json(['subjects' => $subjects]);
     }
 

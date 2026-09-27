@@ -123,6 +123,16 @@ class EnrollmentController extends Controller
             ->latest()->first();
 
         if (!$otp) {
+            $anyForEmail = OtpVerification::where('email', $email)->latest()->first();
+            Log::warning('Verify OTP: no unverified code found', [
+                'email' => $email,
+                'most_recent_row' => $anyForEmail ? [
+                    'verified' => $anyForEmail->verified,
+                    'attempts' => $anyForEmail->attempts,
+                    'created_at' => $anyForEmail->created_at,
+                    'expires_at' => $anyForEmail->expires_at,
+                ] : null,
+            ]);
             return response()->json(['success' => false, 'message' => 'No verification code found. Please request a new one.'], 422);
         }
 
@@ -178,6 +188,7 @@ class EnrollmentController extends Controller
 
         if (!$validOtp) {
             $msg = 'Email verification required. Please verify your Gmail address before submitting.';
+            Log::warning('Enrollment submission rejected: no matching verified OTP', ['email' => $email, 'otp_token' => $otpToken]);
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json(['success' => false, 'message' => $msg], 422);
             }
@@ -345,6 +356,7 @@ class EnrollmentController extends Controller
                 
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
+            Log::warning('Enrollment submission validation failed', ['errors' => $e->errors()]);
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
@@ -666,6 +678,7 @@ class EnrollmentController extends Controller
         $statusFilter = $request->get('status', 'all');
         $gradeFilter = $request->get('grade', 'all');
         $studentSearch = $request->get('student_search') ?? '';
+        $enrollmentSearch = trim((string) $request->get('enrollment_search', ''));
         $studentGradeFilter = $request->get('student_grade', 'all');
         $studentStatusFilter = $request->get('student_status', 'all');
         $studentPaymentFilter = $request->get('student_payment', 'all');
@@ -683,6 +696,21 @@ class EnrollmentController extends Controller
         // Apply grade level filter
         if ($gradeFilter !== 'all') {
             $enrollmentQuery->where('student_data->grade_level', $gradeFilter);
+        }
+
+        // Apply search — reference number, individual/combined name fields, and
+        // email. Name fields live inside student_data (JSON), not real columns,
+        // same as the grade_level filter above.
+        if ($enrollmentSearch !== '') {
+            $enrollmentQuery->where(function ($q) use ($enrollmentSearch) {
+                $term = '%' . $enrollmentSearch . '%';
+                $q->where('reference_number', 'like', $term)
+                  ->orWhere('student_data->first_name', 'like', $term)
+                  ->orWhere('student_data->middle_name', 'like', $term)
+                  ->orWhere('student_data->last_name', 'like', $term)
+                  ->orWhere('student_data->student_email', 'like', $term)
+                  ->orWhereRaw("CONCAT(JSON_UNQUOTE(JSON_EXTRACT(student_data, '$.first_name')), ' ', JSON_UNQUOTE(JSON_EXTRACT(student_data, '$.last_name'))) LIKE ?", [$term]);
+            });
         }
 
         // Apply sorting
@@ -922,7 +950,7 @@ class EnrollmentController extends Controller
 
         // ── 5. Academic data – select only needed columns, eager-load slim ──
         $subjectsQuery = \App\Models\Subject::with('teacher:id,name')->select('id', 'code', 'name', 'description', 'grade_level', 'teacher_id', 'is_active')
-            ->orderBy('name', 'asc');
+            ->orderByDesc('created_at');
 
         $subjects = $subjectsQuery->paginate(15, ['*'], 'subject_page');
 
@@ -934,7 +962,7 @@ class EnrollmentController extends Controller
         // TeacherAssignment directly instead (see $secAdvisory below in the blade).
         $sectionsQuery = \App\Models\Section::with(['subjects:id,name,code'])->select('id', 'name', 'grade_level', 'teacher_id', 'room_number', 'max_students', 'school_year', 'is_active')
             ->withCount('students')
-            ->orderBy('name', 'asc');
+            ->orderByDesc('created_at');
 
         $sections = $sectionsQuery->paginate(15, ['*'], 'section_page');
         // current_enrollment is a virtual, in-memory-only attribute here (the
@@ -1058,7 +1086,7 @@ class EnrollmentController extends Controller
                 ->whereIn('status', ['enrolled', 'completed'])
                 ->whereIn('grade_level', ['nursery','kindergarten','grade1','grade2','grade3','grade4','grade5','grade6'])
             )
-            ->orderBy('name')
+            ->orderByDesc('created_at')
             ->get()
             ->filter(fn($s) => ($s->latestEnrollment->student_data['student_type'] ?? '') !== 'transferee')
             ->values();
@@ -1146,7 +1174,7 @@ class EnrollmentController extends Controller
             'paymentScreenshots',
             'allStudentsPayment', 'unpaidCount', 'partialCount', 'paidCount',
             'financePayments', 'walkInTransactions', 'installmentEnrollments', 'combinedPayStats',
-            'sort', 'statusFilter', 'gradeFilter',
+            'sort', 'statusFilter', 'gradeFilter', 'enrollmentSearch',
             'studentSearch', 'studentGradeFilter', 'studentStatusFilter', 'studentPaymentFilter', 'studentSchoolYearFilter', 'archivedStudents',
             'subjects', 'sections', 'schedules', 'teachers', 'teacherAssignments', 'guidanceRecords',
             'allActiveSubjects', 'allActiveTeachers',

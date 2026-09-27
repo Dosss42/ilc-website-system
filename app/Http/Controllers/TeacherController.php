@@ -13,7 +13,7 @@ class TeacherController extends Controller
 {
     public function index()
     {
-        $teachers = User::where('role', 'teacher')->where('is_active', true)->orderBy('name')->get();
+        $teachers = User::where('role', 'teacher')->where('is_active', true)->orderByDesc('created_at')->get();
         return response()->json(['teachers' => $teachers]);
     }
 

@@ -320,6 +320,7 @@ class CashierController extends Controller
             ->with(['enrollments' => function ($qe) {
                 $qe->whereIn('status', ['approved','enrolled'])->latest();
             }])
+            ->orderByDesc('created_at')
             ->limit(10)
             ->get()
             ->map(function (User $user) {

@@ -36,7 +36,7 @@ class DashboardController extends Controller
     /**
      * Show finance portal dashboard
      */
-    public function index()
+    public function index(Request $request)
     {
         // Finance summary stats (one DB round-trip)
         $financeSummary = DB::selectOne("
@@ -55,12 +55,16 @@ class DashboardController extends Controller
         $unpaidCount    = $financeSummary->unpaid_count    ?? 0;
 
         // Student Payment Overview — paginated, with latest enrollment + installments
+        $sort = $request->get('sort', 'newest');
         $allStudentsPayment = \App\Models\User::where('role', 'student')
             ->whereNull('deleted_at')
             ->with(['enrollments' => function ($q) {
                 $q->latest()->with('paymentInstallments');
             }])
-            ->orderBy('name')
+            ->when($sort === 'name_asc',  fn($q) => $q->orderBy('name', 'asc'))
+            ->when($sort === 'name_desc', fn($q) => $q->orderBy('name', 'desc'))
+            ->when($sort === 'oldest',    fn($q) => $q->orderBy('created_at', 'asc'))
+            ->when(!in_array($sort, ['name_asc', 'name_desc', 'oldest']), fn($q) => $q->orderByDesc('created_at'))
             ->paginate(15, ['*'], 'student_page');
 
         // Section list for filter dropdown
@@ -68,7 +72,7 @@ class DashboardController extends Controller
 
         return view('finance.dashboard', compact(
             'totalCollected', 'paidCount', 'partialCount', 'unpaidCount',
-            'allStudentsPayment', 'sections'
+            'allStudentsPayment', 'sections', 'sort'
         ));
     }
 
@@ -394,14 +398,30 @@ class DashboardController extends Controller
         $planFilter = $request->input('plan', 'all');   // all | cash | installment
         $statusFilter = $request->input('status', 'all'); // all | paid | partial | pending
         $yearFilter = $request->input('school_year', 'all');
+        $sort       = $request->input('sort', 'newest');
 
         $query = \App\Models\User::where('role', 'student')
             ->whereNull('deleted_at')
             ->whereHas('enrollments')
             ->with(['enrollments' => function ($q) {
                 $q->latest()->limit(1);
-            }])
-            ->orderBy('name');
+            }]);
+
+        switch ($sort) {
+            case 'name_asc':
+                $query->orderBy('name', 'asc');
+                break;
+            case 'name_desc':
+                $query->orderBy('name', 'desc');
+                break;
+            case 'oldest':
+                $query->orderBy('created_at', 'asc');
+                break;
+            case 'newest':
+            default:
+                $query->orderBy('created_at', 'desc');
+                break;
+        }
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -456,7 +476,7 @@ class DashboardController extends Controller
 
         $schoolYears = $this->getSchoolYears();
 
-        return view('finance.students', compact('allStudents', 'stats', 'search', 'planFilter', 'statusFilter', 'yearFilter', 'schoolYears'));
+        return view('finance.students', compact('allStudents', 'stats', 'search', 'planFilter', 'statusFilter', 'yearFilter', 'schoolYears', 'sort'));
     }
 
     /**

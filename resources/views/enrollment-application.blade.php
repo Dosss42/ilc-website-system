@@ -1111,7 +1111,16 @@ function sendOtpRequest() {
     });
 }
 
+var _otpSubmitting = false;
+
 function submitOtpCode() {
+    // Guards against a double-fire — e.g. typing the 6th digit auto-submits
+    // (see otpBoxInput) while "Verify Code" is also clicked around the same
+    // moment. Without this, two verify-otp requests can race: the first
+    // marks the code as used, and the second then fails with "No
+    // verification code found" even though the code was correct.
+    if (_otpSubmitting) return;
+
     var boxes = document.querySelectorAll('.otp-box');
     var code  = Array.from(boxes).map(function(b){ return b.value; }).join('');
 
@@ -1120,6 +1129,7 @@ function submitOtpCode() {
         return;
     }
 
+    _otpSubmitting = true;
     var btn = document.getElementById('otpVerifyBtn');
     btn.disabled = true;
     btn.innerHTML = '<span style="width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;display:inline-block;animation:otpSpin .7s linear infinite;"></span> Verifying...';
@@ -1131,6 +1141,7 @@ function submitOtpCode() {
     })
     .then(function(r) { return r.json(); })
     .then(function(data) {
+        _otpSubmitting = false;
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-shield-check"></i> Verify Code';
 
@@ -1154,6 +1165,7 @@ function submitOtpCode() {
         }
     })
     .catch(function() {
+        _otpSubmitting = false;
         btn.disabled = false;
         btn.innerHTML = '<i class="bi bi-shield-check"></i> Verify Code';
         showOtpError('Verification failed. Please try again.');
@@ -1176,6 +1188,7 @@ function closeOtpModal() {
 // ── OTP box helpers ──
 function clearOtpBoxes() {
     document.querySelectorAll('.otp-box').forEach(function(b){ b.value = ''; b.style.borderColor='#e2e8f0'; });
+    _otpSubmitting = false;
 }
 
 function otpBoxInput(el, idx) {
@@ -1651,7 +1664,7 @@ document.addEventListener('keydown', function(e) {
             } else if (response.status === 422) {
                 return response.json().then(data => {
                     const firstError = Object.values(data.errors || {})[0];
-                    showNotification(firstError ? firstError[0] : 'Validation failed. Please check your inputs.', 'error');
+                    showNotification(firstError ? firstError[0] : (data.message || 'Validation failed. Please check your inputs.'), 'error');
                 });
             } else {
                 showNotification('Submission failed. Please try again.', 'error');

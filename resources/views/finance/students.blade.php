@@ -106,7 +106,8 @@
             <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block;">Search Student</label>
             <input type="text" name="search" value="{{ $search }}"
                 placeholder="Name or email…"
-                class="form-fld" style="padding:8px 12px; font-size:13px;">
+                class="form-fld" style="padding:8px 12px; font-size:13px;"
+                oninput="debounceFormSubmit(this)">
         </div>
         <div style="min-width:160px;">
             <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block;">Plan Type</label>
@@ -132,6 +133,15 @@
                 @foreach($schoolYears as $yr)
                     <option value="{{ $yr }}" {{ $yearFilter === $yr ? 'selected' : '' }}>{{ $yr }}</option>
                 @endforeach
+            </select>
+        </div>
+        <div style="min-width:150px;">
+            <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block;">Sort</label>
+            <select name="sort" class="form-select" style="font-size:13px; padding:8px 12px;">
+                <option value="newest" {{ ($sort ?? 'newest') === 'newest' ? 'selected' : '' }}>Newest First</option>
+                <option value="oldest" {{ ($sort ?? '') === 'oldest' ? 'selected' : '' }}>Oldest First</option>
+                <option value="name_asc" {{ ($sort ?? '') === 'name_asc' ? 'selected' : '' }}>Name (A-Z)</option>
+                <option value="name_desc" {{ ($sort ?? '') === 'name_desc' ? 'selected' : '' }}>Name (Z-A)</option>
             </select>
         </div>
         <div style="display:flex; gap:8px;">
@@ -333,6 +343,13 @@
 @section('scripts')
 <script>
 const fmt = n => '₱' + parseFloat(n || 0).toLocaleString('en-PH', {minimumFractionDigits: 2});
+
+// Auto-searches ~600ms after the last keystroke instead of requiring the
+// Search button/Enter — same pattern used elsewhere across the dashboards.
+function debounceFormSubmit(el, ms) {
+    clearTimeout(el._debounceTimer);
+    el._debounceTimer = setTimeout(() => el.form.submit(), ms || 600);
+}
 
 function openPayModal(enrollmentId, name, balance, totalFee, amountPaid, plan) {
     document.getElementById('spModalName').textContent    = name;
