@@ -20,7 +20,6 @@ use Illuminate\Http\Request;
 */
 
 // Public API routes
-Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
 Route::get('/auth/google', [AuthController::class, 'googleRedirect']);
 Route::get('/auth/google/callback', [AuthController::class, 'googleCallback']);
@@ -71,6 +70,5 @@ Route::middleware('auth')->group(function () {
 
 // Rate limiting for sensitive endpoints
 Route::middleware(['throttle:5,1'])->group(function () {
-    Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
 });

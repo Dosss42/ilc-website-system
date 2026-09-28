@@ -17,8 +17,25 @@ class SubjectController extends Controller
         if ($request->filled('is_active')) {
             $query->where('is_active', filter_var($request->is_active, FILTER_VALIDATE_BOOLEAN));
         }
-        $subjects = $query->orderByDesc('created_at')->get();
-        return response()->json(['subjects' => $subjects]);
+        $query->orderByDesc('created_at');
+
+        // Pagination is opt-in (?paginated=1) — other callers (dropdown
+        // population elsewhere, the dedicated Subject Management page) need
+        // the full list, so the default response stays unpaginated.
+        if ($request->boolean('paginated')) {
+            $page = $query->paginate((int) $request->input('per_page', 15));
+            return response()->json([
+                'subjects'     => $page->items(),
+                'current_page' => $page->currentPage(),
+                'last_page'    => $page->lastPage(),
+                'per_page'     => $page->perPage(),
+                'total'        => $page->total(),
+                'from'         => $page->firstItem(),
+                'to'           => $page->lastItem(),
+            ]);
+        }
+
+        return response()->json(['subjects' => $query->get()]);
     }
 
     public function store(Request $request)

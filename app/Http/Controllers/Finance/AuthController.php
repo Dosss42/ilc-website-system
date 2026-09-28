@@ -140,11 +140,13 @@ class AuthController extends Controller
     }
 
     /**
-     * Show change password form
+     * Show the unified account settings page (profile + change password)
      */
-    public function showChangePasswordForm()
+    public function showSettings()
     {
-        return view('finance.change-password');
+        return view('finance.settings', [
+            'user' => Auth::guard('finance')->user(),
+        ]);
     }
 
     /**
@@ -178,16 +180,6 @@ class AuthController extends Controller
         ActivityLogger::log('password_change', $user->name . ' changed their password', 'User', $user->id);
 
         return back()->with('success', 'Password changed successfully!');
-    }
-
-    /**
-     * Show profile form
-     */
-    public function showProfile()
-    {
-        return view('finance.profile', [
-            'user' => Auth::guard('finance')->user(),
-        ]);
     }
 
     /**

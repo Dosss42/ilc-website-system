@@ -32,7 +32,32 @@ class ScheduleController extends Controller
             $query->where('term', $request->term);
         }
 
-        $schedules = $query->orderBy('day_of_week')->orderBy('start_time')->get();
+        // Filter by day of week
+        if ($request->filled('day_of_week')) {
+            $query->where('day_of_week', $request->day_of_week);
+        }
+
+        $query->orderBy('day_of_week')->orderBy('start_time');
+
+        // Pagination is opt-in (?paginated=1) — other callers (dropdown
+        // population elsewhere, the dedicated Schedule Management page) need
+        // the full list, so the default response stays unpaginated.
+        if ($request->boolean('paginated')) {
+            $page = $query->paginate((int) $request->input('per_page', 15));
+            $items = $page->getCollection();
+            $this->flagConflicts($items);
+            return response()->json([
+                'schedules'    => $items->values(),
+                'current_page' => $page->currentPage(),
+                'last_page'    => $page->lastPage(),
+                'per_page'     => $page->perPage(),
+                'total'        => $page->total(),
+                'from'         => $page->firstItem(),
+                'to'           => $page->lastItem(),
+            ]);
+        }
+
+        $schedules = $query->get();
         $this->flagConflicts($schedules);
         return response()->json(['schedules' => $schedules]);
     }

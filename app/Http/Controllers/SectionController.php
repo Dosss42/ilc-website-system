@@ -96,6 +96,22 @@ class SectionController extends Controller
             $query->where('grade_level', $request->grade_level);
         }
 
+        // Pagination is opt-in (?paginated=1) — other callers (dropdown
+        // population elsewhere, the dedicated Section Management page) need
+        // the full list, so the default response stays unpaginated.
+        if ($request->boolean('paginated')) {
+            $page = $query->paginate((int) $request->input('per_page', 15));
+            return response()->json([
+                'sections'     => $page->items(),
+                'current_page' => $page->currentPage(),
+                'last_page'    => $page->lastPage(),
+                'per_page'     => $page->perPage(),
+                'total'        => $page->total(),
+                'from'         => $page->firstItem(),
+                'to'           => $page->lastItem(),
+            ]);
+        }
+
         $sections = $query->get();
         return response()->json(['sections' => $sections]);
     }

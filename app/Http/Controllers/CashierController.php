@@ -182,30 +182,35 @@ class CashierController extends Controller
     {
         $date = $request->get('date', today()->toDateString());
 
-        $txs = PaymentTransaction::with(['user', 'enrollment'])
+        // Aggregates computed separately from the paginated row listing below —
+        // these must reflect the WHOLE day, not just whichever page of rows
+        // is currently being displayed.
+        $baseQuery = fn () => PaymentTransaction::where('status', 'completed')
+            ->whereDate('processed_at', $date);
+
+        $total  = $baseQuery()->sum('amount');
+        $cash   = $baseQuery()->where('payment_method', 'cash')->sum('amount');
+        $online = $baseQuery()->whereNotIn('payment_method', ['cash'])->sum('amount');
+        $count  = $baseQuery()->count();
+
+        $rows = PaymentTransaction::with(['user', 'enrollment'])
             ->where('status', 'completed')
             ->whereDate('processed_at', $date)
             ->latest('processed_at')
-            ->get();
-
-        $total  = $txs->sum('amount');
-        $cash   = $txs->where('payment_method', 'cash')->sum('amount');
-        $online = $txs->whereNotIn('payment_method', ['cash'])->sum('amount');
-        $count  = $txs->count();
-
-        $rows = $txs->map(function ($tx) {
-            return [
-                'time'        => $tx->processed_at?->format('h:i A'),
-                'student'     => $tx->user?->name ?? '—',
-                'grade'       => $tx->enrollment?->grade_level ? ucfirst($tx->enrollment->grade_level) : '—',
-                'school_year' => $tx->enrollment?->school_year ?? '—',
-                'type'        => ucwords(str_replace('_', ' ', $tx->payment_type ?? '—')),
-                'method'      => ucfirst($tx->payment_method ?? '—'),
-                'amount'      => number_format($tx->amount, 2),
-                'reference'   => $tx->reference_number ?? '—',
-                'or_no'       => $tx->reference_number ?? '—',
-            ];
-        });
+            ->paginate((int) $request->get('per_page', 20))
+            ->through(function ($tx) {
+                return [
+                    'time'        => $tx->processed_at?->format('h:i A'),
+                    'student'     => $tx->user?->name ?? '—',
+                    'grade'       => $tx->enrollment?->grade_level ? ucfirst($tx->enrollment->grade_level) : '—',
+                    'school_year' => $tx->enrollment?->school_year ?? '—',
+                    'type'        => ucwords(str_replace('_', ' ', $tx->payment_type ?? '—')),
+                    'method'      => ucfirst($tx->payment_method ?? '—'),
+                    'amount'      => number_format($tx->amount, 2),
+                    'reference'   => $tx->reference_number ?? '—',
+                    'or_no'       => $tx->reference_number ?? '—',
+                ];
+            });
 
         return response()->json([
             'date'   => $date,
@@ -256,8 +261,8 @@ class CashierController extends Controller
             });
         }
 
-        $limit = (int) $request->get('limit', 100);
-        $txs = $query->limit($limit ?: 100)->get()->map(function ($tx) {
+        $perPage = (int) $request->get('per_page', 20);
+        $txs = $query->paginate($perPage ?: 20)->through(function ($tx) {
             return [
                 'or_no'       => $tx->reference_number ?? '—',
                 'date'        => $tx->processed_at?->format('M d, Y'),
@@ -286,9 +291,8 @@ class CashierController extends Controller
 
         $logs = \App\Models\ActivityLog::where('user_id', $userId)
             ->latest('created_at')
-            ->limit(200)
-            ->get()
-            ->map(function ($log) {
+            ->paginate((int) $request->get('per_page', 25))
+            ->through(function ($log) {
                 return [
                     'event_type'  => $log->event_type,
                     'description' => $log->description,
@@ -377,8 +381,9 @@ class CashierController extends Controller
             });
         }
 
-        $students = $query->orderByDesc('latest_enrollment_at')->get()
-            ->map(function (User $user) {
+        $students = $query->orderByDesc('latest_enrollment_at')
+            ->paginate((int) $request->get('per_page', 20))
+            ->through(function (User $user) {
                 $e = $user->enrollments->first();
                 return [
                     'id'                 => $user->id,
@@ -574,6 +579,12 @@ class CashierController extends Controller
 
         $enrollment->decrement('remaining_balance', $request->amount);
         $enrollment->increment('payment_amount', $request->amount);
+        $enrollment->refresh();
+
+        if ($enrollment->payment_type === 'installment' || in_array($enrollment->payment_option, ['B', 'C', 'D'])) {
+            \App\Services\PaymentService::reconcileInstallmentStatuses($enrollment);
+        }
+
         $this->advanceEnrollmentAfterPayment($enrollment->fresh());
 
         ActivityLogger::log(

@@ -35,6 +35,10 @@
     {{-- Chart.js for Reports --}}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+    {{-- html2pdf.js for Reports PDF export — jsdelivr, since that's the only
+         CDN domain the app's CSP (SecurityHeaders middleware) allows scripts from --}}
+    <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
 
     <style>
@@ -737,7 +741,20 @@ function showSection(name) {
         loadFeeSettings();
     }
     if (name === 'reports') {
-        setTimeout(initReportsCharts, 80);
+        // initReportsCharts() is declared in a later <script> block further
+        // down the page. On a normal click (well after page load) it's long
+        // since defined, but when this section is restored on initial page
+        // load (e.g. after a filter/pagination reload lands back on Reports)
+        // this can run before the browser has parsed that far — referencing
+        // the bare name would throw ReferenceError. Poll instead of
+        // assuming a fixed delay is always enough.
+        (function waitForReportsCharts() {
+            if (typeof window.initReportsCharts === 'function') {
+                setTimeout(window.initReportsCharts, 80);
+            } else {
+                setTimeout(waitForReportsCharts, 50);
+            }
+        })();
     }
     return false;
 }
@@ -807,11 +824,11 @@ function _buildSkelHTML() {
 }
 
 var _currentRptTab = 'students';
-var _currentRptSubReport = { students: 'master', enrollment: 'status', financial: 'collection', kpi: 'overview' };
+var _currentRptSubReport = { students: 'master', enrollment: 'status', financial: 'collection', promotion: 'overview', kpi: 'overview' };
 
 function switchRptTab(tab) {
     _currentRptTab = tab;
-    ['students','enrollment','financial','kpi'].forEach(function(t) {
+    ['students','enrollment','financial','promotion','kpi'].forEach(function(t) {
         var panel = document.getElementById('rpt-panel-' + t);
         var btn   = document.getElementById('rpt-tab-' + t);
         if (panel) panel.style.display = t === tab ? '' : 'none';
@@ -834,7 +851,7 @@ function switchRptSubReport(tab, subreport) {
     });
 }
 
-function printCurrentReport() {
+function buildCurrentReportContent() {
     // Find active sub-report panel, fallback to whole tab print area
     var subreport = _currentRptSubReport[_currentRptTab];
     var panelId = subreport
@@ -845,26 +862,31 @@ function printCurrentReport() {
         panelId = 'rpt-print-' + _currentRptTab;
         panel   = document.getElementById(panelId);
     }
-    if (!panel) return;
+    if (!panel) return null;
 
-    var sy = document.querySelector('#section-reports .section-header p');
-    var syText = sy ? sy.innerText : '';
+    // Work on a clone so we never touch the live page, and strip out the
+    // parts that only make sense on-screen (the panel's own header button
+    // row, and pagination controls) — neither belongs on a printed page.
+    var clone = panel.cloneNode(true);
+    clone.querySelectorAll('.content-card-header, .p-3.border-top').forEach(function(el) {
+        el.remove();
+    });
+
+    var syText = 'S.Y. {{ $currentSchoolYear }}';
 
     var subTitles = {
         students: { master: 'Student Master List', grade: 'Students by Grade Level', newret: 'New vs Returning', docs: 'Document Compliance' },
         enrollment: { status: 'Enrollment Status Summary', grade: 'Enrollment by Grade Level', newret: 'New vs Returning Enrollees', trend: 'Daily Enrollment Trend' },
         financial: { collection: 'Collection Summary', grade: 'Financial by Grade Level', option: 'By Payment Option', outstanding: 'Outstanding Balances' },
+        promotion: { overview: 'Promotion Overview', grade: 'Promotion by Grade Level', list: 'Promotion Student List' },
         kpi: { overview: 'KPI Dashboard' }
     };
-    var tabTitles = { students: 'Students Report', enrollment: 'Enrollment Report', financial: 'Financial Report', kpi: 'KPI Dashboard' };
+    var tabTitles = { students: 'Students Report', enrollment: 'Enrollment Report', financial: 'Financial Report', promotion: 'Promotion Report', kpi: 'KPI Dashboard' };
     var sub = (subTitles[_currentRptTab] || {})[subreport] || '';
     var title = (tabTitles[_currentRptTab] || 'Report') + (sub ? ' — ' + sub : '');
 
-    var win = window.open('', '_blank', 'width=900,height=700');
-    win.document.write(
-        '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + title + '</title>'
-        + '<style>'
-        + 'body{font-family:Arial,sans-serif;margin:0;padding:28px;font-size:13px;color:#222;}'
+    var style =
+        'body{font-family:Arial,sans-serif;margin:0;padding:28px;font-size:13px;color:#222;}'
         + '.header{text-align:center;border-bottom:3px solid #1a3a6c;padding-bottom:14px;margin-bottom:20px;}'
         + '.header img{width:70px;height:70px;object-fit:contain;display:block;margin:0 auto 8px;}'
         + '.school-name{font-size:20px;font-weight:700;color:#1a3a6c;}'
@@ -878,9 +900,17 @@ function printCurrentReport() {
         + 'td{padding:9px 12px;border-bottom:1px solid #eee;font-size:13px;}'
         + 'tr:nth-child(even){background:#f8fafc;}'
         + 'tr:last-child{font-weight:700;background:#f0f4f8;}'
-        + '.footer{margin-top:24px;border-top:1px solid #ddd;padding-top:10px;font-size:11px;color:#aaa;display:flex;justify-content:space-between;}'
-        + '</style></head><body>'
-        + '<div class="header">'
+        + '.footer{margin-top:26px;border-top:2px solid #1a3a6c;padding-top:14px;}'
+        + '.footer-verse{text-align:center;font-style:italic;color:#2471a3;font-size:11.5px;line-height:1.5;padding:0 24px 12px;border-bottom:1px solid #e5e7eb;margin-bottom:12px;}'
+        + '.footer-verse .ref{display:block;margin-top:5px;font-style:normal;font-weight:700;color:#1a3a6c;font-size:10px;text-transform:uppercase;letter-spacing:1px;}'
+        + '.footer-vmg{display:flex;gap:24px;margin-bottom:12px;}'
+        + '.footer-vmg-col{flex:1;}'
+        + '.footer-vmg-col b{display:block;color:#1a3a6c;font-size:10px;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px;}'
+        + '.footer-vmg-col p{margin:0;line-height:1.5;color:#666;font-size:10.5px;}'
+        + '.footer-meta{display:flex;justify-content:space-between;color:#aaa;font-size:10.5px;padding-top:8px;border-top:1px solid #f0f0f0;}';
+
+    var bodyInner =
+        '<div class="header">'
         + '<img src="/images/logo.png" alt="ILC Logo" onerror="this.style.display=\'none\'">'
         + '<div class="school-name">IEMELIF LEARNING CENTER</div>'
         + '<div class="school-addr">General Tinio, Nueva Ecija</div>'
@@ -888,13 +918,106 @@ function printCurrentReport() {
         + '<div class="divider"></div>'
         + '</div>'
         + '<div class="sy-label">' + syText + '</div>'
-        + panel.outerHTML
-        + '<div class="footer"><span>IEMELIF Learning Center &mdash; Official Report</span>'
+        + clone.outerHTML
+        + '<div class="footer">'
+        + '<div class="footer-verse">'
+        + '&ldquo;But Jesus said, Suffer little children, and forbid them not, to come unto me: for of such is the kingdom of heaven.&rdquo;'
+        + '<span class="ref">Matthew 19:14 (KJV)</span>'
+        + '</div>'
+        + '<div class="footer-vmg">'
+        + '<div class="footer-vmg-col">'
+        + '<b>Vision</b>'
+        + '<p>Creating and sustaining an integrated, wholesome, and appropriate environment for all phases of the learner\'s growth and development.</p>'
+        + '</div>'
+        + '<div class="footer-vmg-col">'
+        + '<b>Mission</b>'
+        + '<p>The IEMELIF Learning Center is a future-oriented school which gives opportunities to all children to discover their interests and God-given talents, which will be explored and developed as they grow up and become successful individuals. '
+        + 'The ILC aims to train and lead these children to have a &ldquo;Desire to Learn&rdquo; and integrate everything they have acquired in their daily experiences. '
+        + 'The ultimate goal of this school is to emulate and follow Jesus&rsquo; example, as He showed His love and care for the children.</p>'
+        + '</div>'
+        + '</div>'
+        + '<div class="footer-meta"><span>IEMELIF Learning Center &mdash; Official Report</span>'
         + '<span>Printed: ' + new Date().toLocaleDateString('en-PH', {year:'numeric',month:'long',day:'numeric'}) + '</span></div>'
-        + '</body></html>'
-    );
+        + '</div>';
+
+    return {
+        title: title,
+        fullHtml: '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + title + '</title><style>' + style + '</style></head><body>' + bodyInner + '</body></html>',
+        style: style,
+        bodyInner: bodyInner
+    };
+}
+
+function printCurrentReport() {
+    var built = buildCurrentReportContent();
+    if (!built) return;
+    var win = window.open('', '_blank', 'width=900,height=700');
+    win.document.write(built.fullHtml);
     win.document.close();
     win.onload = function() { win.focus(); win.print(); };
+}
+
+function exportReportToPdf(btn) {
+    var built = buildCurrentReportContent();
+    if (!built) { showAdminToast('Nothing to export yet.', 'error'); return; }
+
+    var originalBtnHtml = btn ? btn.innerHTML : null;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Exporting...'; }
+
+    // html2canvas only captures real pixels when the source element is on
+    // screen (top:0/left:0) and fully opaque — opacity:0 and far off-screen
+    // positioning (e.g. left:-9999px) both produced a blank capture in
+    // testing. So the element renders on-screen for real, and a solid
+    // full-page overlay is what actually keeps this invisible to the user.
+    var overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:999999;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--muted);';
+    overlay.innerHTML = '<div style="text-align:center;"><i class="bi bi-hourglass-split" style="font-size:28px;display:block;margin-bottom:10px;"></i>Generating PDF&hellip;</div>';
+    document.body.appendChild(overlay);
+
+    var container = document.createElement('div');
+    container.style.position = 'absolute';
+    container.style.top = '0';
+    container.style.left = '0';
+    container.style.width = '800px';
+    container.style.background = '#fff';
+    container.innerHTML = '<style>' + built.style + '</style>' + built.bodyInner;
+    document.body.appendChild(container);
+
+    var filename = built.title.replace(/[^a-z0-9]+/gi, '_') + '.pdf';
+
+    function cleanup() {
+        document.body.removeChild(container);
+        document.body.removeChild(overlay);
+        if (btn) { btn.disabled = false; btn.innerHTML = originalBtnHtml; }
+    }
+
+    html2pdf().set({
+        margin: 10,
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        // width/height explicitly passed — html2canvas otherwise auto-measures
+        // the source element, which can come back as 0-height for elements
+        // hidden via opacity/positioning tricks, producing a blank PDF.
+        // Deliberately NOT passing windowWidth/windowHeight — those simulate
+        // resizing the WHOLE page (sidebar included) to that width for layout
+        // purposes, which shifted this dashboard's fixed-sidebar layout and
+        // cropped the left edge of the capture.
+        //
+        // scrollX/scrollY: 0 — html2canvas otherwise defaults to the page's
+        // CURRENT scroll position and offsets the capture by that amount.
+        // Since the Print/PDF buttons live inside each report panel (often
+        // below the fold), the page is usually scrolled when this runs,
+        // which without this override left a blank gap at the top of the
+        // PDF exactly the height of however far the page had been scrolled.
+        html2canvas: { scale: 2, useCORS: true, width: container.scrollWidth, height: container.scrollHeight, scrollX: 0, scrollY: 0 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }).from(container).save().then(function() {
+        cleanup();
+    }).catch(function(err) {
+        cleanup();
+        showAdminToast('PDF export failed: ' + (err.message || 'Unknown error'), 'error');
+        console.error(err);
+    });
 }
 
 function openWalkInEnrollmentModal() {
@@ -2386,6 +2509,94 @@ function openWalkInEnrollmentModal() {
                     <button class="btn-dash btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button class="btn-dash btn-primary" id="sm-assess-submit-btn" onclick="confirmSmAssessment()" style="display:none;">
                         <i class="bi bi-check2 me-1"></i> Confirm Assessment
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Bulk Promote Modal --}}
+    <div class="modal fade" id="bulkPromoteModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content modal-content-styled">
+                <div class="modal-header modal-header-styled" style="background:linear-gradient(135deg, #27ae60, #1e8449);">
+                    <h5 class="modal-title" style="color:#fff;"><i class="bi bi-arrow-up-circle-fill me-2"></i>Promote All — <span id="bp-grade-label"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body modal-body-styled">
+                    <div id="bp-loading" style="text-align:center;padding:30px;color:var(--muted);">
+                        <i class="bi bi-hourglass-split" style="font-size:28px;display:block;margin-bottom:8px;"></i>
+                        Checking eligible students...
+                    </div>
+                    <div id="bp-content" style="display:none;">
+                        <div class="form-lbl-wrap mb-3">
+                            <label class="form-lbl">Promote to School Year</label>
+                            <input type="text" id="bp-to-sy" class="form-fld" readonly>
+                        </div>
+
+                        <div style="background:#e8f8f0;border:1px solid #b8e6c8;border-radius:10px;padding:12px 16px;margin-bottom:14px;">
+                            <div style="font-weight:700;color:#1e8449;font-size:14px;">
+                                <i class="bi bi-check-circle-fill me-1"></i><span id="bp-eligible-count">0</span> student(s) will be promoted
+                            </div>
+                            <div id="bp-eligible-names" style="font-size:12px;color:#2e7d32;margin-top:6px;max-height:100px;overflow-y:auto;"></div>
+                        </div>
+
+                        <div id="bp-excluded-box" style="background:#fff8e1;border:1px solid #f0dca0;border-radius:10px;padding:12px 16px;display:none;">
+                            <div style="font-weight:700;color:#856404;font-size:14px;">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i><span id="bp-excluded-count">0</span> student(s) skipped — unpaid balance or incomplete documents
+                            </div>
+                            <div id="bp-excluded-list" style="font-size:12px;color:#6b5400;margin-top:8px;max-height:150px;overflow-y:auto;"></div>
+                        </div>
+
+                        <div id="bp-none-eligible" style="display:none;text-align:center;padding:20px;color:var(--muted);">
+                            No students in this grade can be bulk-promoted right now — everyone has an unpaid balance or incomplete documents.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid #e5e7eb;padding:12px 20px;justify-content:space-between;">
+                    <button class="btn-dash btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn-dash btn-success" id="bp-confirm-btn" onclick="confirmBulkPromote()" style="display:none;">
+                        <i class="bi bi-check2 me-1"></i> Confirm Promotion
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Auto-Advance Modal (Nursery/Kindergarten — no checks) --}}
+    <div class="modal fade" id="autoAdvanceModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content modal-content-styled">
+                <div class="modal-header modal-header-styled" style="background:linear-gradient(135deg, #27ae60, #1e8449);">
+                    <h5 class="modal-title" style="color:#fff;"><i class="bi bi-arrow-up-circle-fill me-2"></i>Advance All — <span id="aa-grade-label"></span></h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body modal-body-styled">
+                    <div id="aa-loading" style="text-align:center;padding:30px;color:var(--muted);">
+                        <i class="bi bi-hourglass-split" style="font-size:28px;display:block;margin-bottom:8px;"></i>
+                        Checking students...
+                    </div>
+                    <div id="aa-content" style="display:none;">
+                        <div class="form-lbl-wrap mb-3">
+                            <label class="form-lbl">Advance to School Year</label>
+                            <input type="text" id="aa-to-sy" class="form-fld" readonly>
+                        </div>
+                        <div style="background:#e8f8f0;border:1px solid #b8e6c8;border-radius:10px;padding:12px 16px;">
+                            <div style="font-weight:700;color:#1e8449;font-size:14px;">
+                                <i class="bi bi-check-circle-fill me-1"></i><span id="aa-count">0</span> student(s) will be advanced
+                            </div>
+                            <div style="font-size:11.5px;color:#2e7d32;margin-top:4px;">No grade, guidance, payment, or document checks apply at this level.</div>
+                            <div id="aa-names" style="font-size:12px;color:#2e7d32;margin-top:6px;max-height:120px;overflow-y:auto;"></div>
+                        </div>
+                        <div id="aa-none" style="display:none;text-align:center;padding:20px;color:var(--muted);">
+                            No students found for this grade/school year.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top:1px solid #e5e7eb;padding:12px 20px;justify-content:space-between;">
+                    <button class="btn-dash btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button class="btn-dash btn-success" id="aa-confirm-btn" onclick="confirmAutoAdvance()" style="display:none;">
+                        <i class="bi bi-check2 me-1"></i> Confirm Advancement
                     </button>
                 </div>
             </div>
@@ -5471,56 +5682,16 @@ function openWalkInEnrollmentModal() {
             pushVal('dp_d_nursery', 'fee-optd-dp-nursery');
             pushVal('dp_d_kinder', 'fee-optd-dp-kinder');
 
-            // Build a flat object keyed by the field names Finance\DashboardController@updateFees expects
-            const getVal = (id) => {
-                const el = document.getElementById(id);
-                return el ? (parseFloat(el.value) || 0) : 0;
-            };
-            const flatSettings = {
-                tuition:               getVal('fee-tuition'),
-                misc:                  getVal('fee-misc'),
-                insurance:             getVal('fee-insurance'),
-                electric:              getVal('fee-electric'),
-                books_nursery:         getVal('fee-books-nursery'),
-                books_grade1:          getVal('fee-books-grade1'),
-                books_grade3:          getVal('fee-books-grade3'),
-                books_grade4:          getVal('fee-books-grade4'),
-                option_a_discount:     getVal('fee-opta-discount'),
-                optb_monthly_tuition:  getVal('fee-optb-monthly-tuition'),
-                optb_monthly_electric: getVal('fee-optb-monthly-electric'),
-                optb_dp_nursery:       getVal('fee-optb-dp-nursery'),
-                optb_dp_kinder:        getVal('fee-optb-dp-kinder'),
-                optb_dp_grade1:        getVal('fee-optb-dp-grade1'),
-                optb_dp_grade3:        getVal('fee-optb-dp-grade3'),
-                optb_dp_grade4:        getVal('fee-optb-dp-grade4'),
-                optc_monthly_tuition:  getVal('fee-optc-monthly-tuition'),
-                optc_monthly_misc:     getVal('fee-optc-monthly-misc'),
-                optc_monthly_electric: getVal('fee-optc-monthly-electric'),
-                optc_dp_nursery:       0,
-                optc_dp_kinder:        0,
-                optc_dp_grade1:        getVal('fee-optc-dp-grade1'),
-                optc_dp_grade3:        getVal('fee-optc-dp-grade3'),
-                optc_dp_grade4:        getVal('fee-optc-dp-grade4'),
-                optd_monthly_tuition:  getVal('fee-optd-monthly-tuition'),
-                optd_monthly_misc:     getVal('fee-optd-monthly-misc'),
-                optd_monthly_electric: getVal('fee-optd-monthly-electric'),
-                optd_dp_nursery:       getVal('fee-optd-dp-nursery'),
-                optd_dp_kinder:        getVal('fee-optd-dp-kinder'),
-                optd_dp_grade1:        0,
-                optd_dp_grade3:        0,
-                optd_dp_grade4:        0,
-            };
-
             try {
-                const response = await fetch('/finance/fees/update', {
-                    method: 'POST',
+                const response = await fetch('/admin/fee-settings', {
+                    method: 'PUT',
                     credentials: 'same-origin',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name=\"csrf-token\"]').getAttribute('content'),
                         'X-Requested-With': 'XMLHttpRequest'
                     },
-                    body: JSON.stringify(flatSettings)
+                    body: JSON.stringify({ settings: settings })
                 });
                 const text = await response.text();
                 let data;
@@ -7006,6 +7177,21 @@ function openWalkInEnrollmentModal() {
             // â”€â”€ Grade level map â”€â”€
             $rptGradeLevels = ['nursery'=>'Nursery','kindergarten'=>'Kindergarten','grade1'=>'Grade 1','grade2'=>'Grade 2','grade3'=>'Grade 3','grade4'=>'Grade 4','grade5'=>'Grade 5','grade6'=>'Grade 6'];
 
+            // Paginates an already-fetched Collection (report data here is built
+            // from full in-memory collections shared across several stats, not
+            // fresh per-panel queries — same technique used for the Assessment
+            // & Promotion table's own pagination).
+            $rptPaginate = function ($collection, int $perPage, string $pageName) {
+                $page = (int) request()->get($pageName, 1);
+                return new \Illuminate\Pagination\LengthAwarePaginator(
+                    $collection->forPage($page, $perPage)->values(),
+                    $collection->count(),
+                    $perPage,
+                    $page,
+                    ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath(), 'pageName' => $pageName]
+                );
+            };
+
             // â”€â”€ REAL DATA: Direct DB queries — no paginator limits â”€â”€
 
             // STUDENT counts
@@ -7052,6 +7238,7 @@ function openWalkInEnrollmentModal() {
 
             // Active/approved enrollments alias (used in template)
             $rptActiveSYEnrolls = $rptEnrollAll->whereIn('status',['enrolled','approved','completed']);
+            $rptMasterListPage  = $rptPaginate($rptActiveSYEnrolls->values(), 20, 'rpt_master_page');
 
             // Students enrolled per grade (active/approved only)
             $rptStudentsByGrade = $rptActiveSYEnrolls
@@ -7096,6 +7283,8 @@ function openWalkInEnrollmentModal() {
                 ->filter(fn($e) => ($e->remaining_balance ?? 0) > 0)
                 ->sortByDesc('remaining_balance')
                 ->values();
+            $rptOutstandingPage     = $rptPaginate($rptOutstandingList, 20, 'rpt_outstanding_page');
+            $rptOutstandingTotalBal = $rptOutstandingList->sum('remaining_balance');
 
             // Section capacity — full table. current_enrollment is overwritten
             // with the live section_student count below (the stored column can
@@ -7116,6 +7305,72 @@ function openWalkInEnrollmentModal() {
             $rptInstTotal   = \App\Models\PaymentInstallment::count();
             $rptInstOverdue = \App\Models\PaymentInstallment::where('status','pending')
                 ->where('due_date','<',\Carbon\Carbon::today())->count();
+
+            // PROMOTION / ASSESSMENT report data — sliced by the school year
+            // that's ending (from_school_year), same eligibility rule as the
+            // Assessment & Promotion page itself: Nursery-Grade6, enrolled or
+            // completed, non-transferee.
+            $rptPromoAll = \App\Models\Promotion::where('from_school_year', $currentSchoolYear)
+                ->get(['student_id', 'from_grade', 'to_grade', 'from_school_year', 'to_school_year']);
+
+            $rptPromoPromoted  = $rptPromoAll->filter(fn($p) => $p->to_grade !== $p->from_grade && $p->to_grade !== 'graduated')->count();
+            $rptPromoRetained  = $rptPromoAll->filter(fn($p) => $p->to_grade === $p->from_grade)->count();
+            $rptPromoGraduated = $rptPromoAll->filter(fn($p) => $p->to_grade === 'graduated')->count();
+
+            $rptPromoEligible = \App\Models\User::where('role', 'student')
+                ->with(['latestEnrollment'])
+                ->whereHas('latestEnrollment', fn($q) => $q
+                    ->where('school_year', $currentSchoolYear)
+                    ->whereIn('status', ['enrolled', 'completed'])
+                    ->whereIn('grade_level', array_keys($rptGradeLevels))
+                )
+                ->get()
+                ->filter(fn($s) => ($s->latestEnrollment->student_data['student_type'] ?? '') !== 'transferee');
+
+            $rptPromoEligibleTotal = $rptPromoEligible->count();
+            $rptPromoPending       = max(0, $rptPromoEligibleTotal - $rptPromoAll->count());
+
+            $rptPromoByGrade = [];
+            foreach ($rptGradeLevels as $gk => $gl) {
+                $gradeEligible = $rptPromoEligible->filter(fn($s) => ($s->latestEnrollment->grade_level ?? '') === $gk)->count();
+                $gradePromos   = $rptPromoAll->where('from_grade', $gk);
+                $rptPromoByGrade[$gk] = [
+                    'eligible'  => $gradeEligible,
+                    'promoted'  => $gradePromos->filter(fn($p) => $p->to_grade !== $p->from_grade && $p->to_grade !== 'graduated')->count(),
+                    'retained'  => $gradePromos->filter(fn($p) => $p->to_grade === $p->from_grade)->count(),
+                    'graduated' => $gradePromos->filter(fn($p) => $p->to_grade === 'graduated')->count(),
+                    'pending'   => max(0, $gradeEligible - $gradePromos->count()),
+                ];
+            }
+
+            // Per-student list — every eligible student and their assessment
+            // result, for the "Student List" sub-report.
+            $rptPromoStudentList = $rptPromoEligible->map(function ($s) use ($rptPromoAll, $rptGradeLevels) {
+                $promo = $rptPromoAll->where('student_id', $s->id)->sortByDesc('id')->first();
+                $gl    = $s->latestEnrollment->grade_level ?? '';
+                $result = 'Pending';
+                $toGradeLabel = null;
+                if ($promo) {
+                    if ($promo->to_grade === 'graduated') {
+                        $result = 'Graduated';
+                    } elseif ($promo->to_grade === $promo->from_grade) {
+                        $result = 'Retained';
+                    } else {
+                        $result = 'Promoted';
+                        $toGradeLabel = $rptGradeLevels[$promo->to_grade] ?? ucfirst($promo->to_grade);
+                    }
+                }
+                return (object) [
+                    'id'          => $s->id,
+                    'name'        => $s->name,
+                    'grade_level' => $rptGradeLevels[$gl] ?? ucfirst($gl),
+                    'section'     => $s->latestEnrollment->section ?? '—',
+                    'result'      => $result,
+                    'to_grade'    => $toGradeLabel,
+                ];
+            })->sortBy('name')->values();
+
+            $rptPromoListPage = $rptPaginate($rptPromoStudentList, 20, 'rpt_promo_page');
 
             // Daily enrollment for last 7 days — direct DB query per day
             $rptDailyDays = [];
@@ -7142,9 +7397,6 @@ function openWalkInEnrollmentModal() {
                 <h1><i class="bi bi-bar-chart-line-fill" style="color:var(--blue);margin-right:8px;"></i>Reports</h1>
                 <p>S.Y. {{ $currentSchoolYear }} &mdash; Comprehensive reports for students, enrollment, financials, and KPIs.</p>
             </div>
-            <button class="btn-dash btn-secondary" onclick="printCurrentReport()">
-                <i class="bi bi-printer"></i> Print Current Report
-            </button>
         </div>
 
         {{-- ── Report Overview Charts ── --}}
@@ -7183,6 +7435,9 @@ function openWalkInEnrollmentModal() {
             </button>
             <button class="rpt-tab-btn" id="rpt-tab-financial" onclick="switchRptTab('financial')">
                 <i class="bi bi-cash-stack"></i> Financial Reports
+            </button>
+            <button class="rpt-tab-btn" id="rpt-tab-promotion" onclick="switchRptTab('promotion')">
+                <i class="bi bi-mortarboard-fill"></i> Promotion Reports
             </button>
             @if(Auth::user()->role === 'superadmin')
             <button class="rpt-tab-btn" id="rpt-tab-kpi" onclick="switchRptTab('kpi')">
@@ -7245,7 +7500,10 @@ function openWalkInEnrollmentModal() {
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-table" style="color:var(--blue);margin-right:6px;"></i>Student Master List &mdash; S.Y. {{ $currentSchoolYear }}</h6>
-                        <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                        </div>
                     </div>
                     <div style="overflow-x:auto;">
                         <table class="dash-table">
@@ -7261,10 +7519,9 @@ function openWalkInEnrollmentModal() {
                                 </tr>
                             </thead>
                             <tbody>
-                                @php $rptMasterN = 0; @endphp
-                                @forelse($rptActiveSYEnrolls->take(50) as $e)
+                                @forelse($rptMasterListPage as $e)
                                     @php
-                                        $rptMasterN++;
+                                        $rptMasterN = $rptMasterListPage->firstItem() + $loop->index;
                                         $sd = $e->student_data ?? [];
                                         $fullName = trim(($sd['first_name'] ?? '') . ' ' . ($sd['last_name'] ?? '')) ?: ($e->full_name ?? '—');
                                         $gl = $sd['grade_level'] ?? ($e->grade_level ?? '');
@@ -7302,12 +7559,13 @@ function openWalkInEnrollmentModal() {
                                     <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:28px;">No enrolled students found for S.Y. {{ $currentSchoolYear }}.</td></tr>
                                 @endforelse
                             </tbody>
-                            @if($rptActiveSYEnrolls->count() > 50)
-                            <tfoot>
-                                <tr><td colspan="7" style="text-align:center;font-size:12px;color:var(--muted);padding:10px;">Showing 50 of {{ $rptActiveSYEnrolls->count() }} enrolled students.</td></tr>
-                            </tfoot>
-                            @endif
                         </table>
+                    </div>
+                    <div class="p-3 border-top" style="border-color:var(--border);">
+                        {{ $rptMasterListPage->appends(['section' => 'reports', 'rpt_tab' => 'students', 'rpt_subreport' => 'master'])->links() }}
+                        <div class="pagination-info">
+                            Showing {{ $rptMasterListPage->firstItem() ?? 0 }} to {{ $rptMasterListPage->lastItem() ?? 0 }} of {{ $rptMasterListPage->total() }} enrolled student(s)
+                        </div>
                     </div>
                     @php $rptGenderTotal = $rptMale + $rptFemale; @endphp
                     @if($rptGenderTotal > 0)
@@ -7325,7 +7583,10 @@ function openWalkInEnrollmentModal() {
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-diagram-3" style="color:var(--blue);margin-right:6px;"></i>Students by Grade Level &mdash; S.Y. {{ $currentSchoolYear }}</h6>
-                        <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                        </div>
                     </div>
                     <div style="overflow-x:auto;">
                         <table class="dash-table">
@@ -7394,24 +7655,36 @@ function openWalkInEnrollmentModal() {
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-people" style="color:var(--blue);margin-right:6px;"></i>New vs Returning vs Transferee &mdash; S.Y. {{ $currentSchoolYear }}</h6>
-                        <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                        </div>
                     </div>
                     @php $rptNRTotal = max(1, $rptEnrollNew + $rptEnrollReturning + $rptEnrollTransferee); @endphp
                     <div style="display:flex;gap:16px;padding:16px;flex-wrap:wrap;">
-                        <div style="flex:1;min-width:140px;background:#eff6ff;border-radius:10px;padding:14px;text-align:center;">
-                            <div style="font-size:26px;font-weight:800;color:var(--blue);">{{ $rptEnrollNew }}</div>
-                            <div style="font-size:12px;font-weight:600;color:#1d4ed8;">New Students</div>
-                            <div style="font-size:11px;color:var(--muted);">{{ round($rptEnrollNew / $rptNRTotal * 100) }}% of enrollees</div>
+                        <div class="stat-card" style="flex:1;min-width:180px;">
+                            <div class="stat-icon blue"><i class="bi bi-person-plus-fill"></i></div>
+                            <div>
+                                <div class="stat-value">{{ $rptEnrollNew }}</div>
+                                <div class="stat-label">New Students</div>
+                                <div class="stat-change" style="color:var(--blue);">{{ round($rptEnrollNew / $rptNRTotal * 100) }}% of enrollees</div>
+                            </div>
                         </div>
-                        <div style="flex:1;min-width:140px;background:#f0fdf4;border-radius:10px;padding:14px;text-align:center;">
-                            <div style="font-size:26px;font-weight:800;color:var(--green);">{{ $rptEnrollReturning }}</div>
-                            <div style="font-size:12px;font-weight:600;color:#15803d;">Returning</div>
-                            <div style="font-size:11px;color:var(--muted);">{{ round($rptEnrollReturning / $rptNRTotal * 100) }}% of enrollees</div>
+                        <div class="stat-card" style="flex:1;min-width:180px;">
+                            <div class="stat-icon green"><i class="bi bi-arrow-repeat"></i></div>
+                            <div>
+                                <div class="stat-value">{{ $rptEnrollReturning }}</div>
+                                <div class="stat-label">Returning</div>
+                                <div class="stat-change" style="color:var(--green);">{{ round($rptEnrollReturning / $rptNRTotal * 100) }}% of enrollees</div>
+                            </div>
                         </div>
-                        <div style="flex:1;min-width:140px;background:#fefce8;border-radius:10px;padding:14px;text-align:center;">
-                            <div style="font-size:26px;font-weight:800;color:var(--gold);">{{ $rptEnrollTransferee }}</div>
-                            <div style="font-size:12px;font-weight:600;color:#b45309;">Transferee</div>
-                            <div style="font-size:11px;color:var(--muted);">{{ round($rptEnrollTransferee / $rptNRTotal * 100) }}% of enrollees</div>
+                        <div class="stat-card" style="flex:1;min-width:180px;">
+                            <div class="stat-icon gold"><i class="bi bi-signpost-split-fill"></i></div>
+                            <div>
+                                <div class="stat-value">{{ $rptEnrollTransferee }}</div>
+                                <div class="stat-label">Transferee</div>
+                                <div class="stat-change" style="color:var(--gold);">{{ round($rptEnrollTransferee / $rptNRTotal * 100) }}% of enrollees</div>
+                            </div>
                         </div>
                     </div>
                     <div style="overflow-x:auto;">
@@ -7461,28 +7734,43 @@ function openWalkInEnrollmentModal() {
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-file-earmark-check" style="color:var(--blue);margin-right:6px;"></i>Document Compliance &mdash; S.Y. {{ $currentSchoolYear }}</h6>
-                        <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                        </div>
                     </div>
                     @php $rptDocTotal = max(1, $rptTotalDocs); @endphp
                     <div style="display:flex;gap:16px;padding:16px;flex-wrap:wrap;">
-                        <div style="flex:1;min-width:130px;background:#f0fdf4;border-radius:10px;padding:14px;text-align:center;">
-                            <div style="font-size:26px;font-weight:800;color:var(--green);">{{ $rptApprovedDocs }}</div>
-                            <div style="font-size:12px;font-weight:600;color:#15803d;">Approved</div>
-                            <div style="font-size:11px;color:var(--muted);">{{ round($rptApprovedDocs / $rptDocTotal * 100) }}%</div>
+                        <div class="stat-card" style="flex:1;min-width:180px;">
+                            <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
+                            <div>
+                                <div class="stat-value">{{ $rptApprovedDocs }}</div>
+                                <div class="stat-label">Approved</div>
+                                <div class="stat-change" style="color:var(--green);">{{ round($rptApprovedDocs / $rptDocTotal * 100) }}%</div>
+                            </div>
                         </div>
-                        <div style="flex:1;min-width:130px;background:#fefce8;border-radius:10px;padding:14px;text-align:center;">
-                            <div style="font-size:26px;font-weight:800;color:var(--gold);">{{ $rptPendingDocs }}</div>
-                            <div style="font-size:12px;font-weight:600;color:#b45309;">Pending Review</div>
-                            <div style="font-size:11px;color:var(--muted);">{{ round($rptPendingDocs / $rptDocTotal * 100) }}%</div>
+                        <div class="stat-card" style="flex:1;min-width:180px;">
+                            <div class="stat-icon gold"><i class="bi bi-hourglass-split"></i></div>
+                            <div>
+                                <div class="stat-value">{{ $rptPendingDocs }}</div>
+                                <div class="stat-label">Pending Review</div>
+                                <div class="stat-change" style="color:var(--gold);">{{ round($rptPendingDocs / $rptDocTotal * 100) }}%</div>
+                            </div>
                         </div>
-                        <div style="flex:1;min-width:130px;background:#fef2f2;border-radius:10px;padding:14px;text-align:center;">
-                            <div style="font-size:26px;font-weight:800;color:var(--red);">{{ $rptRejectedDocs }}</div>
-                            <div style="font-size:12px;font-weight:600;color:#b91c1c;">Rejected</div>
-                            <div style="font-size:11px;color:var(--muted);">{{ round($rptRejectedDocs / $rptDocTotal * 100) }}%</div>
+                        <div class="stat-card" style="flex:1;min-width:180px;">
+                            <div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div>
+                            <div>
+                                <div class="stat-value">{{ $rptRejectedDocs }}</div>
+                                <div class="stat-label">Rejected</div>
+                                <div class="stat-change" style="color:var(--red);">{{ round($rptRejectedDocs / $rptDocTotal * 100) }}%</div>
+                            </div>
                         </div>
-                        <div style="flex:1;min-width:130px;background:#f8fafc;border-radius:10px;padding:14px;text-align:center;">
-                            <div style="font-size:26px;font-weight:800;color:var(--blue);">{{ $rptTotalDocs }}</div>
-                            <div style="font-size:12px;font-weight:600;color:var(--muted);">Total Documents</div>
+                        <div class="stat-card" style="flex:1;min-width:180px;">
+                            <div class="stat-icon blue"><i class="bi bi-file-earmark-text-fill"></i></div>
+                            <div>
+                                <div class="stat-value">{{ $rptTotalDocs }}</div>
+                                <div class="stat-label">Total Documents</div>
+                            </div>
                         </div>
                     </div>
                     <div style="overflow-x:auto;">
@@ -7576,7 +7864,10 @@ function openWalkInEnrollmentModal() {
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-bar-chart" style="color:var(--blue);margin-right:6px;"></i>Enrollment Status Summary &mdash; S.Y. {{ $currentSchoolYear }}</h6>
-                        <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                        </div>
                     </div>
                     <div style="overflow-x:auto;">
                         @php
@@ -7638,7 +7929,10 @@ function openWalkInEnrollmentModal() {
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-diagram-3" style="color:var(--blue);margin-right:6px;"></i>Enrollment by Grade Level &mdash; S.Y. {{ $currentSchoolYear }}</h6>
-                        <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                        </div>
                     </div>
                     <div style="overflow-x:auto;">
                         <table class="dash-table">
@@ -7702,7 +7996,10 @@ function openWalkInEnrollmentModal() {
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-people" style="color:var(--blue);margin-right:6px;"></i>New vs Returning vs Transferee &mdash; S.Y. {{ $currentSchoolYear }}</h6>
-                        <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                        </div>
                     </div>
                     <div style="overflow-x:auto;">
                         <table class="dash-table">
@@ -7751,7 +8048,10 @@ function openWalkInEnrollmentModal() {
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-graph-up" style="color:var(--blue);margin-right:6px;"></i>Daily Enrollment &mdash; Last 7 Days</h6>
-                        <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                        </div>
                     </div>
                     @php $rptDailyMax = max(1, collect($rptDailyDays)->max('count')); @endphp
                     <div style="overflow-x:auto;">
@@ -7853,7 +8153,10 @@ function openWalkInEnrollmentModal() {
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-cash" style="color:var(--blue);margin-right:6px;"></i>Collection Summary &mdash; S.Y. {{ $currentSchoolYear }}</h6>
-                        <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                        </div>
                     </div>
                     @php
                         $rptFinStatusRows = [
@@ -7906,7 +8209,10 @@ function openWalkInEnrollmentModal() {
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-diagram-3" style="color:var(--blue);margin-right:6px;"></i>Financial by Grade Level &mdash; S.Y. {{ $currentSchoolYear }}</h6>
-                        <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                        </div>
                     </div>
                     <div style="overflow-x:auto;">
                         <table class="dash-table">
@@ -7966,7 +8272,10 @@ function openWalkInEnrollmentModal() {
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-list-check" style="color:var(--blue);margin-right:6px;"></i>By Payment Option &mdash; S.Y. {{ $currentSchoolYear }}</h6>
-                        <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                        </div>
                     </div>
                     @php $rptOptionLabels = ['A'=>'Option A — Full Payment','B'=>'Option B — 2 Installments','C'=>'Option C — 3 Installments','D'=>'Option D — Monthly']; @endphp
                     <div style="overflow-x:auto;">
@@ -8005,7 +8314,10 @@ function openWalkInEnrollmentModal() {
                 <div class="content-card">
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-exclamation-triangle" style="color:var(--red);margin-right:6px;"></i>Outstanding Balances &mdash; S.Y. {{ $currentSchoolYear }}</h6>
-                        <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                        </div>
                     </div>
                     <div style="overflow-x:auto;">
                         <table class="dash-table">
@@ -8022,14 +8334,12 @@ function openWalkInEnrollmentModal() {
                                 </tr>
                             </thead>
                             <tbody>
-                                @php $rptObN=0;$rptObTotalBal=0; @endphp
-                                @forelse($rptOutstandingList->take(40) as $e)
+                                @forelse($rptOutstandingPage as $e)
                                     @php
-                                        $rptObN++;
+                                        $rptObN = $rptOutstandingPage->firstItem() + $loop->index;
                                         $sd = $e->student_data ?? [];
                                         $obName = trim(($sd['first_name']??'').(' '.($sd['last_name']??''))) ?: '—';
                                         $obGl   = $rptGradeLevels[$sd['grade_level'] ?? $e->grade_level ?? ''] ?? '—';
-                                        $rptObTotalBal += $e->remaining_balance ?? 0;
                                     @endphp
                                     <tr>
                                         <td style="color:var(--muted);font-size:12px;">{{ $rptObN }}</td>
@@ -8048,21 +8358,196 @@ function openWalkInEnrollmentModal() {
                                 @endforelse
                                 @if($rptOutstandingList->count() > 0)
                                 <tr style="background:#fef2f2;font-weight:700;">
-                                    <td colspan="6" style="text-align:right;color:var(--red);">Total Outstanding:</td>
-                                    <td style="text-align:right;color:var(--red);font-size:15px;">&#8369;{{ number_format($rptObTotalBal, 0) }}</td>
+                                    <td colspan="6" style="text-align:right;color:var(--red);">Total Outstanding (all accounts):</td>
+                                    <td style="text-align:right;color:var(--red);font-size:15px;">&#8369;{{ number_format($rptOutstandingTotalBal, 0) }}</td>
                                     <td></td>
                                 </tr>
                                 @endif
                             </tbody>
                         </table>
                     </div>
-                    @if($rptOutstandingList->count() > 40)
-                        <div style="padding:10px 16px;font-size:12px;color:var(--muted);border-top:1px solid var(--border);">Showing 40 of {{ $rptOutstandingList->count() }} accounts with outstanding balances.</div>
-                    @endif
+                    <div class="p-3 border-top" style="border-color:var(--border);">
+                        {{ $rptOutstandingPage->appends(['section' => 'reports', 'rpt_tab' => 'financial', 'rpt_subreport' => 'outstanding'])->links() }}
+                        <div class="pagination-info">
+                            Showing {{ $rptOutstandingPage->firstItem() ?? 0 }} to {{ $rptOutstandingPage->lastItem() ?? 0 }} of {{ $rptOutstandingPage->total() }} account(s) with outstanding balances
+                        </div>
+                    </div>
                 </div>
             </div>
 
         </div>{{-- /rpt-panel-financial --}}
+
+        {{-- TAB: PROMOTION REPORTS --}}
+        <div id="rpt-panel-promotion" class="rpt-panel" style="display:none;">
+
+            {{-- Sub-report navigation --}}
+            <div class="rpt-subnav">
+                <button class="rpt-sub-btn active" data-subreport="overview" onclick="switchRptSubReport('promotion','overview')">
+                    <i class="bi bi-graph-up"></i> Overview
+                </button>
+                <button class="rpt-sub-btn" data-subreport="grade" onclick="switchRptSubReport('promotion','grade')">
+                    <i class="bi bi-diagram-3"></i> By Grade Level
+                </button>
+                <button class="rpt-sub-btn" data-subreport="list" onclick="switchRptSubReport('promotion','list')">
+                    <i class="bi bi-list-ul"></i> Student List
+                </button>
+            </div>
+
+            {{-- Sub-panel: Overview --}}
+            <div id="rpt-sub-promotion-overview" class="rpt-sub-panel">
+                <div class="content-card">
+                    <div class="content-card-header" style="justify-content:space-between;">
+                        <h6><i class="bi bi-mortarboard-fill" style="color:var(--blue);margin-right:6px;"></i>Assessment &amp; Promotion Overview &mdash; S.Y. {{ $currentSchoolYear }}</h6>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:16px;padding:16px;flex-wrap:wrap;">
+                        <div class="stat-card" style="flex:1;min-width:180px;">
+                            <div class="stat-icon green"><i class="bi bi-arrow-up-circle-fill"></i></div>
+                            <div>
+                                <div class="stat-value">{{ $rptPromoPromoted }}</div>
+                                <div class="stat-label">Promoted</div>
+                            </div>
+                        </div>
+                        <div class="stat-card" style="flex:1;min-width:180px;">
+                            <div class="stat-icon gold"><i class="bi bi-arrow-repeat"></i></div>
+                            <div>
+                                <div class="stat-value">{{ $rptPromoRetained }}</div>
+                                <div class="stat-label">Retained</div>
+                            </div>
+                        </div>
+                        <div class="stat-card" style="flex:1;min-width:180px;">
+                            <div class="stat-icon blue"><i class="bi bi-star-fill"></i></div>
+                            <div>
+                                <div class="stat-value">{{ $rptPromoGraduated }}</div>
+                                <div class="stat-label">Graduated</div>
+                            </div>
+                        </div>
+                        <div class="stat-card" style="flex:1;min-width:180px;">
+                            <div class="stat-icon red"><i class="bi bi-hourglass-split"></i></div>
+                            <div>
+                                <div class="stat-value">{{ $rptPromoPending }}</div>
+                                <div class="stat-label">Pending Assessment</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div style="padding:0 16px 16px;font-size:12px;color:var(--muted);">
+                        Out of {{ $rptPromoEligibleTotal }} eligible student(s) (Nursery&ndash;Grade 6, excluding first-year transferees).
+                    </div>
+                </div>
+            </div>
+
+            {{-- Sub-panel: By Grade Level --}}
+            <div id="rpt-sub-promotion-grade" class="rpt-sub-panel" style="display:none;">
+                <div class="content-card">
+                    <div class="content-card-header" style="justify-content:space-between;">
+                        <h6><i class="bi bi-diagram-3" style="color:var(--blue);margin-right:6px;"></i>Promotion by Grade Level &mdash; S.Y. {{ $currentSchoolYear }}</h6>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                        </div>
+                    </div>
+                    <div style="overflow-x:auto;">
+                        <table class="dash-table">
+                            <thead>
+                                <tr>
+                                    <th>Grade Level</th>
+                                    <th style="text-align:center;">Eligible</th>
+                                    <th style="text-align:center;">Promoted</th>
+                                    <th style="text-align:center;">Retained</th>
+                                    <th style="text-align:center;">Graduated</th>
+                                    <th style="text-align:center;">Pending</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @php $rptPromoGTot=['eligible'=>0,'promoted'=>0,'retained'=>0,'graduated'=>0,'pending'=>0]; @endphp
+                                @foreach($rptGradeLevels as $key => $label)
+                                    @php
+                                        $row = $rptPromoByGrade[$key] ?? ['eligible'=>0,'promoted'=>0,'retained'=>0,'graduated'=>0,'pending'=>0];
+                                        foreach ($rptPromoGTot as $k => $v) { $rptPromoGTot[$k] += $row[$k] ?? 0; }
+                                    @endphp
+                                    <tr>
+                                        <td style="font-weight:600;">{{ $label }}</td>
+                                        <td style="text-align:center;">{{ $row['eligible'] }}</td>
+                                        <td style="text-align:center;color:var(--green);font-weight:600;">{{ $row['promoted'] }}</td>
+                                        <td style="text-align:center;color:var(--gold);font-weight:600;">{{ $row['retained'] }}</td>
+                                        <td style="text-align:center;color:var(--blue);font-weight:600;">{{ $row['graduated'] }}</td>
+                                        <td style="text-align:center;color:var(--red);font-weight:600;">{{ $row['pending'] }}</td>
+                                    </tr>
+                                @endforeach
+                                <tr style="background:#f8fafc;font-weight:700;">
+                                    <td>TOTAL</td>
+                                    <td style="text-align:center;">{{ $rptPromoGTot['eligible'] }}</td>
+                                    <td style="text-align:center;color:var(--green);">{{ $rptPromoGTot['promoted'] }}</td>
+                                    <td style="text-align:center;color:var(--gold);">{{ $rptPromoGTot['retained'] }}</td>
+                                    <td style="text-align:center;color:var(--blue);">{{ $rptPromoGTot['graduated'] }}</td>
+                                    <td style="text-align:center;color:var(--red);">{{ $rptPromoGTot['pending'] }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Sub-panel: Student List --}}
+            <div id="rpt-sub-promotion-list" class="rpt-sub-panel" style="display:none;">
+                <div class="content-card">
+                    <div class="content-card-header" style="justify-content:space-between;">
+                        <h6><i class="bi bi-list-ul" style="color:var(--blue);margin-right:6px;"></i>Promotion Student List &mdash; S.Y. {{ $currentSchoolYear }}</h6>
+                        <div style="display:flex;gap:6px;">
+                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
+                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                        </div>
+                    </div>
+                    <div style="overflow-x:auto;">
+                        <table class="dash-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Student</th>
+                                    <th>Grade Level</th>
+                                    <th>Section</th>
+                                    <th style="text-align:center;">Result</th>
+                                    <th>To Grade</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @forelse($rptPromoListPage as $s)
+                                    @php
+                                        $rptPlN = $rptPromoListPage->firstItem() + $loop->index;
+                                        $rptPlColor = match($s->result) {
+                                            'Promoted'  => 'var(--green)',
+                                            'Retained'  => 'var(--gold)',
+                                            'Graduated' => 'var(--blue)',
+                                            default     => 'var(--red)',
+                                        };
+                                    @endphp
+                                    <tr>
+                                        <td style="color:var(--muted);font-size:12px;">{{ $rptPlN }}</td>
+                                        <td style="font-weight:600;">{{ $s->name }}</td>
+                                        <td>{{ $s->grade_level }}</td>
+                                        <td style="font-size:12px;">{{ $s->section }}</td>
+                                        <td style="text-align:center;font-weight:700;color:{{ $rptPlColor }};">{{ $s->result }}</td>
+                                        <td style="font-size:12px;">{{ $s->to_grade ?? '—' }}</td>
+                                    </tr>
+                                @empty
+                                    <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:28px;">No eligible students found.</td></tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="p-3 border-top" style="border-color:var(--border);">
+                        {{ $rptPromoListPage->appends(['section' => 'reports', 'rpt_tab' => 'promotion', 'rpt_subreport' => 'list'])->links() }}
+                        <div class="pagination-info">
+                            Showing {{ $rptPromoListPage->firstItem() ?? 0 }} to {{ $rptPromoListPage->lastItem() ?? 0 }} of {{ $rptPromoListPage->total() }} student(s)
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>{{-- /rpt-panel-promotion --}}
 
         {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
              TAB 4: KPI DASHBOARD (superadmin only)
@@ -8118,7 +8603,10 @@ function openWalkInEnrollmentModal() {
                     <h5 style="font-weight:700;color:var(--blue);margin:0;"><i class="bi bi-speedometer2" style="margin-right:8px;"></i>KPI Dashboard</h5>
                     <p style="color:var(--muted);font-size:13px;margin:4px 0 0;">Key Performance Indicators &mdash; S.Y. {{ $currentSchoolYear }}</p>
                 </div>
-                <button class="btn-dash btn-secondary" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print KPIs</button>
+                <div style="display:flex;gap:6px;">
+                    <button class="btn-dash btn-secondary" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print KPIs</button>
+                    <button class="btn-dash btn-primary" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                </div>
             </div>
 
             <div id="rpt-sub-kpi-overview" class="rpt-sub-panel">
@@ -9197,23 +9685,16 @@ function openWalkInEnrollmentModal() {
             $glMap = ['nursery'=>'Nursery','kindergarten'=>'Kinder','grade1'=>'Grade 1','grade2'=>'Grade 2','grade3'=>'Grade 3','grade4'=>'Grade 4','grade5'=>'Grade 5','grade6'=>'Grade 6'];
             $nextGlMap = ['nursery'=>'kindergarten','kindergarten'=>'grade1','grade1'=>'grade2','grade2'=>'grade3','grade3'=>'grade4','grade4'=>'grade5','grade5'=>'grade6','grade6'=>'graduated'];
 
-            // Use pre-loaded $assessStudents from controller (Grade 1-6, returning/existing, enrolled/completed)
-            $assessAll = $assessStudents ?? collect();
-
-            $assessPending  = $assessAll->filter(fn($s) => $s->promotions->isEmpty())->count();
-            $assessDone     = $assessAll->filter(fn($s) => $s->promotions->isNotEmpty())->count();
-            $assessTotal    = $assessAll->count();
-
-            // Per-grade counts for chips
-            $assessByGrade = [];
-            foreach (array_keys($glMap) as $gk) {
-                $assessByGrade[$gk] = $assessAll->filter(function($s) use ($gk) {
-                    $enr = $s->latestEnrollment;
-                    if (!$enr) return false;
-                    $gl = $enr->student_data['grade_level'] ?? ($enr->grade_level ?? '');
-                    return $gl === $gk;
-                })->count();
-            }
+            // $assessStudents, $assessTotal/$assessPending/$assessDone/$assessByGrade,
+            // and $assessGradeFilter/$assessStatusFilter/$assessSearchTerm all come
+            // pre-computed + paginated from the controller now.
+            $assessBaseQuery = [
+                'section'       => 'assessment',
+                'assess_grade'  => $assessGradeFilter ?? 'all',
+                'assess_status' => $assessStatusFilter ?? 'all',
+                'assess_search' => $assessSearchTerm ?? '',
+            ];
+            $assessUrl = fn($overrides) => url()->current() . '?' . http_build_query(array_merge($assessBaseQuery, $overrides));
         @endphp
 
         {{-- Stats --}}
@@ -9245,40 +9726,77 @@ function openWalkInEnrollmentModal() {
         {{-- Grade filter chips --}}
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;align-items:center;">
             <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-right:4px;">Grade:</span>
-            <button onclick="filterAssessGrade('')" id="assess-chip-all"
-                style="padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--blue);background:var(--blue);color:#fff;cursor:pointer;">
+            @php $assessGradeActive = ($assessGradeFilter ?? 'all') === 'all'; @endphp
+            <a href="{{ $assessUrl(['assess_grade' => 'all', 'assess_page' => 1]) }}"
+                style="padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;display:inline-block;
+                    border:1.5px solid {{ $assessGradeActive ? 'var(--blue)' : '#ddd' }};
+                    background:{{ $assessGradeActive ? 'var(--blue)' : '#f8f9fa' }};
+                    color:{{ $assessGradeActive ? '#fff' : '#555' }};">
                 All ({{ $assessTotal }})
-            </button>
+            </a>
             @foreach($glMap as $gk => $gl)
                 @if(($assessByGrade[$gk] ?? 0) > 0)
-                <button onclick="filterAssessGrade('{{ $gk }}')" id="assess-chip-{{ $gk }}"
-                    style="padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid #ddd;background:#f8f9fa;color:#555;cursor:pointer;">
+                @php $assessGradeActive = ($assessGradeFilter ?? '') === $gk; @endphp
+                <a href="{{ $assessUrl(['assess_grade' => $gk, 'assess_page' => 1]) }}"
+                    style="padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;display:inline-block;
+                        border:1.5px solid {{ $assessGradeActive ? 'var(--blue)' : '#ddd' }};
+                        background:{{ $assessGradeActive ? 'var(--blue)' : '#f8f9fa' }};
+                        color:{{ $assessGradeActive ? '#fff' : '#555' }};">
                     {{ $gl }} ({{ $assessByGrade[$gk] }})
-                </button>
+                </a>
                 @endif
             @endforeach
 
             {{-- Status filter --}}
             <div style="margin-left:auto;display:flex;gap:6px;">
-                <button onclick="filterAssessStatus('')" id="assess-status-all"
-                    style="padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid var(--blue);background:var(--blue);color:#fff;cursor:pointer;">All</button>
-                <button onclick="filterAssessStatus('pending')" id="assess-status-pending"
-                    style="padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid #ddd;background:#f8f9fa;color:#555;cursor:pointer;">
-                    Pending
-                </button>
-                <button onclick="filterAssessStatus('done')" id="assess-status-done"
-                    style="padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid #ddd;background:#f8f9fa;color:#555;cursor:pointer;">
-                    Assessed
-                </button>
+                @foreach(['all' => 'All', 'pending' => 'Pending', 'done' => 'Assessed'] as $sk => $sl)
+                    @php $assessStatusActive = ($assessStatusFilter ?? 'all') === $sk; @endphp
+                    <a href="{{ $assessUrl(['assess_status' => $sk, 'assess_page' => 1]) }}"
+                        style="padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;display:inline-block;
+                            border:1.5px solid {{ $assessStatusActive ? 'var(--blue)' : '#ddd' }};
+                            background:{{ $assessStatusActive ? 'var(--blue)' : '#f8f9fa' }};
+                            color:{{ $assessStatusActive ? '#fff' : '#555' }};">
+                        {{ $sl }}
+                    </a>
+                @endforeach
             </div>
         </div>
+
+        {{-- Bulk promote / auto-advance — only offered once a single grade is selected --}}
+        @if(($assessGradeFilter ?? 'all') !== 'all')
+        <div style="margin-bottom:16px;">
+            @if(in_array($assessGradeFilter, ['nursery', 'kindergarten']))
+            <button type="button" class="btn-dash btn-success" style="padding:8px 16px;font-size:12.5px;"
+                onclick="openAutoAdvanceModal('{{ $assessGradeFilter }}', '{{ $glMap[$assessGradeFilter] ?? ucfirst($assessGradeFilter) }}')">
+                <i class="bi bi-arrow-up-circle me-1"></i> Advance All {{ $glMap[$assessGradeFilter] ?? ucfirst($assessGradeFilter) }} Students
+            </button>
+            <span style="font-size:11.5px;color:var(--muted);margin-left:8px;">
+                {{ $glMap[$assessGradeFilter] ?? ucfirst($assessGradeFilter) }} is developmental, not academic — every student here advances automatically, no review needed.
+            </span>
+            @else
+            <button type="button" class="btn-dash btn-success" style="padding:8px 16px;font-size:12.5px;"
+                onclick="openBulkPromoteModal('{{ $assessGradeFilter }}', '{{ $glMap[$assessGradeFilter] ?? ucfirst($assessGradeFilter) }}')">
+                <i class="bi bi-arrow-up-circle me-1"></i> Promote All {{ $glMap[$assessGradeFilter] ?? ucfirst($assessGradeFilter) }} Students
+            </button>
+            <span style="font-size:11.5px;color:var(--muted);margin-left:8px;">
+                Only students with a settled balance and complete documents will be included. Failing/incomplete grades and guidance concerns are shown as warnings but don't block promotion.
+            </span>
+            @endif
+        </div>
+        @endif
 
         {{-- Search --}}
         <div class="content-card mb-3">
             <div style="padding:14px 18px;">
-                <input type="text" id="assessSearch" placeholder="Search student name..."
-                    oninput="filterAssessTable()"
-                    style="width:100%;padding:9px 14px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;">
+                <form method="GET" action="{{ url()->current() }}" id="assess-search-form">
+                    <input type="hidden" name="section" value="assessment">
+                    <input type="hidden" name="assess_grade" value="{{ $assessGradeFilter ?? 'all' }}">
+                    <input type="hidden" name="assess_status" value="{{ $assessStatusFilter ?? 'all' }}">
+                    <input type="text" name="assess_search" id="assessSearch" placeholder="Search student name..."
+                        value="{{ $assessSearchTerm ?? '' }}"
+                        oninput="debounceFormSubmit(this)"
+                        style="width:100%;padding:9px 14px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;">
+                </form>
             </div>
         </div>
 
@@ -9286,7 +9804,7 @@ function openWalkInEnrollmentModal() {
         <div class="content-card">
             <div class="content-card-header" style="display:flex;justify-content:space-between;align-items:center;">
                 <h6><i class="bi bi-table me-2" style="color:var(--gold);"></i>Students for Assessment</h6>
-                <span style="font-size:12px;color:var(--muted);" id="assess-count-label">{{ $assessTotal }} student(s)</span>
+                <span style="font-size:12px;color:var(--muted);" id="assess-count-label">{{ $assessStudents->total() }} student(s)</span>
             </div>
             <div style="overflow-x:auto;">
                 <table class="dash-table" id="assessTable">
@@ -9302,7 +9820,7 @@ function openWalkInEnrollmentModal() {
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($assessAll as $as)
+                        @forelse($assessStudents as $as)
                         @php
                             $asEnr    = $as->latestEnrollment;
                             $asGl     = $asEnr ? ($asEnr->student_data['grade_level'] ?? ($asEnr->grade_level ?? '')) : '';
@@ -9321,8 +9839,7 @@ function openWalkInEnrollmentModal() {
                                 default     => null
                             };
                         @endphp
-                        <tr data-grade="{{ $asGl }}" data-status="{{ $isDone ? 'done' : 'pending' }}" data-name="{{ strtolower($as->name) }}"
-                            style="{{ $isDone ? 'background:#f6fef9;' : 'background:#fffbf0;' }}">
+                        <tr style="{{ $isDone ? 'background:#f6fef9;' : 'background:#fffbf0;' }}">
                             <td>
                                 <div style="display:flex;align-items:center;gap:6px;">
                                     <span style="font-weight:600;">{{ $as->name }}</span>
@@ -9388,13 +9905,26 @@ function openWalkInEnrollmentModal() {
                         <tr>
                             <td colspan="7" style="text-align:center;padding:60px;color:var(--muted);">
                                 <i class="bi bi-mortarboard" style="font-size:48px;display:block;margin-bottom:12px;opacity:0.3;"></i>
-                                No eligible students for assessment.<br>
-                                <small>Nursery, Kinder, and Grade 1–6 students (excluding transferees) appear here.</small>
+                                @if($assessTotal === 0)
+                                    No eligible students for assessment.<br>
+                                    <small>Nursery, Kinder, and Grade 1–6 students (excluding transferees) appear here.</small>
+                                @else
+                                    No students match the current filter.<br>
+                                    <small><a href="{{ $assessUrl(['assess_grade' => 'all', 'assess_status' => 'all', 'assess_search' => '', 'assess_page' => 1]) }}">Clear filters</a></small>
+                                @endif
                             </td>
                         </tr>
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+
+            {{-- Pagination --}}
+            <div class="p-3 border-top" style="border-color:var(--border);">
+                {{ $assessStudents->appends($assessBaseQuery)->links() }}
+                <div class="pagination-info">
+                    Showing {{ $assessStudents->firstItem() ?? 0 }} to {{ $assessStudents->lastItem() ?? 0 }} of {{ $assessStudents->total() }} student(s)
+                </div>
             </div>
         </div>
 
@@ -9412,6 +9942,7 @@ function openWalkInEnrollmentModal() {
                             <th>Result</th>
                             <th>To Grade</th>
                             <th>School Year</th>
+                            <th>Remarks</th>
                             <th>Assessed By</th>
                             <th>Date</th>
                         </tr>
@@ -9419,7 +9950,8 @@ function openWalkInEnrollmentModal() {
                     <tbody>
                         @php
                             $allPromos = \App\Models\Promotion::with(['student','promotedBy'])
-                                ->orderByDesc('promoted_at')->limit(50)->get();
+                                ->orderByDesc('promoted_at')
+                                ->paginate(15, ['*'], 'promo_history_page');
                         @endphp
                         @forelse($allPromos as $promo)
                         @php
@@ -9435,16 +9967,25 @@ function openWalkInEnrollmentModal() {
                             </td>
                             <td><span class="grade-chip">{{ $glMap[$promo->to_grade] ?? ucfirst($promo->to_grade) }}</span></td>
                             <td style="font-size:12px;">{{ $promo->from_school_year }} → {{ $promo->to_school_year }}</td>
+                            <td style="font-size:12px;color:var(--muted);max-width:200px;">{{ $promo->remarks ?? '—' }}</td>
                             <td style="font-size:12px;color:var(--muted);">{{ $promo->promotedBy->name ?? 'System' }}</td>
                             <td style="font-size:12px;color:var(--muted);white-space:nowrap;">{{ $promo->promoted_at?->format('M d, Y') ?? '—' }}</td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" style="text-align:center;padding:30px;color:var(--muted);">No assessment history yet.</td>
+                            <td colspan="8" style="text-align:center;padding:30px;color:var(--muted);">No assessment history yet.</td>
                         </tr>
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+
+            {{-- Pagination --}}
+            <div class="p-3 border-top" style="border-color:var(--border);">
+                {{ $allPromos->appends(['section' => 'assessment'])->links() }}
+                <div class="pagination-info">
+                    Showing {{ $allPromos->firstItem() ?? 0 }} to {{ $allPromos->lastItem() ?? 0 }} of {{ $allPromos->total() }} record(s)
+                </div>
             </div>
         </div>
     </div>
@@ -11980,6 +12521,23 @@ function openWalkInEnrollmentModal() {
 
         // Show immediately (CSS hides all sections by default — no flash)
         showSection(sectionToShow);
+
+        // Reports has a second level of nesting (tab -> sub-report) that a
+        // plain ?section=reports can't express — pagination links inside
+        // Reports reload the whole page, so without this every "next page"
+        // click would silently drop back to the default Students/Master List
+        // tab instead of staying on whichever tab/sub-report was open.
+        if (sectionToShow === 'reports') {
+            const rptParams = new URLSearchParams(window.location.search);
+            const rptTab = rptParams.get('rpt_tab');
+            const rptSubreport = rptParams.get('rpt_subreport');
+            if (rptTab) {
+                switchRptTab(rptTab);
+                if (rptSubreport) {
+                    switchRptSubReport(rptTab, rptSubreport);
+                }
+            }
+        }
 
     })();
 
@@ -18919,36 +19477,6 @@ function openWalkInEnrollmentModal() {
 
     function filterScheduleTable() {
 
-        const search = (document.getElementById('sectionSearchInput').value || '').toLowerCase();
-
-        const grade = document.getElementById('sectionGradeFilter').value;
-
-        const rows = document.querySelectorAll('#sectionTable tbody tr[data-search]');
-
-        let visible = 0;
-
-        rows.forEach(row => {
-
-            const matchSearch = !search || row.dataset.search.includes(search);
-
-            const matchGrade = !grade || row.dataset.grade === grade;
-
-            const show = matchSearch && matchGrade;
-
-            row.style.display = show ? '' : 'none';
-
-            if (show) visible++;
-
-        });
-
-        const counter = document.getElementById('sectionVisibleCount');
-
-        if (counter) counter.textContent = visible;
-
-    }
-
-    function filterScheduleTable() {
-
         const search = (document.getElementById('scheduleSearchInput').value || '').toLowerCase();
 
         const term = document.getElementById('scheduleTermFilter').value;
@@ -19016,51 +19544,10 @@ function openWalkInEnrollmentModal() {
     }
 
     // â”€â”€ Assessment & Promotion filters â”€â”€
-    var _assessGrade  = '';
-    var _assessStatus = '';
-
-    function filterAssessGrade(grade) {
-        _assessGrade = grade;
-        // Update chip styles
-        document.querySelectorAll('[id^="assess-chip-"]').forEach(function(b) {
-            var key = b.id.replace('assess-chip-', '');
-            var active = (grade === '' && key === 'all') || key === grade;
-            b.style.background  = active ? 'var(--blue)' : '#f8f9fa';
-            b.style.color       = active ? '#fff' : '#555';
-            b.style.borderColor = active ? 'var(--blue)' : '#ddd';
-        });
-        filterAssessTable();
-    }
-
-    function filterAssessStatus(status) {
-        _assessStatus = status;
-        ['all','pending','done'].forEach(function(s) {
-            var btn = document.getElementById('assess-status-' + s);
-            if (!btn) return;
-            var active = (status === '' && s === 'all') || s === status;
-            btn.style.background  = active ? 'var(--blue)' : '#f8f9fa';
-            btn.style.color       = active ? '#fff' : '#555';
-            btn.style.borderColor = active ? 'var(--blue)' : '#ddd';
-        });
-        filterAssessTable();
-    }
-
-    function filterAssessTable() {
-        var search = (document.getElementById('assessSearch') || {}).value || '';
-        search = search.toLowerCase();
-        var rows = document.querySelectorAll('#assessTable tbody tr[data-grade]');
-        var visible = 0;
-        rows.forEach(function(row) {
-            var gradeMatch  = !_assessGrade || row.dataset.grade === _assessGrade;
-            var statusMatch = !_assessStatus || row.dataset.status === _assessStatus;
-            var nameMatch   = !search || (row.dataset.name || '').includes(search);
-            var show = gradeMatch && statusMatch && nameMatch;
-            row.style.display = show ? '' : 'none';
-            if (show) visible++;
-        });
-        var lbl = document.getElementById('assess-count-label');
-        if (lbl) lbl.textContent = visible + ' student(s)';
-    }
+    // Grade/status/search filtering + pagination is now server-side (GET params
+    // assess_grade / assess_status / assess_search / assess_page, handled in
+    // EnrollmentController::adminIndex) — the chips and search box are plain
+    // links/a form now, no client-side filtering needed here.
 
     function filterFinanceTable() {
 
@@ -20665,6 +21152,184 @@ function openWalkInEnrollmentModal() {
             }
         })
         .catch(err => showAdminToast('Network error: ' + (err.message || 'Unknown'), 'error'));
+    }
+
+    // ── Bulk Promote (per-grade) ──
+    let _bpGrade = null, _bpFromSY = null, _bpToSY = null;
+
+    function bpEscapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    function openBulkPromoteModal(grade, gradeLabel) {
+        document.getElementById('bp-grade-label').textContent = gradeLabel;
+        document.getElementById('bp-loading').style.display = '';
+        document.getElementById('bp-loading').innerHTML = '<i class="bi bi-hourglass-split" style="font-size:28px;display:block;margin-bottom:8px;"></i>Checking eligible students...';
+        document.getElementById('bp-content').style.display = 'none';
+        document.getElementById('bp-confirm-btn').style.display = 'none';
+        document.getElementById('bp-excluded-box').style.display = 'none';
+        document.getElementById('bp-none-eligible').style.display = 'none';
+
+        _bpGrade  = grade;
+        _bpFromSY = '{{ $currentSchoolYear }}';
+        _bpToSY   = '{{ $assessNextSchoolYear }}';
+        document.getElementById('bp-to-sy').value = _bpToSY;
+
+        const params = new URLSearchParams({ grade: _bpGrade, from_school_year: _bpFromSY });
+        fetch('/admin/assessment/bulk-preview?' + params.toString(), {
+            headers: { 'Accept': 'application/json' }, credentials: 'same-origin'
+        })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('bp-loading').style.display = 'none';
+            document.getElementById('bp-content').style.display = '';
+
+            document.getElementById('bp-eligible-count').textContent = data.eligible_count;
+            document.getElementById('bp-eligible-names').innerHTML = data.eligible.length
+                ? data.eligible.map(function(s) {
+                    const warn = (s.warnings && s.warnings.length)
+                        ? ' <span style="color:#a16207;">⚠ ' + bpEscapeHtml(s.warnings.join(', ')) + '</span>'
+                        : '';
+                    return '<div>' + bpEscapeHtml(s.name) + warn + '</div>';
+                }).join('')
+                : '—';
+
+            if (data.excluded_count > 0) {
+                document.getElementById('bp-excluded-box').style.display = '';
+                document.getElementById('bp-excluded-count').textContent = data.excluded_count;
+                document.getElementById('bp-excluded-list').innerHTML = data.excluded.map(function(e) {
+                    return '<div style="margin-bottom:4px;"><strong>' + bpEscapeHtml(e.name) + '</strong>: ' + bpEscapeHtml(e.reasons.join(', ')) + '</div>';
+                }).join('');
+            }
+
+            if (data.eligible_count > 0) {
+                document.getElementById('bp-confirm-btn').style.display = '';
+            } else {
+                document.getElementById('bp-none-eligible').style.display = '';
+            }
+        })
+        .catch(err => {
+            document.getElementById('bp-loading').innerHTML = '<span style="color:var(--red);">Error loading preview. Please try again.</span>';
+            console.error(err);
+        });
+
+        new bootstrap.Modal(document.getElementById('bulkPromoteModal')).show();
+    }
+
+    function confirmBulkPromote() {
+        const btn = document.getElementById('bp-confirm-btn');
+        btn.disabled = true;
+        btn.textContent = 'Processing...';
+
+        fetch('/admin/assessment/bulk-promote', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify({
+                grade: _bpGrade,
+                from_school_year: _bpFromSY,
+                to_school_year: _bpToSY
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showAdminToast(data.message, 'success');
+                bootstrap.Modal.getInstance(document.getElementById('bulkPromoteModal')).hide();
+                setTimeout(() => location.reload(), 900);
+            } else {
+                showAdminToast(data.message || 'Bulk promotion failed.', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check2 me-1"></i> Confirm Promotion';
+            }
+        })
+        .catch(err => {
+            showAdminToast('Network error: ' + (err.message || 'Unknown'), 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check2 me-1"></i> Confirm Promotion';
+        });
+    }
+
+    // ── Auto-Advance (Nursery/Kindergarten — no checks) ──
+    let _aaGrade = null, _aaFromSY = null, _aaToSY = null;
+
+    function openAutoAdvanceModal(grade, gradeLabel) {
+        document.getElementById('aa-grade-label').textContent = gradeLabel;
+        document.getElementById('aa-loading').style.display = '';
+        document.getElementById('aa-content').style.display = 'none';
+        document.getElementById('aa-confirm-btn').style.display = 'none';
+        document.getElementById('aa-none').style.display = 'none';
+
+        _aaGrade  = grade;
+        _aaFromSY = '{{ $currentSchoolYear }}';
+        _aaToSY   = '{{ $assessNextSchoolYear }}';
+        document.getElementById('aa-to-sy').value = _aaToSY;
+
+        const params = new URLSearchParams({ grade: _aaGrade, from_school_year: _aaFromSY, to_school_year: _aaToSY });
+        fetch('/admin/assessment/auto-advance-preview?' + params.toString(), {
+            headers: { 'Accept': 'application/json' }, credentials: 'same-origin'
+        })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('aa-loading').style.display = 'none';
+            document.getElementById('aa-content').style.display = '';
+            document.getElementById('aa-count').textContent = data.count;
+            document.getElementById('aa-names').textContent = data.students.map(s => s.name).join(', ') || '—';
+
+            if (data.count > 0) {
+                document.getElementById('aa-confirm-btn').style.display = '';
+            } else {
+                document.getElementById('aa-none').style.display = '';
+            }
+        })
+        .catch(err => {
+            document.getElementById('aa-loading').innerHTML = '<span style="color:var(--red);">Error loading preview. Please try again.</span>';
+            console.error(err);
+        });
+
+        new bootstrap.Modal(document.getElementById('autoAdvanceModal')).show();
+    }
+
+    function confirmAutoAdvance() {
+        const btn = document.getElementById('aa-confirm-btn');
+        btn.disabled = true;
+        btn.textContent = 'Processing...';
+
+        fetch('/admin/assessment/auto-advance', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken
+            },
+            body: JSON.stringify({
+                grade: _aaGrade,
+                from_school_year: _aaFromSY,
+                to_school_year: _aaToSY
+            })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showAdminToast(data.message, 'success');
+                bootstrap.Modal.getInstance(document.getElementById('autoAdvanceModal')).hide();
+                setTimeout(() => location.reload(), 900);
+            } else {
+                showAdminToast(data.message || 'Auto-advance failed.', 'error');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check2 me-1"></i> Confirm Advancement';
+            }
+        })
+        .catch(err => {
+            showAdminToast('Network error: ' + (err.message || 'Unknown'), 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check2 me-1"></i> Confirm Advancement';
+        });
     }
 
 </script>

@@ -60,7 +60,8 @@ class SuperAdminController extends Controller
             'type'   => $request->input('log_type'),
             'search' => $request->input('log_search'),
             'date'   => $request->input('log_date'),
-        ]);
+            'role'   => $request->input('log_role'),
+        ])->withQueryString();
         $backups = $this->listBackups();
 
         $announcements = Announcement::with('teacher')->latest()->paginate(15, ['*'], 'ann_page');
@@ -101,37 +102,7 @@ class SuperAdminController extends Controller
 
     private function getSystemLogs(array $filters = [])
     {
-        return $this->buildLogsQuery($filters)->limit(200)->get();
-    }
-
-    /**
-     * "Load more" for the System Logs table — the table only ever renders
-     * the latest 200 rows server-side (kept small so the page itself loads
-     * fast); this lets the same client-side filters page further back
-     * instead of silently capping history at 200 with no way to see more.
-     */
-    public function loadMoreLogs(Request $request)
-    {
-        $offset = max(0, (int) $request->input('offset', 200));
-        $logs = $this->buildLogsQuery([
-            'type'   => $request->input('log_type'),
-            'search' => $request->input('log_search'),
-            'date'   => $request->input('log_date'),
-            'role'   => $request->input('log_role'),
-        ])->skip($offset)->limit(200)->get();
-
-        return response()->json([
-            'logs' => $logs->map(fn($log) => [
-                'event_type'  => $log->event_type,
-                'description' => $log->description,
-                'user_name'   => $log->user_name,
-                'user_role'   => $log->user_role,
-                'ip_address'  => $log->ip_address,
-                'created_at'  => $log->created_at?->format('M d, Y h:i A'),
-                'date_iso'    => $log->created_at?->toDateString(),
-            ]),
-            'has_more' => $logs->count() === 200,
-        ]);
+        return $this->buildLogsQuery($filters)->paginate(20, ['*'], 'log_page');
     }
 
     /**
@@ -624,7 +595,8 @@ class SuperAdminController extends Controller
         if ($status !== 'all') {
             $query->where('status', $status);
         }
-        $enrollments = $query->latest()->take(200)->get()->map(function ($e) {
+        $page = $query->latest()->paginate(20, ['*'], 'page');
+        $enrollments = $page->getCollection()->map(function ($e) {
             $data = is_string($e->student_data)
                 ? json_decode($e->student_data, true)
                 : (array) $e->student_data;
@@ -651,7 +623,16 @@ class SuperAdminController extends Controller
         $counts = \App\Models\Enrollment::selectRaw('status, count(*) as cnt')
             ->groupBy('status')->pluck('cnt', 'status');
 
-        return response()->json(['enrollments' => $enrollments, 'counts' => $counts]);
+        return response()->json([
+            'enrollments'  => $enrollments,
+            'counts'       => $counts,
+            'current_page' => $page->currentPage(),
+            'last_page'    => $page->lastPage(),
+            'per_page'     => $page->perPage(),
+            'total'        => $page->total(),
+            'from'         => $page->firstItem(),
+            'to'           => $page->lastItem(),
+        ]);
     }
 
     private function formatBytes(int $bytes): string

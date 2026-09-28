@@ -61,12 +61,6 @@
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link {{ request()->routeIs('student.info') ? 'active' : '' }}" 
-                           href="{{ route('student.info') }}">
-                            <i class="bi bi-person me-1"></i> My Info
-                        </a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link {{ request()->routeIs('student.documents') ? 'active' : '' }}" 
                            href="{{ route('student.documents') }}">
                             <i class="bi bi-file-earmark me-1"></i> Documents
@@ -84,9 +78,6 @@
                             {{ Auth::user()->name }}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="{{ route('student.info') }}">
-                                <i class="bi bi-person-gear me-2"></i>Profile Settings
-                            </a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ route('logout') }}" 
                                    onclick="event.preventDefault(); document.getElementById('logout-form').submit();">

@@ -474,6 +474,22 @@ class DashboardController extends Controller
             'total_balance'   => $allStudents->sum('balance'),
         ];
 
+        // Paginate the already-filtered collection manually — the plan/status
+        // filters above operate on derived fields (is_cash, computed from
+        // payment_option/payment_type) rather than plain columns, so this
+        // stays a PHP-side filter+paginate rather than risking a subtly
+        // different SQL translation of that logic. $stats above is computed
+        // from the full filtered set, before slicing to the current page.
+        $page = (int) $request->get('page', 1);
+        $perPage = 15;
+        $allStudents = new \Illuminate\Pagination\LengthAwarePaginator(
+            $allStudents->forPage($page, $perPage)->values(),
+            $allStudents->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
         $schoolYears = $this->getSchoolYears();
 
         return view('finance.students', compact('allStudents', 'stats', 'search', 'planFilter', 'statusFilter', 'yearFilter', 'schoolYears', 'sort'));

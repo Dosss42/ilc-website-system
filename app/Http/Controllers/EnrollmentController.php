@@ -1080,20 +1080,78 @@ class EnrollmentController extends Controller
 
         // ── Assessment & Promotion: Grade 1-6 students (non-transferee, enrolled/completed) ──
         // Filter grade_level in SQL (uses indexed column) — only PHP-filter the JSON student_type
-        $assessStudents = \App\Models\User::where('role', 'student')
+        $assessGradeFilter  = $request->get('assess_grade', 'all');
+        $assessStatusFilter = $request->get('assess_status', 'all'); // all|pending|done
+        $assessSearchTerm   = trim((string) $request->get('assess_search', ''));
+
+        $assessGradeLevels = ['nursery','kindergarten','grade1','grade2','grade3','grade4','grade5','grade6'];
+
+        $assessEligible = \App\Models\User::where('role', 'student')
             ->with(['latestEnrollment', 'promotions' => fn($q) => $q->orderByDesc('id')])
             ->whereHas('latestEnrollment', fn($q) => $q
                 ->whereIn('status', ['enrolled', 'completed'])
-                ->whereIn('grade_level', ['nursery','kindergarten','grade1','grade2','grade3','grade4','grade5','grade6'])
+                ->whereIn('grade_level', $assessGradeLevels)
             )
             ->orderByDesc('created_at')
             ->get()
             ->filter(fn($s) => ($s->latestEnrollment->student_data['student_type'] ?? '') !== 'transferee')
             ->values();
 
+        // Stat cards + grade chips always reflect the FULL eligible set,
+        // independent of whichever filter/page is currently applied below.
+        $assessTotal   = $assessEligible->count();
+        $assessPending = $assessEligible->filter(fn($s) => $s->promotions->isEmpty())->count();
+        $assessDone    = $assessEligible->filter(fn($s) => $s->promotions->isNotEmpty())->count();
+
+        $assessByGrade = [];
+        foreach ($assessGradeLevels as $gk) {
+            $assessByGrade[$gk] = $assessEligible->filter(function ($s) use ($gk) {
+                $enr = $s->latestEnrollment;
+                $gl  = $enr ? ($enr->student_data['grade_level'] ?? ($enr->grade_level ?? '')) : '';
+                return $gl === $gk;
+            })->count();
+        }
+
+        // Apply grade / status / search filters (need the PHP-derived grade_level
+        // and is_done values above, not raw columns), then hand one page of the
+        // result to the view via a manual paginator.
+        $assessFiltered = $assessEligible->filter(function ($s) use ($assessGradeFilter, $assessStatusFilter, $assessSearchTerm) {
+            $enr = $s->latestEnrollment;
+            $gl  = $enr ? ($enr->student_data['grade_level'] ?? ($enr->grade_level ?? '')) : '';
+            $isDone = $s->promotions->isNotEmpty();
+
+            if ($assessGradeFilter !== 'all' && $gl !== $assessGradeFilter) {
+                return false;
+            }
+            if ($assessStatusFilter === 'pending' && $isDone) {
+                return false;
+            }
+            if ($assessStatusFilter === 'done' && !$isDone) {
+                return false;
+            }
+            if ($assessSearchTerm !== '' && stripos($s->name, $assessSearchTerm) === false) {
+                return false;
+            }
+
+            return true;
+        })->values();
+
+        $assessPerPage = 15;
+        $assessPageNum = max(1, (int) $request->get('assess_page', 1));
+        $assessStudents = new \Illuminate\Pagination\LengthAwarePaginator(
+            $assessFiltered->forPage($assessPageNum, $assessPerPage)->values(),
+            $assessFiltered->count(),
+            $assessPerPage,
+            $assessPageNum,
+            ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()]
+        );
+
+        // Badge lookups scoped to just the current page, not the full eligible set.
+        $assessPageIds = collect($assessStudents->items())->pluck('id');
+
         // Open/in-progress guidance concern counts, batched in one query rather than
         // per-student, so the assessment table can flag them without an N+1.
-        $assessGuidanceCounts = \App\Models\GuidanceRecord::whereIn('student_id', $assessStudents->pluck('id'))
+        $assessGuidanceCounts = \App\Models\GuidanceRecord::whereIn('student_id', $assessPageIds)
             ->whereIn('status', ['open', 'in_progress'])
             ->selectRaw('student_id, count(*) as c')
             ->groupBy('student_id')
@@ -1106,7 +1164,7 @@ class EnrollmentController extends Controller
         // flag a student as failing (or clear them) before it's actually approved.
         // "Cleared" means a SummerClassEnrollment for that same subject has
         // status = 'passed'.
-        $assessGradeRows = \App\Models\Grade::whereIn('student_id', $assessStudents->pluck('id'))
+        $assessGradeRows = \App\Models\Grade::whereIn('student_id', $assessPageIds)
             ->where('school_year', $currentSchoolYear)
             ->where('status', 'approved')
             ->whereNotNull('grade')
@@ -1122,7 +1180,7 @@ class EnrollmentController extends Controller
             }
         }
 
-        $assessSummerCleared = \App\Models\SummerClassEnrollment::whereIn('student_id', $assessStudents->pluck('id'))
+        $assessSummerCleared = \App\Models\SummerClassEnrollment::whereIn('student_id', $assessPageIds)
             ->where('status', 'passed')
             ->with('summerClass:id,subject_id')
             ->get()
@@ -1137,6 +1195,8 @@ class EnrollmentController extends Controller
                 'cleared' => $failedSubjectIds->intersect($clearedSubjectIds)->count(),
             ];
         }
+
+        $assessNextSchoolYear = $this->nextSchoolYear($currentSchoolYear);
 
         // Staff who can be logged as the counselor on a guidance record.
         $guidanceCounselors = \App\Models\User::whereIn('role', ['admin', 'superadmin', 'teacher'])
@@ -1184,6 +1244,8 @@ class EnrollmentController extends Controller
             'feeBreakdowns', 'feeSettings', 'recentStudents', 'allSchedules',
             'currentSchoolYear', 'enrollmentOpen', 'maintenanceMode', 'assessStudents', 'assessGuidanceCounts',
             'assessSummerStatus', 'guidanceCounselors',
+            'assessGradeFilter', 'assessStatusFilter', 'assessSearchTerm',
+            'assessTotal', 'assessPending', 'assessDone', 'assessByGrade', 'assessNextSchoolYear',
             'contactMessages', 'unreadMessagesCount',
             'announcements', 'news', 'annCategoryFilter', 'newsCategoryFilter'
         ));
@@ -2306,6 +2368,7 @@ class EnrollmentController extends Controller
 
         foreach ($studentIds as $studentId) {
             try {
+                $oldSection = null;
                 $user = User::find($studentId);
                 if (!$user) continue;
 
@@ -2379,6 +2442,7 @@ class EnrollmentController extends Controller
                         ['grade_level' => $nextGrade, 'previous_school_year' => $validated['from_school_year']]
                     ) : ['grade_level' => $nextGrade],
                     'payment_status' => 'pending',
+                    'reference_number' => 'ENR-' . strtoupper(Str::random(8)),
                 ]);
 
                 // Assign to new section if found
@@ -2526,6 +2590,7 @@ class EnrollmentController extends Controller
             'from_school_year'=> 'nullable|string|max:20',
             'to_school_year'  => 'required|string|max:20',
             'to_section_id'   => 'nullable|exists:sections,id',
+            'remarks'         => 'nullable|string|max:1000',
         ]);
 
         $gradeMap = [
@@ -2639,6 +2704,7 @@ class EnrollmentController extends Controller
                 'promoted_by'      => Auth::id(),
                 'promoted_at'      => now(),
                 'status'           => 'completed',
+                'remarks'          => $validated['remarks'] ?? null,
             ]);
 
             \DB::commit();
@@ -2658,6 +2724,337 @@ class EnrollmentController extends Controller
             \DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Failed: ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Split students in a grade/school-year into who can be safely bulk-promoted
+     * vs who still needs individual review — used by both the bulk preview and
+     * the actual bulk-promote action so they always agree on the same set.
+     *
+     * Excluded (kept out of bulk, must go through the individual assess modal):
+     *   - already has a promotion record for this from_school_year
+     *   - has an open/in-progress guidance concern
+     *   - has a failing subject (term average < 75, approved grades only) not
+     *     yet cleared via a passed summer class
+     *
+     * @return array{eligible: \Illuminate\Support\Collection, excluded: \Illuminate\Support\Collection}
+     */
+    /**
+     * Grade1-Grade6 promotion policy at this school: nobody is academically
+     * retained (private school, no failed students), so grades/guidance are
+     * WARNINGS only — shown to the admin but never block promotion. The real
+     * gates are administrative: an unpaid balance or incomplete documents for
+     * the ending school year block bulk promotion, same thresholds
+     * StudentPortalController::getCompletionProgress() already uses for
+     * "payment done" / "has required documents", so this doesn't invent a new
+     * standard for what "complete" means.
+     */
+    private function bulkPromotionCandidates(string $grade, string $fromSchoolYear): array
+    {
+        $students = User::where('role', 'student')
+            ->whereHas('enrollments', fn($q) => $q
+                ->where('school_year', $fromSchoolYear)
+                ->where('grade_level', $grade)
+                ->whereIn('status', ['enrolled', 'approved', 'completed'])
+            )
+            ->with(['enrollments' => fn($q) => $q
+                ->where('school_year', $fromSchoolYear)
+                ->where('grade_level', $grade)
+            ])
+            ->get()
+            ->filter(fn($s) => ($s->enrollments->first()->student_data['student_type'] ?? '') !== 'transferee')
+            ->values();
+
+        $studentIds = $students->pluck('id');
+
+        $alreadyAssessedIds = Promotion::whereIn('student_id', $studentIds)
+            ->where('from_school_year', $fromSchoolYear)
+            ->pluck('student_id')
+            ->unique();
+
+        $guidanceCounts = \App\Models\GuidanceRecord::whereIn('student_id', $studentIds)
+            ->whereIn('status', ['open', 'in_progress'])
+            ->selectRaw('student_id, count(*) as c')
+            ->groupBy('student_id')
+            ->pluck('c', 'student_id');
+
+        // Numeric failing-grade check — approved grades only, and only the
+        // 'grade' column (nursery/kinder use 'descriptive_grade' instead and
+        // have no numeric pass/fail threshold, so they never appear here).
+        $gradeRows = \App\Models\Grade::whereIn('student_id', $studentIds)
+            ->where('school_year', $fromSchoolYear)
+            ->where('status', 'approved')
+            ->whereNotNull('grade')
+            ->get(['student_id', 'subject_id', 'grade']);
+
+        $failingSubjectIds = [];
+        foreach ($gradeRows->groupBy('student_id') as $studentId => $rows) {
+            $failed = $rows->groupBy('subject_id')
+                ->filter(fn($subjectRows) => $subjectRows->avg('grade') < 75)
+                ->keys();
+            if ($failed->isNotEmpty()) {
+                $failingSubjectIds[$studentId] = $failed;
+            }
+        }
+
+        $summerCleared = \App\Models\SummerClassEnrollment::whereIn('student_id', $studentIds)
+            ->where('status', 'passed')
+            ->with('summerClass:id,subject_id')
+            ->get()
+            ->groupBy('student_id')
+            ->map(fn($rows) => $rows->pluck('summerClass.subject_id')->filter()->unique());
+
+        // Grade-completeness — a subject still in draft/submitted (or never
+        // entered) isn't officially failing OR passing yet. Informational
+        // only here (see class-level note above), same as the failing check.
+        $requiredSubjectIds = \App\Models\Subject::where('grade_level', $grade)
+            ->where('is_active', true)
+            ->pluck('id');
+
+        $approvedSubjectsByStudent = collect();
+        if ($requiredSubjectIds->isNotEmpty()) {
+            $approvedSubjectsByStudent = \App\Models\Grade::whereIn('student_id', $studentIds)
+                ->whereIn('subject_id', $requiredSubjectIds)
+                ->where('school_year', $fromSchoolYear)
+                ->where('status', 'approved')
+                ->get(['student_id', 'subject_id'])
+                ->groupBy('student_id')
+                ->map(fn($rows) => $rows->pluck('subject_id')->unique());
+        }
+
+        // Document / payment gates — the actual blockers. Same thresholds as
+        // StudentPortalController::getCompletionProgress().
+        $requiredDocTypes = ['birth_certificate', 'form_137', 'report_card', 'two_by_two_picture'];
+        $studentsWithDocs = \App\Models\StudentDocument::whereIn('user_id', $studentIds)
+            ->whereIn('document_type', $requiredDocTypes)
+            ->where('status', 'approved')
+            ->pluck('user_id')
+            ->unique();
+
+        $eligible = collect();
+        $excluded = collect();
+
+        foreach ($students as $s) {
+            $warnings = [];
+            $reasons  = [];
+
+            if ($alreadyAssessedIds->contains($s->id)) {
+                $reasons[] = 'Already assessed for this school year';
+            }
+
+            $enr = $s->enrollments->first();
+            $isInstallmentPlan = $enr->payment_type === 'installment' || in_array($enr->payment_option, ['B', 'C', 'D']);
+            $paymentDone = $isInstallmentPlan
+                ? in_array($enr->payment_status ?? 'pending', ['partial', 'paid'])
+                : ($enr->payment_status ?? 'pending') === 'paid';
+            if (!$paymentDone) {
+                $reasons[] = 'Unpaid balance for ' . $fromSchoolYear;
+            }
+
+            if (!$studentsWithDocs->contains($s->id)) {
+                $reasons[] = 'Incomplete required documents';
+            }
+
+            if (($guidanceCounts[$s->id] ?? 0) > 0) {
+                $warnings[] = $guidanceCounts[$s->id] . ' open guidance concern(s)';
+            }
+
+            if (isset($failingSubjectIds[$s->id])) {
+                $stillFailing = $failingSubjectIds[$s->id]->diff($summerCleared[$s->id] ?? collect());
+                if ($stillFailing->isNotEmpty()) {
+                    $warnings[] = $stillFailing->count() . ' failing subject(s) not yet cleared';
+                }
+            }
+
+            if ($requiredSubjectIds->isNotEmpty()) {
+                $approvedIds = $approvedSubjectsByStudent[$s->id] ?? collect();
+                $missingIds  = $requiredSubjectIds->diff($approvedIds);
+                if ($missingIds->isNotEmpty()) {
+                    $warnings[] = $missingIds->count() . ' subject(s) with grades not yet approved';
+                }
+            }
+
+            if ($reasons) {
+                $excluded->push(['student' => $s, 'reasons' => $reasons]);
+            } else {
+                $eligible->push(['student' => $s, 'warnings' => $warnings]);
+            }
+        }
+
+        return ['eligible' => $eligible, 'excluded' => $excluded];
+    }
+
+    /**
+     * Preview who a bulk promotion for this grade/school-year would include vs
+     * exclude, without writing anything — powers the confirmation step.
+     */
+    public function bulkPromotePreview(Request $request)
+    {
+        $validated = $request->validate([
+            'grade'            => 'required|string|max:30',
+            'from_school_year' => 'required|string|max:20',
+        ]);
+
+        $result = $this->bulkPromotionCandidates($validated['grade'], $validated['from_school_year']);
+
+        return response()->json([
+            'success'        => true,
+            'eligible_count' => $result['eligible']->count(),
+            'eligible'       => $result['eligible']->map(fn($e) => [
+                'id'       => $e['student']->id,
+                'name'     => $e['student']->name,
+                'warnings' => $e['warnings'],
+            ])->values(),
+            'excluded_count' => $result['excluded']->count(),
+            'excluded'       => $result['excluded']->map(fn($e) => [
+                'id'      => $e['student']->id,
+                'name'    => $e['student']->name,
+                'reasons' => $e['reasons'],
+            ])->values(),
+        ]);
+    }
+
+    /**
+     * Promote every eligible (non-excluded) student in one grade for the given
+     * school-year cycle in one action. Reuses assessPromotion() per student —
+     * same validation, same transaction-per-student safety, same audit trail —
+     * so this is strictly "assess many students at once", not a separate code
+     * path. Anyone flagged by bulkPromotionCandidates() is skipped here and
+     * must still go through the individual assess modal.
+     */
+    public function bulkPromote(Request $request)
+    {
+        $validated = $request->validate([
+            'grade'            => 'required|string|max:30',
+            'from_school_year' => 'required|string|max:20',
+            'to_school_year'   => 'required|string|max:20',
+        ]);
+
+        $result = $this->bulkPromotionCandidates($validated['grade'], $validated['from_school_year']);
+
+        $promoted = [];
+        $failed   = [];
+
+        foreach ($result['eligible'] as $entry) {
+            $student = $entry['student'];
+            $subRequest = Request::create('', 'POST', [
+                'action'           => 'promote',
+                'from_school_year' => $validated['from_school_year'],
+                'to_school_year'   => $validated['to_school_year'],
+            ]);
+
+            $response = $this->assessPromotion($subRequest, $student);
+            $data     = json_decode($response->getContent(), true);
+
+            if ($data['success'] ?? false) {
+                $promoted[] = ['id' => $student->id, 'name' => $student->name];
+            } else {
+                $failed[] = ['id' => $student->id, 'name' => $student->name, 'message' => $data['message'] ?? 'Unknown error'];
+            }
+        }
+
+        return response()->json([
+            'success'        => true,
+            'promoted_count' => count($promoted),
+            'skipped_count'  => $result['excluded']->count(),
+            'failed_count'   => count($failed),
+            'promoted'       => $promoted,
+            'failed'         => $failed,
+            'skipped'        => $result['excluded']->map(fn($e) => [
+                'id'      => $e['student']->id,
+                'name'    => $e['student']->name,
+                'reasons' => $e['reasons'],
+            ])->values(),
+            'message'        => count($promoted) . ' student(s) promoted. '
+                . $result['excluded']->count() . ' skipped (unpaid balance / incomplete documents). '
+                . (count($failed) ? count($failed) . ' failed.' : ''),
+        ]);
+    }
+
+    /**
+     * Nursery→Kindergarten and Kindergarten→Grade1 are developmental, not
+     * academic, transitions at this school — no grades, guidance, payment, or
+     * document checks apply, every student in the grade just advances. Only
+     * excludes someone already holding an enrollment for the target year, so
+     * clicking this twice doesn't error out on duplicates.
+     */
+    private function preElemAdvanceCandidates(string $grade, string $fromSchoolYear, string $toSchoolYear)
+    {
+        return User::where('role', 'student')
+            ->whereHas('enrollments', fn($q) => $q
+                ->where('school_year', $fromSchoolYear)
+                ->where('grade_level', $grade)
+                ->whereIn('status', ['enrolled', 'approved', 'completed'])
+            )
+            ->whereDoesntHave('enrollments', fn($q) => $q->where('school_year', $toSchoolYear))
+            ->get();
+    }
+
+    /**
+     * Preview how many Nursery/Kindergarten students would auto-advance.
+     */
+    public function autoAdvancePreview(Request $request)
+    {
+        $validated = $request->validate([
+            'grade'            => 'required|in:nursery,kindergarten',
+            'from_school_year' => 'required|string|max:20',
+            'to_school_year'   => 'required|string|max:20',
+        ]);
+
+        $students = $this->preElemAdvanceCandidates($validated['grade'], $validated['from_school_year'], $validated['to_school_year']);
+
+        return response()->json([
+            'success' => true,
+            'count'   => $students->count(),
+            'students'=> $students->map(fn($s) => ['id' => $s->id, 'name' => $s->name])->values(),
+        ]);
+    }
+
+    /**
+     * Advance every Nursery/Kindergarten student in one grade with zero
+     * per-student checks. Still reuses assessPromotion() per student for the
+     * actual write (same transaction safety, same audit trail as every other
+     * promotion path in this system).
+     */
+    public function autoAdvance(Request $request)
+    {
+        $validated = $request->validate([
+            'grade'            => 'required|in:nursery,kindergarten',
+            'from_school_year' => 'required|string|max:20',
+            'to_school_year'   => 'required|string|max:20',
+        ]);
+
+        $students = $this->preElemAdvanceCandidates($validated['grade'], $validated['from_school_year'], $validated['to_school_year']);
+
+        $promoted = [];
+        $failed   = [];
+
+        foreach ($students as $student) {
+            $subRequest = Request::create('', 'POST', [
+                'action'           => 'promote',
+                'from_school_year' => $validated['from_school_year'],
+                'to_school_year'   => $validated['to_school_year'],
+            ]);
+
+            $response = $this->assessPromotion($subRequest, $student);
+            $data     = json_decode($response->getContent(), true);
+
+            if ($data['success'] ?? false) {
+                $promoted[] = ['id' => $student->id, 'name' => $student->name];
+            } else {
+                $failed[] = ['id' => $student->id, 'name' => $student->name, 'message' => $data['message'] ?? 'Unknown error'];
+            }
+        }
+
+        return response()->json([
+            'success'        => true,
+            'promoted_count' => count($promoted),
+            'failed_count'   => count($failed),
+            'promoted'       => $promoted,
+            'failed'         => $failed,
+            'message'        => count($promoted) . ' student(s) advanced.'
+                . (count($failed) ? ' ' . count($failed) . ' failed.' : ''),
+        ]);
     }
 
     /**

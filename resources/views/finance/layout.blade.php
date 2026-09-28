@@ -331,8 +331,7 @@
                         </div>
                     </div>
                     <div class="ucd-body">
-                        <a class="ucd-item" href="{{ route('finance.profile') }}"><i class="bi bi-person-circle"></i> My Profile</a>
-                        <a class="ucd-item" href="{{ route('finance.change-password') }}"><i class="bi bi-shield-lock"></i> Change Password</a>
+                        <a class="ucd-item" href="{{ route('finance.settings') }}"><i class="bi bi-gear-fill"></i> Settings</a>
                     </div>
                     <div class="ucd-divider"></div>
                     <div class="ucd-footer">
@@ -384,13 +383,9 @@
             </a>
 
             <div class="menu-section">Account</div>
-            <a href="{{ route('finance.profile') }}" class="menu-item {{ request()->routeIs('finance.profile') ? 'active' : '' }}">
-                <i class="bi bi-person-circle"></i>
-                My Profile
-            </a>
-            <a href="{{ route('finance.change-password') }}" class="menu-item {{ request()->routeIs('finance.change-password') ? 'active' : '' }}">
-                <i class="bi bi-shield-lock"></i>
-                Change Password
+            <a href="{{ route('finance.settings') }}" class="menu-item {{ request()->routeIs('finance.settings') ? 'active' : '' }}">
+                <i class="bi bi-gear-fill"></i>
+                Settings
             </a>
 
             <div class="menu-section">System</div>
@@ -418,8 +413,7 @@
                 'finance.installments.index' => 'Installments',
                 'finance.fees.index'         => 'Fee Management',
                 'finance.reports.index'      => 'Reports',
-                'finance.profile'            => 'My Profile',
-                'finance.change-password'    => 'Change Password',
+                'finance.settings'           => 'Settings',
             ];
             $__bcRoute = \Illuminate\Support\Facades\Route::currentRouteName();
             $__bcCurrent = $__bcMap[$__bcRoute] ?? ucwords(str_replace(['-', '.'], [' ', ' '], \Illuminate\Support\Str::afterLast($__bcRoute ?? '', '.')));

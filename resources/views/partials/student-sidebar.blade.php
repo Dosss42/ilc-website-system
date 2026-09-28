@@ -13,13 +13,6 @@
             </a>
         </li>
         <li>
-            <a href="{{ route('student.info') }}" 
-               class="nav-link {{ request()->routeIs('student.info') ? 'active' : '' }} d-flex align-items-center">
-                <i class="bi bi-person me-2"></i>
-                My Information
-            </a>
-        </li>
-        <li>
             <a href="{{ route('student.documents') }}" 
                class="nav-link {{ request()->routeIs('student.documents') ? 'active' : '' }} d-flex align-items-center">
                 <i class="bi bi-file-earmark me-2"></i>
@@ -39,9 +32,6 @@
             <strong>{{ Auth::user()->name }}</strong>
         </a>
         <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser1">
-            <li><a class="dropdown-item" href="{{ route('student.info') }}">
-                <i class="bi bi-person-gear me-2"></i>Profile Settings
-            </a></li>
             <li><hr class="dropdown-divider"></li>
             <li><a class="dropdown-item" href="{{ route('logout') }}" 
                    onclick="event.preventDefault(); document.getElementById('logout-form').submit();">

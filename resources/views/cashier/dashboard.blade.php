@@ -120,6 +120,17 @@
         .user-name { font-size: 13px; font-weight: 600; color: #1e293b; }
         .user-role { font-size: 10px; color: #64748b; }
 
+        /* ── Pagination — same look as Admin/Finance ── */
+        .pagination { display: flex !important; justify-content: center; align-items: center; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
+        .pagination .page-item { display: block !important; }
+        .pagination .page-item .page-link { display: inline-flex !important; align-items: center; justify-content: center; min-width: 32px; height: 32px; padding: 6px 10px; margin: 0 2px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--ink); font-weight: 500; text-decoration: none; transition: all 0.2s; }
+        .pagination .page-item .page-link:hover { background: var(--blue-pale); border-color: var(--blue); color: var(--blue); }
+        .pagination .page-item.active .page-link { background: var(--blue); border-color: var(--blue); color: #fff; }
+        .pagination .page-item.disabled .page-link { opacity: 0.5; cursor: not-allowed; background: #f8f9fa; }
+        .pagination .page-item:first-child .page-link,
+        .pagination .page-item:last-child .page-link { font-weight: 600; font-size: 12px !important; padding: 6px 14px !important; min-width: auto !important; height: auto !important; border-radius: 6px !important; }
+        .pagination-info { text-align: center; font-size: 12px; color: var(--muted); margin-top: 10px; }
+
         /* ── SIDEBAR ── */
         :root { --sidebar-w: 260px; }
 
@@ -136,40 +147,6 @@
         .sidebar::-webkit-scrollbar { width: 4px; }
         .sidebar::-webkit-scrollbar-track { background: transparent; }
         .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
-
-        /* Cashier info card inside sidebar */
-        .sidebar-cashier-card {
-            margin: 16px 14px 6px;
-            background: rgba(255,255,255,0.07);
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 12px;
-            padding: 13px 14px;
-            display: flex; align-items: center; gap: 11px;
-        }
-        .sidebar-cashier-avatar {
-            width: 38px; height: 38px; border-radius: 50%;
-            background: linear-gradient(135deg, #c5a059, #e0b96a);
-            display: flex; align-items: center; justify-content: center;
-            font-size: 15px; font-weight: 800; color: #fff;
-            flex-shrink: 0;
-        }
-        .sidebar-cashier-name {
-            font-size: 12.5px; font-weight: 700; color: #fff;
-            line-height: 1.2; white-space: nowrap; overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .sidebar-cashier-role {
-            font-size: 10px; color: rgba(197,160,89,0.9);
-            font-weight: 600; letter-spacing: .3px;
-        }
-        .sidebar-shift-pill {
-            margin-left: auto; flex-shrink: 0;
-            background: rgba(22,163,74,0.2);
-            border: 1px solid rgba(22,163,74,0.35);
-            color: #4ade80; font-size: 9px; font-weight: 700;
-            padding: 3px 8px; border-radius: 20px;
-            letter-spacing: .4px;
-        }
 
         .sidebar-section-lbl {
             font-size: 9px; font-weight: 700;
@@ -237,21 +214,6 @@
             border-top: 1px solid rgba(255,255,255,0.09);
             padding-top: 8px;
         }
-
-        /* Today's mini summary strip */
-        .sidebar-today-strip {
-            margin: 6px 14px 2px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.09);
-            border-radius: 10px;
-            padding: 10px 12px;
-            display: flex; flex-direction: column; gap: 6px;
-        }
-        .sidebar-today-row {
-            display: flex; justify-content: space-between; align-items: center;
-        }
-        .sidebar-today-lbl { font-size: 10px; color: rgba(255,255,255,0.45); }
-        .sidebar-today-val { font-size: 11px; font-weight: 700; color: #fff; }
 
         /* ── MAIN ── */
         .main {
@@ -482,6 +444,59 @@
         }
         .form-fld:focus { border-color: #2471a3; background: #fff; box-shadow: 0 0 0 3px rgba(26,58,108,.08); }
 
+        /* ── Settings: profile banner + icon-prefixed inputs ── */
+        .settings-banner {
+            background: linear-gradient(135deg, var(--blue), var(--blue-mid));
+            border-radius: 16px;
+            padding: 30px 26px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            color: #fff;
+            margin-bottom: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        .settings-banner::before {
+            content: '';
+            position: absolute;
+            top: -50px; right: -30px;
+            width: 170px; height: 170px;
+            background: rgba(255,255,255,.07);
+            border-radius: 50%;
+        }
+        .settings-banner::after {
+            content: '';
+            position: absolute;
+            bottom: -55px; right: 75px;
+            width: 110px; height: 110px;
+            background: rgba(255,255,255,.05);
+            border-radius: 50%;
+        }
+        .settings-banner-avatar {
+            width: 74px; height: 74px; border-radius: 50%;
+            background: rgba(255,255,255,.15);
+            border: 3px solid rgba(255,255,255,.35);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 26px; font-weight: 700; flex-shrink: 0;
+            position: relative; z-index: 1;
+        }
+        .settings-banner-info { position: relative; z-index: 1; }
+        .settings-banner-name { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+        .settings-banner-meta { font-size: 12.5px; opacity: .88; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .settings-banner-badge {
+            background: rgba(255,255,255,.2);
+            padding: 3px 12px; border-radius: 20px;
+            font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .4px;
+        }
+        .input-icon-wrap { position: relative; }
+        .input-icon-wrap > i {
+            position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+            color: #94a3b8; font-size: 14px; pointer-events: none;
+        }
+        .form-fld.has-icon { padding-left: 38px; }
+
         /* ── SCROLLBAR ── */
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -661,30 +676,6 @@
 {{-- ══ SIDEBAR ══ --}}
 <div class="sidebar" id="sidebar">
 
-    {{-- Cashier info card --}}
-    <div class="sidebar-cashier-card">
-        <div class="sidebar-cashier-avatar" id="sb-avatar">C</div>
-        <div style="flex:1;min-width:0;">
-            <div class="sidebar-cashier-name" id="sb-name">{{ auth()->user()->name ?? 'Cashier' }}</div>
-            <div class="sidebar-cashier-role">School Cashier</div>
-        </div>
-        <div class="sidebar-shift-pill">ON DUTY</div>
-    </div>
-
-    {{-- Today's mini stats --}}
-    <div class="sidebar-today-strip">
-        <div class="sidebar-today-row">
-            <span class="sidebar-today-lbl">Today's Collection</span>
-            <span class="sidebar-today-val" id="sb-today-amount">₱0.00</span>
-        </div>
-        <div class="sidebar-today-row">
-            <span class="sidebar-today-lbl">Transactions</span>
-            <span class="sidebar-today-val" id="sb-today-count">0</span>
-        </div>
-    </div>
-
-    <div class="sidebar-divider"></div>
-
     {{-- MAIN --}}
     <div class="sidebar-section-lbl">Overview</div>
 
@@ -702,7 +693,7 @@
         <span class="link-icon"><i class="bi bi-cash-coin"></i></span>
         <span class="link-label">Process Payment</span>
     </button>
-    <button class="sidebar-link" data-section="history" onclick="_historyStudentFilter=null;showSection('history', this)">
+    <button class="sidebar-link" data-section="history" onclick="_historyStudentFilter=null;_historyPage=1;showSection('history', this)">
         <span class="link-icon"><i class="bi bi-clock-history"></i></span>
         <span class="link-label">Payment History</span>
         <span class="sidebar-badge" id="pending-badge" style="display:none;">0</span>
@@ -1169,6 +1160,7 @@
                         </tbody>
                     </table>
                 </div>
+                <div id="studentListPagination"></div>
             </div>
         </div>
 
@@ -1424,13 +1416,13 @@
         <div class="card-box">
             <div class="card-box-header">
                 <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;width:100%;">
-                    <input type="date" class="form-fld" id="historyDateFilter" style="max-width:150px;" onchange="loadHistory()">
-                    <select class="form-fld" id="historyMethodFilter" style="max-width:140px;" onchange="loadHistory()">
+                    <input type="date" class="form-fld" id="historyDateFilter" style="max-width:150px;" onchange="historyFilterChanged()">
+                    <select class="form-fld" id="historyMethodFilter" style="max-width:140px;" onchange="historyFilterChanged()">
                         <option value="all">All Methods</option>
                         <option value="cash">Cash</option>
                         <option value="online">Online / GCash</option>
                     </select>
-                    <select class="form-fld" id="historyStatusFilter" style="max-width:140px;" onchange="loadHistory()">
+                    <select class="form-fld" id="historyStatusFilter" style="max-width:140px;" onchange="historyFilterChanged()">
                         <option value="all">All Status</option>
                         <option value="completed">Paid</option>
                         <option value="pending">Pending</option>
@@ -1462,6 +1454,7 @@
                     </tbody>
                 </table>
             </div>
+            <div id="historyPagination"></div>
         </div>
         </div>{{-- /history-content --}}
     </div>
@@ -1531,6 +1524,7 @@
                         </tbody>
                     </table>
                 </div>
+                <div id="lookupListPagination"></div>
             </div>
         </div>
 
@@ -1851,6 +1845,7 @@
                     </tbody>
                 </table>
             </div>
+            <div id="receiptsPagination"></div>
         </div>
         </div>{{-- /receipts-content --}}
     </div>
@@ -1976,6 +1971,7 @@
                     </tbody>
                 </table>
             </div>
+            <div id="auditPagination"></div>
         </div>
         </div>{{-- /audit-content --}}
     </div>
@@ -1986,6 +1982,7 @@
         {{-- Skeleton --}}
         <div id="settings-skel" style="display:none;">
             <div style="margin-bottom:24px;"><span class="skel" style="height:26px;width:150px;margin-bottom:8px;"></span><span class="skel" style="height:14px;width:290px;"></span></div>
+            <span class="skel" style="display:block;height:110px;border-radius:16px;margin-bottom:20px;"></span>
             <div class="skel-wrap" style="max-width:540px;">
                 <div class="skel-hdr"><span class="skel" style="height:17px;width:120px;"></span></div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
@@ -2012,24 +2009,45 @@
             </div>
         </div>
 
+        {{-- Profile banner --}}
+        <div class="settings-banner">
+            <div class="settings-banner-avatar">{{ strtoupper(substr(auth('cashier')->user()->name, 0, 1)) }}</div>
+            <div class="settings-banner-info">
+                <div class="settings-banner-name">{{ auth('cashier')->user()->name }}</div>
+                <div class="settings-banner-meta">
+                    <span class="settings-banner-badge">Cashier</span>
+                    <span><i class="bi bi-envelope me-1"></i>{{ auth('cashier')->user()->email }}</span>
+                </div>
+            </div>
+        </div>
+
         {{-- Profile Info --}}
         <div class="card-box" style="max-width:540px;margin-bottom:20px;">
             <div class="card-box-header">
-                <div class="card-box-title"><i class="bi bi-person-circle" style="color:#2471a3;"></i> My Profile</div>
+                <div class="card-box-title"><i class="bi bi-person-lines-fill" style="color:#2471a3;"></i> Profile Information</div>
             </div>
             <div class="card-box-body">
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label class="form-lbl">Full Name</label>
-                        <input type="text" class="form-fld" value="{{ auth('cashier')->user()->name }}" readonly style="background:#f1f5f9;color:#64748b;">
+                        <div class="input-icon-wrap">
+                            <i class="bi bi-person"></i>
+                            <input type="text" class="form-fld has-icon" value="{{ auth('cashier')->user()->name }}" readonly style="background:#f1f5f9;color:#64748b;">
+                        </div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-lbl">Email</label>
-                        <input type="text" class="form-fld" value="{{ auth('cashier')->user()->email }}" readonly style="background:#f1f5f9;color:#64748b;">
+                        <div class="input-icon-wrap">
+                            <i class="bi bi-envelope"></i>
+                            <input type="text" class="form-fld has-icon" value="{{ auth('cashier')->user()->email }}" readonly style="background:#f1f5f9;color:#64748b;">
+                        </div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-lbl">Role</label>
-                        <input type="text" class="form-fld" value="Cashier" readonly style="background:#f1f5f9;color:#64748b;">
+                        <div class="input-icon-wrap">
+                            <i class="bi bi-shield-check"></i>
+                            <input type="text" class="form-fld has-icon" value="Cashier" readonly style="background:#f1f5f9;color:#64748b;">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2038,7 +2056,7 @@
         {{-- Change Password --}}
         <div class="card-box" style="max-width:540px;">
             <div class="card-box-header">
-                <div class="card-box-title"><i class="bi bi-shield-lock" style="color:#c5a059;"></i> Change Password</div>
+                <div class="card-box-title"><i class="bi bi-shield-lock" style="color:#c5a059;"></i> Security</div>
             </div>
             <div class="card-box-body">
 
@@ -2058,15 +2076,24 @@
                     <div class="row g-3">
                         <div class="col-12">
                             <label class="form-lbl">Current Password <span style="color:#dc2626;">*</span></label>
-                            <input type="password" name="current_password" class="form-fld" placeholder="Enter your current password" required>
+                            <div class="input-icon-wrap">
+                                <i class="bi bi-lock"></i>
+                                <input type="password" name="current_password" class="form-fld has-icon" placeholder="Enter your current password" required>
+                            </div>
                         </div>
                         <div class="col-12">
                             <label class="form-lbl">New Password <span style="color:#dc2626;">*</span></label>
-                            <input type="password" name="new_password" class="form-fld" placeholder="At least 8 characters" required minlength="8">
+                            <div class="input-icon-wrap">
+                                <i class="bi bi-key"></i>
+                                <input type="password" name="new_password" class="form-fld has-icon" placeholder="At least 8 characters" required minlength="8">
+                            </div>
                         </div>
                         <div class="col-12">
                             <label class="form-lbl">Confirm New Password <span style="color:#dc2626;">*</span></label>
-                            <input type="password" name="new_password_confirmation" class="form-fld" placeholder="Re-enter new password" required>
+                            <div class="input-icon-wrap">
+                                <i class="bi bi-key-fill"></i>
+                                <input type="password" name="new_password_confirmation" class="form-fld has-icon" placeholder="Re-enter new password" required>
+                            </div>
                         </div>
                     </div>
                     <div style="margin-top:16px;padding:12px 14px;background:#f8f9fa;border-radius:8px;border-left:3px solid #c5a059;font-size:12px;color:#666;margin-bottom:18px;">
@@ -2246,27 +2273,6 @@
         }, delay);
     }
 
-    // Sidebar cashier avatar initial
-    (function() {
-        var nameEl = document.getElementById('sb-name');
-        var avatarEl = document.getElementById('sb-avatar');
-        if (nameEl && avatarEl) {
-            var initials = (nameEl.textContent.trim().match(/\b\w/g) || []).slice(0,2).join('').toUpperCase();
-            avatarEl.textContent = initials || 'C';
-        }
-    })();
-
-    // Sync sidebar today stats from dashboard stat cards
-    function syncSidebarStats() {
-        var amountEl  = document.querySelector('.stat-card.blue .stat-value');
-        var countCard = document.querySelector('.stat-card.green .stat-value');
-        var sbAmt  = document.getElementById('sb-today-amount');
-        var sbCnt  = document.getElementById('sb-today-count');
-        if (sbAmt && amountEl) sbAmt.textContent = amountEl.textContent;
-        if (sbCnt && countCard) sbCnt.textContent = countCard.textContent;
-    }
-    setTimeout(syncSidebarStats, 300);
-
     function openProcessModal() {
         showSection('process', document.querySelector('.sidebar-link[data-section="process"]'));
     }
@@ -2317,20 +2323,61 @@
     var _cashierName    = '{{ auth("cashier")->user()->name ?? "Cashier" }}';
     var _allStudents = [];
 
+    /* ── Shared pagination control renderer ──────────────
+       Matches the admin dashboard's own existing AJAX-pagination pattern
+       (see loadSummerClasses() elsewhere in this codebase) — same
+       pagination/page-item/page-link classes and full 1..lastPage number
+       list, plus the "Showing X to Y of Z" caption used everywhere else
+       (Student Management, Enrollment Management, Finance pages, etc.),
+       styled via the .pagination-info rule added to this page's <style>.
+       meta: the {current_page,last_page,total,from,to} shape Laravel's
+       paginator serializes to. onPageChangeFnName: the name of a global
+       function taking one page-number argument (kept as a name, not a
+       closure, so it can go straight into the built onclick string).
+       itemLabel: plural noun for the caption, e.g. "students". */
+    function renderPaginationControls(containerId, meta, onPageChangeFnName, itemLabel) {
+        var el = document.getElementById(containerId);
+        if (!el) return;
+        if (!meta || !meta.total) { el.innerHTML = ''; return; }
+        var page = meta.current_page, last = meta.last_page;
+
+        // Always render the page controls, even with just one page, so the
+        // cashier always has a clear "what page am I on" indicator — unlike
+        // Laravel's own ->links() (and the rest of Admin), which hides them
+        // entirely when there's nothing to page through.
+        var html = '<nav><ul class="pagination">';
+        html += '<li class="page-item ' + (page <= 1 ? 'disabled' : '') + '"><a class="page-link" href="javascript:void(0)" onclick="' + onPageChangeFnName + '(' + (page - 1) + ')">Previous</a></li>';
+        for (var i = 1; i <= last; i++) {
+            html += '<li class="page-item ' + (i === page ? 'active' : '') + '"><a class="page-link" href="javascript:void(0)" onclick="' + onPageChangeFnName + '(' + i + ')">' + i + '</a></li>';
+        }
+        html += '<li class="page-item ' + (page >= last ? 'disabled' : '') + '"><a class="page-link" href="javascript:void(0)" onclick="' + onPageChangeFnName + '(' + (page + 1) + ')">Next</a></li>';
+        html += '</ul></nav>';
+        html += '<div class="pagination-info">Showing ' + meta.from + ' to ' + meta.to + ' of ' + meta.total + ' ' + (itemLabel || 'records') + '</div>';
+        el.innerHTML = html;
+    }
+
     /* ── Student list ── */
+    var _studentListPage = 1;
+    var _studentListSearch = '';
+    var _studentListSearchTimer = null;
+
+    function goToStudentListPage(p) { _studentListPage = p; loadStudentList(); }
+
     function loadStudentList() {
         var tbody = document.getElementById('studentListBody');
         var count = document.getElementById('studentListCount');
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:48px;color:#94a3b8;"><i class="bi bi-arrow-repeat" style="font-size:28px;display:block;margin-bottom:10px;"></i>Loading students…</td></tr>';
-        fetch(_listUrl, {
+        var url = _listUrl + '?page=' + _studentListPage + (_studentListSearch ? '&q=' + encodeURIComponent(_studentListSearch) : '');
+        fetch(url, {
             credentials: 'same-origin',
             headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': (document.querySelector('meta[name=csrf-token]') || {}).content || '' }
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            _allStudents = data;
-            if (count) count.textContent = data.length;
-            renderStudentList(data);
+            _allStudents = data.data || [];
+            if (count) count.textContent = data.total ?? _allStudents.length;
+            renderStudentList(_allStudents);
+            renderPaginationControls('studentListPagination', data, 'goToStudentListPage', 'students');
         })
         .catch(function() {
             tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#dc2626;"><i class="bi bi-exclamation-circle" style="font-size:24px;display:block;margin-bottom:8px;"></i>Failed to load. <button onclick="loadStudentList()" style="margin-top:8px;padding:6px 16px;background:#1a3a6c;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:12px;">Retry</button></td></tr>';
@@ -2376,14 +2423,15 @@
     }
 
     function filterStudentList(q) {
-        if (!q) { renderStudentList(_allStudents); return; }
-        var low = q.toLowerCase();
-        renderStudentList(_allStudents.filter(function(s) {
-            return s.name.toLowerCase().includes(low)
-                || (s.reference_no || '').toLowerCase().includes(low)
-                || (s.grade_level || '').toLowerCase().includes(low)
-                || (s.section || '').toLowerCase().includes(low);
-        }));
+        // Now server-side (the list is paginated, so filtering only the
+        // currently-loaded page client-side would miss matches on other
+        // pages) — debounced so it doesn't fire a request per keystroke.
+        clearTimeout(_studentListSearchTimer);
+        _studentListSearchTimer = setTimeout(function () {
+            _studentListSearch = q || '';
+            _studentListPage = 1;
+            loadStudentList();
+        }, 400);
     }
 
     function selectStudentFromList(s) {
@@ -2406,16 +2454,24 @@
     /* ── Student Lookup List ── */
     var _allLookupStudents = [];
 
+    var _lookupListPage = 1;
+    var _lookupListSearch = '';
+    var _lookupListSearchTimer = null;
+
+    function goToLookupListPage(p) { _lookupListPage = p; loadLookupList(); }
+
     function loadLookupList() {
         var tbody = document.getElementById('lookupListBody');
         var count = document.getElementById('lookupListCount');
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:48px;color:#94a3b8;"><i class="bi bi-arrow-repeat" style="font-size:28px;display:block;margin-bottom:10px;"></i>Loading…</td></tr>';
-        fetch(_listUrl, { credentials:'same-origin', headers:{'Accept':'application/json','X-CSRF-TOKEN':_csrfToken} })
+        var url = _listUrl + '?page=' + _lookupListPage + (_lookupListSearch ? '&q=' + encodeURIComponent(_lookupListSearch) : '');
+        fetch(url, { credentials:'same-origin', headers:{'Accept':'application/json','X-CSRF-TOKEN':_csrfToken} })
         .then(function(r){ return r.json(); })
         .then(function(data){
-            _allLookupStudents = data;
-            if (count) count.textContent = data.length;
-            renderLookupList(data);
+            _allLookupStudents = data.data || [];
+            if (count) count.textContent = data.total ?? _allLookupStudents.length;
+            renderLookupList(_allLookupStudents);
+            renderPaginationControls('lookupListPagination', data, 'goToLookupListPage', 'students');
         })
         .catch(function(){
             tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#dc2626;">Failed to load. <button onclick="loadLookupList()" style="margin-left:6px;padding:4px 12px;background:#1a3a6c;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;">Retry</button></td></tr>';
@@ -2457,14 +2513,13 @@
     }
 
     function filterLookupList(q) {
-        if (!q) { renderLookupList(_allLookupStudents); return; }
-        var low = q.toLowerCase();
-        renderLookupList(_allLookupStudents.filter(function(s){
-            return s.name.toLowerCase().includes(low)
-                || (s.reference_no||'').toLowerCase().includes(low)
-                || (s.grade_level||'').toLowerCase().includes(low)
-                || (s.section||'').toLowerCase().includes(low);
-        }));
+        // Server-side now, same reasoning as filterStudentList above.
+        clearTimeout(_lookupListSearchTimer);
+        _lookupListSearchTimer = setTimeout(function () {
+            _lookupListSearch = q || '';
+            _lookupListPage = 1;
+            loadLookupList();
+        }, 400);
     }
 
     function openLookupDetail(s) {
@@ -2478,7 +2533,9 @@
         document.getElementById('lookupPlaceholder').style.display = 'none';
         document.getElementById('lookupListPanel').style.display = 'block';
         document.getElementById('lookupFilterInput').value = '';
-        renderLookupList(_allLookupStudents);
+        _lookupListSearch = '';
+        _lookupListPage = 1;
+        loadLookupList();
     }
 
     /* ── Daily Report ── */
@@ -2562,17 +2619,24 @@
 
     /* ── Receipts ── */
     var _allReceipts = [];
+    var _receiptsPage = 1;
+    var _receiptsSearch = '';
+    var _receiptsSearchTimer = null;
+
+    function goToReceiptsPage(p) { _receiptsPage = p; loadReceipts(); }
 
     function loadReceipts() {
         var tbody = document.getElementById('receiptsBody');
         var count = document.getElementById('receiptsCount');
         tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:48px;color:#94a3b8;"><i class="bi bi-arrow-repeat" style="font-size:28px;display:block;margin-bottom:10px;"></i>Loading receipts…</td></tr>';
-        fetch(_receiptsUrl, { credentials:'same-origin', headers:{'Accept':'application/json','X-CSRF-TOKEN':_csrfToken} })
+        var url = _receiptsUrl + '?page=' + _receiptsPage + (_receiptsSearch ? '&q=' + encodeURIComponent(_receiptsSearch) : '');
+        fetch(url, { credentials:'same-origin', headers:{'Accept':'application/json','X-CSRF-TOKEN':_csrfToken} })
         .then(function(r){ return r.json(); })
         .then(function(data){
-            _allReceipts = data;
-            if (count) count.textContent = data.length;
-            renderReceipts(data);
+            _allReceipts = data.data || [];
+            if (count) count.textContent = data.total ?? _allReceipts.length;
+            renderReceipts(_allReceipts);
+            renderPaginationControls('receiptsPagination', data, 'goToReceiptsPage', 'receipts');
         })
         .catch(function(){
             tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:#dc2626;">Failed to load receipts. <button onclick="loadReceipts()" style="margin-left:6px;padding:4px 12px;background:#1a3a6c;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;">Retry</button></td></tr>';
@@ -2607,12 +2671,12 @@
         var box = document.getElementById('recentPaymentsList');
         if (!box || !userId) return;
         box.innerHTML = '<div style="text-align:center;padding:24px;color:#94a3b8;font-size:12px;"><i class="bi bi-arrow-repeat" style="font-size:18px;display:block;margin-bottom:6px;"></i>Loading…</div>';
-        fetch(_receiptsUrl + '?user_id=' + encodeURIComponent(userId) + '&limit=5', {
+        fetch(_receiptsUrl + '?user_id=' + encodeURIComponent(userId) + '&per_page=5', {
             credentials: 'same-origin',
             headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': _csrfToken }
         })
         .then(function(r){ return r.json(); })
-        .then(function(data){ renderRecentPayments(data); })
+        .then(function(data){ renderRecentPayments(data.data || []); })
         .catch(function(){
             box.innerHTML = '<div style="text-align:center;padding:20px;color:#dc2626;font-size:12px;">Failed to load payment history.</div>';
         });
@@ -2716,6 +2780,7 @@
 
     function loadHistoryForStudent(userId, studentName) {
         _historyStudentFilter = { id: userId, name: studentName };
+        _historyPage = 1;
         var link = document.querySelector('.sidebar-link[data-section="history"]');
         showSection('history', link);
     }
@@ -2724,14 +2789,23 @@
         _historyStudentFilter = null;
         document.getElementById('historyStudentChip').style.display = 'none';
         document.getElementById('historyPageSub').textContent = 'All transactions processed through this cashier terminal.';
+        _historyPage = 1;
         loadHistory();
     }
 
     var _historyDebounceTimer = null;
+    var _historyPage = 1;
     function debouncedLoadHistory() {
         clearTimeout(_historyDebounceTimer);
-        _historyDebounceTimer = setTimeout(loadHistory, 600);
+        _historyDebounceTimer = setTimeout(historyFilterChanged, 600);
     }
+
+    function historyFilterChanged() {
+        _historyPage = 1;
+        loadHistory();
+    }
+
+    function goToHistoryPage(p) { _historyPage = p; loadHistory(); }
 
     function loadHistory() {
         var tbody = document.getElementById('historyTbody');
@@ -2751,7 +2825,7 @@
         params.set('method', document.getElementById('historyMethodFilter').value || 'all');
         var date = document.getElementById('historyDateFilter').value;
         if (date) params.set('date', date);
-        params.set('limit', 200);
+        params.set('page', _historyPage);
 
         if (_historyStudentFilter) {
             params.set('user_id', _historyStudentFilter.id);
@@ -2765,7 +2839,10 @@
             headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': _csrfToken }
         })
         .then(function(r){ return r.json(); })
-        .then(function(data){ renderHistory(data); })
+        .then(function(data){
+            renderHistory(data.data || []);
+            renderPaginationControls('historyPagination', data, 'goToHistoryPage', 'transactions');
+        })
         .catch(function(){
             tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:#dc2626;">Failed to load history. <button onclick="loadHistory()" style="margin-left:6px;padding:4px 12px;background:#1a3a6c;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;">Retry</button></td></tr>';
         });
@@ -2799,11 +2876,13 @@
     }
 
     function filterReceipts(q) {
-        if (!q) { renderReceipts(_allReceipts); return; }
-        var low = q.toLowerCase();
-        renderReceipts(_allReceipts.filter(function(r){
-            return r.student.toLowerCase().includes(low) || (r.or_no||'').toLowerCase().includes(low);
-        }));
+        // Server-side now, same reasoning as filterStudentList above.
+        clearTimeout(_receiptsSearchTimer);
+        _receiptsSearchTimer = setTimeout(function () {
+            _receiptsSearch = q || '';
+            _receiptsPage = 1;
+            loadReceipts();
+        }, 400);
     }
 
     /* ── Audit Trail (own activity only) ── */
@@ -2820,19 +2899,24 @@
         password_change: 'Password Change'
     };
 
+    var _auditPage = 1;
+    function goToAuditPage(p) { _auditPage = p; loadAuditTrail(); }
+
     function loadAuditTrail() {
         var tbody = document.getElementById('auditBody');
         var count = document.getElementById('auditCount');
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:48px;color:#94a3b8;"><i class="bi bi-arrow-repeat" style="font-size:28px;display:block;margin-bottom:10px;"></i>Loading activity…</td></tr>';
-        fetch(_auditUrl, { credentials:'same-origin', headers:{'Accept':'application/json','X-CSRF-TOKEN':_csrfToken} })
+        fetch(_auditUrl + '?page=' + _auditPage, { credentials:'same-origin', headers:{'Accept':'application/json','X-CSRF-TOKEN':_csrfToken} })
         .then(function(r){ return r.json(); })
         .then(function(data){
-            if (count) count.textContent = data.length;
-            if (!data.length) {
+            var logs = data.data || [];
+            if (count) count.textContent = data.total ?? logs.length;
+            if (!logs.length) {
                 tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:48px;color:#94a3b8;"><i class="bi bi-inbox" style="font-size:32px;display:block;margin-bottom:10px;"></i>No activity recorded yet.</td></tr>';
+                renderPaginationControls('auditPagination', data, 'goToAuditPage', 'activity records');
                 return;
             }
-            tbody.innerHTML = data.map(function(log,i){
+            tbody.innerHTML = logs.map(function(log,i){
                 var cls   = _auditBadgeClass[log.event_type] || 'cash';
                 var label = _auditLabel[log.event_type] || log.event_type;
                 return '<tr>'
@@ -2842,6 +2926,7 @@
                     +'<td style="font-size:12px;color:#64748b;white-space:nowrap;">'+log.date+'<br><span style="font-size:10px;">'+log.time+'</span></td>'
                     +'</tr>';
             }).join('');
+            renderPaginationControls('auditPagination', data, 'goToAuditPage', 'activity records');
         })
         .catch(function(){
             tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:40px;color:#dc2626;">Failed to load activity. <button onclick="loadAuditTrail()" style="margin-left:6px;padding:4px 12px;background:#1a3a6c;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;">Retry</button></td></tr>';

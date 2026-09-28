@@ -256,6 +256,14 @@
             </tbody>
         </table>
     </div>
+    <div style="padding:16px 20px;">
+        {{ $allStudents->appends(request()->query())->links() }}
+        @if($allStudents->total() > 0)
+        <div class="pagination-info">
+            Showing {{ $allStudents->firstItem() }} to {{ $allStudents->lastItem() }} of {{ $allStudents->total() }} students
+        </div>
+        @endif
+    </div>
 </div>
 
 {{-- Walk-in Payment Modal --}}

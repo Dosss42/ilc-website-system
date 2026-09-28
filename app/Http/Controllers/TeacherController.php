@@ -11,10 +11,27 @@ use Illuminate\Support\Facades\Mail;
 
 class TeacherController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $teachers = User::where('role', 'teacher')->where('is_active', true)->orderByDesc('created_at')->get();
-        return response()->json(['teachers' => $teachers]);
+        $query = User::where('role', 'teacher')->where('is_active', true)->orderByDesc('created_at');
+
+        // Pagination is opt-in (?paginated=1) — other callers (dropdown
+        // population elsewhere, the dedicated Teacher Management page) need
+        // the full list, so the default response stays unpaginated.
+        if ($request->boolean('paginated')) {
+            $page = $query->paginate((int) $request->input('per_page', 15));
+            return response()->json([
+                'teachers'     => $page->items(),
+                'current_page' => $page->currentPage(),
+                'last_page'    => $page->lastPage(),
+                'per_page'     => $page->perPage(),
+                'total'        => $page->total(),
+                'from'         => $page->firstItem(),
+                'to'           => $page->lastItem(),
+            ]);
+        }
+
+        return response()->json(['teachers' => $query->get()]);
     }
 
     public function store(Request $request)

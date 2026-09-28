@@ -201,7 +201,6 @@ Route::middleware(['auth', 'superadmin'])->prefix('superadmin')->name('superadmi
     });
 
     // System Logs
-    Route::get('/logs/more',   [SuperAdminController::class, 'loadMoreLogs'])->name('logs.more');
     Route::get('/logs/export', [SuperAdminController::class, 'exportLogs'])->name('logs.export');
 
     // Backup & Restore
@@ -306,6 +305,15 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/assessment/candidates',                  [EnrollmentController::class, 'assessmentCandidates'])->name('assessment.candidates');
     Route::post('/assessment/{user}/promote',             [EnrollmentController::class, 'assessPromotion'])->name('assessment.promote');
     Route::get('/assessment/sections-for-grade',          [EnrollmentController::class, 'sectionsForGrade'])->name('assessment.sections');
+
+    // ASSESSMENT & PROMOTION — bulk promote (one grade at a time; excludes
+    // anyone still needing individual review, see EnrollmentController::bulkPromotionCandidates)
+    Route::get('/assessment/bulk-preview',                [EnrollmentController::class, 'bulkPromotePreview'])->name('assessment.bulk-preview');
+    Route::post('/assessment/bulk-promote',                [EnrollmentController::class, 'bulkPromote'])->name('assessment.bulk-promote');
+
+    // ASSESSMENT & PROMOTION — Nursery/Kindergarten auto-advance (no checks at all)
+    Route::get('/assessment/auto-advance-preview',         [EnrollmentController::class, 'autoAdvancePreview'])->name('assessment.auto-advance-preview');
+    Route::post('/assessment/auto-advance',                [EnrollmentController::class, 'autoAdvance'])->name('assessment.auto-advance');
 
     // STUDENT MANAGEMENT — status change + assess data endpoints
     Route::post('/enrollment/{enrollment}/change-status', [EnrollmentController::class, 'changeEnrollmentStatus'])->name('enrollment.change-status');
@@ -471,14 +479,18 @@ Route::middleware([\App\Http\Middleware\FinanceMiddleware::class])->prefix('fina
     // Main Dashboard
     Route::get('/dashboard', [\App\Http\Controllers\Finance\DashboardController::class, 'index'])->name('dashboard');
     
-    // Profile Management
-    Route::get('/profile', [\App\Http\Controllers\Finance\AuthController::class, 'showProfile'])->name('profile');
+    // Account Settings (unified profile + change password page)
+    Route::get('/settings', [\App\Http\Controllers\Finance\AuthController::class, 'showSettings'])->name('settings');
     Route::put('/profile', [\App\Http\Controllers\Finance\AuthController::class, 'updateProfile'])->name('profile.update');
-    
-    // Change Password
-    Route::get('/change-password', [\App\Http\Controllers\Finance\AuthController::class, 'showChangePasswordForm'])->name('change-password');
-    Route::post('/change-password', [\App\Http\Controllers\Finance\AuthController::class, 'changePassword']);
-    
+    Route::post('/change-password', [\App\Http\Controllers\Finance\AuthController::class, 'changePassword'])->name('change-password');
+
+    // Old separate pages — redirect to the unified Settings page so any
+    // existing bookmarks/links keep working instead of 404ing. Safe to
+    // coexist with the POST /change-password route above (different verb,
+    // same URI).
+    Route::get('/profile', fn () => redirect()->route('finance.settings'))->name('profile');
+    Route::get('/change-password', fn () => redirect()->route('finance.settings'));
+
     // Payments Management (view-only — no approve/reject)
     Route::prefix('payments')->name('payments.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Finance\DashboardController::class, 'payments'])->name('index');
@@ -628,8 +640,6 @@ Route::middleware(['auth', 'teacher', 'maintenance'])->prefix('teacher')->name('
 Route::middleware(['auth', 'student', 'maintenance'])->prefix('student')->name('student.')->group(function () {
     Route::get('/dashboard', [StudentPortalController::class, 'dashboard'])->name('dashboard');
     Route::get('/portal', [StudentPortalController::class, 'dashboard'])->name('portal');
-    Route::get('/info', [StudentPortalController::class, 'showInfo'])->name('info');
-    Route::post('/info', [StudentPortalController::class, 'updateInfo'])->name('info.update');
     Route::get('/documents', [StudentPortalController::class, 'showDocuments'])->name('documents');
     Route::post('/documents/upload', [StudentPortalController::class, 'uploadDocument'])->name('documents.upload');
     Route::post('/documents/upload-all', [StudentPortalController::class, 'uploadAllDocuments'])->name('documents.upload.all');

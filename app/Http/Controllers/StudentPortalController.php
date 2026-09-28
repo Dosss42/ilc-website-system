@@ -633,44 +633,6 @@ class StudentPortalController extends Controller
     }
 
     /**
-     * Show student information form
-     */
-    public function showInfo()
-    {
-        $user = Auth::user();
-        $enrollment = $user->enrollments()
-            ->orderByRaw("FIELD(status, 'enrolled', 'approved', 'pending', 'declined') ASC")
-            ->latest('id')
-            ->first() ?? $user->latestEnrollment;
-        $progress = $this->getCompletionProgress($enrollment);
-        
-        return view('student.info', compact('enrollment', 'progress'));
-    }
-
-    /**
-     * Update student information
-     */
-    public function updateInfo(Request $request)
-    {
-        $user = Auth::user();
-        $enrollment = $user->latestEnrollment;
-        
-        $validated = $request->validate([
-            'personal_info' => 'required|array',
-            'address_info' => 'required|array',
-            'guardian_info' => 'required|array',
-        ]);
-
-        // Update enrollment student_data
-        $studentData = $enrollment->student_data;
-        $studentData = array_merge($studentData, $validated);
-        
-        $enrollment->update(['student_data' => $studentData]);
-
-        return redirect()->back()->with('success', 'Information updated successfully!');
-    }
-
-    /**
      * Show documents upload page
      */
     public function showDocuments()

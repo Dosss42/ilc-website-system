@@ -10,63 +10,9 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Socialite\Facades\Socialite;
-use Illuminate\Auth\Events\Registered;
 
 class AuthController extends Controller
 {
-    /**
-     * Register a new user
-     */
-    public function register(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'first_name' => 'required|string|max:100',
-            'last_name' => 'required|string|max:100',
-            'contact' => 'required|string|max:20',
-            'email' => 'required|email|unique:users,email|max:255',
-            'password' => 'required|min:8|confirmed',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        // Create user account
-        $user = User::create([
-            'name' => trim("{$request->first_name} {$request->last_name}"),
-            'email' => strtolower(trim($request->email)),
-            'password' => Hash::make($request->password),
-            'role' => 'student',
-            'is_active' => true,
-        ]);
-
-        // Create basic student profile
-        StudentProfile::create([
-            'user_id' => $user->id,
-            'first_name' => $request->first_name,
-            'last_name' => $request->last_name,
-            'contact' => $request->contact,
-        ]);
-
-        event(new Registered($user));
-
-        // Generate token
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Registration successful. Please verify your email.',
-            'data' => [
-                'user' => $user,
-                'token' => $token
-            ]
-        ], 201);
-    }
-
     /**
      * Login user and create token
      */

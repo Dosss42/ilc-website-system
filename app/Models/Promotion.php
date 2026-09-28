@@ -34,6 +34,7 @@ class Promotion extends Model
         'promoted_at',
         'status',
         'error_message',
+        'remarks',
     ];
 
     protected $casts = [

@@ -319,13 +319,9 @@
                 Financial Reports
             </a>
             <div class="menu-section">Account</div>
-            <a href="{{ route('finance.profile') }}" class="menu-item">
-                <i class="bi bi-person-circle"></i>
-                My Profile
-            </a>
-            <a href="{{ route('finance.change-password') }}" class="menu-item">
-                <i class="bi bi-shield-lock"></i>
-                Change Password
+            <a href="{{ route('finance.settings') }}" class="menu-item">
+                <i class="bi bi-gear-fill"></i>
+                Settings
             </a>
             <form method="POST" action="{{ route('finance.logout') }}" style="margin: 0;">
                 @csrf

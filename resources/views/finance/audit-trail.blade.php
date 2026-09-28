@@ -73,6 +73,11 @@
     </div>
     <div style="padding:16px 24px;">
         {{ $logs->links() }}
+        @if($logs->total() > 0)
+        <div class="pagination-info">
+            Showing {{ $logs->firstItem() }} to {{ $logs->lastItem() }} of {{ $logs->total() }} activity records
+        </div>
+        @endif
     </div>
 </div>
 @endsection
