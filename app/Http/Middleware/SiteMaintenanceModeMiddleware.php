@@ -6,11 +6,11 @@ use Closure;
 use Illuminate\Http\Request;
 use App\Models\Setting;
 
-class MaintenanceModeMiddleware
+class SiteMaintenanceModeMiddleware
 {
     public function handle(Request $request, Closure $next)
     {
-        if (!Setting::get('maintenance_mode', false)) {
+        if (!Setting::get('site_maintenance_mode', false)) {
             return $next($request);
         }
 
@@ -20,6 +20,6 @@ class MaintenanceModeMiddleware
             return $next($request);
         }
 
-        return response()->view('maintenance', ['type' => 'portal'], 503);
+        return response()->view('maintenance', ['type' => 'site'], 503);
     }
 }

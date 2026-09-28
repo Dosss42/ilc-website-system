@@ -250,11 +250,11 @@
 
             <h1>We'll be right back!</h1>
             <p class="subtitle">
-                @if(($type ?? 'portal') === 'site')
+                <?php if(($type ?? 'portal') === 'site'): ?>
                     Our website is currently undergoing scheduled maintenance.
-                @else
+                <?php else: ?>
                     This portal is currently undergoing scheduled maintenance.
-                @endif
+                <?php endif; ?>
                 We apologize for the inconvenience.
             </p>
 
@@ -265,11 +265,11 @@
                 please contact the school office directly.
             </div>
 
-            @if(($type ?? 'portal') !== 'site')
-            <a href="{{ route('home') }}" class="btn-main">
+            <?php if(($type ?? 'portal') !== 'site'): ?>
+            <a href="<?php echo e(route('home')); ?>" class="btn-main">
                 <i class="bi bi-house-fill"></i> Back to Home
             </a>
-            @endif
+            <?php endif; ?>
 
             <div class="switch-text">IEMELIF Learning Center</div>
         </div>
@@ -279,3 +279,4 @@
 
 </body>
 </html>
+<?php /**PATH C:\Users\ron28\Desktop\ILC SYSTEM\ilc-website-system\resources\views/maintenance.blade.php ENDPATH**/ ?>

@@ -25,6 +25,18 @@ use App\Http\Controllers\TeacherAssignmentController;
 // PUBLIC ROUTES
 // ─────────────────────────────────────────
 Route::get('/sitemap.xml', [\App\Http\Controllers\SitemapController::class, 'index'])->name('sitemap');
+
+// Everything below (home page through the public enrollment endpoints) is
+// gated by WEBSITE maintenance mode ('site_maintenance_mode') — a separate
+// switch from the portal maintenance mode used by the Teacher/Student
+// routes further down ('maintenance_mode'), so taking the public site down
+// doesn't lock students/teachers out of their portals and vice versa.
+// Logged-in admin/superadmin still get through either gate (see
+// SiteMaintenanceModeMiddleware). Login/logout and the auth routes further
+// down stay OUTSIDE this group so a superadmin can always sign in to
+// switch maintenance mode back off.
+Route::middleware('site-maintenance')->group(function () {
+
 Route::get('/', function () {
     $enrollmentOpen = \App\Models\Setting::get('enrollment_open', true);
 
@@ -125,6 +137,8 @@ Route::post('/enrollment/verify-otp', [EnrollmentController::class, 'verifyOtp']
 
 // REST API Routes for React Components
 Route::post('/api/enrollment/submit', [EnrollmentController::class, 'submitApi'])->name('api.enrollment.submit');
+
+}); // end maintenance-gated public routes
 
 // ─────────────────────────────────────────
 // AUTH ROUTES
@@ -394,6 +408,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::post('/seed', [SettingController::class, 'seedDefaults'])->name('seed');
         Route::post('/toggle-enrollment', [SettingController::class, 'toggleEnrollment'])->name('toggle-enrollment');
         Route::post('/toggle-maintenance', [SettingController::class, 'toggleMaintenance'])->name('toggle-maintenance');
+        Route::post('/toggle-site-maintenance', [SettingController::class, 'toggleSiteMaintenance'])->name('toggle-site-maintenance');
     });
 
     // FEE SETTINGS (dedicated endpoint)

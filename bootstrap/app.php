@@ -34,7 +34,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'student'     => \App\Http\Middleware\StudentMiddleware::class,
             'finance'     => \App\Http\Middleware\FinanceMiddleware::class,
             'cashier'     => \App\Http\Middleware\CashierMiddleware::class,
-            'maintenance' => \App\Http\Middleware\MaintenanceModeMiddleware::class,
+            'maintenance'      => \App\Http\Middleware\MaintenanceModeMiddleware::class,
+            'site-maintenance' => \App\Http\Middleware\SiteMaintenanceModeMiddleware::class,
         ]);
 
     })

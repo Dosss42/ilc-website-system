@@ -2186,16 +2186,45 @@
                 </div>
             </div>
 
-            <!-- Maintenance Toggle -->
+            <!-- Website Maintenance Toggle -->
             <div class="col-md-6">
                 <div class="content-card">
                     <div class="content-card-header">
-                        <h6><i class="bi bi-tools me-2" style="color:var(--orange);"></i>Maintenance Mode</h6>
+                        <h6><i class="bi bi-globe2 me-2" style="color:var(--orange);"></i>Website Maintenance Mode</h6>
                     </div>
                     <div class="p-4">
                         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
                             <div>
-                                <div style="font-size:14px;font-weight:700;color:var(--text);">Maintenance Mode</div>
+                                <div style="font-size:14px;font-weight:700;color:var(--text);">Public Website</div>
+                                <div style="font-size:12px;color:var(--muted);margin-top:3px;" id="site-maint-toggle-desc">Loading current status…</div>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:12px;">
+                                <span id="site-maint-toggle-label" style="font-size:12px;font-weight:700;"></span>
+                                <button id="btn-toggle-site-maintenance" onclick="toggleSiteMaintenance()"
+                                    style="padding:9px 20px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;">
+                                    Toggle
+                                </button>
+                            </div>
+                        </div>
+                        <div style="font-size:12px;color:var(--muted);background:#fef5e7;border-radius:8px;padding:10px 14px;line-height:1.6;">
+                            <i class="bi bi-exclamation-triangle-fill me-1" style="color:var(--orange);"></i>
+                            When ON, the public website (home, about, admission, news, etc.) displays a maintenance notice.
+                            Student/Teacher portals and admin access are not affected — see Portal Maintenance below.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Portal Maintenance Toggle -->
+            <div class="col-md-6">
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h6><i class="bi bi-tools me-2" style="color:var(--orange);"></i>Portal Maintenance Mode</h6>
+                    </div>
+                    <div class="p-4">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                            <div>
+                                <div style="font-size:14px;font-weight:700;color:var(--text);">Student &amp; Teacher Portals</div>
                                 <div style="font-size:12px;color:var(--muted);margin-top:3px;" id="maint-toggle-desc">Loading current status…</div>
                             </div>
                             <div style="display:flex;align-items:center;gap:12px;">
@@ -2208,8 +2237,8 @@
                         </div>
                         <div style="font-size:12px;color:var(--muted);background:#fef5e7;border-radius:8px;padding:10px 14px;line-height:1.6;">
                             <i class="bi bi-exclamation-triangle-fill me-1" style="color:var(--orange);"></i>
-                            When maintenance mode is <strong>ON</strong>, the public website displays a maintenance notice.
-                            Admin and portal access is not affected.
+                            When ON, the Student and Teacher portals show a maintenance notice.
+                            The public website, Cashier, and Finance portals are not affected.
                         </div>
                     </div>
                 </div>
@@ -3735,6 +3764,7 @@
     // ══════════════════════════════════════════════════════════
     var _sysEnrollmentOpen = null;
     var _sysMaintenanceOn  = null;
+    var _sysSiteMaintenanceOn = null;
 
     async function loadSysSettings() {
         _loaded['sys-settings'] = true;
@@ -3754,9 +3784,13 @@
             _sysEnrollmentOpen = flat['enrollment_open'] === '1' || flat['enrollment_open'] === true || flat['enrollment_open'] === 1;
             updateEnrollmentToggleUI(_sysEnrollmentOpen);
 
-            // Maintenance toggle
+            // Portal maintenance toggle
             _sysMaintenanceOn = flat['maintenance_mode'] === '1' || flat['maintenance_mode'] === true || flat['maintenance_mode'] === 1;
             updateMaintenanceToggleUI(_sysMaintenanceOn);
+
+            // Website maintenance toggle
+            _sysSiteMaintenanceOn = flat['site_maintenance_mode'] === '1' || flat['site_maintenance_mode'] === true || flat['site_maintenance_mode'] === 1;
+            updateSiteMaintenanceToggleUI(_sysSiteMaintenanceOn);
 
             // Render overview table
             var overviewEl = document.getElementById('sys-settings-overview');
@@ -3786,6 +3820,7 @@
         } catch(e) {
             document.getElementById('enroll-toggle-desc').textContent = 'Failed to load settings.';
             document.getElementById('maint-toggle-desc').textContent  = 'Failed to load settings.';
+            document.getElementById('site-maint-toggle-desc').textContent = 'Failed to load settings.';
         }
     }
 
@@ -3812,12 +3847,39 @@
         btn.textContent = isOn ? 'Disable Maintenance' : 'Enable Maintenance';
         btn.style.background = isOn ? 'linear-gradient(135deg,#14532d,#16a34a)' : 'linear-gradient(135deg,#92400e,#d97706)';
         btn.style.color = '#fff';
-        if (desc) desc.textContent = isOn ? 'Website is in maintenance mode.' : 'Website is publicly accessible.';
+        if (desc) desc.textContent = isOn ? 'Student/Teacher portals are in maintenance mode.' : 'Student/Teacher portals are accessible.';
     }
 
-    async function toggleEnrollment() {
-        var action = _sysEnrollmentOpen ? 'close enrollment' : 'open enrollment';
-        if (!confirm('Are you sure you want to ' + action + '?')) return;
+    function updateSiteMaintenanceToggleUI(isOn) {
+        var label = document.getElementById('site-maint-toggle-label');
+        var btn   = document.getElementById('btn-toggle-site-maintenance');
+        var desc  = document.getElementById('site-maint-toggle-desc');
+        if (!label || !btn) return;
+        label.textContent = isOn ? 'ON' : 'OFF';
+        label.style.color = isOn ? 'var(--red)' : 'var(--green)';
+        btn.textContent = isOn ? 'Disable Maintenance' : 'Enable Maintenance';
+        btn.style.background = isOn ? 'linear-gradient(135deg,#14532d,#16a34a)' : 'linear-gradient(135deg,#92400e,#d97706)';
+        btn.style.color = '#fff';
+        if (desc) desc.textContent = isOn ? 'Public website is in maintenance mode.' : 'Public website is accessible.';
+    }
+
+    function toggleEnrollment() {
+        var opening = !_sysEnrollmentOpen;
+        saConfirm({
+            title    : opening ? 'Open Enrollment' : 'Close Enrollment',
+            sub      : 'Online Enrollment',
+            msg      : opening
+                ? 'Students will be able to submit online applications again.'
+                : 'The enrollment form will be hidden and applicants will see a closed notice.',
+            icon     : opening ? 'bi-clipboard-check-fill' : 'bi-clipboard-x-fill',
+            gradient : opening ? 'linear-gradient(135deg,#14532d,#16a34a)' : 'linear-gradient(135deg,#b91c1c,#dc2626)',
+            btnLabel : opening ? 'Open Enrollment' : 'Close Enrollment',
+            btnColor : opening ? '#16a34a' : '#dc2626',
+            onConfirm: doToggleEnrollment
+        });
+    }
+
+    async function doToggleEnrollment() {
         try {
             var r = await fetch('/admin/settings/toggle-enrollment', {
                 method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
@@ -3831,9 +3893,23 @@
         } catch(e) { saToast('error', 'Network error.'); }
     }
 
-    async function toggleMaintenance() {
-        var action = _sysMaintenanceOn ? 'disable maintenance mode' : 'enable maintenance mode';
-        if (!confirm('Are you sure you want to ' + action + '?')) return;
+    function toggleMaintenance() {
+        var enabling = !_sysMaintenanceOn;
+        saConfirm({
+            title    : enabling ? 'Enable Portal Maintenance' : 'Disable Portal Maintenance',
+            sub      : 'Student & Teacher Portals',
+            msg      : enabling
+                ? 'Students and teachers will be signed out of their portals and shown a maintenance notice until this is turned off.'
+                : 'Student and Teacher portals will become accessible again.',
+            icon     : 'bi-tools',
+            gradient : enabling ? 'linear-gradient(135deg,#92400e,#d97706)' : 'linear-gradient(135deg,#14532d,#16a34a)',
+            btnLabel : enabling ? 'Enable Maintenance' : 'Disable Maintenance',
+            btnColor : enabling ? '#d97706' : '#16a34a',
+            onConfirm: doToggleMaintenance
+        });
+    }
+
+    async function doToggleMaintenance() {
         try {
             var r = await fetch('/admin/settings/toggle-maintenance', {
                 method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
@@ -3842,7 +3918,37 @@
             if (d.success !== false) {
                 _sysMaintenanceOn = !_sysMaintenanceOn;
                 updateMaintenanceToggleUI(_sysMaintenanceOn);
-                saToast('success', _sysMaintenanceOn ? 'Maintenance mode ENABLED.' : 'Maintenance mode DISABLED.');
+                saToast('success', _sysMaintenanceOn ? 'Portal maintenance mode ENABLED.' : 'Portal maintenance mode DISABLED.');
+            } else { saToast('error', d.message || 'Toggle failed.'); }
+        } catch(e) { saToast('error', 'Network error.'); }
+    }
+
+    function toggleSiteMaintenance() {
+        var enabling = !_sysSiteMaintenanceOn;
+        saConfirm({
+            title    : enabling ? 'Enable Website Maintenance' : 'Disable Website Maintenance',
+            sub      : 'Public Website',
+            msg      : enabling
+                ? 'Visitors to the public website (home, about, admission, news, etc.) will see a maintenance notice until this is turned off. Student/Teacher portals are not affected.'
+                : 'The public website will become accessible again.',
+            icon     : 'bi-globe2',
+            gradient : enabling ? 'linear-gradient(135deg,#92400e,#d97706)' : 'linear-gradient(135deg,#14532d,#16a34a)',
+            btnLabel : enabling ? 'Enable Maintenance' : 'Disable Maintenance',
+            btnColor : enabling ? '#d97706' : '#16a34a',
+            onConfirm: doToggleSiteMaintenance
+        });
+    }
+
+    async function doToggleSiteMaintenance() {
+        try {
+            var r = await fetch('/admin/settings/toggle-site-maintenance', {
+                method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
+            });
+            var d = await r.json();
+            if (d.success !== false) {
+                _sysSiteMaintenanceOn = !_sysSiteMaintenanceOn;
+                updateSiteMaintenanceToggleUI(_sysSiteMaintenanceOn);
+                saToast('success', _sysSiteMaintenanceOn ? 'Website maintenance mode ENABLED.' : 'Website maintenance mode DISABLED.');
             } else { saToast('error', d.message || 'Toggle failed.'); }
         } catch(e) { saToast('error', 'Network error.'); }
     }

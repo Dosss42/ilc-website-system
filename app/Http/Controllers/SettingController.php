@@ -130,7 +130,9 @@ class SettingController extends Controller
     }
 
     /**
-     * Toggle maintenance mode on/off
+     * Toggle PORTAL maintenance mode on/off — blocks the Student and
+     * Teacher portals only. Separate from site maintenance mode below so
+     * the two can be switched independently.
      */
     public function toggleMaintenance()
     {
@@ -139,14 +141,37 @@ class SettingController extends Controller
 
         Setting::set('maintenance_mode', $newValue, 'boolean');
 
-        ActivityLogger::log('update', 'Maintenance mode turned ' . ($newValue ? 'ON' : 'OFF'), 'Setting');
+        ActivityLogger::log('update', 'Portal maintenance mode turned ' . ($newValue ? 'ON' : 'OFF'), 'Setting');
 
         return response()->json([
             'success'          => true,
             'maintenance_mode' => $newValue,
             'message'          => $newValue
-                ? 'Maintenance mode ON — student and teacher portals are now blocked.'
-                : 'Maintenance mode OFF — portals are accessible again.',
+                ? 'Portal maintenance mode ON — student and teacher portals are now blocked.'
+                : 'Portal maintenance mode OFF — portals are accessible again.',
+        ]);
+    }
+
+    /**
+     * Toggle WEBSITE maintenance mode on/off — blocks the public site
+     * (home page and other public routes) only. Student/Teacher portal
+     * access is controlled separately by toggleMaintenance() above.
+     */
+    public function toggleSiteMaintenance()
+    {
+        $current  = Setting::get('site_maintenance_mode', false);
+        $newValue = !$current;
+
+        Setting::set('site_maintenance_mode', $newValue, 'boolean');
+
+        ActivityLogger::log('update', 'Website maintenance mode turned ' . ($newValue ? 'ON' : 'OFF'), 'Setting');
+
+        return response()->json([
+            'success'               => true,
+            'site_maintenance_mode' => $newValue,
+            'message'               => $newValue
+                ? 'Website maintenance mode ON — the public site is now showing a maintenance notice.'
+                : 'Website maintenance mode OFF — the public site is accessible again.',
         ]);
     }
 
