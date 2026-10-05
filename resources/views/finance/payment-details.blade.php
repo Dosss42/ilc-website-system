@@ -288,6 +288,7 @@
 </head>
 <body>
     <aside class="sidebar">
+        @if(($viewerContext ?? 'finance') === 'finance')
         <div class="sidebar-header">
             <a href="{{ route('finance.dashboard') }}" class="sidebar-brand">
                 <i class="bi bi-wallet2"></i>
@@ -331,6 +332,33 @@
                 </button>
             </form>
         </nav>
+        @else
+        {{-- Viewed by Admin/Super Admin (via /admin/payments/{id}) — that
+             session has no finance-guard login, so the sidebar above would
+             bounce every click to /finance/login. Point back at the Admin
+             dashboard instead. --}}
+        <div class="sidebar-header">
+            <a href="{{ route('admin.dashboard') }}" class="sidebar-brand">
+                <i class="bi bi-wallet2"></i>
+                <span>Payment Review</span>
+            </a>
+        </div>
+        <nav class="sidebar-menu">
+            <div class="menu-section">Main</div>
+            <a href="{{ route('admin.dashboard') }}" class="menu-item active">
+                <i class="bi bi-grid-fill"></i>
+                Admin Dashboard
+            </a>
+            <div class="menu-section">Account</div>
+            <form method="POST" action="{{ route('logout') }}" style="margin: 0;">
+                @csrf
+                <button type="submit" class="menu-item" style="width: 100%; background: none; border: none; cursor: pointer;">
+                    <i class="bi bi-box-arrow-left"></i>
+                    Logout
+                </button>
+            </form>
+        </nav>
+        @endif
     </aside>
 
     <main class="main-content">
@@ -341,17 +369,20 @@
             .ilc-bc-sep{font-size:10px;color:#b6c0cc;}
             .ilc-bc-current{color:#334155;font-weight:700;}
         </style>
+        @php $bcHome = ($viewerContext ?? 'finance') === 'finance' ? route('finance.dashboard') : route('admin.dashboard'); @endphp
         <nav class="ilc-breadcrumb" aria-label="breadcrumb">
-            <a href="{{ route('finance.dashboard') }}"><i class="bi bi-house-door-fill"></i> Home</a>
+            <a href="{{ $bcHome }}"><i class="bi bi-house-door-fill"></i> Home</a>
             <i class="bi bi-chevron-right ilc-bc-sep"></i>
+            @if(($viewerContext ?? 'finance') === 'finance')
             <a href="{{ route('finance.payments.index') }}">Payments</a>
             <i class="bi bi-chevron-right ilc-bc-sep"></i>
+            @endif
             <span class="ilc-bc-current">Payment Details</span>
         </nav>
         <div class="page-header">
             <h1 class="page-title">
-                <a href="{{ route('finance.payments.index') }}" class="btn-back">
-                    <i class="bi bi-arrow-left"></i> Back to Payments
+                <a href="{{ $bcHome }}" class="btn-back">
+                    <i class="bi bi-arrow-left"></i> {{ ($viewerContext ?? 'finance') === 'finance' ? 'Back to Payments' : 'Back to Dashboard' }}
                 </a>
                 Payment Details
             </h1>

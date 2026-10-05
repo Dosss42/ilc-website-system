@@ -28,8 +28,6 @@ class CheckPaymentDueDates extends Command
             ->get();
 
         $reminderCount = 0;
-        $penaltyCount = 0;
-        $blockedCount = 0;
 
         foreach ($installmentEnrollments as $enrollment) {
             $user = $enrollment->user;
@@ -50,36 +48,27 @@ class CheckPaymentDueDates extends Command
                 $this->info("Reminder sent to {$user->name} for due date {$nextDueDate->format('M d, Y')}");
             }
 
-            // Apply penalty if payment is late (after due date)
-            if ($daysUntilDue < 0 && $enrollment->late_payment_count < 3) {
-                $penaltyAmount = 500; // ₱500 penalty per late payment
-                $enrollment->update([
-                    'penalty_amount' => ($enrollment->penalty_amount ?? 0) + $penaltyAmount,
-                    'late_payment_count' => ($enrollment->late_payment_count ?? 0) + 1,
-                ]);
-                $penaltyCount++;
-                $this->info("Penalty applied to {$user->name}. Total penalties: ₱" . number_format($enrollment->penalty_amount, 2));
-
-                // Send penalty notification email
-                $this->sendPenaltyEmail($user, $enrollment, $penaltyAmount);
-            }
-
-            // Block account after 3 late payments
-            if ($enrollment->late_payment_count >= 3 && !$enrollment->account_blocked) {
-                $enrollment->update(['account_blocked' => true]);
-                $user->update(['blocked' => true]);
-                $blockedCount++;
-                $this->info("Account blocked for {$user->name} due to multiple late payments");
-
-                // Send account blocking notification email
-                $this->sendBlockAccountEmail($user, $enrollment);
-            }
+            // Penalty-after-3-days / block-after-3-"late-payments" logic that
+            // used to live here has been removed — it incremented
+            // late_payment_count and penalty_amount on EVERY run while an
+            // installment stayed overdue (no once-per-occurrence guard), so
+            // a single missed due date reached the "3 strikes" block after
+            // just 3 CALENDAR DAYS, not 3 months. That directly contradicted
+            // the actual, UI-visible Exam Permit Hold policy
+            // (PaymentService::getExamPermitStatus — 3 CONSECUTIVE MONTHS,
+            // with Promissory Note recourse), and once account_blocked was
+            // set, StudentPortalController::processPayment() refused ALL
+            // payments — locking an overdue family out of the one thing
+            // that would let them fix it. penalty_amount/late_payment_count
+            // were also never displayed anywhere, so neither staff nor the
+            // family could ever see why. Severity-based consequences for
+            // being overdue now live exclusively in the Exam Permit Hold
+            // system, which already has the correct threshold and a
+            // resolution path (Promissory Note).
         }
 
         $this->info("Payment due date check completed.");
         $this->info("Reminders sent: {$reminderCount}");
-        $this->info("Penalties applied: {$penaltyCount}");
-        $this->info("Accounts blocked: {$blockedCount}");
 
         return Command::SUCCESS;
     }
@@ -104,46 +93,4 @@ class CheckPaymentDueDates extends Command
         }
     }
 
-    private function sendPenaltyEmail($user, $enrollment, $penaltyAmount)
-    {
-        try {
-            Mail::raw(
-                "Dear {$user->name},\n\n" .
-                "Your payment was overdue. A penalty fee of ₱" . number_format($penaltyAmount, 2) . " has been applied to your account.\n\n" .
-                "Total penalty amount: ₱" . number_format($enrollment->penalty_amount, 2) . "\n" .
-                "Late payment count: {$enrollment->late_payment_count}/3\n\n" .
-                "Please make your payment as soon as possible. After 3 late payments, your account will be blocked.\n\n" .
-                "Thank you,\n" .
-                "IEMELIF Learning Center",
-                function ($message) use ($user) {
-                    $message->to($user->email)
-                        ->subject('Late Payment Penalty Applied - IEMELIF Learning Center');
-                }
-            );
-            Log::info("Penalty email sent to user {$user->id}");
-        } catch (\Exception $e) {
-            Log::error("Failed to send penalty email to user {$user->id}: " . $e->getMessage());
-        }
-    }
-
-    private function sendBlockAccountEmail($user, $enrollment)
-    {
-        try {
-            Mail::raw(
-                "Dear {$user->name},\n\n" .
-                "Your account has been blocked due to multiple late payments (3 or more).\n\n" .
-                "To unblock your account, please contact the school administration and settle all outstanding payments including penalties.\n\n" .
-                "Total penalty amount: ₱" . number_format($enrollment->penalty_amount, 2) . "\n\n" .
-                "Thank you,\n" .
-                "IEMELIF Learning Center",
-                function ($message) use ($user) {
-                    $message->to($user->email)
-                        ->subject('Account Blocked - IEMELIF Learning Center');
-                }
-            );
-            Log::info("Account block email sent to user {$user->id}");
-        } catch (\Exception $e) {
-            Log::error("Failed to send account block email to user {$user->id}: " . $e->getMessage());
-        }
-    }
 }

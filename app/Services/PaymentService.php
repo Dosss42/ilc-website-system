@@ -31,20 +31,29 @@ class PaymentService
     const EXAM_PERMIT_HOLD_MONTHS = 3;
 
     /**
-     * Check and process all overdue payments
-     * Sends notifications, applies late fees, and blocks accounts as needed
+     * Check and process all overdue payments.
+     * Sends the week-1 warning / week-2 reminder emails and applies the
+     * week-3 late fee, per installment.
      */
     public function checkAndProcessOverduePayments(): void
     {
-        $today = Carbon::now();
+        $today = Carbon::now()->startOfDay();
 
-        // Get all pending/partial installments that are past due
-        $overdueInstallments = PaymentInstallment::whereIn('status', ['pending', 'partial'])
+        // whereNotIn(...'paid','pending_approval') rather than
+        // whereIn(...'pending','partial') — the old query excluded 'overdue'
+        // itself, so once a row got marked overdue on day one it dropped out
+        // of every future day's query and the warning/reminder/late-fee
+        // escalation could never progress past whatever weeks_overdue was on
+        // that first day (almost always 0, since day one of being overdue is
+        // under a week). Confirmed live: real overdue installments existed
+        // with weeks_overdue/warning_sent/late_fee_applied all still at their
+        // defaults.
+        $overdueInstallments = PaymentInstallment::whereNotIn('status', ['paid', 'pending_approval'])
             ->whereDate('due_date', '<', $today)
             ->get();
 
         foreach ($overdueInstallments as $installment) {
-            $this->processOverdueInstallment($installment);
+            $this->processOverdueInstallment($installment, $today);
         }
 
         Log::info('Completed overdue payment check', ['count' => $overdueInstallments->count()]);
@@ -234,95 +243,52 @@ class PaymentService
     }
 
     /**
-     * Process a single overdue installment
-     * Mark as overdue and apply notifications
+     * Process a single overdue installment: mark it overdue, and send
+     * whichever of the warning (week 1) / reminder (week 2) / late-fee
+     * (week 3) / weekly-after-that emails are newly due.
+     *
+     * There's no dedicated "reminder_sent" or "weekly_reminder_N" column on
+     * payment_installments (only weeks_overdue, warning_sent and
+     * late_fee_applied actually exist — see the create-table migration) —
+     * an earlier version of this tried to set those anyway, which either
+     * silently no-opped (mass-assignment drops unknown keys) or would have
+     * thrown on save() (direct property assignment doesn't). Fixed here by
+     * comparing the previously-persisted weeks_overdue against the newly
+     * computed one: the grace-period reminder and every weekly reminder
+     * after the late fee each fire exactly once, on the run where
+     * weeks_overdue first reaches that value — no extra column needed, and
+     * it stays correct even if this job runs more than once in a day.
      */
-    private function processOverdueInstallment($installment): void
+    private function processOverdueInstallment($installment, ?Carbon $today = null): void
     {
-        $today = Carbon::now();
+        $today ??= Carbon::now()->startOfDay();
         $dueDate = Carbon::parse($installment->due_date);
-        $weeksOverdue = floor($dueDate->diffInWeeks($today));
+        $previousWeeksOverdue = (int) ($installment->weeks_overdue ?? 0);
+        $weeksOverdue = (int) floor($dueDate->diffInDays($today) / 7);
 
-        // Mark as overdue if not already
-        if ($installment->status !== 'overdue') {
-            $installment->update(['status' => 'overdue']);
-        }
+        $installment->status = 'overdue';
+        $installment->weeks_overdue = $weeksOverdue;
 
-        // Apply notification logic based on weeks overdue
         if ($weeksOverdue >= self::WARNING_WEEKS && !$installment->warning_sent) {
             self::sendWarningEmail($installment);
-            $installment->update(['warning_sent' => true]);
-        }
-
-        if ($weeksOverdue >= self::GRACE_PERIOD_WEEKS && !$installment->reminder_sent) {
-            self::sendReminderEmail($installment);
-            $installment->update(['reminder_sent' => true]);
+            $installment->warning_sent = true;
         }
 
         if ($weeksOverdue >= self::LATE_FEE_WEEKS && !$installment->late_fee_applied) {
-            self::applyLateFee($installment);
+            $installment->late_fee = self::LATE_FEE_AMOUNT;
+            $installment->late_fee_applied = true;
             self::sendLateFeeEmail($installment);
-            $installment->update(['late_fee_applied' => true]);
         }
 
-        if ($weeksOverdue > self::LATE_FEE_WEEKS) {
-            self::sendWeeklyReminderEmail($installment, $weeksOverdue);
+        if ($weeksOverdue !== $previousWeeksOverdue) {
+            if ($weeksOverdue === self::GRACE_PERIOD_WEEKS) {
+                self::sendReminderEmail($installment);
+            } elseif ($weeksOverdue > self::LATE_FEE_WEEKS) {
+                self::sendWeeklyReminderEmail($installment, $weeksOverdue);
+            }
         }
 
         $installment->save();
-    }
-
-    /**
-     * Check and update overdue installments
-     * Apply late fees and send notifications (NO portal blocking - email only)
-     */
-    public static function checkOverdueInstallments(): void
-    {
-        $overdueInstallments = PaymentInstallment::overdue()
-            ->where('status', '!=', 'paid')
-            ->with(['enrollment', 'user'])
-            ->get();
-
-        foreach ($overdueInstallments as $installment) {
-            $weeksOverdue = $installment->due_date->diffInWeeks(now());
-            
-            if ($weeksOverdue !== $installment->weeks_overdue) {
-                $installment->weeks_overdue = $weeksOverdue;
-
-                // Week 1 (7 days overdue): Send first warning email
-                if ($weeksOverdue >= self::WARNING_WEEKS && !$installment->warning_sent) {
-                    $installment->warning_sent = true;
-                    self::sendWarningEmail($installment);
-                }
-
-                // Week 2 (14 days overdue): Send reminder email (grace period - no late fee yet)
-                if ($weeksOverdue >= self::GRACE_PERIOD_WEEKS && !$installment->reminder_sent) {
-                    $installment->reminder_sent = true;
-                    self::sendReminderEmail($installment);
-                }
-
-                // Week 3 (21 days overdue): Apply late fee
-                if ($weeksOverdue >= self::LATE_FEE_WEEKS && !$installment->late_fee_applied) {
-                    $installment->late_fee = self::LATE_FEE_AMOUNT;
-                    $installment->late_fee_applied = true;
-                    self::sendLateFeeEmail($installment);
-                }
-
-                // After week 3: Continue sending weekly reminders (NO portal blocking)
-                if ($weeksOverdue > self::LATE_FEE_WEEKS) {
-                    // Send weekly reminder every week after late fee applied
-                    $reminderWeek = $weeksOverdue - self::LATE_FEE_WEEKS;
-                    $reminderKey = 'weekly_reminder_' . $reminderWeek;
-                    
-                    if (!isset($installment->$reminderKey) || !$installment->$reminderKey) {
-                        $installment->$reminderKey = true;
-                        self::sendWeeklyReminderEmail($installment, $weeksOverdue);
-                    }
-                }
-
-                $installment->save();
-            }
-        }
     }
 
     /**

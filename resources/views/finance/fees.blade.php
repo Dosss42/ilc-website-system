@@ -394,6 +394,51 @@
     </div>
 </div>
 
+{{-- Final Payable Total by Option & Grade --}}
+<div class="content-card mb-4">
+    <div class="content-card-header">
+        <h6><i class="bi bi-receipt me-2"></i>Payment Plan Summary (Options A–D)</h6>
+        <small class="text-muted">What a student on each plan actually pays, by grade — updates automatically after you save</small>
+    </div>
+    <div style="overflow-x:auto; padding:0 20px 20px;">
+        <table class="dash-table" style="margin-top:16px;">
+            <thead>
+                <tr>
+                    <th>Grade Level</th>
+                    <th>Option A<br><small class="text-muted fw-normal">Cash Basis</small></th>
+                    <th>Option B<br><small class="text-muted fw-normal">Monthly, All Levels</small></th>
+                    <th>Option C<br><small class="text-muted fw-normal">Monthly, Grade 1–6</small></th>
+                    <th>Option D<br><small class="text-muted fw-normal">Monthly, Nursery/Kinder</small></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($optionTotals as $grade => $options)
+                <tr>
+                    <td style="font-weight:600; text-transform:capitalize;">
+                        {{ str_replace(['grade', 'nursery', 'kindergarten', 'kinder'], ['Grade ', 'Nursery', 'Kindergarten', 'Kinder'], $grade) }}
+                    </td>
+                    @foreach(['A', 'B', 'C', 'D'] as $opt)
+                    <td>
+                        @if(isset($options[$opt]))
+                            @php $calc = $options[$opt]; @endphp
+                            <div style="font-weight:700; color:var(--blue);">₱{{ number_format($calc['total_due'], 2) }}</div>
+                            @if($opt === 'A')
+                                <div style="font-size:11px; color:#888;">₱{{ number_format($calc['base_total'], 2) }} &minus; ₱{{ number_format($calc['discount'], 2) }} discount</div>
+                            @else
+                                <div style="font-size:11px; color:#888;">₱{{ number_format($calc['downpayment'], 2) }} DP + ₱{{ number_format($calc['monthly_amount'], 2) }}/mo &times; {{ $calc['duration_months'] }}</div>
+                            @endif
+                        @else
+                            <span class="text-muted">&mdash;</span>
+                        @endif
+                    </td>
+                    @endforeach
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+
 {{-- Save Confirmation Modal --}}
 <div class="modal fade" id="saveConfirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" style="max-width:440px;">

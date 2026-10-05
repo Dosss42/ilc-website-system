@@ -519,7 +519,31 @@ class DashboardController extends Controller
             $feeBreakdowns[$grade] = $this->calculateFeeBreakdown($grade, $feeSettings);
         }
 
-        return view('finance.fees', compact('feeSettings', 'feeBreakdowns'));
+        // Final payable total per (grade, option) — what a student on that
+        // plan actually gets charged, not just the pre-discount base from
+        // $feeBreakdowns above. Goes through the same FeeCalculator every
+        // real enrollment uses, so this can never drift from what's
+        // actually charged. Option C is Grade 1-6 only, Option D is
+        // Nursery/Kinder only — those cells are simply omitted per grade
+        // rather than showing a misleading ₱0.
+        $optionsByGrade = [
+            'nursery'      => ['A', 'B', 'D'],
+            'kindergarten' => ['A', 'B', 'D'],
+            'grade1'       => ['A', 'B', 'C'],
+            'grade2'       => ['A', 'B', 'C'],
+            'grade3'       => ['A', 'B', 'C'],
+            'grade4'       => ['A', 'B', 'C'],
+            'grade5'       => ['A', 'B', 'C'],
+            'grade6'       => ['A', 'B', 'C'],
+        ];
+        $optionTotals = [];
+        foreach ($gradeLevels as $grade) {
+            foreach ($optionsByGrade[$grade] as $option) {
+                $optionTotals[$grade][$option] = \App\Services\FeeCalculator::calculate($grade, $option);
+            }
+        }
+
+        return view('finance.fees', compact('feeSettings', 'feeBreakdowns', 'optionTotals', 'optionsByGrade'));
     }
 
     /**
@@ -590,14 +614,17 @@ class DashboardController extends Controller
             if ($feeSettings) {
                 $feeSettings->update($validated);
             } else {
-                FeeSetting::create($validated);
+                $feeSettings = FeeSetting::create($validated);
             }
 
             // Dual-write (DATABASE_NORMALIZATION_PLAN.md Phase 2): keep
             // fee_components in sync so FeeCalculator — which every real fee
             // calculation now reads from — picks up this change immediately,
-            // not just the legacy fee_settings columns.
-            $this->syncFeeComponents($validated);
+            // not just the legacy fee_settings columns. Shared with
+            // FeeSettingController::update() (the Admin-dashboard equivalent
+            // of this same "Fee Settings" feature) so both can never drift
+            // out of sync with each other again.
+            \App\Services\FeeCalculator::syncComponents($feeSettings->fresh()->toArray());
             \App\Services\FeeCalculator::forgetCache();
 
             if ($request->wantsJson() || $request->ajax()) {
@@ -616,65 +643,6 @@ class DashboardController extends Controller
             }
             return redirect()->back()->with('error', 'Failed to save fee settings: ' . $e->getMessage())->withInput();
         }
-    }
-
-    /**
-     * Mirror a fee_settings update into fee_components (Phase 2 dual-write).
-     * Same column-to-row mapping the one-time backfill migration used —
-     * kept as the single place this mapping is defined so both stay
-     * consistent if the mapping ever needs to change.
-     */
-    private function syncFeeComponents(array $v): void
-    {
-        $set = function (?string $option, ?string $gradeLevel, string $feeType, $amount) {
-            \Illuminate\Support\Facades\DB::table('fee_components')->updateOrInsert(
-                ['option' => $option, 'grade_level' => $gradeLevel, 'fee_type' => $feeType],
-                ['amount' => (float) $amount, 'updated_at' => now()]
-            );
-        };
-
-        $set(null, null, 'tuition', $v['tuition']);
-        $set(null, null, 'misc', $v['misc']);
-        $set(null, null, 'insurance', $v['insurance']);
-        $set(null, null, 'electric', $v['electric']);
-
-        $set(null, 'nursery', 'books', $v['books_nursery']);
-        $set(null, 'kindergarten', 'books', $v['books_nursery']);
-        $set(null, 'grade1', 'books', $v['books_grade1']);
-        $set(null, 'grade2', 'books', $v['books_grade1']);
-        $set(null, 'grade3', 'books', $v['books_grade3']);
-        $set(null, 'grade4', 'books', $v['books_grade4']);
-        $set(null, 'grade5', 'books', $v['books_grade4']);
-        $set(null, 'grade6', 'books', $v['books_grade4']);
-
-        $set('A', null, 'discount', $v['option_a_discount']);
-
-        $set('B', 'nursery', 'downpayment', $v['optb_dp_nursery']);
-        $set('B', 'kindergarten', 'downpayment', $v['optb_dp_kinder']);
-        $set('B', 'grade1', 'downpayment', $v['optb_dp_grade1']);
-        $set('B', 'grade2', 'downpayment', $v['optb_dp_grade1']);
-        $set('B', 'grade3', 'downpayment', $v['optb_dp_grade3']);
-        $set('B', 'grade4', 'downpayment', $v['optb_dp_grade4']);
-        $set('B', 'grade5', 'downpayment', $v['optb_dp_grade4']);
-        $set('B', 'grade6', 'downpayment', $v['optb_dp_grade4']);
-        $set('B', null, 'monthly_tuition', $v['optb_monthly_tuition']);
-        $set('B', null, 'monthly_electric', $v['optb_monthly_electric']);
-
-        $set('C', 'grade1', 'downpayment', $v['optc_dp_grade1']);
-        $set('C', 'grade2', 'downpayment', $v['optc_dp_grade1']);
-        $set('C', 'grade3', 'downpayment', $v['optc_dp_grade3']);
-        $set('C', 'grade4', 'downpayment', $v['optc_dp_grade4']);
-        $set('C', 'grade5', 'downpayment', $v['optc_dp_grade4']);
-        $set('C', 'grade6', 'downpayment', $v['optc_dp_grade4']);
-        $set('C', null, 'monthly_tuition', $v['optc_monthly_tuition']);
-        $set('C', null, 'monthly_misc', $v['optc_monthly_misc']);
-        $set('C', null, 'monthly_electric', $v['optc_monthly_electric']);
-
-        $set('D', 'nursery', 'downpayment', $v['optd_dp_nursery']);
-        $set('D', 'kindergarten', 'downpayment', $v['optd_dp_kinder']);
-        $set('D', null, 'monthly_tuition', $v['optd_monthly_tuition']);
-        $set('D', null, 'monthly_misc', $v['optd_monthly_misc']);
-        $set('D', null, 'monthly_electric', $v['optd_monthly_electric']);
     }
 
     /**
@@ -1557,6 +1525,13 @@ class DashboardController extends Controller
      */
     public function paymentDetails($id)
     {
+        // This view is reachable from two different logged-in contexts —
+        // the Finance portal's own guard, and Admin/Super Admin viewing it
+        // via /admin/payments/{id} (the 'admin' middleware, 'web' guard).
+        // The sidebar/breadcrumb need to know which one so they don't link
+        // to finance.* routes an admin session can never satisfy.
+        $viewerContext = Auth::guard('finance')->check() ? 'finance' : 'admin';
+
         $document = \App\Models\StudentDocument::where('id', $id)
             ->where('document_type', 'payment_screenshot')
             ->first();
@@ -1565,7 +1540,7 @@ class DashboardController extends Controller
             $document->load(['enrollment', 'user', 'reviewedBy']);
             $reviewerName = $document->reviewedBy->name ?? 'System';
             $reviewedAt   = $document->reviewed_at;
-            return view('finance.payment-details', compact('document', 'reviewerName', 'reviewedAt'));
+            return view('finance.payment-details', compact('document', 'reviewerName', 'reviewedAt', 'viewerContext'));
         }
 
         $payment = PaymentTransaction::find($id);
@@ -1577,7 +1552,7 @@ class DashboardController extends Controller
         $reviewerName = $payment->processedBy->name ?? 'System';
         $reviewedAt   = $payment->processed_at;
 
-        return view('finance.payment-details', compact('document', 'reviewerName', 'reviewedAt'));
+        return view('finance.payment-details', compact('document', 'reviewerName', 'reviewedAt', 'viewerContext'));
     }
 
     /**

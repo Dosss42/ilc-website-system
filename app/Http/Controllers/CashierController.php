@@ -621,6 +621,30 @@ class CashierController extends Controller
             return response()->json(['success' => false, 'message' => 'Xendit API key is not configured.'], 500);
         }
 
+        // Guard against duplicate pending links — clicking "Generate Payment
+        // Link" twice (or leaving one abandoned and generating another) used
+        // to create a second, unrelated PaymentTransaction row every time.
+        // Xendit invoices are created with invoice_duration=86400 (24h), so
+        // an existing 'pending' row younger than that is still a live link —
+        // reuse it instead of minting a new one.
+        $existingPending = PaymentTransaction::where('enrollment_id', $request->enrollment_id)
+            ->where('payment_type', 'online')
+            ->where('status', 'pending')
+            ->whereNotNull('xendit_invoice_url')
+            ->where('created_at', '>=', now()->subSeconds(86400))
+            ->latest()
+            ->first();
+
+        if ($existingPending) {
+            return response()->json([
+                'success'     => true,
+                'invoice_url' => $existingPending->xendit_invoice_url,
+                'invoice_id'  => $existingPending->xendit_invoice_id,
+                'reused'      => true,
+                'message'     => 'A payment link for this enrollment is already pending — reusing it instead of creating a duplicate.',
+            ]);
+        }
+
         $externalId = 'ILC-' . $request->enrollment_id . '-' . time();
 
         try {

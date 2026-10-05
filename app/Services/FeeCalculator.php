@@ -156,10 +156,80 @@ class FeeCalculator
     }
 
     /** Clear the in-request cache — call after writing to fee_components
-     * (e.g. right after the dual-write in Finance\DashboardController::updateFees())
-     * so a subsequent calculation in the same request sees fresh values. */
+     * (e.g. right after syncComponents()) so a subsequent calculation in the
+     * same request sees fresh values. */
     public static function forgetCache(): void
     {
         self::$cache = null;
+    }
+
+    /**
+     * Dual-write fee_components from a fee_settings row (DATABASE_NORMALIZATION_PLAN.md
+     * Phase 2) — the single place this mapping is defined, called by every
+     * controller that can update fee_settings. $v should be the FULL current
+     * state of the FeeSetting row (e.g. $fee->fresh()->toArray()), not just
+     * whatever subset of fields a particular request happened to submit, so
+     * a partial update never leaves fee_components half-written.
+     *
+     * Before this was shared, two separate controllers each wrote
+     * fee_settings for the exact same "Fee Settings" feature (one reachable
+     * from the Admin dashboard, one from the Finance portal) but only one of
+     * them remembered to also sync fee_components. Since FeeCalculator —
+     * every real enrollment's fee computation — reads fee_components, a fee
+     * edit made through the other controller silently never took effect:
+     * Finance's own settings page showed the new number, but a newly
+     * enrolling student was still charged the old one.
+     */
+    public static function syncComponents(array $v): void
+    {
+        $set = function (?string $option, ?string $gradeLevel, string $feeType, $amount) {
+            DB::table('fee_components')->updateOrInsert(
+                ['option' => $option, 'grade_level' => $gradeLevel, 'fee_type' => $feeType],
+                ['amount' => (float) ($amount ?? 0), 'updated_at' => now()]
+            );
+        };
+
+        $set(null, null, 'tuition', $v['tuition'] ?? 0);
+        $set(null, null, 'misc', $v['misc'] ?? 0);
+        $set(null, null, 'insurance', $v['insurance'] ?? 0);
+        $set(null, null, 'electric', $v['electric'] ?? 0);
+
+        $set(null, 'nursery', 'books', $v['books_nursery'] ?? 0);
+        $set(null, 'kindergarten', 'books', $v['books_nursery'] ?? 0);
+        $set(null, 'grade1', 'books', $v['books_grade1'] ?? 0);
+        $set(null, 'grade2', 'books', $v['books_grade1'] ?? 0);
+        $set(null, 'grade3', 'books', $v['books_grade3'] ?? 0);
+        $set(null, 'grade4', 'books', $v['books_grade4'] ?? 0);
+        $set(null, 'grade5', 'books', $v['books_grade4'] ?? 0);
+        $set(null, 'grade6', 'books', $v['books_grade4'] ?? 0);
+
+        $set('A', null, 'discount', $v['option_a_discount'] ?? 0);
+
+        $set('B', 'nursery', 'downpayment', $v['optb_dp_nursery'] ?? 0);
+        $set('B', 'kindergarten', 'downpayment', $v['optb_dp_kinder'] ?? 0);
+        $set('B', 'grade1', 'downpayment', $v['optb_dp_grade1'] ?? 0);
+        $set('B', 'grade2', 'downpayment', $v['optb_dp_grade1'] ?? 0);
+        $set('B', 'grade3', 'downpayment', $v['optb_dp_grade3'] ?? 0);
+        $set('B', 'grade4', 'downpayment', $v['optb_dp_grade4'] ?? 0);
+        $set('B', 'grade5', 'downpayment', $v['optb_dp_grade4'] ?? 0);
+        $set('B', 'grade6', 'downpayment', $v['optb_dp_grade4'] ?? 0);
+        $set('B', null, 'monthly_tuition', $v['optb_monthly_tuition'] ?? 0);
+        $set('B', null, 'monthly_electric', $v['optb_monthly_electric'] ?? 0);
+
+        $set('C', 'grade1', 'downpayment', $v['optc_dp_grade1'] ?? 0);
+        $set('C', 'grade2', 'downpayment', $v['optc_dp_grade1'] ?? 0);
+        $set('C', 'grade3', 'downpayment', $v['optc_dp_grade3'] ?? 0);
+        $set('C', 'grade4', 'downpayment', $v['optc_dp_grade4'] ?? 0);
+        $set('C', 'grade5', 'downpayment', $v['optc_dp_grade4'] ?? 0);
+        $set('C', 'grade6', 'downpayment', $v['optc_dp_grade4'] ?? 0);
+        $set('C', null, 'monthly_tuition', $v['optc_monthly_tuition'] ?? 0);
+        $set('C', null, 'monthly_misc', $v['optc_monthly_misc'] ?? 0);
+        $set('C', null, 'monthly_electric', $v['optc_monthly_electric'] ?? 0);
+
+        $set('D', 'nursery', 'downpayment', $v['optd_dp_nursery'] ?? 0);
+        $set('D', 'kindergarten', 'downpayment', $v['optd_dp_kinder'] ?? 0);
+        $set('D', null, 'monthly_tuition', $v['optd_monthly_tuition'] ?? 0);
+        $set('D', null, 'monthly_misc', $v['optd_monthly_misc'] ?? 0);
+        $set('D', null, 'monthly_electric', $v['optd_monthly_electric'] ?? 0);
     }
 }

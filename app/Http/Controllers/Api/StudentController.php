@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Announcement;
 use App\Models\Grade;
 use App\Models\Schedule;
 use App\Models\Section;
@@ -288,68 +287,4 @@ class StudentController extends Controller
         ]);
     }
 
-    /**
-     * Get student announcements
-     */
-    public function getAnnouncements()
-    {
-        $user = Auth::user();
-
-        $enrollment = $user->latestEnrollment;
-        // section_student trusted first — see User::getCurrentSectionAttribute()
-        $section = $user->current_section;
-
-        if (!$section && $enrollment && $enrollment->section) {
-            $section = Section::where('name', $enrollment->section)
-                ->where('is_active', true)->first();
-        }
-
-        // Get announcements for all, or for student's section
-        $announcements = Announcement::where('is_active', true)
-            ->where(function ($q) use ($section) {
-                $q->where('audience', 'all')
-                  ->orWhere('audience', 'parents')
-                  ->when($section, fn($q2) => $q2->orWhere(function ($q3) use ($section) {
-                      $q3->where('audience', 'section')->where('section_id', $section->id);
-                  }));
-            })
-            ->with('teacher:id,name')
-            ->orderBy('created_at', 'desc')
-            ->limit(20)
-            ->get()
-            ->map(function ($a) {
-                return [
-                    'id' => $a->id,
-                    'title' => $a->title,
-                    'content' => $a->content,
-                    'type' => ucfirst($a->category),
-                    'date' => $a->created_at->format('M d, Y'),
-                    'author' => $a->teacher->name ?? 'Admin',
-                ];
-            });
-
-        return response()->json([
-            'success' => true,
-            'data' => $announcements
-        ]);
-    }
-
-    public function getPortalData()
-    {
-        $user = Auth::user();
-        $enrollment = $user->latestEnrollment;
-
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'user' => $user->only(['id', 'name', 'email']),
-                'enrollment' => $enrollment ? $enrollment->only(['id', 'grade_level', 'section', 'status', 'payment_status']) : null,
-            ]
-        ]);
-    }
-
-    public function getDashboardStats()
-    {
-        return response()->json(['success' => true, 'data' => []]);
-    }
 }

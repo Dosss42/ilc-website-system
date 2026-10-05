@@ -738,6 +738,41 @@
             </div>
         </div>
     </div>
+    <?php if(!$jptPaid && $justPaidTransaction->xendit_invoice_id): ?>
+    <script>
+        // This receipt card claims "this updates automatically" while still
+        // pending, but nothing was ever polling it — the only poll loop in
+        // this file lives in the ORIGINAL tab (pollXenditStatus(), started
+        // before window.open() sends the student to Xendit's checkout), not
+        // in this tab, which is the one Xendit's own success_redirect_url
+        // actually returns the student to. A transaction could sit shown as
+        // "Payment Processing" here forever — even though Xendit's own API
+        // already reports it paid — until the student happened to reload.
+        // Poll the same reconciliation endpoint directly from here instead.
+        (function() {
+            let attempts = 0;
+            const maxAttempts = 60; // 60 * 5s = 5 minutes
+            const tick = () => {
+                attempts++;
+                fetch('<?php echo e(route("student.payment.xendit-status")); ?>?invoice_id=<?php echo e(urlencode($justPaidTransaction->xendit_invoice_id)); ?>', {
+                    headers: { 'Accept': 'application/json' }
+                })
+                .then(r => r.json())
+                .then(d => {
+                    if (d.status === 'completed') {
+                        clearInterval(timer);
+                        window.location.reload();
+                    } else if (d.status === 'expired' || d.status === 'failed' || attempts >= maxAttempts) {
+                        clearInterval(timer);
+                    }
+                })
+                .catch(() => { /* transient network hiccup — just try again next tick */ });
+            };
+            tick();
+            const timer = setInterval(tick, 5000);
+        })();
+    </script>
+    <?php endif; ?>
     <?php endif; ?>
 
     
@@ -4455,25 +4490,12 @@
         return null;
     }
 
-    async function calculatePaymentBreakdown(option) {
-        let feeData = await fetchFeeCalculation(option);
-        
-        if (!feeData) {
-            console.log('Using fallback fee calculation');
-            feeData = calculateFeeFallback(option);
-        }
-        
-        if (!feeData) {
-            alert('Failed to calculate fees. Please try again.');
-            return;
-        }
-        
-        // Store for auto-fill in selectPaymentMethod
-        feeDataCache = feeData;
-        
+    // Pure HTML builder — no DOM/form side effects — shared by the active
+    // plan-selection flow (calculatePaymentBreakdown, below) and the
+    // read-only "already chosen" / "compare other plans" displays.
+    function buildBreakdownHTML(feeData, option) {
         const c = feeData.components || feeData;
-        let breakdownHTML = '';
-        
+
         const feeComponentsHTML = `
             <div style="margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid #e0e0e0;">
                 <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
@@ -4498,7 +4520,7 @@
         `;
 
         if (option === 'A') {
-            breakdownHTML = feeComponentsHTML + `
+            return feeComponentsHTML + `
                 <div style="display:flex; justify-content:space-between; color:#dc3545; margin-bottom:12px;">
                     <span>Discount (20%):</span><span>-₱${(feeData.discount || 0).toLocaleString()}</span>
                 </div>
@@ -4508,42 +4530,135 @@
                     </div>
                 </div>
             `;
+        }
+
+        return feeComponentsHTML + `
+            <div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid #e0e0e0;">
+                <div style="font-weight:600; margin-bottom:4px;">Downpayment Breakdown:</div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+                    <span>Books:</span><span>₱${(c.books || 0).toLocaleString()}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+                    <span>Insurance:</span><span>₱${(c.insurance || 0).toLocaleString()}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+                    <span>Misc/Reg/PTA:</span><span>₱${(c.misc || 0).toLocaleString()}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-weight:700; margin-top:4px;">
+                    <span>Total Downpayment:</span><span>₱${(feeData.downpayment || 0).toLocaleString()}</span>
+                </div>
+            </div>
+            <div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                    <span>Monthly (${feeData.months || 9} months, July-March):</span>
+                    <span>₱${(feeData.monthly_payment || 0).toLocaleString()} × ${feeData.months || 9} = ₱${((feeData.monthly_payment || 0) * (feeData.months || 9)).toLocaleString()}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; color:#28a745; font-weight:700; font-size:15px;">
+                    <span>Total:</span><span>₱${(feeData.total_payable || 0).toLocaleString()}</span>
+                </div>
+            </div>
+        `;
+    }
+
+    async function calculatePaymentBreakdown(option) {
+        let feeData = await fetchFeeCalculation(option);
+
+        if (!feeData) {
+            console.log('Using fallback fee calculation');
+            feeData = calculateFeeFallback(option);
+        }
+
+        if (!feeData) {
+            alert('Failed to calculate fees. Please try again.');
+            return;
+        }
+
+        // Store for auto-fill in selectPaymentMethod
+        feeDataCache = feeData;
+
+        if (option === 'A') {
             document.getElementById('downpayment-amount').value = feeData.total_payable || 0;
             document.getElementById('monthly-amount').value = 0;
         } else {
-            breakdownHTML = feeComponentsHTML + `
-                <div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid #e0e0e0;">
-                    <div style="font-weight:600; margin-bottom:4px;">Downpayment Breakdown:</div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
-                        <span>Books:</span><span>₱${(c.books || 0).toLocaleString()}</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
-                        <span>Insurance:</span><span>₱${(c.insurance || 0).toLocaleString()}</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
-                        <span>Misc/Reg/PTA:</span><span>₱${(c.misc || 0).toLocaleString()}</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; font-weight:700; margin-top:4px;">
-                        <span>Total Downpayment:</span><span>₱${(feeData.downpayment || 0).toLocaleString()}</span>
-                    </div>
-                </div>
-                <div>
-                    <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                        <span>Monthly (${feeData.months || 9} months, July-March):</span>
-                        <span>₱${(feeData.monthly_payment || 0).toLocaleString()} × ${feeData.months || 9} = ₱${((feeData.monthly_payment || 0) * (feeData.months || 9)).toLocaleString()}</span>
-                    </div>
-                    <div style="display:flex; justify-content:space-between; color:#28a745; font-weight:700; font-size:15px;">
-                        <span>Total:</span><span>₱${(feeData.total_payable || 0).toLocaleString()}</span>
-                    </div>
-                </div>
-            `;
             document.getElementById('downpayment-amount').value = feeData.downpayment || 0;
             document.getElementById('monthly-amount').value = feeData.monthly_payment || 0;
         }
 
         document.getElementById('total-amount').value = feeData.total_payable || 0;
-        document.getElementById('breakdown-content').innerHTML = breakdownHTML;
+        document.getElementById('breakdown-content').innerHTML = buildBreakdownHTML(feeData, option);
         document.getElementById('payment-breakdown-display').style.display = 'block';
+    }
+
+    const GRADE_LABEL_MAP = {
+        nursery: 'Nursery', kindergarten: 'Kindergarten',
+        grade1: 'Grade 1', grade2: 'Grade 2', grade3: 'Grade 3',
+        grade4: 'Grade 4', grade5: 'Grade 5', grade6: 'Grade 6',
+    };
+    const OPTION_LABEL_MAP = {
+        A: 'Cash Basis', B: 'Monthly, All Levels',
+        C: 'Monthly, Grade 1–6', D: 'Monthly, Nursery/Kinder',
+    };
+
+    // Read-only breakdown for a student's already-locked-in plan — same
+    // numbers/markup as the selection-flow breakdown, but never touches the
+    // hidden payment form fields (those are already set correctly from
+    // enrollmentData elsewhere; this is purely informational).
+    async function renderReadOnlyBreakdown(option, containerId) {
+        const el = document.getElementById(containerId);
+        if (!el) return;
+        const feeData = await fetchFeeCalculation(option) || calculateFeeFallback(option);
+        if (!feeData) return;
+        el.innerHTML = buildBreakdownHTML(feeData, option);
+    }
+
+    let _comparePlansLoaded = false;
+    async function toggleComparePlans() {
+        const content = document.getElementById('compare-plans-content');
+        const btn = document.getElementById('compare-plans-toggle');
+        if (!content || !btn) return;
+
+        const gradeLevel = studentGradeLevel.toLowerCase().replace(/\s/g, '');
+        const gradeLabel = GRADE_LABEL_MAP[gradeLevel] || studentGradeLevel;
+
+        const isOpen = content.style.display !== 'none';
+        if (isOpen) {
+            content.style.display = 'none';
+            btn.innerHTML = '<i class="bi bi-list-ul me-1"></i>Compare other plans for ' + gradeLabel;
+            return;
+        }
+        content.style.display = 'block';
+        btn.innerHTML = '<i class="bi bi-chevron-up me-1"></i>Hide comparison';
+        if (_comparePlansLoaded) return;
+        _comparePlansLoaded = true;
+
+        content.innerHTML = '<div style="text-align:center;padding:16px;color:#888;"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</div>';
+
+        const isElementary = ['grade1', 'grade2', 'grade3', 'grade4', 'grade5', 'grade6'].includes(gradeLevel);
+        const isPreElementary = ['nursery', 'kindergarten'].includes(gradeLevel);
+        const candidateOptions = ['A', 'B'];
+        if (isElementary) candidateOptions.push('C');
+        if (isPreElementary) candidateOptions.push('D');
+        const otherOptions = candidateOptions.filter(o => o !== enrollmentData.payment_option);
+
+        const results = await Promise.all(otherOptions.map(o => fetchFeeCalculation(o)));
+
+        let html = '<div class="row g-3">';
+        otherOptions.forEach((opt, i) => {
+            const feeData = results[i];
+            if (!feeData) return;
+            html += `
+                <div class="col-md-6">
+                    <div style="background:#f8fafc;border:1px solid #e0e0e0;border-radius:10px;padding:14px;">
+                        <div style="font-weight:700;color:#333;margin-bottom:8px;">Option ${opt} &mdash; ${OPTION_LABEL_MAP[opt]}</div>
+                        <div style="font-size:13px;color:#555;">${buildBreakdownHTML(feeData, opt)}</div>
+                    </div>
+                </div>`;
+        });
+        html += '</div>';
+        if (!otherOptions.length) {
+            html = '<div style="color:#888;font-size:13px;">No other plans are available for this grade level.</div>';
+        }
+        content.innerHTML = html;
     }
 
     function updatePaymentOptionsForGrade() {
@@ -4969,10 +5084,15 @@
                 if (card) card.closest('.col-md-6, .col-lg-3').style.display = 'none';
             });
             
-            // Hide the "Select your payment plan" text
+            // Hide the "Choose your payment plan" label — this used to search
+            // for the string "Select your payment plan", which never matches
+            // the actual text ("Choose your payment plan"), so the label was
+            // left stranded with nothing under it (the option cards above
+            // are correctly hidden) once a student's plan was already locked
+            // in — looking exactly like a broken/empty payment section.
             const step1Texts = document.querySelectorAll('#section-payment p');
             step1Texts.forEach(p => {
-                if (p.textContent.includes('Select your payment plan')) {
+                if (p.textContent.includes('Choose your payment plan')) {
                     p.style.display = 'none';
                 }
             });
@@ -4982,13 +5102,57 @@
             document.getElementById('pay-button-container').style.display = 'none';
             
             const downpaymentPaid = enrollmentData.payment_amount >= enrollmentData.downpayment_amount;
-            
+            const lockedPlanGradeLabel = GRADE_LABEL_MAP[studentGradeLevel.toLowerCase().replace(/\s/g, '')] || studentGradeLevel;
+            const comparePlansTrailerHTML = `
+                <div style="margin-top:12px;">
+                    <button type="button" id="compare-plans-toggle" onclick="toggleComparePlans()" style="background:none;border:1px solid #90caf9;color:#1565c0;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;">
+                        <i class="bi bi-list-ul me-1"></i>Compare other plans for ${lockedPlanGradeLabel}
+                    </button>
+                    <div id="compare-plans-content" style="display:none;margin-top:10px;"></div>
+                </div>
+            `;
+
             if (enrollmentData.payment_option === 'A') {
-                // Full payment — pre-fill amount and go directly to step 2 (method selection)
+                // Full payment — show the same "Payment Plan" confirmation card
+                // the installment options (B/C/D) already get, so every plan
+                // looks consistent instead of only installment students
+                // seeing what they're locked into.
+                const makePaymentCard = document.querySelector('#section-payment .content-card');
+                if (makePaymentCard && !document.getElementById('installment-notice')) {
+                    const totalFee = enrollmentData.total_fee || 0;
+                    const noticeHTML = `
+                        <div id="installment-notice" class="alert alert-info mb-4" style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); border: 1px solid #64b5f6; border-radius: 10px; padding: 20px;">
+                            <div style="display: flex; align-items: flex-start; gap: 16px;">
+                                <i class="bi bi-info-circle-fill" style="font-size: 32px; color: #1976d2; flex-shrink: 0;"></i>
+                                <div style="flex: 1;">
+                                    <h5 style="font-weight: 700; color: #1565c0; margin-bottom: 10px;">
+                                        <i class="bi bi-calendar-check me-2"></i>Payment Plan: Option A (Cash Basis)
+                                    </h5>
+                                    <div style="background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
+                                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                            <span style="color: #666;">Total Fee (20% cash discount already applied):</span>
+                                            <span style="font-weight: 700; color: #e65100; font-size: 18px;">₱${totalFee.toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
+                                        </div>
+                                        <div style="font-size: 12px; color: #888; margin-top: 8px;">
+                                            <i class="bi bi-info-circle me-1"></i>Pay the full amount in one payment to complete your enrollment.
+                                        </div>
+                                    </div>
+                                    <div id="locked-plan-breakdown" style="background:#fff;border-radius:8px;padding:16px;margin-bottom:4px;font-size:13px;">
+                                        <div style="text-align:center;color:#888;padding:8px;"><span class="spinner-border spinner-border-sm me-2"></span>Loading breakdown…</div>
+                                    </div>
+                                    ${comparePlansTrailerHTML}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    makePaymentCard.insertAdjacentHTML('afterbegin', noticeHTML);
+                    renderReadOnlyBreakdown('A', 'locked-plan-breakdown');
+                }
+                // Pre-fill amount and go directly to step 2 (method selection)
                 const amountInput = document.querySelector('#paymentForm input[name="amount"]');
                 if (amountInput) amountInput.value = (enrollmentData.total_fee || 0).toFixed(2);
-                document.getElementById('form-payment-option').value = 'A';
-                document.getElementById('form-total-amount').value = enrollmentData.total_fee || 0;
+                document.getElementById('selected-payment-option').value = 'A';
+                document.getElementById('total-amount').value = enrollmentData.total_fee || 0;
                 setPayStep(2);
             } else if (!downpaymentPaid) {
                 // Installment plan - downpayment NOT yet paid
@@ -5021,21 +5185,44 @@
                                             <i class="bi bi-info-circle me-1"></i>Pay the downpayment first, then monthly installments will follow.
                                         </div>
                                     </div>
+                                    <div id="locked-plan-breakdown" style="background:#fff;border-radius:8px;padding:16px;margin-bottom:12px;font-size:13px;">
+                                        <div style="text-align:center;color:#888;padding:8px;"><span class="spinner-border spinner-border-sm me-2"></span>Loading breakdown…</div>
+                                    </div>
                                     ${dpBtnHTML}
+                                    ${comparePlansTrailerHTML}
                                 </div>
                             </div>
                         </div>
                     `;
                     makePaymentCard.insertAdjacentHTML('afterbegin', noticeHTML);
+                    renderReadOnlyBreakdown(enrollmentData.payment_option, 'locked-plan-breakdown');
                 }
             } else {
                 // Installment plan - downpayment already paid, show monthly payment
                 const makePaymentCard = document.querySelector('#section-payment .content-card');
                 if (makePaymentCard && !document.getElementById('installment-notice')) {
                     const hasPendingPayment = paymentHistory.some(p => p.status === 'pending');
+                    // The earliest unpaid installment — paySpecificInstallment() is the
+                    // correct, currently-maintained function for opening the payment
+                    // modal (it only touches fields that still exist there, and sets
+                    // window._instInstallmentId so "Pay Online" knows which row to
+                    // generate a Xendit link for). The button here used to call
+                    // payThisInstallment(), a stale leftover from before the modal was
+                    // redesigned — it referenced six form-field ids that don't exist
+                    // in the modal's current markup, so it crashed before ever showing
+                    // the modal, and even if it hadn't, it never set
+                    // window._instInstallmentId (Xendit generation would have failed
+                    // too) and used enrollmentData.monthly_amount instead of the
+                    // installment's actual total_due (missing any late fee already
+                    // applied).
+                    const nextInstallment = (paymentInstallments || [])
+                        .filter(i => i.status === 'pending' || i.status === 'overdue')
+                        .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))[0];
                     const monthlyBtnHTML = hasPendingPayment
                         ? '<div style="background:#fff3e0; border-radius:8px; padding:12px; text-align:center; color:#e65100; font-weight:600; font-size:13px;"><i class="bi bi-hourglass-split me-1"></i>Payment pending admin approval. Please wait for confirmation.</div>'
-                        : `<button onclick="payThisInstallment(${enrollmentData.monthly_amount}, 'Monthly Installment', '${enrollmentData.next_installment_date || ''}')" class="btn btn-lg w-100" style="background: linear-gradient(135deg, #28a745, #218838); color: #fff; border: none; font-weight: 700; padding: 14px;"><i class="bi bi-credit-card me-2"></i>Pay Monthly Installment Now</button>`;
+                        : nextInstallment
+                            ? `<button onclick="paySpecificInstallment(${nextInstallment.id}, ${nextInstallment.total_due}, '${nextInstallment.month_name}', '${nextInstallment.due_date}')" class="btn btn-lg w-100" style="background: linear-gradient(135deg, #28a745, #218838); color: #fff; border: none; font-weight: 700; padding: 14px;"><i class="bi bi-credit-card me-2"></i>Pay Monthly Installment Now</button>`
+                            : '';
                     const noticeHTML = `
                         <div id="installment-notice" class="alert alert-info mb-4" style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); border: 1px solid #64b5f6; border-radius: 10px; padding: 20px;">
                             <div style="display: flex; align-items: flex-start; gap: 16px;">
@@ -5060,42 +5247,34 @@
                                             </span>
                                         </div>
                                     </div>
+                                    <div id="locked-plan-breakdown" style="background:#fff;border-radius:8px;padding:16px;margin-bottom:12px;font-size:13px;">
+                                        <div style="text-align:center;color:#888;padding:8px;"><span class="spinner-border spinner-border-sm me-2"></span>Loading breakdown…</div>
+                                    </div>
                                     ${monthlyBtnHTML}
+                                    ${comparePlansTrailerHTML}
                                 </div>
                             </div>
                         </div>
                     `;
                     makePaymentCard.insertAdjacentHTML('afterbegin', noticeHTML);
+                    renderReadOnlyBreakdown(enrollmentData.payment_option, 'locked-plan-breakdown');
+
+                    // This branch pays through the installmentPaymentModal
+                    // (paySpecificInstallment, triggered by the button just
+                    // inserted above) — the separate "Make Payment" step
+                    // wizard card further down the page is never used for
+                    // it. Left visible, it showed as an empty, apparently-
+                    // broken card (a "Select Plan" stepper with nothing
+                    // under it) once the step-1 label/cards were hidden,
+                    // with nothing telling the student the real Pay button
+                    // is in the card above. Hide the whole wizard card
+                    // instead of relying on the student to notice and scroll up.
+                    const wizardCard = document.getElementById('payStepIndicator')?.closest('.content-card');
+                    if (wizardCard) wizardCard.style.display = 'none';
                 }
             }
         }
 
-        fetch('<?php echo e(route("profile.status")); ?>')
-            .then(response => response.json())
-            .then(result => {
-                // Handle API response structure (result.data contains the actual data)
-                const data = result.data || result;
-                
-                // Update progress bar
-                document.getElementById('completionProgress').style.width = data.percentage + '%';
-                document.getElementById('completionPercentage').textContent = data.percentage + '%';
-                
-                // Update status icons
-                const statusIcons = {
-                    complete: '<i class="bi bi-check-circle-fill text-success"></i>',
-                    incomplete: '<i class="bi bi-circle text-muted"></i>'
-                };
-                
-                const completion = data.completion || {};
-                document.getElementById('personalStatus').innerHTML = completion.personal ? statusIcons.complete : statusIcons.incomplete;
-                document.getElementById('healthStatus').innerHTML = completion.health ? statusIcons.complete : statusIcons.incomplete;
-                document.getElementById('addressStatus').innerHTML = completion.address ? statusIcons.complete : statusIcons.incomplete;
-                document.getElementById('guardianStatus').innerHTML = completion.guardian ? statusIcons.complete : statusIcons.incomplete;
-                document.getElementById('schoolStatus').innerHTML = completion.school ? statusIcons.complete : statusIcons.incomplete;
-                document.getElementById('enrollmentStatus').innerHTML = completion.enrollment ? statusIcons.complete : statusIcons.incomplete;
-                document.getElementById('paymentStatus').innerHTML = completion.payment ? statusIcons.complete : statusIcons.incomplete;
-            })
-            .catch(error => console.error('Error loading completion status:', error));
     });
 
     // ── Payment Details Modal ──
@@ -5428,10 +5607,10 @@
         await calculatePaymentBreakdown(selectedPaymentOption);
 
         // Pre-set hidden form fields so they're ready when the user reaches step 3
-        document.getElementById('form-payment-option').value = enrollmentData.payment_option || 'C';
-        document.getElementById('form-downpayment-amount').value = amount;
-        document.getElementById('form-monthly-amount').value = enrollmentData.monthly_amount || 0;
-        document.getElementById('form-total-amount').value = enrollmentData.total_fee || 0;
+        document.getElementById('selected-payment-option').value = enrollmentData.payment_option || 'C';
+        document.getElementById('downpayment-amount').value = amount;
+        document.getElementById('monthly-amount').value = enrollmentData.monthly_amount || 0;
+        document.getElementById('total-amount').value = enrollmentData.total_fee || 0;
 
         // Pre-fill amount so it's ready in step 3
         const amountInput = document.querySelector('#paymentForm input[name="amount"]');
@@ -5443,51 +5622,6 @@
         // Go to step 2 so the user MUST choose a payment method before submitting
         setPayStep(2);
         document.getElementById('payStepIndicator')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-
-    // Pay a specific installment - Opens the Installment Payment Modal
-    function payThisInstallment(amount, month, dueDate) {
-        // Close payment details modal if open
-        bootstrap.Modal.getInstance(document.getElementById('paymentDetailsModal'))?.hide();
-
-        // Populate the installment payment modal
-        if (enrollmentData) {
-            document.getElementById('inst-modal-option').textContent = enrollmentData.payment_option || 'B';
-            document.getElementById('inst-modal-amount').textContent = Number(enrollmentData.monthly_amount || amount).toLocaleString('en-PH', {minimumFractionDigits: 2});
-            
-            // Set hidden fields
-            document.getElementById('inst-payment-option').value = enrollmentData.payment_option || 'B';
-            document.getElementById('inst-downpayment-amount').value = enrollmentData.downpayment_amount || 0;
-            document.getElementById('inst-monthly-amount').value = enrollmentData.monthly_amount || amount;
-            document.getElementById('inst-total-amount').value = enrollmentData.total_fee || 0;
-            
-            // Clear any existing installment_id (pay next pending)
-            const existingInstallmentInput = document.getElementById('inst-installment-id');
-            if (existingInstallmentInput) {
-                existingInstallmentInput.remove();
-            }
-            
-            // Set amount input (readonly)
-            document.getElementById('inst-amount-input').value = Number(enrollmentData.monthly_amount || amount).toFixed(2);
-            
-            // Update cash notice amount
-            document.querySelectorAll('.inst-cash-amount').forEach(el => {
-                el.textContent = Number(enrollmentData.monthly_amount || amount).toLocaleString('en-PH', {minimumFractionDigits: 2});
-            });
-        }
-
-        // Reset modal panels
-        document.getElementById('inst-cash-panel').style.display   = 'none';
-        document.getElementById('inst-xendit-panel').style.display = 'none';
-        document.getElementById('inst-xendit-result').style.display = 'none';
-        document.getElementById('inst-xendit-error').style.display = 'none';
-        ['cash','xendit'].forEach(m => {
-            var c = document.getElementById('inst-card-' + m);
-            if (c) { c.style.borderColor = '#e2e8f0'; c.style.background = '#fff'; c.style.boxShadow = 'none'; }
-        });
-
-        // Show the installment payment modal
-        new bootstrap.Modal(document.getElementById('installmentPaymentModal')).show();
     }
 
     // Pay a SPECIFIC installment by ID (for month-by-month tracking)

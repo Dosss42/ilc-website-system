@@ -6130,6 +6130,34 @@ function openWalkInEnrollmentModal() {
 
         </div>
 
+        <div class="module-toolbar">
+            <div class="toolbar-search">
+                <i class="bi bi-search"></i>
+                <input type="text" id="sectionSearchInput" placeholder="Search sections..." onkeyup="filterSectionTable()">
+            </div>
+            <div class="toolbar-filter">
+                <select id="sectionGradeFilterQuick" onchange="filterSectionTable()">
+                    <option value="">All Grades</option>
+                    <option value="nursery">Nursery</option>
+                    <option value="kindergarten">Kindergarten</option>
+                    <option value="grade1">Grade 1</option>
+                    <option value="grade2">Grade 2</option>
+                    <option value="grade3">Grade 3</option>
+                    <option value="grade4">Grade 4</option>
+                    <option value="grade5">Grade 5</option>
+                    <option value="grade6">Grade 6</option>
+                </select>
+            </div>
+            <div class="toolbar-filter">
+                <select id="sectionStatusFilter" onchange="filterSectionTable()">
+                    <option value="">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
+            </div>
+            <span class="toolbar-count"><span id="sectionVisibleCount">{{ $totalSections }}</span> of {{ $totalSections }} sections</span>
+        </div>
+
         <div class="content-card">
 
             <div class="content-card-header">
@@ -6179,7 +6207,7 @@ function openWalkInEnrollmentModal() {
                                 ->pluck('subject.name')->unique()->values();
                         @endphp
 
-                        <tr data-grade="{{ $sec->grade_level }}" data-search="{{ strtolower($sec->name . ' ' . ($secAdviserName ?? '') . ' ' . ($sec->room_number ?? '')) }}">
+                        <tr data-grade="{{ $sec->grade_level }}" data-status="{{ $sec->is_active ? 'active' : 'inactive' }}" data-search="{{ strtolower($sec->name . ' ' . ($secAdviserName ?? '') . ' ' . ($sec->room_number ?? '')) }}">
 
                             <td>
                                 <div class="section-name-badge">
@@ -9990,212 +10018,6 @@ function openWalkInEnrollmentModal() {
         </div>
     </div>
 
-    {{-- Mass Promotion section removed — replaced by Assessment & Promotion in Student Management --}}
-    <div id="section-promotion" class="dash-section" style="display:none;">
-
-        <div class="section-header">
-            <div>
-                <h1>Assessment &amp; Promotion</h1>
-                <p>This feature has been moved. Use Student Management to review and promote individual students based on their grades.</p>
-            </div>
-        </div>
-        <div class="content-card" style="padding:40px;text-align:center;color:var(--muted);">
-            <i class="bi bi-arrow-up-circle" style="font-size:48px;display:block;margin-bottom:12px;opacity:0.3;"></i>
-            <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px;">Mass Promotion Removed</div>
-            <p style="font-size:13px;">Student promotion is now done individually under <strong>Student Management → Assessment &amp; Promotion</strong>. Admin reviews each student's grades and marks them as Promoted or Retained.</p>
-        </div>
-        {{-- hidden original content below (kept so JS references don't break) --}}
-        <div style="display:none;">
-        <div class="content-card mb-4">
-
-            <div class="content-card-header"><h6>Promotion Settings</h6></div>
-
-            <div class="p-4">
-
-                <div class="row g-3 align-items-end">
-
-                    <div class="col-md-4">
-
-                        <label class="form-lbl">Current School Year</label>
-
-                        <select class="form-fld" id="promo-from-sy" onchange="loadPromotionCandidates()">
-                            @php
-                                $currentSY = now()->month >= 6 ? now()->year : now()->year - 1;
-                                for ($y = $currentSY + 1; $y >= 1994; $y--) {
-                                    $sy = $y . '-' . ($y + 1);
-                                    echo "<option value=\"$sy\">$sy</option>";
-                                }
-                            @endphp
-                        </select>
-
-                    </div>
-
-                    <div class="col-md-4">
-
-                        <label class="form-lbl">Grade Level</label>
-
-                        <select class="form-fld" id="promo-grade" onchange="loadPromotionCandidates()">
-
-                            <option value="">All Grades</option>
-
-                            <option value="nursery">Nursery</option>
-
-                            <option value="kindergarten">Kindergarten</option>
-
-                            <option value="grade1">Grade 1</option>
-
-                            <option value="grade2">Grade 2</option>
-
-                            <option value="grade3">Grade 3</option>
-
-                            <option value="grade4">Grade 4</option>
-
-                            <option value="grade5">Grade 5</option>
-
-                            <option value="grade6">Grade 6</option>
-
-                        </select>
-
-                    </div>
-
-                    <div class="col-md-4">
-
-                        <label class="form-lbl">Section (Optional)</label>
-
-                        <select class="form-fld" id="promo-section" onchange="loadPromotionCandidates()">
-
-                            <option value="">All Sections</option>
-
-                            @foreach($sections ?? [] as $sec)
-
-                                <option value="{{ $sec->id }}">{{ $sec->name }}</option>
-
-                            @endforeach
-
-                        </select>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        </div>
-
-        <div class="content-card mb-3">
-
-            <div class="content-card-header">
-
-                <h6 id="promo-title">All Grades — Promotion Candidates</h6>
-
-                <div style="display:flex; gap:8px; align-items:center;">
-
-                    <select id="promoSortFilter" onchange="loadPromotionCandidates()" class="form-select form-select-sm" style="width: auto; display:none;">
-
-                        <option value="newest">Newest First</option>
-
-                        <option value="oldest">Oldest First</option>
-
-                        <option value="name_asc">Name (A-Z)</option>
-
-                        <option value="name_desc">Name (Z-A)</option>
-
-                    </select>
-
-                    <button class="btn-dash btn-secondary" onclick="selectAllPromo()" id="promo-select-all-btn" style="display:none;">
-
-                        <i class="bi bi-check-all"></i> Select All
-
-                    </button>
-
-                    <button type="button" class="btn-dash btn-primary" onclick="executePromotion()" id="promo-execute-btn" style="display:none;">
-
-                        <i class="bi bi-arrow-up-circle-fill"></i> Promote Selected
-
-                    </button>
-
-                </div>
-
-            </div>
-
-            <div style="overflow-x:auto;">
-
-                <table class="dash-table">
-
-                    <thead>
-
-                        <tr>
-
-                            <th style="width:40px;"><input type="checkbox" id="promo-check-all" onchange="toggleAllPromo(this)" style="display:none;"></th>
-
-                            <th>Student</th>
-
-                            <th>Current Grade</th>
-
-                            <th>Section</th>
-
-                            <th>Payment Status</th>
-
-                            <th>General Average</th>
-
-                            <th>Status</th>
-
-                            <th>Promote To</th>
-
-                        </tr>
-
-                    </thead>
-
-                    <tbody id="promo-body">
-
-                        <tr>
-
-                            <td colspan="8" style="text-align:center; color:var(--muted); padding:40px;">
-
-                                <i class="bi bi-hourglass-split" style="font-size:36px; display:block; margin-bottom:8px; opacity:0.3;"></i>
-
-                                Loading promotion candidates...
-
-                            </td>
-
-                        </tr>
-
-                    </tbody>
-
-                </table>
-
-                <div id="promo-pagination"></div>
-
-            </div>
-
-        </div>
-
-        <div class="content-card">
-            <div class="content-card-header" style="display:flex; justify-content:space-between; align-items:center;">
-                <h6>Promotion History</h6>
-                <div style="display:flex; gap:8px; align-items:center;">
-                    <select id="promo-history-filter" class="form-select form-select-sm" style="width:auto; font-size:12px;" onchange="loadPromotionHistory()">
-                        <option value="">All School Years</option>
-                    </select>
-                    <select id="promo-history-status" class="form-select form-select-sm" style="width:auto; font-size:12px;" onchange="loadPromotionHistory()">
-                        <option value="">All Status</option>
-                        <option value="completed">Completed</option>
-                        <option value="skipped">Skipped</option>
-                        <option value="failed">Failed</option>
-                    </select>
-                </div>
-            </div>
-            <div id="promo-history" style="max-height:500px; overflow-y:auto;">
-                <div style="padding:30px; text-align:center; color:var(--muted);">
-                    <i class="bi bi-clock-history" style="font-size:36px; display:block; margin-bottom:8px; opacity:0.3;"></i>
-                    No promotion records yet.
-                </div>
-            </div>
-            <div id="promo-history-pagination" style="padding:12px 20px; border-top:1px solid var(--border);"></div>
-        </div>
-
-        </div>{{-- /hidden original promotion content --}}
-    </div>{{-- /section-promotion --}}
 
 </div>{{-- /dash-main --}}
 
@@ -16836,122 +16658,6 @@ function openWalkInEnrollmentModal() {
 
     }
 
-    function openQuickSubjectModal() {
-
-        document.getElementById('quick-subject-name').value = '';
-
-        document.getElementById('quick-subject-code').value = '';
-
-        document.getElementById('quick-subject-grade').value = '';
-
-        document.getElementById('quick-subject-desc').value = '';
-
-        new bootstrap.Modal(document.getElementById('quickSubjectModal')).show();
-
-    }
-
-    function saveQuickSubject(confirmed) {
-
-        if (!confirmed) {
-            showConfirm('Save Subject', 'Are you sure you want to save these changes?', function() { saveQuickSubject(true); }, {
-                btnText: 'Save', btnClass: 'btn btn-primary', btnIcon: 'bi-floppy-fill',
-                headerBg: 'linear-gradient(135deg,#0056b3,#003d82)', headerIcon: 'bi-floppy-fill'
-            });
-            return;
-        }
-
-        const name = document.getElementById('quick-subject-name').value;
-
-        const code = document.getElementById('quick-subject-code').value;
-
-        const gradeLevel = document.getElementById('quick-subject-grade').value;
-
-        const description = document.getElementById('quick-subject-desc').value;
-
-        if (!name || !code) {
-
-            showCustomAlert('warning', 'Required Fields', 'Please enter both subject name and code.');
-
-            return;
-
-        }
-
-        fetch('/admin/subjects', {
-
-            method: 'POST',
-
-            headers: { 
-
-                'Content-Type': 'application/json', 
-
-                'X-CSRF-TOKEN': csrfToken, 
-
-                'Accept': 'application/json' 
-
-            },
-
-            body: JSON.stringify({
-
-                name: name,
-
-                code: code,
-
-                grade_level: gradeLevel || null,
-
-                description: description || null,
-
-                is_active: true
-
-            })
-
-        })
-
-        .then(r => { if (!r.ok) throw r; return r.json(); })
-
-        .then(d => {
-
-            bootstrap.Modal.getInstance(document.getElementById('quickSubjectModal')).hide();
-
-            showCustomAlert('success', 'Created!', 'Subject created successfully.');
-
-            
-
-            // Add the new subject to the assign subjects list
-
-            const tbody = document.getElementById('assign-subjects-list');
-
-            const newRow = document.createElement('tr');
-
-            newRow.innerHTML = `
-
-                <td style="text-align:center;">
-
-                    <input type="checkbox" class="subject-checkbox" value="${d.data.id}" data-name="${d.data.name}" data-code="${d.data.code}" checked>
-
-                </td>
-
-                <td><span style="font-weight:600;">${d.data.code || ''}</span></td>
-
-                <td>${d.data.name}</td>
-
-            `;
-
-            tbody.appendChild(newRow);
-
-        })
-
-        .catch(async err => {
-
-            let msg = 'Failed to create subject.';
-
-            try { const e = await err.json(); msg = e.message || Object.values(e.errors || {}).flat().join(', '); } catch(x) {}
-
-            showCustomAlert('error', 'Error', msg);
-
-        });
-
-    }
-
     function showScreenshotModal(screenshotUrl) {
         if (!screenshotUrl) {
             showCustomAlert('warning', 'Warning', 'No screenshot available.');
@@ -18423,494 +18129,10 @@ function openWalkInEnrollmentModal() {
         return map[g] || g;
     }
 
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    // ASSESSMENT & PROMOTION JS
-    // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-    function loadAssessmentCandidates() {
-        const fromSY  = document.getElementById('assess-from-sy').value;
-        const grade   = document.getElementById('assess-grade').value;
-        const tbody   = document.getElementById('assess-tbody');
-        const title   = document.getElementById('assess-table-title');
-        const count   = document.getElementById('assess-count');
-
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--muted);"><i class="bi bi-hourglass-split"></i> Loading...</td></tr>';
-
-        const params = new URLSearchParams({ school_year: fromSY });
-        if (grade) params.set('grade', grade);
-
-        fetch('/admin/assessment/candidates?' + params.toString(), {
-            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            credentials: 'same-origin'
-        })
-        .then(r => r.json())
-        .then(data => {
-            if (!data.success || !data.data.length) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted);"><i class="bi bi-people" style="font-size:36px;display:block;margin-bottom:8px;opacity:0.3;"></i>No enrolled students found for this school year and grade filter.</td></tr>';
-                title.textContent = 'No students found';
-                count.textContent = '';
-                return;
-            }
-            title.textContent  = 'Students — S.Y. ' + fromSY;
-            count.textContent  = data.data.length + ' student(s)';
-
-            const toSY = document.getElementById('assess-to-sy').value;
-            let html = '';
-            data.data.forEach(s => {
-                const assessed  = s.promotion_status === 'completed';
-                const enrolled  = s.already_enrolled_next;
-                const rowBg     = enrolled ? '#fdecea' : (assessed ? '#e8f8f0' : '');
-                const badge     = assessed
-                    ? `<span class="status-badge enrolled"><i class="bi bi-check-circle-fill"></i> ${gradeLabel(s.to_grade)}</span>`
-                    : '<span class="status-badge pending">Pending</span>';
-                const actions   = (assessed || enrolled)
-                    ? `<span style="font-size:11px;color:var(--muted);">${enrolled ? 'Already enrolled in ' + toSY : 'Done'}</span>`
-                    : `<button class="btn-dash btn-success" style="padding:5px 10px;font-size:11px;margin-right:4px;"
-                            onclick="openAssessModal(${s.student_id},'${s.name}','${s.grade_level}','${s.section}','promote','${fromSY}','${toSY}')">
-                            <i class="bi bi-arrow-up-circle"></i> Promote
-                       </button>
-                       <button class="btn-dash btn-secondary" style="padding:5px 10px;font-size:11px;"
-                            onclick="openAssessModal(${s.student_id},'${s.name}','${s.grade_level}','${s.section}','retain','${fromSY}','${toSY}')">
-                            <i class="bi bi-dash-circle"></i> Retain
-                       </button>`;
-
-                html += `<tr style="background:${rowBg};">
-                    <td><div class="user-row-name">
-                        <div class="user-row-avatar">${s.name.substring(0,2).toUpperCase()}</div>
-                        <div><div style="font-weight:600;">${s.name}</div></div>
-                    </div></td>
-                    <td style="font-size:12px;color:var(--muted);">${s.lrn || '—'}</td>
-                    <td><span class="status-badge active">${gradeLabel(s.grade_level)}</span></td>
-                    <td style="font-size:13px;">${s.section}</td>
-                    <td><span class="status-badge ${s.status === 'enrolled' ? 'enrolled' : 'pending'}">${s.status}</span></td>
-                    <td>${badge}</td>
-                    <td style="white-space:nowrap;">${actions}</td>
-                </tr>`;
-            });
-            tbody.innerHTML = html;
-        })
-        .catch(err => {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--red);">Error loading candidates.</td></tr>';
-            console.error(err);
-        });
-    }
-
-    function openAssessModal(studentId, name, fromGrade, section, action, fromSY, toSY) {
-        document.getElementById('assess-student-id').value = studentId;
-        document.getElementById('assess-action').value     = action;
-        document.getElementById('assess-student-name').textContent = name;
-        document.getElementById('assess-student-info').textContent = gradeLabel(fromGrade) + ' — Section: ' + section;
-
-        const gradeMap = {
-            nursery:'kindergarten', kindergarten:'grade1', grade1:'grade2', grade2:'grade3',
-            grade3:'grade4', grade4:'grade5', grade5:'grade6', grade6:'graduated'
-        };
-        const nextGrade = action === 'promote' ? (gradeMap[fromGrade] || 'graduated') : fromGrade;
-        const color     = action === 'promote' ? '#27ae60' : '#2471a3';
-        const icon      = action === 'promote' ? 'bi-arrow-up-circle-fill' : 'bi-dash-circle-fill';
-        const label     = action === 'promote'
-            ? `Promote to <strong>${gradeLabel(nextGrade)}</strong> for S.Y. ${toSY}`
-            : `Retain at <strong>${gradeLabel(fromGrade)}</strong> for S.Y. ${toSY}`;
-
-        document.getElementById('assess-action-display').innerHTML = `<i class="bi ${icon}" style="color:${color};margin-right:8px;"></i>${label}`;
-        document.getElementById('assess-action-display').style.background = action === 'promote' ? '#e8f8f0' : '#e8f0fb';
-        document.getElementById('assess-modal-title').textContent = action === 'promote' ? 'Promote Student' : 'Retain Student';
-
-        // Load sections for next grade
-        const sectionSel = document.getElementById('assess-section-select');
-        sectionSel.innerHTML = '<option value="">Auto-assign (lowest enrollment)</option>';
-        const gradeForSection = action === 'promote' ? nextGrade : fromGrade;
-        fetch('/admin/assessment/sections-for-grade?grade=' + gradeForSection + '&school_year=' + toSY, {
-            headers: { 'Accept': 'application/json' }, credentials: 'same-origin'
-        })
-        .then(r => r.json())
-        .then(data => {
-            (data.data || []).forEach(sec => {
-                const opt = document.createElement('option');
-                opt.value = sec.id;
-                opt.textContent = sec.name + ' (' + sec.current_enrollment + '/' + (sec.max_students || 'âˆž') + ')';
-                sectionSel.appendChild(opt);
-            });
-        });
-
-        // Store SY values for confirm
-        document.getElementById('assess-confirm-btn').dataset.fromSy = fromSY;
-        document.getElementById('assess-confirm-btn').dataset.toSy   = toSY;
-
-        new bootstrap.Modal(document.getElementById('assessModal')).show();
-    }
-
-    function confirmAssessment() {
-        const studentId = document.getElementById('assess-student-id').value;
-        const action    = document.getElementById('assess-action').value;
-        const sectionId = document.getElementById('assess-section-select').value;
-        const fromSY    = document.getElementById('assess-confirm-btn').dataset.fromSy;
-        const toSY      = document.getElementById('assess-confirm-btn').dataset.toSy;
-        const btn       = document.getElementById('assess-confirm-btn');
-
-        btn.disabled    = true;
-        btn.textContent = 'Processing...';
-
-        fetch('/admin/assessment/' + studentId + '/promote', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({
-                action: action,
-                from_school_year: fromSY,
-                to_school_year:   toSY,
-                to_section_id:    sectionId || null,
-            })
-        })
-        .then(r => r.json())
-        .then(data => {
-            btn.disabled    = false;
-            btn.textContent = 'Confirm';
-            if (data.success) {
-                bootstrap.Modal.getInstance(document.getElementById('assessModal')).hide();
-                showAdminToast(data.message, 'success');
-                loadAssessmentCandidates(); // refresh table
-            } else {
-                showAdminToast(data.message || 'Error. Please try again.', 'error');
-            }
-        })
-        .catch(() => { btn.disabled = false; btn.textContent = 'Confirm'; showAdminToast('Network error.', 'error'); });
-    }
-
     function showAdminToast(msg, type) {
         showToast(msg, type);
     }
 
-    function loadPromotionCandidates() {
-        const fromSY = document.getElementById('promo-from-sy').value;
-        const grade = document.getElementById('promo-grade').value;
-        const sort = document.getElementById('promoSortFilter').value;
-
-        const tbody = document.getElementById('promo-body');
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--muted); padding:40px;"><i class="bi bi-hourglass-split" style="font-size:36px; display:block; margin-bottom:8px; opacity:0.3;"></i>Loading promotion candidates...</td></tr>';
-
-        // Build query params
-        const params = new URLSearchParams();
-        params.append('student_schoolyear', fromSY);
-        params.append('student_status', 'enrolled');
-        params.append('sort', sort);
-        if (grade) {
-            params.append('grade_level', grade);
-        }
-
-        fetch('/admin/dashboard?' + params.toString(), {
-            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken }
-        })
-        .then(r => { if (!r.ok) throw new Error('Failed to load'); return r.json(); })
-        .then(data => {
-            renderPromoTable(data);
-        })
-        .catch(err => {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--muted); padding:40px;"><i class="bi bi-exclamation-triangle" style="font-size:36px; display:block; margin-bottom:8px; opacity:0.3;"></i>Error loading candidates: ' + err.message + '</td></tr>';
-        });
-    }
-
-    function renderPromoTable(data) {
-        const tbody = document.getElementById('promo-body');
-        const students = data.data || [];
-
-        // Update title
-        const grade = document.getElementById('promo-grade').value;
-        const gradeText = grade ? gradeLabel(grade) : 'All Grades';
-        document.getElementById('promo-title').textContent = gradeText + ' — Promotion Candidates';
-
-        if (students.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--muted); padding:40px;"><i class="bi bi-inbox" style="font-size:36px; display:block; margin-bottom:8px; opacity:0.3;"></i>No enrolled students found for promotion.</td></tr>';
-            document.getElementById('promo-check-all').style.display = 'none';
-            document.getElementById('promo-select-all-btn').style.display = 'none';
-            document.getElementById('promo-execute-btn').style.display = 'none';
-            document.getElementById('promoSortFilter').style.display = 'none';
-            document.getElementById('promo-pagination').innerHTML = '';
-            return;
-        }
-
-        let html = '';
-        students.forEach(student => {
-            const enrollment = student.latest_enrollment || student.latestEnrollment || {};
-            const studentData = enrollment.student_data || {};
-            const currentGrade = studentData.grade_level || enrollment.grade_level || '—';
-            const section = enrollment.section || '—';
-            const paymentStatus = enrollment.payment_status || '—';
-            const status = enrollment.status || '—';
-            const nextGrade = gradePromotionMap[currentGrade];
-            const nextGradeText = nextGrade ? gradeLabel(nextGrade) : '—';
-
-            // Payment status badge
-            let payBadge = '<span class="badge bg-secondary">' + paymentStatus + '</span>';
-            if (paymentStatus === 'paid') payBadge = '<span class="badge bg-success">Paid</span>';
-            else if (paymentStatus === 'partial') payBadge = '<span class="badge bg-warning text-dark">Partial</span>';
-
-            // Status badge
-            let statusBadge = '<span class="badge bg-secondary">' + status + '</span>';
-            if (status === 'enrolled') statusBadge = '<span class="badge bg-success">Enrolled</span>';
-            else if (status === 'completed') statusBadge = '<span class="badge bg-info">Completed</span>';
-
-            html += '<tr>';
-            html += '<td><input type="checkbox" class="promo-checkbox" value="' + student.id + '" data-grade="' + currentGrade + '" onchange="updatePromoSelectAll()"></td>';
-            html += '<td><strong>' + (student.name || '—') + '</strong><br><small class="text-muted">' + (student.email || '') + '</small></td>';
-            html += '<td>' + gradeLabel(currentGrade) + '</td>';
-            html += '<td>' + section + '</td>';
-            html += '<td>' + payBadge + '</td>';
-            html += '<td>—</td>'; // General Average — not available in this query
-            html += '<td>' + statusBadge + '</td>';
-            html += '<td>' + nextGradeText + '</td>';
-            html += '</tr>';
-        });
-
-        tbody.innerHTML = html;
-
-        // Show controls
-        document.getElementById('promo-check-all').style.display = '';
-        document.getElementById('promo-select-all-btn').style.display = '';
-        document.getElementById('promo-execute-btn').style.display = '';
-        document.getElementById('promoSortFilter').style.display = '';
-
-        // Pagination
-        renderPromoPagination(data);
-    }
-
-    function renderPromoPagination(data) {
-        const container = document.getElementById('promo-pagination');
-        const currentPage = data.current_page || 1;
-        const lastPage = data.last_page || 1;
-
-        if (lastPage <= 1) {
-            container.innerHTML = '';
-            return;
-        }
-
-        let html = '<nav class="mt-3"><ul class="pagination justify-content-center">';
-        for (let i = 1; i <= lastPage; i++) {
-            const active = i === currentPage ? 'active' : '';
-            html += '<li class="page-item ' + active + '"><a class="page-link" href="javascript:void(0)" onclick="loadPromoPage(' + i + ')">' + i + '</a></li>';
-        }
-        html += '</ul></nav>';
-        container.innerHTML = html;
-    }
-
-    function loadPromoPage(page) {
-        const fromSY = document.getElementById('promo-from-sy').value;
-        const grade = document.getElementById('promo-grade').value;
-        const sort = document.getElementById('promoSortFilter').value;
-
-        const params = new URLSearchParams();
-        params.append('student_schoolyear', fromSY);
-        params.append('student_status', 'enrolled');
-        params.append('sort', sort);
-        params.append('student_page', page);
-        if (grade) {
-            params.append('grade_level', grade);
-        }
-
-        fetch('/admin/dashboard?' + params.toString(), {
-            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken }
-        })
-        .then(r => r.json())
-        .then(data => renderPromoTable(data))
-        .catch(() => showCustomAlert('error', 'Error', 'Failed to load page.'));
-    }
-
-    function updatePromoSelectAll() {
-        const checkboxes = document.querySelectorAll('.promo-checkbox');
-        const checked = document.querySelectorAll('.promo-checkbox:checked');
-        const master = document.getElementById('promo-check-all');
-        master.checked = checkboxes.length > 0 && checkboxes.length === checked.length;
-    }
-
-    function toggleAllPromo(master) {
-        document.querySelectorAll('.promo-checkbox').forEach(cb => {
-            cb.checked = master.checked;
-        });
-    }
-
-    function selectAllPromo() {
-        document.querySelectorAll('.promo-checkbox').forEach(cb => {
-            cb.checked = true;
-        });
-        document.getElementById('promo-check-all').checked = true;
-    }
-
-    function executePromotion() {
-        const checked = document.querySelectorAll('.promo-checkbox:checked');
-        if (checked.length === 0) {
-            showCustomAlert('warning', 'No Selection', 'Please select at least one student to promote.');
-            return;
-        }
-
-        const fromSY = document.getElementById('promo-from-sy').value;
-        let grade = document.getElementById('promo-grade').value;
-
-        // If "All Grades" is selected, try to infer the grade from selected students
-        if (!grade) {
-            const grades = new Set();
-            checked.forEach(cb => {
-                const g = cb.dataset.grade;
-                if (g && g !== '—') grades.add(g);
-            });
-            if (grades.size === 1) {
-                grade = Array.from(grades)[0];
-            } else if (grades.size > 1) {
-                showCustomAlert('warning', 'Mixed Grades', 'Please select students from the same grade level, or filter by a specific grade first.');
-                return;
-            } else {
-                showCustomAlert('warning', 'Select Grade', 'Please select a grade level to promote from.');
-                return;
-            }
-        }
-
-        // Validate that all selected students match the promotion grade
-        const mismatched = Array.from(checked).filter(cb => cb.dataset.grade !== grade);
-        if (mismatched.length > 0) {
-            showCustomAlert('warning', 'Grade Mismatch', 'Some selected students are not in ' + gradeLabel(grade) + '. Please select only students from that grade.');
-            return;
-        }
-
-        // Calculate next school year
-        const parts = fromSY.split('-');
-        const toSY = (parseInt(parts[0]) + 1) + '-' + (parseInt(parts[1]) + 1);
-
-        const studentIds = Array.from(checked).map(cb => parseInt(cb.value));
-
-        showPromoteConfirm('Promote ' + checked.length + ' student(s) to the next grade level for school year ' + toSY + '?', function() {
-            fetch('/admin/students/mass-promote', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    student_ids: studentIds,
-                    from_school_year: fromSY,
-                    to_school_year: toSY,
-                    from_grade: grade
-                })
-            })
-            .then(r => r.json())
-            .then(d => {
-                hideLoading();
-                if (d.success) {
-                    const alertType = (d.skipped_count > 0 || (d.errors && d.errors.length > 0)) ? 'warning' : 'success';
-                    showCustomAlert(alertType, 'Promotion Complete', d.message);
-                    document.querySelectorAll('.promo-checkbox').forEach(cb => cb.checked = false);
-                    updatePromoSelectAll();
-                    loadPromotionCandidates();
-                    loadPromotionHistory();
-                } else {
-                    showCustomAlert('error', 'Error', d.message || 'Promotion failed.');
-                }
-            })
-            .catch(() => showCustomAlert('error', 'Error', 'Failed to promote students. Please try again.'));
-        });
-    }
-
-    function loadPromotionHistory(page) {
-        page = page || 1;
-        const container = document.getElementById('promo-history');
-        const filterSY = document.getElementById('promo-history-filter').value;
-        const filterStatus = document.getElementById('promo-history-status').value;
-
-        container.innerHTML = '<div style="padding:30px; text-align:center; color:var(--muted);"><i class="bi bi-hourglass-split" style="font-size:36px; display:block; margin-bottom:8px; opacity:0.3;"></i>Loading promotion history...</div>';
-
-        const params = new URLSearchParams();
-        params.append('page', page);
-        params.append('per_page', 10);
-        if (filterSY) params.append('school_year', filterSY);
-        if (filterStatus) params.append('status', filterStatus);
-
-        fetch('/admin/students/promotion-history?' + params.toString(), {
-            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken }
-        })
-        .then(r => { if (!r.ok) throw new Error('Failed to load'); return r.json(); })
-        .then(d => {
-            if (!d.success || !d.data || d.data.data.length === 0) {
-                container.innerHTML = '<div style="padding:30px; text-align:center; color:var(--muted);"><i class="bi bi-clock-history" style="font-size:36px; display:block; margin-bottom:8px; opacity:0.3;"></i>No promotion records found.</div>';
-                document.getElementById('promo-history-pagination').innerHTML = '';
-                return;
-            }
-
-            const promotions = d.data.data;
-            let html = '<table class="dash-table" style="margin:0;"><thead><tr>';
-            html += '<th style="width:50px;">#</th>';
-            html += '<th>Student</th>';
-            html += '<th>LRN</th>';
-            html += '<th>From</th>';
-            html += '<th>To</th>';
-            html += '<th>School Year</th>';
-            html += '<th>Status</th>';
-            html += '<th>By</th>';
-            html += '<th>Date</th>';
-            html += '</tr></thead><tbody>';
-
-            promotions.forEach((p, i) => {
-                let statusBadge;
-                if (p.status === 'completed') {
-                    statusBadge = '<span class="badge bg-success" style="font-size:10px;">Completed</span>';
-                } else if (p.status === 'skipped') {
-                    statusBadge = '<span class="badge bg-warning text-dark" style="font-size:10px;">Skipped</span>';
-                } else {
-                    statusBadge = '<span class="badge bg-danger" style="font-size:10px;">Failed</span>';
-                }
-                const fromSection = p.from_section ? p.from_section.name : '—';
-                const toSection = p.to_section ? p.to_section.name : '—';
-                const promotedBy = p.promoted_by ? p.promoted_by.name : 'System';
-                const dateStr = p.promoted_at ? new Date(p.promoted_at).toLocaleDateString('en-PH') : '—';
-
-                html += '<tr>';
-                html += '<td>' + ((d.data.current_page - 1) * d.data.per_page + i + 1) + '</td>';
-                html += '<td><strong>' + (p.student ? p.student.name : '—') + '</strong></td>';
-                html += '<td><code style="font-size:11px;">' + (p.lrn || (p.student ? p.student.lrn : '—')) + '</code></td>';
-                html += '<td>' + gradeLabel(p.from_grade) + '<br><small class="text-muted">' + fromSection + '</small></td>';
-                html += '<td>' + gradeLabel(p.to_grade) + '<br><small class="text-muted">' + toSection + '</small></td>';
-                html += '<td>' + p.from_school_year + ' → ' + p.to_school_year + '</td>';
-                html += '<td>' + statusBadge + '</td>';
-                html += '<td><small>' + promotedBy + '</small></td>';
-                html += '<td><small>' + dateStr + '</small></td>';
-                html += '</tr>';
-            });
-
-            html += '</tbody></table>';
-            container.innerHTML = html;
-
-            // Pagination
-            const pagContainer = document.getElementById('promo-history-pagination');
-            if (d.data.last_page > 1) {
-                let pagHtml = '<nav><ul class="pagination justify-content-center" style="margin:0;">';
-                for (let i = 1; i <= d.data.last_page; i++) {
-                    const active = i === d.data.current_page ? 'active' : '';
-                    pagHtml += '<li class="page-item ' + active + '"><a class="page-link" href="javascript:void(0)" onclick="loadPromotionHistory(' + i + ')">' + i + '</a></li>';
-                }
-                pagHtml += '</ul></nav>';
-                pagContainer.innerHTML = pagHtml;
-            } else {
-                pagContainer.innerHTML = '';
-            }
-        })
-        .catch(err => {
-            container.innerHTML = '<div style="padding:30px; text-align:center; color:var(--muted);"><i class="bi bi-exclamation-triangle" style="font-size:36px; display:block; margin-bottom:8px; opacity:0.3;"></i>Error loading history.</div>';
-        });
-    }
-
-    function populatePromoHistoryFilters() {
-        const select = document.getElementById('promo-history-filter');
-        const currentSY = document.getElementById('promo-from-sy').value;
-        if (!select.querySelector('option[value="' + currentSY + '"]')) {
-            const parts = currentSY.split('-');
-            const nextSY = (parseInt(parts[0]) + 1) + '-' + (parseInt(parts[1]) + 1);
-            let html = '<option value="">All School Years</option>';
-            for (let y = parseInt(parts[0]) + 2; y >= 1994; y--) {
-                const sy = y + '-' + (y + 1);
-                const selected = sy === nextSY ? 'selected' : '';
-                html += '<option value="' + sy + '" ' + selected + '>' + sy + '</option>';
-            }
-            select.innerHTML = html;
-        }
-    }
 
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // GUIDANCE RECORD CRUD FUNCTIONS
@@ -19475,17 +18697,15 @@ function openWalkInEnrollmentModal() {
         filterEnrollments();
     }
 
-    function filterScheduleTable() {
+    function filterSectionTable() {
 
-        const search = (document.getElementById('scheduleSearchInput').value || '').toLowerCase();
+        const search = (document.getElementById('sectionSearchInput').value || '').toLowerCase();
 
-        const term = document.getElementById('scheduleTermFilter').value;
+        const grade = document.getElementById('sectionGradeFilterQuick').value;
 
-        const day = document.getElementById('scheduleDayFilter').value;
+        const status = document.getElementById('sectionStatusFilter').value;
 
-        const status = document.getElementById('scheduleStatusFilter').value;
-
-        const rows = document.querySelectorAll('#scheduleTable tbody tr[data-search]');
+        const rows = document.querySelectorAll('#sectionTable tbody tr[data-search]');
 
         let visible = 0;
 
@@ -19493,13 +18713,11 @@ function openWalkInEnrollmentModal() {
 
             const matchSearch = !search || row.dataset.search.includes(search);
 
-            const matchTerm = !term || row.dataset.term === term;
-
-            const matchDay = !day || row.dataset.day === day;
+            const matchGrade = !grade || row.dataset.grade === grade;
 
             const matchStatus = !status || row.dataset.status === status;
 
-            const show = matchSearch && matchTerm && matchDay && matchStatus;
+            const show = matchSearch && matchGrade && matchStatus;
 
             row.style.display = show ? '' : 'none';
 
@@ -19507,7 +18725,7 @@ function openWalkInEnrollmentModal() {
 
         });
 
-        const counter = document.getElementById('scheduleVisibleCount');
+        const counter = document.getElementById('sectionVisibleCount');
 
         if (counter) counter.textContent = visible;
 

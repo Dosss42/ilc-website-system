@@ -10,7 +10,6 @@ export default defineConfig({
                 'resources/css/app.css', 
                 'resources/js/app.js',
                 'resources/js/react/admin-dashboard.jsx',
-                'resources/js/react/student-portal.jsx',
                 'resources/js/react/enrollment-form.jsx',
                 'resources/js/react/about-page.jsx',
                 'resources/js/react/academics-page.jsx',

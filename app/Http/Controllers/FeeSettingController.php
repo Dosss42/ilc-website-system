@@ -79,6 +79,19 @@ class FeeSettingController extends Controller
             if (!empty($updateData)) {
                 $fee->fill($updateData);
                 $fee->save();
+
+                // Dual-write (DATABASE_NORMALIZATION_PLAN.md Phase 2): keep
+                // fee_components in sync so FeeCalculator — which every real
+                // fee calculation (what a newly enrolling student actually
+                // gets charged) reads from — picks up this change
+                // immediately. This endpoint used to only touch the legacy
+                // fee_settings columns, so a fee edited here via the Admin
+                // dashboard never actually changed what students were
+                // charged, even though Finance's own Fee Settings page
+                // (a separate endpoint that already did this dual-write)
+                // showed the new number.
+                \App\Services\FeeCalculator::syncComponents($fee->fresh()->toArray());
+                \App\Services\FeeCalculator::forgetCache();
             }
 
             Log::info('FeeSetting updated: ' . json_encode($updateData));

@@ -3100,55 +3100,6 @@
         });
     }
 
-    function searchStudent(q) {
-        clearTimeout(searchTimer);
-        var dd = document.getElementById('studentDropdown');
-        if (q.length < 2) { dd.style.display = 'none'; return; }
-        searchTimer = setTimeout(function() {
-            dd.innerHTML = '<div style="padding:14px;font-size:13px;color:#94a3b8;text-align:center;">Searching…</div>';
-            dd.style.display = 'block';
-            fetch(_searchUrl + '?q=' + encodeURIComponent(q), {
-                credentials: 'same-origin',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': (document.querySelector('meta[name=csrf-token]') || {}).content || ''
-                }
-            })
-            .then(function(r) {
-                if (r.status === 401 || r.status === 403) {
-                    dd.innerHTML = '<div style="padding:14px;font-size:13px;color:#dc2626;text-align:center;">Session expired. <a href="' + _loginUrl + '">Log in again</a>.</div>';
-                    dd.style.display = 'block';
-                    return null;
-                }
-                return r.json();
-            })
-            .then(function(data) { if (data) renderStudentDropdown(data); })
-            .catch(function() {
-                dd.innerHTML = '<div style="padding:14px;font-size:13px;color:#dc2626;text-align:center;">Search failed — please refresh.</div>';
-                dd.style.display = 'block';
-            });
-        }, 300);
-    }
-
-    function renderStudentDropdown(students) {
-        var dd = document.getElementById('studentDropdown');
-        if (!students.length) {
-            dd.innerHTML = '<div style="padding:14px;font-size:13px;color:#94a3b8;text-align:center;">No students found</div>';
-            dd.style.display = 'block';
-            return;
-        }
-        dd.innerHTML = students.map(function(s) {
-            return '<div onclick="selectStudent(' + JSON.stringify(s).replace(/"/g,'&quot;') + ')" ' +
-                'style="display:flex;align-items:center;gap:12px;padding:10px 14px;cursor:pointer;border-bottom:1px solid #f1f5f9;transition:background .1s;" ' +
-                'onmouseover="this.style.background=\'#f0f6ff\'" onmouseout="this.style.background=\'#fff\'">' +
-                '<div style="width:34px;height:34px;border-radius:50%;background:#1a3a6c;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;flex-shrink:0;">' + s.name.charAt(0).toUpperCase() + '</div>' +
-                '<div><div style="font-size:13px;font-weight:600;color:#1e293b;">' + s.name + '</div>' +
-                '<div style="font-size:11px;color:#64748b;">Grade ' + (s.grade_level||'—') + ' &nbsp;|&nbsp; Balance: ₱' + Number(s.balance||0).toLocaleString('en-PH',{minimumFractionDigits:2}) + '</div></div>' +
-                '</div>';
-        }).join('');
-        dd.style.display = 'block';
-    }
-
     function selectStudent(s) {
         selectedStudent = s;
         document.getElementById('selectedEnrollmentId').value       = s.enrollment_id || '';
@@ -3616,49 +3567,6 @@
     var _lookupStudent = null;
     var _lookupTimer   = null;
 
-    function lookupSearch(q) {
-        clearTimeout(_lookupTimer);
-        var dd = document.getElementById('lookupDropdown');
-        if (q.length < 2) { dd.style.display = 'none'; return; }
-        _lookupTimer = setTimeout(function() {
-            fetch('/cashier/students/search?q=' + encodeURIComponent(q), {
-                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(data) { renderLookupDropdown(data); })
-            .catch(function() {});
-        }, 280);
-    }
-
-    function renderLookupDropdown(students) {
-        var dd = document.getElementById('lookupDropdown');
-        if (!students.length) {
-            dd.innerHTML = '<div style="padding:16px;font-size:13px;color:#94a3b8;text-align:center;"><i class="bi bi-search me-2"></i>No students found</div>';
-            dd.style.display = 'block';
-            return;
-        }
-        dd.innerHTML = students.map(function(s) {
-            var statusColors = { paid:'#16a34a', partial:'#b45309', unpaid:'#dc2626', pending:'#64748b' };
-            var statusLabels = { paid:'Fully Paid', partial:'Partial', unpaid:'Unpaid', pending:'Pending' };
-            var color = statusColors[s.payment_status] || '#64748b';
-            var label = statusLabels[s.payment_status] || 'Pending';
-            return '<div onclick="selectLookupStudent(' + JSON.stringify(s).replace(/"/g,'&quot;') + ')" '
-                + 'style="display:flex;align-items:center;gap:13px;padding:12px 16px;cursor:pointer;border-bottom:1px solid #f1f5f9;transition:background .1s;" '
-                + 'onmouseover="this.style.background=\'#f0f6ff\'" onmouseout="this.style.background=\'#fff\'">'
-                + '<div style="width:40px;height:40px;border-radius:50%;background:#1a3a6c;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:15px;flex-shrink:0;">' + s.name.charAt(0).toUpperCase() + '</div>'
-                + '<div style="flex:1;min-width:0;">'
-                + '<div style="font-size:13px;font-weight:700;color:#1e293b;">' + s.name + '</div>'
-                + '<div style="font-size:11px;color:#64748b;">Grade ' + (s.grade_level||'—') + ' · S.Y. ' + (s.school_year||'—') + '</div>'
-                + '</div>'
-                + '<div style="text-align:right;flex-shrink:0;">'
-                + '<div style="font-size:12px;font-weight:700;color:#dc2626;">₱' + Number(s.balance||0).toLocaleString('en-PH',{minimumFractionDigits:2}) + '</div>'
-                + '<div style="font-size:10px;font-weight:700;color:' + color + ';">' + label + '</div>'
-                + '</div>'
-                + '</div>';
-        }).join('');
-        dd.style.display = 'block';
-    }
-
     function selectLookupStudent(s) {
         _lookupStudent = s;
         document.getElementById('lookupListPanel').style.display = 'none';
@@ -3725,19 +3633,7 @@
         document.getElementById('lookupListPanel').style.display = 'block';
         document.getElementById('lookupPlaceholder').style.display = 'none';
         document.getElementById('lookupResult').style.display = 'none';
-        document.getElementById('lookupDropdown').style.display = 'none';
     }
-
-    // Close dropdowns when clicking outside
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('#studentSearchInput') && !e.target.closest('#studentDropdown')) {
-            document.getElementById('studentDropdown').style.display = 'none';
-        }
-        if (!e.target.closest('#lookupSearchInput') && !e.target.closest('#lookupDropdown')) {
-            var ld = document.getElementById('lookupDropdown');
-            if (ld) ld.style.display = 'none';
-        }
-    });
 
     // ══ Chart.js ══
     const _CsC = {blue:'#1a3a6c',mid:'#2471a3',gold:'#c5a059',green:'#16a34a',red:'#dc2626',gray:'#94a3b8'};

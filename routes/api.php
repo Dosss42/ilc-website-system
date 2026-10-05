@@ -1,8 +1,6 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\GradeController;
-use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\FeeController;
 use Illuminate\Support\Facades\Route;
@@ -29,35 +27,17 @@ Route::middleware('auth:sanctum')->group(function () {
     // Auth routes
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me', [AuthController::class, 'me']);
-    
-    // Profile routes
-    Route::get('/profile/status', [ProfileController::class, 'checkCompletionStatus']);
-    Route::post('/profile/personal', [ProfileController::class, 'updatePersonal']);
-    Route::post('/profile/address', [ProfileController::class, 'updateAddress']);
-    Route::post('/profile/guardian', [ProfileController::class, 'updateGuardian']);
-    Route::post('/profile/school', [ProfileController::class, 'updatePreviousSchool']);
-    Route::post('/profile/enrollment', [ProfileController::class, 'updateEnrollment']);
-    
-    // Grade management routes
-    Route::get('/grades/student', [GradeController::class, 'getStudentGrades']);
-    Route::get('/grades/class', [GradeController::class, 'getClassGrades']);
-    Route::post('/grades/upsert', [GradeController::class, 'upsertGrades']);
-    Route::get('/grades/subjects', [GradeController::class, 'getTeacherSubjects']);
-    Route::get('/grades/statistics', [GradeController::class, 'getGradeStatistics']);
-    Route::delete('/grades/{id}', [GradeController::class, 'deleteGrade']);
-    
-    // Student routes
+
+    // Student routes — the only two of this API's student/grade/profile
+    // surface actually used anywhere: the live student portal
+    // (studentportal.blade.php) calls these two directly. Everything else
+    // that used to live in this group (profile/*, grades/*, the old
+    // student/announcements, portal-data, admin/dashboard-stats, and a
+    // shadowed enrollment/submit pointing at a method that didn't even
+    // exist) had zero live callers — the real app uses session-based web
+    // routes instead — and was removed rather than left as dead surface.
     Route::get('/student/grades', [StudentController::class, 'getGrades']);
     Route::get('/student/schedule', [StudentController::class, 'getSchedule']);
-    Route::get('/student/announcements', [StudentController::class, 'getAnnouncements']);
-    Route::get('/student/portal-data', [StudentController::class, 'getPortalData']);
-    
-    // Admin dashboard routes
-    Route::get('/admin/dashboard-stats', [StudentController::class, 'getDashboardStats']);
-    
-    // Enrollment routes
-    Route::post('/enrollment/submit', [ProfileController::class, 'submitEnrollment']);
-    
 });
 
 // Fee management routes (accessible via session auth for admin dashboard)

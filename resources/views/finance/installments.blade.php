@@ -492,15 +492,6 @@
 
 @section('scripts')
 <script>
-// ── Server-side filter (plan type — requires page reload) ──
-function serverFilter() {
-    const plan = document.getElementById('instFilterPlan').value;
-    const url  = new URL(window.location.href);
-    url.searchParams.set('plan_type', plan);
-    url.searchParams.delete('page');
-    window.location.href = url.toString();
-}
-
 // ── Client-side filter ──
 function filterInstallments() {
     const year    = document.getElementById('instFilterYear').value.toLowerCase();
@@ -791,20 +782,6 @@ function showInstallmentModal(btn) {
                 <div>Failed to load installment details. Please try again.</div>
             </div>`;
     });
-}
-
-// ── Walk-in from table row ──
-function quickPay(installmentId, month, totalDue, payRoute) {
-    document.getElementById('wiInstallmentId').value = installmentId;
-    document.getElementById('wiMonthLabel').textContent = month;
-    document.getElementById('wiAmountDue').textContent  = '₱' + parseFloat(totalDue).toLocaleString('en-PH', {minimumFractionDigits: 2});
-    document.getElementById('wiAmount').value           = parseFloat(totalDue).toFixed(2);
-    document.getElementById('wiReference').value        = '';
-    document.getElementById('wiCashRadio').checked      = true;
-    document.getElementById('wiGcashRadio').checked     = false;
-    wiMethodChange();
-    document.getElementById('walkInPayForm').action = payRoute;
-    new bootstrap.Modal(document.getElementById('walkInPayModal')).show();
 }
 
 // ── Walk-in from inside installment modal ──
