@@ -5,7 +5,9 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
+use App\Mail\Transport\BrevoTransport;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -38,5 +40,12 @@ class AppServiceProvider extends ServiceProvider
         if (! app()->environment('local')) {
             URL::forceScheme('https');
         }
+
+        // Brevo has no official Laravel integration — this sends mail via
+        // their HTTP API (api.brevo.com) instead of SMTP, since Railway's
+        // free tier blocks outbound SMTP (port 587) but allows HTTPS.
+        Mail::extend('brevo', function (array $config) {
+            return new BrevoTransport($config['key'] ?? config('services.brevo.key'));
+        });
     }
 }
