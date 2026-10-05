@@ -1297,14 +1297,19 @@ document.addEventListener('keydown', function(e) {
         }
     }
 
-    // Phone validation — 10 digits after +63 prefix
+    // Phone validation — 10 digits after +63 prefix. The warning uses the
+    // floating notification (like "fill in required fields") instead of an
+    // inline box: an inline box here sits directly above the Back/Next
+    // buttons, so showing/hiding it shifts the buttons up and down — on
+    // mobile that moved the Next button out from under the user's tap right
+    // as they corrected the number and tried to proceed.
     function validatePhone(input) {
         const value = input.value.replace(/[^0-9]/g, '');
+        hideError(input);
         if (value && !/^9[0-9]{9}$/.test(value)) {
-            showError(input, 'Enter 10 digits starting with 9 (e.g. 9123456789)');
             input.classList.add('input-error');
+            showNotification('Enter 10 digits starting with 9 (e.g. 9123456789)', 'error');
         } else {
-            hideError(input);
             input.classList.remove('input-error');
         }
     }
@@ -1382,7 +1387,9 @@ document.addEventListener('keydown', function(e) {
         }
     }
 
-    // Show error message
+    // Show error message — auto-hides after 5s, matching the toast
+    // notifications elsewhere in the system, so a stale message can't be
+    // left stuck on screen if the user moves on without retyping the field.
     function showError(input, message) {
         let errorDiv = input.nextElementSibling;
         if (!errorDiv || !errorDiv.classList.contains('error-message')) {
@@ -1392,6 +1399,11 @@ document.addEventListener('keydown', function(e) {
         }
         errorDiv.textContent = message;
         errorDiv.style.display = 'block';
+
+        clearTimeout(errorDiv._autoHideTimer);
+        errorDiv._autoHideTimer = setTimeout(() => {
+            errorDiv.style.display = 'none';
+        }, 5000);
     }
 
     // Hide error message
@@ -1399,6 +1411,7 @@ document.addEventListener('keydown', function(e) {
         let errorDiv = input.nextElementSibling;
         if (errorDiv && errorDiv.classList.contains('error-message')) {
             errorDiv.style.display = 'none';
+            clearTimeout(errorDiv._autoHideTimer);
         }
     }
 
@@ -1458,24 +1471,36 @@ document.addEventListener('keydown', function(e) {
             showNotification('Please fill in all required fields correctly before proceeding.', 'error');
             return;
         }
-        
+
+        renderStepUI(step);
+        saveEnrollmentDraft();
+
+        // Scroll to top of form
+        document.querySelector('.form-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // The display-only half of step navigation (hide/show steps, update the
+    // circles) — split out from appStep() so restoring a draft on page load
+    // can jump straight to the saved step without re-running validation on
+    // steps the user already completed before the reload.
+    function renderStepUI(step) {
         // Hide all steps
         document.querySelectorAll('.form-step').forEach(el => {
             el.style.display = 'none';
         });
-        
+
         // Show current step
         const targetStepElement = document.getElementById('appStep' + step);
         if (targetStepElement) {
             targetStepElement.style.display = 'block';
         }
-        
+
         // Update step circles
         for (let i = 1; i <= 5; i++) {
             const circle = document.getElementById('sc' + i);
             const label = document.getElementById('slb' + i);
             const line = document.getElementById('sl' + i);
-            
+
             if (i < step) {
                 circle.className = 'step-circle done';
                 circle.textContent = '';
@@ -1496,24 +1521,32 @@ document.addEventListener('keydown', function(e) {
         if (step === 5) {
             updateReviewSummary();
         }
-
-        // Scroll to top of form
-        document.querySelector('.form-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
-    // Show notification
+    // Show notification — stacked in a shared container so two notifications
+    // firing close together (e.g. a field-specific warning plus the general
+    // "fill in required fields" message) stack below each other instead of
+    // rendering on top of one another at the same fixed position.
     function showNotification(message, type = 'success') {
+        let container = document.getElementById('app-notification-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'app-notification-container';
+            container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:10px;min-width:300px;';
+            document.body.appendChild(container);
+        }
+
         const notification = document.createElement('div');
         notification.className = type === 'error' ? 'alert alert-danger' : 'alert alert-success';
-        notification.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        notification.style.cssText = 'margin:0;';
         notification.innerHTML = `
             <i class="bi bi-${type === 'error' ? 'exclamation-triangle' : 'check-circle'} me-2"></i>
             ${message}
             <button type="button" class="btn-close float-end" onclick="this.parentElement.remove()"></button>
         `;
-        
-        document.body.appendChild(notification);
-        
+
+        container.appendChild(notification);
+
         // Auto-remove after 5 seconds
         setTimeout(() => {
             if (notification.parentElement) {
@@ -1640,6 +1673,7 @@ document.addEventListener('keydown', function(e) {
             if (response.ok) {
                 return response.json().then(data => {
                     if (data.success) {
+                        clearEnrollmentDraft();
                         showNotification(data.message || 'Application submitted successfully! Your reference number is: ' + (data.reference_number || ''), 'success');
                         this.reset();
                         setTimeout(function() {
@@ -1653,6 +1687,7 @@ document.addEventListener('keydown', function(e) {
                         }
                     }
                 }).catch(() => {
+                    clearEnrollmentDraft();
                     showNotification('Application submitted successfully!', 'success');
                     this.reset();
                     setTimeout(function() {
@@ -1834,6 +1869,8 @@ function saveEnrollmentDraft() {
         if (el) data[name] = el.value;
     });
     data._savedAt = new Date().toISOString();
+    const currentStepElement = document.querySelector('.form-step:not([style*="display: none"])');
+    data._step = currentStepElement ? parseInt(currentStepElement.id.replace('appStep', '')) : 1;
     localStorage.setItem(DRAFT_KEY, JSON.stringify(data));
     // Show subtle saved indicator
     const banner = document.getElementById('draft-saved-indicator');
@@ -1880,6 +1917,14 @@ async function restoreEnrollmentDraft() {
         );
     }
 
+    // Jump back to whichever step the user was on, instead of always
+    // restarting at step 1 — the saved values above already satisfy
+    // whatever was required to reach that step originally.
+    const savedStep = parseInt(data._step);
+    if (savedStep >= 2 && savedStep <= 5) {
+        renderStepUI(savedStep);
+    }
+
     // Show restored banner
     const banner = document.getElementById('draft-banner');
     if (banner) banner.style.display = 'flex';
@@ -1896,8 +1941,10 @@ document.addEventListener('DOMContentLoaded', function () {
         if (el) el.addEventListener('change', debouncedSave);
     });
 
-    // Clear draft on successful form submission (OTP verified)
-    form.addEventListener('submit', clearEnrollmentDraft);
+    // Draft is cleared explicitly once the server confirms the submission
+    // succeeded (see the fetch .then() in the submit handler below) — not
+    // here on the 'submit' event itself, which fires the instant OTP
+    // verification dispatches it, before the server has responded at all.
 
     // Restore draft on load
     restoreEnrollmentDraft();
