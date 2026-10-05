@@ -67,6 +67,10 @@ return [
 
     'timezone' => 'Asia/Manila',
 
+    // Secret token for GET /cron/run-scheduler (see routes/web.php) — set
+    // CRON_SECRET in .env / Railway Variables.
+    'cron_secret' => env('CRON_SECRET'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration

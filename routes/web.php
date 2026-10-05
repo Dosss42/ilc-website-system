@@ -116,6 +116,26 @@ Route::get('/search',        [\App\Http\Controllers\SearchController::class, 'in
 Route::get('/terms',         fn() => view('terms_and_conditions'))->name('terms');
 Route::get('/privacy',       fn() => view('privacy_policy'))->name('privacy');
 
+// Triggers Laravel's scheduler (payment reminders, late fees, backups —
+// see routes/console.php) on demand. Exists because Railway has no cron of
+// its own; a free external service (e.g. cron-job.org) pings this URL every
+// few minutes instead. Token-gated since this has no auth and is reachable
+// by anyone who knows the URL — hash_equals() avoids a timing side-channel
+// on the comparison. Sent as a header, not a query param, so it doesn't end
+// up logged in plain text anywhere (Railway's access logs, the pinging
+// service's own execution history, browser history). Query param kept as a
+// fallback only for manually testing this in a browser address bar.
+// See docs/railway-infrastructure-notes.md §2.
+Route::get('/cron/run-scheduler', function (Request $request) {
+    $expected = config('app.cron_secret');
+    $given = (string) ($request->header('X-Cron-Secret') ?? $request->query('token', ''));
+    if (!$expected || !hash_equals($expected, $given)) {
+        abort(403);
+    }
+    \Illuminate\Support\Facades\Artisan::call('schedule:run');
+    return response('OK: ' . now()->toDateTimeString(), 200)->header('Content-Type', 'text/plain');
+})->name('cron.run-scheduler');
+
 
 Route::get('/enrollment/process', function () {
     if (!\App\Models\Setting::get('enrollment_open', true)) {
