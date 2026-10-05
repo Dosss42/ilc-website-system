@@ -3249,6 +3249,32 @@ class EnrollmentController extends Controller
     }
 
     /**
+     * Lightweight student lookup for type-ahead pickers (e.g. the Guidance
+     * Records "Add Record" modal). The Student Management table's $students
+     * is paginated 15-at-a-time and filtered by whatever tab filters are
+     * active, so it can't be reused as a full roster source once the school
+     * has 250+ students — this queries the full students table directly.
+     */
+    public function searchStudents(Request $request)
+    {
+        $q = trim($request->get('q', ''));
+        if (strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $students = User::where('role', 'student')
+            ->where(function ($query) use ($q) {
+                $query->where('name', 'like', "%{$q}%")
+                      ->orWhere('email', 'like', "%{$q}%");
+            })
+            ->orderBy('name')
+            ->limit(20)
+            ->get(['id', 'name', 'email']);
+
+        return response()->json($students);
+    }
+
+    /**
      * Failing subjects (term average < 75, same rule as the Grades tab) for a
      * student, and whether each one has been cleared via a passed summer class.
      * Informational only — shown in the assessment modal, does not block anything.

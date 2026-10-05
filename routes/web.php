@@ -293,6 +293,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // STUDENT MANAGEMENT
     Route::prefix('students')->name('students.')->group(function () {
         Route::get('/', [EnrollmentController::class, 'indexStudents'])->name('index');
+        Route::get('/search', [EnrollmentController::class, 'searchStudents'])->name('search');
         Route::post('/{id}/restore', [EnrollmentController::class, 'restoreStudent'])->name('restore');
         Route::delete('/{id}/force', [EnrollmentController::class, 'forceDeleteStudent'])->name('force-delete');
         Route::get('/{user}/sf10', [EnrollmentController::class, 'downloadSF10'])->name('sf10');

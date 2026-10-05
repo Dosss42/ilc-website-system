@@ -856,7 +856,8 @@
                             <input type="tel" name="guardian_phone" id="guardian_phone" class="app-input"
                                 style="border:none;border-radius:0;flex:1;min-width:0;"
                                 placeholder="9XXXXXXXXX" maxlength="10"
-                                oninput="this.value=this.value.replace(/[^0-9]/g,'')"
+                                oninput="this.value=this.value.replace(/[^0-9]/g,''); if(!this.value){hideError(this);this.classList.remove('input-error');}"
+                                onblur="validatePhone(this)"
                                 data-required="true">
                         </div>
                         <small style="font-size:11px;color:#888;">Format: +63 9XXXXXXXXX (10 digits)</small>

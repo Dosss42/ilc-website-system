@@ -6656,12 +6656,11 @@ function openWalkInEnrollmentModal() {
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-lbl">Student *</label>
-                                <select id="guidance-student" class="form-fld" required>
-                                    <option value="">Select Student</option>
-                                    @foreach($students as $s)
-                                        <option value="{{ $s->id }}">{{ $s->name }}</option>
-                                    @endforeach
-                                </select>
+                                <div style="position:relative;">
+                                    <input type="text" id="guidance-student-search" class="form-fld" placeholder="Type at least 2 letters of the student's name..." autocomplete="off" oninput="guidanceStudentSearch(this.value)">
+                                    <input type="hidden" id="guidance-student">
+                                    <div id="guidance-student-results" style="display:none;position:absolute;z-index:1000;top:100%;left:0;right:0;background:#fff;border:1px solid #dde3ec;border-radius:8px;max-height:220px;overflow-y:auto;box-shadow:0 6px 16px rgba(0,0,0,0.12);margin-top:2px;"></div>
+                                </div>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-lbl">Date *</label>
@@ -18141,11 +18140,59 @@ function openWalkInEnrollmentModal() {
     function openGuidanceModal() {
         document.getElementById('guidance-id').value = '';
         document.getElementById('guidanceForm').reset();
+        document.getElementById('guidance-student').value = '';
+        document.getElementById('guidance-student-search').value = '';
+        document.getElementById('guidance-student-results').style.display = 'none';
         document.getElementById('guidanceModalTitle').innerHTML = '<i class="bi bi-journal-medical me-2"></i>Add Guidance Record';
         document.getElementById('guidance-delete-btn').style.display = 'none';
         document.getElementById('guidance-date').value = new Date().toISOString().split('T')[0];
         new bootstrap.Modal(document.getElementById('guidanceModal')).show();
     }
+
+    // Type-ahead student picker for the Guidance modal — queries the full
+    // students table (not the Student Management tab's paginated 15-at-a-time
+    // list) so it works correctly past 250+ students.
+    let _guidanceStudentSearchTimer = null;
+    function guidanceStudentSearch(query) {
+        document.getElementById('guidance-student').value = '';
+        clearTimeout(_guidanceStudentSearchTimer);
+        const resultsEl = document.getElementById('guidance-student-results');
+        if (query.trim().length < 2) {
+            resultsEl.style.display = 'none';
+            resultsEl.innerHTML = '';
+            return;
+        }
+        _guidanceStudentSearchTimer = setTimeout(() => {
+            fetch('/admin/students/search?q=' + encodeURIComponent(query.trim()))
+                .then(r => r.json())
+                .then(students => {
+                    if (!students.length) {
+                        resultsEl.innerHTML = '<div style="padding:10px;font-size:13px;color:#999;">No students found.</div>';
+                        resultsEl.style.display = 'block';
+                        return;
+                    }
+                    resultsEl.innerHTML = students.map(s =>
+                        `<div class="guidance-student-option" data-id="${s.id}" data-name="${s.name.replace(/"/g, '&quot;')}" style="padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid #f0f2f5;">${s.name} <span style="color:#999;font-size:11.5px;">(${s.email})</span></div>`
+                    ).join('');
+                    resultsEl.style.display = 'block';
+                })
+                .catch(() => { resultsEl.style.display = 'none'; });
+        }, 300);
+    }
+
+    document.addEventListener('click', function(e) {
+        const option = e.target.closest('.guidance-student-option');
+        if (option) {
+            document.getElementById('guidance-student').value = option.dataset.id;
+            document.getElementById('guidance-student-search').value = option.dataset.name;
+            document.getElementById('guidance-student-results').style.display = 'none';
+            return;
+        }
+        if (!e.target.closest('#guidance-student-search')) {
+            const resultsEl = document.getElementById('guidance-student-results');
+            if (resultsEl) resultsEl.style.display = 'none';
+        }
+    });
 
     function editGuidanceRecord(id) {
         fetch(`/admin/guidance/${id}`)
@@ -18154,6 +18201,8 @@ function openWalkInEnrollmentModal() {
                 const record = d.record;
                 document.getElementById('guidance-id').value = record.id;
                 document.getElementById('guidance-student').value = record.student_id;
+                document.getElementById('guidance-student-search').value = record.student ? record.student.name : '';
+                document.getElementById('guidance-student-results').style.display = 'none';
                 document.getElementById('guidance-counselor').value = record.counselor_id;
                 document.getElementById('guidance-date').value = record.date;
                 document.getElementById('guidance-concern-type').value = record.concern_type;
