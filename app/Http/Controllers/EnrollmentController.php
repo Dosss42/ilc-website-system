@@ -791,6 +791,21 @@ class EnrollmentController extends Controller
             });
         }
 
+        // Student Management stat cards — counted from the full filtered set
+        // via clones of $studentsQuery (all filters already applied above),
+        // not from the paginated $students list below. $students is capped
+        // at 15 per page, so filtering/counting it directly (the previous
+        // approach, done inline in the blade view) made every one of these
+        // cards show only a breakdown of the current page — e.g. "Total
+        // Students: 15" regardless of the real roster size.
+        $smTotal = (clone $studentsQuery)->count();
+        $smEnrolled = (clone $studentsQuery)->whereHas('latestEnrollment', fn($q) => $q->where('status', 'enrolled'))->count();
+        $smApproved = (clone $studentsQuery)->whereHas('latestEnrollment', fn($q) => $q->where('status', 'approved'))->count();
+        $smPending = (clone $studentsQuery)->whereHas('latestEnrollment', fn($q) => $q->where('status', 'pending'))->count();
+        $smNotEnrolled = (clone $studentsQuery)->whereDoesntHave('latestEnrollment', fn($q) => $q->whereIn('status', ['approved', 'enrolled', 'pending']))->count();
+        $smPaid = (clone $studentsQuery)->whereHas('latestEnrollment', fn($q) => $q->where('payment_status', 'paid'))->count();
+        $smBalance = (clone $studentsQuery)->whereHas('latestEnrollment', fn($q) => $q->whereIn('payment_status', ['partial', 'pending', 'unpaid']))->count();
+
         $students = $studentsQuery->with(['latestEnrollment' => function ($query) {
                 $query->with('paymentInstallments');
             }, 'enrollments' => function ($query) {
@@ -1224,8 +1239,14 @@ class EnrollmentController extends Controller
 
         // Sidebar badge counts — unfiltered totals, independent of the
         // paginated/filtered $students and $enrollments lists above.
+        // $enrollmentCount is deliberately the PENDING count, not a total —
+        // it's a "needs your attention" queue badge (like Guidance Records'
+        // badge), not a historical record count. A raw Enrollment::count()
+        // happened to equal $studentCount here (one enrollment per student,
+        // single school year so far) which made the two badges look
+        // identically redundant.
         $studentCount = User::where('role', 'student')->count();
-        $enrollmentCount = Enrollment::count();
+        $enrollmentCount = Enrollment::where('status', 'pending')->count();
 
         return view('adminDashboard', compact(
             'studentCount', 'enrollmentCount',
@@ -1236,6 +1257,7 @@ class EnrollmentController extends Controller
             'financePayments', 'walkInTransactions', 'installmentEnrollments', 'combinedPayStats',
             'sort', 'statusFilter', 'gradeFilter', 'enrollmentSearch',
             'studentSearch', 'studentGradeFilter', 'studentStatusFilter', 'studentPaymentFilter', 'studentSchoolYearFilter', 'archivedStudents',
+            'smTotal', 'smEnrolled', 'smApproved', 'smPending', 'smNotEnrolled', 'smPaid', 'smBalance',
             'subjects', 'sections', 'schedules', 'teachers', 'teacherAssignments', 'guidanceRecords',
             'allActiveSubjects', 'allActiveTeachers',
             'guidanceSearch', 'guidanceStatus', 'guidanceConcern', 'guidanceSort',

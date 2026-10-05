@@ -1718,21 +1718,12 @@ function openWalkInEnrollmentModal() {
         </div>
 
         
-        <?php
-            $smTotal = ($students ?? collect())->count();
-            $smEnrolled = ($students ?? collect())->filter(fn($s) => $s->latestEnrollment && $s->latestEnrollment->status === 'enrolled')->count();
-            $smApproved = ($students ?? collect())->filter(fn($s) => $s->latestEnrollment && $s->latestEnrollment->status === 'approved')->count();
-            $smPending = ($students ?? collect())->filter(fn($s) => $s->latestEnrollment && $s->latestEnrollment->status === 'pending')->count();
-            $smNotEnrolled = ($students ?? collect())->filter(fn($s) => !$s->latestEnrollment || !in_array($s->latestEnrollment->status, ['approved','enrolled','pending']))->count();
-            $smPaid = ($students ?? collect())->filter(fn($s) => $s->latestEnrollment && $s->latestEnrollment->payment_status === 'paid')->count();
-            $smBalance = ($students ?? collect())->filter(fn($s) => $s->latestEnrollment && in_array($s->latestEnrollment->payment_status, ['partial','pending','unpaid']))->count();
-        ?>
         <div class="row g-3 mb-4">
             <div class="col-md-2 col-sm-4 col-6">
                 <div class="stat-card">
                     <div class="stat-icon blue"><i class="bi bi-people-fill"></i></div>
                     <div>
-                        <div class="stat-value" id="sm-total-count"><?php echo e($smTotal); ?></div>
+                        <div class="stat-value" id="sm-total-count"><?php echo e($smTotal ?? 0); ?></div>
                         <div class="stat-label">Total Students</div>
                     </div>
                 </div>
@@ -1741,7 +1732,7 @@ function openWalkInEnrollmentModal() {
                 <div class="stat-card">
                     <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
                     <div>
-                        <div class="stat-value" id="sm-enrolled-count"><?php echo e($smEnrolled); ?></div>
+                        <div class="stat-value" id="sm-enrolled-count"><?php echo e($smEnrolled ?? 0); ?></div>
                         <div class="stat-label">Enrolled</div>
                     </div>
                 </div>
@@ -1750,7 +1741,7 @@ function openWalkInEnrollmentModal() {
                 <div class="stat-card">
                     <div class="stat-icon teal"><i class="bi bi-check2-square"></i></div>
                     <div>
-                        <div class="stat-value" id="sm-approved-count"><?php echo e($smApproved); ?></div>
+                        <div class="stat-value" id="sm-approved-count"><?php echo e($smApproved ?? 0); ?></div>
                         <div class="stat-label">Approved</div>
                     </div>
                 </div>
@@ -1759,7 +1750,7 @@ function openWalkInEnrollmentModal() {
                 <div class="stat-card">
                     <div class="stat-icon gold"><i class="bi bi-hourglass-split"></i></div>
                     <div>
-                        <div class="stat-value" id="sm-pending-count"><?php echo e($smPending); ?></div>
+                        <div class="stat-value" id="sm-pending-count"><?php echo e($smPending ?? 0); ?></div>
                         <div class="stat-label">Pending</div>
                     </div>
                 </div>
@@ -1768,7 +1759,7 @@ function openWalkInEnrollmentModal() {
                 <div class="stat-card">
                     <div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div>
                     <div>
-                        <div class="stat-value" id="sm-notenrolled-count"><?php echo e($smNotEnrolled); ?></div>
+                        <div class="stat-value" id="sm-notenrolled-count"><?php echo e($smNotEnrolled ?? 0); ?></div>
                         <div class="stat-label">Not Enrolled</div>
                     </div>
                 </div>
@@ -1777,7 +1768,7 @@ function openWalkInEnrollmentModal() {
                 <div class="stat-card">
                     <div class="stat-icon green"><i class="bi bi-cash-stack"></i></div>
                     <div>
-                        <div class="stat-value" id="sm-paid-count"><?php echo e($smPaid); ?></div>
+                        <div class="stat-value" id="sm-paid-count"><?php echo e($smPaid ?? 0); ?></div>
                         <div class="stat-label">Fully Paid</div>
                     </div>
                 </div>
@@ -1786,7 +1777,7 @@ function openWalkInEnrollmentModal() {
                 <div class="stat-card">
                     <div class="stat-icon red"><i class="bi bi-exclamation-triangle-fill"></i></div>
                     <div>
-                        <div class="stat-value" id="sm-balance-count"><?php echo e($smBalance); ?></div>
+                        <div class="stat-value" id="sm-balance-count"><?php echo e($smBalance ?? 0); ?></div>
                         <div class="stat-label">With Balance</div>
                     </div>
                 </div>
