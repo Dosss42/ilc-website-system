@@ -675,177 +675,28 @@ class EnrollmentController extends Controller
     {
         // Get sort and filter parameters
         $sort = $request->get('sort', 'newest'); // default: newest first
-        $statusFilter = $request->get('status', 'all');
-        $gradeFilter = $request->get('grade', 'all');
-        $studentSearch = $request->get('student_search') ?? '';
-        $enrollmentSearch = trim((string) $request->get('enrollment_search', ''));
-        $studentGradeFilter = $request->get('student_grade', 'all');
-        $studentStatusFilter = $request->get('student_status', 'all');
-        $studentPaymentFilter = $request->get('student_payment', 'all');
-        $studentSchoolYearFilter = $request->get('student_schoolyear', 'all');
-        $gradeLevel = $request->get('grade_level', 'all'); // for mass promotion
 
-        // ── 1. Enrollment records (paginated with sorting) ──
-        $enrollmentQuery = Enrollment::select('id', 'user_id', 'reference_number', 'status', 'student_data', 'payment_status', 'payment_amount', 'payment_method', 'payment_reference', 'payment_type', 'total_fee', 'remaining_balance', 'payment_due_date', 'created_at', 'updated_at');
-
-        // Apply status filter
-        if ($statusFilter !== 'all') {
-            $enrollmentQuery->where('status', $statusFilter);
-        }
-
-        // Apply grade level filter
-        if ($gradeFilter !== 'all') {
-            $enrollmentQuery->where('student_data->grade_level', $gradeFilter);
-        }
-
-        // Apply search — reference number, individual/combined name fields, and
-        // email. Name fields live inside student_data (JSON), not real columns,
-        // same as the grade_level filter above.
-        if ($enrollmentSearch !== '') {
-            $enrollmentQuery->where(function ($q) use ($enrollmentSearch) {
-                $term = '%' . $enrollmentSearch . '%';
-                $q->where('reference_number', 'like', $term)
-                  ->orWhere('student_data->first_name', 'like', $term)
-                  ->orWhere('student_data->middle_name', 'like', $term)
-                  ->orWhere('student_data->last_name', 'like', $term)
-                  ->orWhere('student_data->student_email', 'like', $term)
-                  ->orWhereRaw("CONCAT(JSON_UNQUOTE(JSON_EXTRACT(student_data, '$.first_name')), ' ', JSON_UNQUOTE(JSON_EXTRACT(student_data, '$.last_name'))) LIKE ?", [$term]);
-            });
-        }
-
-        // Apply sorting
-        switch ($sort) {
-            case 'name_asc':
-                $enrollmentQuery->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT(student_data, '$.last_name')) ASC");
-                break;
-            case 'name_desc':
-                $enrollmentQuery->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT(student_data, '$.last_name')) DESC");
-                break;
-            case 'oldest':
-                $enrollmentQuery->orderBy('created_at', 'asc');
-                break;
-            case 'newest':
-            default:
-                $enrollmentQuery->orderBy('created_at', 'desc');
-                break;
-        }
-
-        $enrollments = $enrollmentQuery->paginate(20, ['*'], 'enrollment_page');
+        // ── 1. Enrollment records — moved to sectionEnrollment(), loaded
+        // on-demand via GET /admin/section/enrollment. $sort stays here
+        // (not moved) since Student Management's own sort dropdown and
+        // query also read it — see docs/system-improvement-plan.md item #2.
 
         // ── 2. Recent Students for Dashboard (10 per page) ──
         $recentStudents = User::where('role', 'student')
             ->orderByDesc('created_at')
             ->paginate(10, ['*'], 'dashboard_page');
 
-        // ── 3. Student Management & Payment Overview (shared query) ──
-        // Show ALL students with role='student' — including pending enrollments
-        $studentsQuery = User::where('role', 'student');
+        // ── 3. Student Management & Payment Overview — moved to
+        // sectionStudents(), loaded on-demand via GET /admin/section/students.
+        // $allStudentsPayment (= the same query, aliased for the Finance tab)
+        // removed along with it — Finance is permanently redirect-only dead
+        // UI within the admin dashboard (see _PORTAL_SECTIONS in
+        // showSection()), so nothing else needs it.
 
-        // Apply search filter
-        if ($studentSearch) {
-            $studentsQuery->where(function($q) use ($studentSearch) {
-                $q->where('name', 'like', '%' . $studentSearch . '%')
-                  ->orWhere('email', 'like', '%' . $studentSearch . '%')
-                  ->orWhere('lrn', 'like', '%' . $studentSearch . '%');
-            });
-        }
-
-        // Apply grade filter
-        if ($studentGradeFilter && $studentGradeFilter !== 'all') {
-            $studentsQuery->whereHas('latestEnrollment', function($q) use ($studentGradeFilter) {
-                $q->where('student_data->grade_level', $studentGradeFilter);
-            });
-        }
-
-        // Apply grade_level filter for mass promotion
-        if ($gradeLevel && $gradeLevel !== 'all') {
-            $studentsQuery->whereHas('latestEnrollment', function($q) use ($gradeLevel) {
-                $q->where('student_data->grade_level', $gradeLevel);
-            });
-        }
-
-        // Apply status filter
-        if ($studentStatusFilter && $studentStatusFilter !== 'all') {
-            if ($studentStatusFilter === 'not_enrolled') {
-                $studentsQuery->whereDoesntHave('enrollments', function($q) {
-                    $q->whereIn('status', ['enrolled', 'approved', 'pending']);
-                });
-            } else {
-                $studentsQuery->whereHas('latestEnrollment', function($q) use ($studentStatusFilter) {
-                    $q->where('status', $studentStatusFilter);
-                });
-            }
-        }
-
-        // Apply payment filter
-        if ($studentPaymentFilter && $studentPaymentFilter !== 'all') {
-            $studentsQuery->whereHas('latestEnrollment', function($q) use ($studentPaymentFilter) {
-                $q->where('payment_status', $studentPaymentFilter);
-            });
-        }
-
-        // Apply school year filter — check any enrollment, not just the latest
-        if ($studentSchoolYearFilter && $studentSchoolYearFilter !== 'all') {
-            $studentsQuery->whereHas('enrollments', function($q) use ($studentSchoolYearFilter) {
-                $q->where('school_year', $studentSchoolYearFilter);
-            });
-        }
-
-        // Student Management stat cards — counted from the full filtered set
-        // via clones of $studentsQuery (all filters already applied above),
-        // not from the paginated $students list below. $students is capped
-        // at 15 per page, so filtering/counting it directly (the previous
-        // approach, done inline in the blade view) made every one of these
-        // cards show only a breakdown of the current page — e.g. "Total
-        // Students: 15" regardless of the real roster size.
-        $smTotal = (clone $studentsQuery)->count();
-        $smEnrolled = (clone $studentsQuery)->whereHas('latestEnrollment', fn($q) => $q->where('status', 'enrolled'))->count();
-        $smApproved = (clone $studentsQuery)->whereHas('latestEnrollment', fn($q) => $q->where('status', 'approved'))->count();
-        $smPending = (clone $studentsQuery)->whereHas('latestEnrollment', fn($q) => $q->where('status', 'pending'))->count();
-        $smNotEnrolled = (clone $studentsQuery)->whereDoesntHave('latestEnrollment', fn($q) => $q->whereIn('status', ['approved', 'enrolled', 'pending']))->count();
-        $smPaid = (clone $studentsQuery)->whereHas('latestEnrollment', fn($q) => $q->where('payment_status', 'paid'))->count();
-        $smBalance = (clone $studentsQuery)->whereHas('latestEnrollment', fn($q) => $q->whereIn('payment_status', ['partial', 'pending', 'unpaid']))->count();
-
-        $students = $studentsQuery->with(['latestEnrollment' => function ($query) {
-                $query->with('paymentInstallments');
-            }, 'enrollments' => function ($query) {
-                $query->with('paymentInstallments')
-                    ->where(function ($q) {
-                    $q->whereIn('status', ['approved', 'enrolled', 'completed', 'dropped', 'transferred'])
-                      ->orWhere('payment_amount', '>', 0)
-                      ->orWhere('student_data->is_walk_in', true);
-                })->orderBy('id', 'desc');
-            }, 'promotions' => function ($query) {
-                $query->latest()->limit(1);
-            }]);
-
-        // Apply sorting for students
-        switch ($sort) {
-            case 'name_asc':
-                $studentsQuery->orderBy('name', 'asc');
-                break;
-            case 'name_desc':
-                $studentsQuery->orderBy('name', 'desc');
-                break;
-            case 'oldest':
-                $studentsQuery->orderBy('created_at', 'asc');
-                break;
-            case 'newest':
-            default:
-                $studentsQuery->orderBy('created_at', 'desc');
-                break;
-        }
-
-        $students = $studentsQuery->paginate(15, ['*'], 'student_page');
-
-        // Archived students (soft-deleted)
-        $archivedStudents = User::onlyTrashed()
-            ->where('role', 'student')
-            ->with(['latestEnrollment'])
-            ->orderByDesc('deleted_at')
-            ->paginate(15, ['*'], 'archive_page');
-
-        $allStudentsPayment = $students;
+        // Archived students (soft-deleted) — the full paginated/eager-loaded
+        // list moved to sectionArchives(), loaded on-demand. Only a cheap
+        // count stays here, for the sidebar badge shown on every page.
+        $archivedStudentsCount = User::onlyTrashed()->where('role', 'student')->count();
 
         // ── 3. Finance aggregates – single raw query instead of 6 separate ones ──
         $financeSummary = DB::selectOne("
@@ -866,108 +717,27 @@ class EnrollmentController extends Controller
         $pendingPayments = $partialCount;
         $pendingScreenshots = $financeSummary->pending_screenshots ?? 0;
 
-        // ── 4. Payment enrollments & documents (limited) ──
-        // Get approved/enrolled enrollments for payment tracking — keep limit tight
-        $paymentEnrollments = Enrollment::select('id', 'user_id', 'reference_number', 'student_data', 'status', 'payment_status', 'payment_amount', 'payment_method', 'payment_reference', 'updated_at', 'total_fee', 'remaining_balance', 'payment_option', 'payment_type', 'downpayment_amount', 'monthly_amount')
-            ->where(function ($q) {
-                $q->whereIn('status', ['approved', 'enrolled'])
-                  ->orWhere('payment_amount', '>', 0);
-            })
-            ->orderBy('updated_at', 'desc')
-            ->limit(50)->get();
-
-        // Get recent documents — limit to 50 to keep page load fast
-        $allDocuments = \App\Models\StudentDocument::with('user:id,name', 'enrollment:id,reference_number', 'paymentInstallment')
-            ->whereHas('user')
-            ->latest()->limit(50)->get();
-
-        // Separate payment screenshots from other document types
-        $paymentScreenshots = $allDocuments->where('document_type', 'payment_screenshot');
-
-        // ── 4b. Finance Portal data: Online Payments (payment_screenshot documents) ──
-        $onlinePayments = \App\Models\StudentDocument::where('document_type', 'payment_screenshot')
-            ->whereHas('user')
-            ->with(['enrollment', 'user', 'paymentInstallment'])
-            ->orderByDesc('created_at')
-            ->paginate(15, ['*'], 'payment_page');
-
-        // ── 4b2. Walk-in Payment Transactions (from PaymentTransaction) ──
-        // Includes both 'walkin' (installment payments) and 'admin' (direct admin payments)
-        // These are all processed by admin/cashier, NOT by students online
-        $walkInTransactions = \App\Models\PaymentTransaction::whereIn('payment_type', ['walkin', 'admin'])
-            ->whereHas('user')
-            ->whereHas('enrollment')
-            ->with(['enrollment', 'user', 'installment'])
-            ->orderByDesc('created_at')
-            ->paginate(15, ['*'], 'walkin_page');
-
-        // ── 4b3. Combined payment stats (online + walk-in) ──
-        $payStatsOnline = \App\Models\StudentDocument::where('document_type', 'payment_screenshot')
-            ->selectRaw("
-                COUNT(*) as total,
-                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-                SUM(CASE WHEN status IN ('approved','completed') THEN 1 ELSE 0 END) as completed,
-                SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejected
-            ")->first();
-        $payStatsWalkin = \App\Models\PaymentTransaction::whereIn('payment_type', ['walkin', 'admin', 'downpayment'])
-            ->selectRaw("COUNT(*) as total, COALESCE(SUM(amount), 0) as total_amount")
-            ->first();
-        $combinedPayStats = [
-            'total'         => ($payStatsOnline->total    ?? 0) + ($payStatsWalkin->total    ?? 0),
-            'pending'       => $payStatsOnline->pending   ?? 0,
-            'completed'     => ($payStatsOnline->completed ?? 0) + ($payStatsWalkin->total    ?? 0),
-            'rejected'      => $payStatsOnline->rejected  ?? 0,
-            'walkin_amount' => $payStatsWalkin->total_amount ?? 0,
-        ];
-
-        // ── 4c. Finance Portal data: Installments (enrollments with actual installment records) ──
+        // ── 4 through 4c were: $paymentEnrollments, $allDocuments /
+        // $paymentScreenshots, $onlinePayments (→ $financePayments),
+        // $walkInTransactions, $combinedPayStats, $installmentEnrollments
+        // (+ a per-row progress-calculation loop). All removed 2026-10-06
+        // — every one of them fed exclusively into the Finance / Payments
+        // / Installments / Fees tabs, which are permanently redirect-only
+        // dead UI (see _PORTAL_SECTIONS in showSection()) and can never
+        // actually be displayed. Confirmed via grep against every blade
+        // file before removal. See docs/system-improvement-plan.md.
         $currentSchoolYear = $this->getCurrentSchoolYear();
-        $installmentEnrollments = Enrollment::where('school_year', $currentSchoolYear)
-            ->where(function ($query) {
-                $query->where('payment_type', 'installment')
-                    ->orWhereIn('payment_option', ['B', 'C', 'D']);
-            })
-            ->whereHas('paymentInstallments') // Only show if installments actually exist
-            ->with(['user', 'paymentInstallments'])
-            ->orderByDesc('created_at')
-            ->paginate(15, ['*'], 'installment_page');
-
-        // Calculate next due date and progress for each installment enrollment
-        foreach ($installmentEnrollments as $enrollment) {
-            $nextPending = $enrollment->paymentInstallments
-                ->where('status', 'pending')
-                ->sortBy('due_date')
-                ->first();
-
-            if ($nextPending) {
-                $enrollment->next_due_date = $nextPending->due_date;
-                $enrollment->next_due_amount = $nextPending->total_due;
-                $enrollment->next_month_name = $nextPending->month_name;
-                $enrollment->is_overdue = $nextPending->due_date < \Carbon\Carbon::today();
-                $enrollment->weeks_overdue = $nextPending->weeks_overdue;
-            } else {
-                $lastPaid = $enrollment->paymentInstallments
-                    ->where('status', 'paid')
-                    ->sortByDesc('due_date')
-                    ->first();
-                $enrollment->next_due_date = null;
-                $enrollment->next_due_amount = 0;
-                $enrollment->next_month_name = $lastPaid ? 'Fully Paid' : 'N/A';
-                $enrollment->is_overdue = false;
-                $enrollment->weeks_overdue = 0;
-            }
-
-            $enrollment->total_late_fees = $enrollment->paymentInstallments->sum('late_fee');
-            $totalInst = $enrollment->paymentInstallments->count();
-            $paidInst = $enrollment->paymentInstallments->where('status', 'paid')->count();
-            $enrollment->installment_progress = $totalInst > 0 ? ($paidInst / $totalInst) * 100 : 0;
-        }
 
         // ── 5. Academic data – select only needed columns, eager-load slim ──
-        $subjectsQuery = \App\Models\Subject::with('teacher:id,name')->select('id', 'code', 'name', 'description', 'grade_level', 'teacher_id', 'is_active')
-            ->orderByDesc('created_at');
-
-        $subjects = $subjectsQuery->paginate(15, ['*'], 'subject_page');
+        // $subjects — moved to sectionSubjects(), loaded on-demand via
+        // GET /admin/section/subjects. See docs/system-improvement-plan.md
+        // item #2. $teachersWithSubjectsCount below replaces Teacher
+        // Management's own dependency on $subjects (it used to count
+        // unique teacher_ids from the paginated $subjects list — which
+        // only ever covered one page's worth of rows, the same
+        // counts-from-a-paginated-list bug already fixed for Student
+        // Management — now a real, independent, correct count).
+        $teachersWithSubjectsCount = \App\Models\Subject::whereNotNull('teacher_id')->distinct('teacher_id')->count('teacher_id');
 
         // select() MUST come before withCount() here — withCount() appends a
         // subquery column, but select() called afterward would wipe it out
@@ -987,12 +757,12 @@ class EnrollmentController extends Controller
         foreach ($sections as $sec) {
             $sec->current_enrollment = $sec->students_count;
         }
-        $schedules = \App\Models\Schedule::with(['section:id,name', 'subject:id,name,code', 'teacher:id,name'])
-            ->select('id', 'section_id', 'subject_id', 'teacher_id', 'day_of_week', 'start_time', 'end_time', 'room', 'is_active')
-            ->where('is_active', true)
-            ->orderBy('day_of_week')
-            ->orderBy('start_time')
-            ->get();
+        // $schedules — removed 2026-10-06. Confirmed via grep against every
+        // blade file: never referenced by its own partial (Schedule
+        // Management is already fully self-contained AJAX via
+        // loadScheduleGrid()). Pure dead weight, same as Teacher
+        // Assignments' removed query. $allSchedules below (a different,
+        // unfiltered query) IS still used — by Subjects and Teachers.
 
         $allSchedules = \App\Models\Schedule::with(['section', 'subject', 'teacher'])
             ->orderByRaw("FIELD(day_of_week,'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday')")
@@ -1000,10 +770,10 @@ class EnrollmentController extends Controller
             ->get();
         $teachers  = User::where('role', 'teacher')->select('id', 'name', 'email', 'is_active', 'created_at')->orderByDesc('created_at')->paginate(15, ['*'], 'teacher_page');
 
-        // Complete (non-paginated) subject/teacher lists — $subjects and $teachers
-        // above are paginated for the Subject/Teacher Management tables and only
-        // ever carry one page's worth of rows, so dropdowns elsewhere (e.g. the
-        // Summer Class modal) need their own unpaginated source.
+        // Complete (non-paginated) subject/teacher lists — $teachers above
+        // is paginated for the Teacher Management table and only ever
+        // carries one page's worth of rows, so dropdowns elsewhere (e.g.
+        // the Summer Class modal) need their own unpaginated source.
         $allActiveSubjects = \App\Models\Subject::where('is_active', true)
             ->select('id', 'code', 'name', 'grade_level')
             ->orderBy('grade_level')->orderBy('name')
@@ -1013,42 +783,15 @@ class EnrollmentController extends Controller
             ->orderBy('name')
             ->get();
 
-        // ── 5b. Teacher Assignments – for schedule teacher filtering ──
-        $teacherAssignments = TeacherAssignment::with(['teacher:id,name', 'section:id,name,grade_level', 'subject:id,name,code'])
-            ->select('id', 'teacher_id', 'section_id', 'subject_id', 'is_advisory', 'school_year')
-            ->orderByDesc('created_at')
-            ->paginate(15, ['*'], 'ta_page');
+        // ── 5b. Teacher Assignments — removed 2026-10-06. The Advisory
+        // Teacher Assignments tab is already fully self-contained AJAX
+        // (loadTeacherAssignments() fetches /admin/teacher-assignments
+        // directly); this paginated query was never referenced by its own
+        // partial at all, confirmed via grep. Pure dead weight.
 
-        // ── 6. Guidance records ──
-        $guidanceSearch  = $request->get('guidance_search', '');
-        $guidanceStatus  = $request->get('guidance_status', '');
-        $guidanceConcern = $request->get('guidance_concern', '');
-        $guidanceSort    = $request->get('guidance_sort', 'date_desc');
-
-        $guidanceQuery = \App\Models\GuidanceRecord::with(['student:id,name', 'counselor:id,name']);
-
-        if ($guidanceSearch) {
-            $guidanceQuery->whereHas('student', function ($q) use ($guidanceSearch) {
-                $q->where('name', 'like', '%' . $guidanceSearch . '%');
-            });
-        }
-        if ($guidanceStatus) {
-            $guidanceQuery->where('status', $guidanceStatus);
-        }
-        if ($guidanceConcern) {
-            $guidanceQuery->where('concern_type', $guidanceConcern);
-        }
-        $guidanceQuery->orderBy('date', $guidanceSort === 'date_asc' ? 'asc' : 'desc');
-
-        $guidanceRecords = $guidanceQuery->paginate(15, ['*'], 'guidance_page');
-
-        // Stat cards for the Guidance Records tab — global counts, not scoped to
-        // the current search/filter, matching how every other module's stat row
-        // (e.g. Subject Management) always shows the full picture regardless of
-        // what's currently filtered in the table below it.
-        $guidanceTotalCount    = \App\Models\GuidanceRecord::count();
-        $guidanceOpenCount     = \App\Models\GuidanceRecord::where('status', 'open')->count();
-        $guidanceResolvedCount = \App\Models\GuidanceRecord::whereIn('status', ['resolved', 'closed'])->count();
+        // ── 6. Guidance records ── moved to sectionGuidance(), loaded
+        // on-demand via GET /admin/section/guidance when that tab is
+        // actually opened — see docs/system-improvement-plan.md item #2.
 
         // Same reasoning for Summer Class Management's stat cards — the table
         // rows themselves load client-side (loadSummerClasses()), but the
@@ -1058,37 +801,17 @@ class EnrollmentController extends Controller
         $summerOngoingCount   = \App\Models\SummerClass::where('status', 'ongoing')->count();
         $summerCompletedCount = \App\Models\SummerClass::where('status', 'completed')->count();
 
-        // ── 7. Fee Breakdown Preview ──
+        // ── 7. Fee Breakdown Preview — removed 2026-10-06, same reasoning
+        // as the block above: $feeBreakdowns/$feeSettings fed only the
+        // Fees tab, which is permanently redirect-only dead UI. ──
+
+        // Kept (unlike $feeBreakdowns, which has a safe `?? []` default
+        // elsewhere) because resources/views/admin/sections/fees.blade.php
+        // calls ->tuition / ->misc / etc. on this directly in ~25 places
+        // with no isset() guard — removing it entirely would throw an
+        // undefined-variable fatal, not just show stale data. Still just
+        // one cheap single-row query either way.
         $feeSettings = FeeSetting::first() ?? new FeeSetting();
-        $feeBreakdowns = [];
-        $gradeLevels = ['nursery', 'kindergarten', 'grade1', 'grade2', 'grade3', 'grade4', 'grade5', 'grade6'];
-        foreach ($gradeLevels as $grade) {
-            if (in_array($grade, ['nursery', 'kindergarten'])) {
-                $bookFee = $feeSettings->books_nursery ?? 0;
-            } elseif (in_array($grade, ['grade1', 'grade2'])) {
-                $bookFee = $feeSettings->books_grade1 ?? 0;
-            } elseif ($grade === 'grade3') {
-                $bookFee = $feeSettings->books_grade3 ?? 0;
-            } else {
-                $bookFee = $feeSettings->books_grade4 ?? 0;
-            }
-            $feeBreakdowns[$grade] = [
-                'tuition'    => $feeSettings->tuition    ?? 0,
-                'misc'       => $feeSettings->misc       ?? 0,
-                'insurance'  => $feeSettings->insurance  ?? 0,
-                'electric'   => $feeSettings->electric   ?? 0,
-                'books'      => $bookFee,
-                'base_total' => ($feeSettings->tuition ?? 0) + ($feeSettings->misc ?? 0) + ($feeSettings->insurance ?? 0) + ($feeSettings->electric ?? 0) + $bookFee,
-            ];
-        }
-
-        // Return JSON for AJAX requests (Mass Promotion)
-        if ($request->wantsJson()) {
-            return response()->json($students);
-        }
-
-        // Alias onlinePayments back to financePayments for backward compatibility
-        $financePayments = $onlinePayments;
 
         $enrollmentOpen  = Setting::get('enrollment_open', true);
         $maintenanceMode = Setting::get('maintenance_mode', false);
@@ -1214,6 +937,10 @@ class EnrollmentController extends Controller
         $assessNextSchoolYear = $this->nextSchoolYear($currentSchoolYear);
 
         // Staff who can be logged as the counselor on a guidance record.
+        // Stays here (not moved to sectionGuidance()) because the "Add
+        // Record" modal that uses it lives outside #section-guidance, in
+        // the main page — it's rendered once on initial load, not
+        // re-rendered on each AJAX guidance-tab refresh.
         $guidanceCounselors = \App\Models\User::whereIn('role', ['admin', 'superadmin', 'teacher'])
             ->where('is_active', true)
             ->orderBy('name')
@@ -1223,19 +950,12 @@ class EnrollmentController extends Controller
         $contactMessages      = \App\Models\ContactMessage::orderByDesc('created_at')->get();
         $unreadMessagesCount  = $contactMessages->where('status', 'unread')->count();
 
-        // Announcements & News for admin management
-        $annCategoryFilter  = $request->input('ann_category');
-        $newsCategoryFilter = $request->input('news_category');
+        // Announcements — moved to sectionAnnouncements(), loaded on-demand
+        // via GET /admin/section/announcements. See
+        // docs/system-improvement-plan.md item #2.
 
-        $announcements = \App\Models\Announcement::orderByDesc('created_at')
-            ->when($annCategoryFilter, fn($q) => $q->where('category', $annCategoryFilter))
-            ->paginate(10, ['*'], 'ann_page')
-            ->withQueryString();
-
-        $news = \App\Models\News::orderByDesc('created_at')
-            ->when($newsCategoryFilter, fn($q) => $q->where('category', $newsCategoryFilter))
-            ->paginate(10, ['*'], 'news_page')
-            ->withQueryString();
+        // News — moved to sectionNews(), loaded on-demand via
+        // GET /admin/section/news. Same reasoning.
 
         // Sidebar badge counts — unfiltered totals, independent of the
         // paginated/filtered $students and $enrollments lists above.
@@ -1250,26 +970,542 @@ class EnrollmentController extends Controller
 
         return view('adminDashboard', compact(
             'studentCount', 'enrollmentCount',
-            'enrollments', 'students', 'paymentEnrollments',
-            'pendingPayments', 'totalCollected', 'pendingScreenshots', 'allDocuments',
-            'paymentScreenshots',
-            'allStudentsPayment', 'unpaidCount', 'partialCount', 'paidCount',
-            'financePayments', 'walkInTransactions', 'installmentEnrollments', 'combinedPayStats',
-            'sort', 'statusFilter', 'gradeFilter', 'enrollmentSearch',
-            'studentSearch', 'studentGradeFilter', 'studentStatusFilter', 'studentPaymentFilter', 'studentSchoolYearFilter', 'archivedStudents',
-            'smTotal', 'smEnrolled', 'smApproved', 'smPending', 'smNotEnrolled', 'smPaid', 'smBalance',
-            'subjects', 'sections', 'schedules', 'teachers', 'teacherAssignments', 'guidanceRecords',
+            'pendingPayments', 'totalCollected', 'pendingScreenshots',
+            'unpaidCount', 'partialCount', 'paidCount',
+            'sort', 'archivedStudentsCount',
+            'sections', 'teachers', 'teachersWithSubjectsCount',
             'allActiveSubjects', 'allActiveTeachers',
-            'guidanceSearch', 'guidanceStatus', 'guidanceConcern', 'guidanceSort',
-            'guidanceTotalCount', 'guidanceOpenCount', 'guidanceResolvedCount',
             'summerTotalCount', 'summerOngoingCount', 'summerCompletedCount',
-            'feeBreakdowns', 'feeSettings', 'recentStudents', 'allSchedules',
+            'feeSettings', 'recentStudents', 'allSchedules',
             'currentSchoolYear', 'enrollmentOpen', 'maintenanceMode', 'assessStudents', 'assessGuidanceCounts',
             'assessSummerStatus', 'guidanceCounselors',
             'assessGradeFilter', 'assessStatusFilter', 'assessSearchTerm',
             'assessTotal', 'assessPending', 'assessDone', 'assessByGrade', 'assessNextSchoolYear',
-            'contactMessages', 'unreadMessagesCount',
-            'announcements', 'news', 'annCategoryFilter', 'newsCategoryFilter'
+            'contactMessages', 'unreadMessagesCount'
+        ));
+    }
+
+    /**
+     * Guidance Records tab content, loaded on demand (GET
+     * /admin/section/guidance) instead of being computed on every
+     * adminIndex() page load — see docs/system-improvement-plan.md item
+     * #2. Logic here is an exact relocation of what adminIndex() used to
+     * compute inline; no behavior changed, only when it runs.
+     */
+    public function sectionGuidance(Request $request)
+    {
+        $guidanceSearch  = $request->get('guidance_search', '');
+        $guidanceStatus  = $request->get('guidance_status', '');
+        $guidanceConcern = $request->get('guidance_concern', '');
+        $guidanceSort    = $request->get('guidance_sort', 'date_desc');
+
+        $guidanceQuery = \App\Models\GuidanceRecord::with(['student:id,name', 'counselor:id,name']);
+
+        if ($guidanceSearch) {
+            $guidanceQuery->whereHas('student', function ($q) use ($guidanceSearch) {
+                $q->where('name', 'like', '%' . $guidanceSearch . '%');
+            });
+        }
+        if ($guidanceStatus) {
+            $guidanceQuery->where('status', $guidanceStatus);
+        }
+        if ($guidanceConcern) {
+            $guidanceQuery->where('concern_type', $guidanceConcern);
+        }
+        $guidanceQuery->orderBy('date', $guidanceSort === 'date_asc' ? 'asc' : 'desc');
+
+        $guidanceRecords = $guidanceQuery->paginate(15, ['*'], 'guidance_page');
+
+        $guidanceTotalCount    = \App\Models\GuidanceRecord::count();
+        $guidanceOpenCount     = \App\Models\GuidanceRecord::where('status', 'open')->count();
+        $guidanceResolvedCount = \App\Models\GuidanceRecord::whereIn('status', ['resolved', 'closed'])->count();
+
+        return view('admin.sections.guidance-content', compact(
+            'guidanceRecords', 'guidanceSearch', 'guidanceStatus', 'guidanceConcern', 'guidanceSort',
+            'guidanceTotalCount', 'guidanceOpenCount', 'guidanceResolvedCount'
+        ));
+    }
+
+    /**
+     * Announcements tab content, loaded on demand (GET
+     * /admin/section/announcements) — see
+     * docs/system-improvement-plan.md item #2.
+     */
+    public function sectionAnnouncements(Request $request)
+    {
+        $annCategoryFilter = $request->input('ann_category');
+
+        $announcements = \App\Models\Announcement::orderByDesc('created_at')
+            ->when($annCategoryFilter, fn($q) => $q->where('category', $annCategoryFilter))
+            ->paginate(10, ['*'], 'ann_page')
+            ->withQueryString();
+
+        return view('admin.sections.announcements-content', compact('announcements', 'annCategoryFilter'));
+    }
+
+    /**
+     * News tab content, loaded on demand (GET /admin/section/news) — see
+     * docs/system-improvement-plan.md item #2.
+     */
+    public function sectionNews(Request $request)
+    {
+        $newsCategoryFilter = $request->input('news_category');
+
+        $news = \App\Models\News::orderByDesc('created_at')
+            ->when($newsCategoryFilter, fn($q) => $q->where('category', $newsCategoryFilter))
+            ->paginate(10, ['*'], 'news_page')
+            ->withQueryString();
+
+        return view('admin.sections.news-content', compact('news', 'newsCategoryFilter'));
+    }
+
+    /**
+     * Student Management tab content, loaded on demand (GET
+     * /admin/section/students) — see docs/system-improvement-plan.md item
+     * #2. Exact relocation of what adminIndex() used to compute inline,
+     * reading the same request params fresh.
+     */
+    public function sectionStudents(Request $request)
+    {
+        $sort = $request->get('sort', 'newest');
+        $studentSearch = $request->get('student_search') ?? '';
+        $studentGradeFilter = $request->get('student_grade', 'all');
+        $studentStatusFilter = $request->get('student_status', 'all');
+        $studentPaymentFilter = $request->get('student_payment', 'all');
+        $studentSchoolYearFilter = $request->get('student_schoolyear', 'all');
+        $gradeLevel = $request->get('grade_level', 'all'); // for mass promotion
+
+        // Show ALL students with role='student' — including pending enrollments
+        $studentsQuery = User::where('role', 'student');
+
+        if ($studentSearch) {
+            $studentsQuery->where(function ($q) use ($studentSearch) {
+                $q->where('name', 'like', '%' . $studentSearch . '%')
+                  ->orWhere('email', 'like', '%' . $studentSearch . '%')
+                  ->orWhere('lrn', 'like', '%' . $studentSearch . '%');
+            });
+        }
+
+        if ($studentGradeFilter && $studentGradeFilter !== 'all') {
+            $studentsQuery->whereHas('latestEnrollment', function ($q) use ($studentGradeFilter) {
+                $q->where('student_data->grade_level', $studentGradeFilter);
+            });
+        }
+
+        // Apply grade_level filter for mass promotion
+        if ($gradeLevel && $gradeLevel !== 'all') {
+            $studentsQuery->whereHas('latestEnrollment', function ($q) use ($gradeLevel) {
+                $q->where('student_data->grade_level', $gradeLevel);
+            });
+        }
+
+        if ($studentStatusFilter && $studentStatusFilter !== 'all') {
+            if ($studentStatusFilter === 'not_enrolled') {
+                $studentsQuery->whereDoesntHave('enrollments', function ($q) {
+                    $q->whereIn('status', ['enrolled', 'approved', 'pending']);
+                });
+            } else {
+                $studentsQuery->whereHas('latestEnrollment', function ($q) use ($studentStatusFilter) {
+                    $q->where('status', $studentStatusFilter);
+                });
+            }
+        }
+
+        if ($studentPaymentFilter && $studentPaymentFilter !== 'all') {
+            $studentsQuery->whereHas('latestEnrollment', function ($q) use ($studentPaymentFilter) {
+                $q->where('payment_status', $studentPaymentFilter);
+            });
+        }
+
+        // Apply school year filter — check any enrollment, not just the latest
+        if ($studentSchoolYearFilter && $studentSchoolYearFilter !== 'all') {
+            $studentsQuery->whereHas('enrollments', function ($q) use ($studentSchoolYearFilter) {
+                $q->where('school_year', $studentSchoolYearFilter);
+            });
+        }
+
+        // Student Management stat cards — counted from the full filtered set
+        // via clones of $studentsQuery (all filters already applied above),
+        // not from the paginated $students list below.
+        $smTotal = (clone $studentsQuery)->count();
+        $smEnrolled = (clone $studentsQuery)->whereHas('latestEnrollment', fn($q) => $q->where('status', 'enrolled'))->count();
+        $smApproved = (clone $studentsQuery)->whereHas('latestEnrollment', fn($q) => $q->where('status', 'approved'))->count();
+        $smPending = (clone $studentsQuery)->whereHas('latestEnrollment', fn($q) => $q->where('status', 'pending'))->count();
+        $smNotEnrolled = (clone $studentsQuery)->whereDoesntHave('latestEnrollment', fn($q) => $q->whereIn('status', ['approved', 'enrolled', 'pending']))->count();
+        $smPaid = (clone $studentsQuery)->whereHas('latestEnrollment', fn($q) => $q->where('payment_status', 'paid'))->count();
+        $smBalance = (clone $studentsQuery)->whereHas('latestEnrollment', fn($q) => $q->whereIn('payment_status', ['partial', 'pending', 'unpaid']))->count();
+
+        $studentsQuery->with(['latestEnrollment' => function ($query) {
+                $query->with('paymentInstallments');
+            }, 'enrollments' => function ($query) {
+                $query->with('paymentInstallments')
+                    ->where(function ($q) {
+                    $q->whereIn('status', ['approved', 'enrolled', 'completed', 'dropped', 'transferred'])
+                      ->orWhere('payment_amount', '>', 0)
+                      ->orWhere('student_data->is_walk_in', true);
+                })->orderBy('id', 'desc');
+            }, 'promotions' => function ($query) {
+                $query->latest()->limit(1);
+            }]);
+
+        switch ($sort) {
+            case 'name_asc':
+                $studentsQuery->orderBy('name', 'asc');
+                break;
+            case 'name_desc':
+                $studentsQuery->orderBy('name', 'desc');
+                break;
+            case 'oldest':
+                $studentsQuery->orderBy('created_at', 'asc');
+                break;
+            case 'newest':
+            default:
+                $studentsQuery->orderBy('created_at', 'desc');
+                break;
+        }
+
+        $students = $studentsQuery->paginate(15, ['*'], 'student_page');
+
+        return view('admin.sections.students-content', compact(
+            'students', 'sort', 'studentSearch', 'studentGradeFilter',
+            'studentStatusFilter', 'studentPaymentFilter', 'studentSchoolYearFilter',
+            'smTotal', 'smEnrolled', 'smApproved', 'smPending', 'smNotEnrolled', 'smPaid', 'smBalance'
+        ));
+    }
+
+    /**
+     * Reports tab content, loaded on demand (GET /admin/section/reports)
+     * — see docs/system-improvement-plan.md item #2. Unlike every other
+     * section converted so far, this one never had any of its data
+     * computed in adminIndex() at all — reports.blade.php ran all of
+     * these queries itself, inline, in a top-of-file @php block that
+     * still executed on every single page load regardless of whether
+     * the Reports tab was ever opened (same "hidden sections still
+     * PHP-execute" trap found on finance.blade.php earlier). This method
+     * is an exact relocation of that block into the controller, with
+     * three deliberate differences — see docs/system-improvement-plan.md
+     * for the full writeup:
+     *   1. $rptTotalTeachers / $rptTotalSections / $rptStudentList
+     *      removed — confirmed via grep, computed but never displayed
+     *      anywhere (not in this template, not in the chart JS).
+     *   2. The three sub-report pagination links' page/tab/subreport
+     *      params are read via request() exactly as before — Laravel's
+     *      request() helper works the same from a controller method as
+     *      from a view.
+     *   3. $rptChartGradeLabels/$rptChartGradeData — previously a second,
+     *      separate @php block right after the header — folded in here
+     *      since it's just one more derived value.
+     */
+    public function sectionReports(Request $request)
+    {
+        $currentSchoolYear = $this->getCurrentSchoolYear();
+
+        $rptGradeLevels = ['nursery'=>'Nursery','kindergarten'=>'Kindergarten','grade1'=>'Grade 1','grade2'=>'Grade 2','grade3'=>'Grade 3','grade4'=>'Grade 4','grade5'=>'Grade 5','grade6'=>'Grade 6'];
+
+        // Paginates an already-fetched Collection (report data here is built
+        // from full in-memory collections shared across several stats, not
+        // fresh per-panel queries — same technique used for the Assessment
+        // & Promotion table's own pagination).
+        $rptPaginate = function ($collection, int $perPage, string $pageName) {
+            $page = (int) request()->get($pageName, 1);
+            return new \Illuminate\Pagination\LengthAwarePaginator(
+                $collection->forPage($page, $perPage)->values(),
+                $collection->count(),
+                $perPage,
+                $page,
+                ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath(), 'pageName' => $pageName]
+            );
+        };
+
+        // ── REAL DATA: Direct DB queries — no paginator limits ──
+
+        $rptTotalStudents  = User::where('role','student')->count();
+        $rptActiveStudents = User::where('role','student')->where('is_active',true)->count();
+
+        $rptEnrollAll = Enrollment::where('school_year', $currentSchoolYear)
+            ->get(['id','user_id','status','payment_status','payment_amount','total_fee',
+                   'remaining_balance','payment_option','student_data','created_at']);
+
+        $rptEnrollTotal     = $rptEnrollAll->count();
+        $rptEnrollApproved  = $rptEnrollAll->whereIn('status',['enrolled','approved','completed'])->count();
+        $rptEnrollPending   = $rptEnrollAll->where('status','pending')->count();
+        $rptEnrollDeclined  = $rptEnrollAll->where('status','declined')->count();
+        $rptEnrollDropped   = $rptEnrollAll->whereIn('status',['dropped','ghost','transferred'])->count();
+
+        $rptEnrollNew        = $rptEnrollAll->filter(fn($e) => ($e->student_data['student_type'] ?? '') === 'new')->count();
+        $rptEnrollReturning  = $rptEnrollAll->filter(fn($e) => in_array($e->student_data['student_type'] ?? '', ['returning','re-enrolled']))->count();
+        $rptEnrollTransferee = $rptEnrollAll->filter(fn($e) => ($e->student_data['student_type'] ?? '') === 'transferee')->count();
+
+        $rptMale   = $rptEnrollAll->whereIn('status',['enrolled','approved','completed'])
+            ->filter(fn($e) => strtolower($e->student_data['gender'] ?? '') === 'male')->count();
+        $rptFemale = $rptEnrollAll->whereIn('status',['enrolled','approved','completed'])
+            ->filter(fn($e) => strtolower($e->student_data['gender'] ?? '') === 'female')->count();
+
+        $rptEnrollByGrade = $rptEnrollAll
+            ->groupBy(fn($e) => $e->student_data['grade_level'] ?? '')
+            ->map(fn($g) => [
+                'total'      => $g->count(),
+                'approved'   => $g->whereIn('status',['enrolled','approved','completed'])->count(),
+                'pending'    => $g->where('status','pending')->count(),
+                'dropped'    => $g->whereIn('status',['dropped','ghost','transferred'])->count(),
+                'new'        => $g->filter(fn($e) => ($e->student_data['student_type'] ?? '') === 'new')->count(),
+                'returning'  => $g->filter(fn($e) => in_array($e->student_data['student_type'] ?? '',['returning','re-enrolled']))->count(),
+                'transferee' => $g->filter(fn($e) => ($e->student_data['student_type'] ?? '') === 'transferee')->count(),
+            ]);
+
+        $rptActiveSYEnrolls = $rptEnrollAll->whereIn('status',['enrolled','approved','completed']);
+        $rptMasterListPage  = $rptPaginate($rptActiveSYEnrolls->values(), 20, 'rpt_master_page');
+
+        $rptStudentsByGrade = $rptActiveSYEnrolls
+            ->groupBy(fn($e) => $e->student_data['grade_level'] ?? '')
+            ->map->count();
+
+        $rptFinAll         = $rptEnrollAll; // alias used throughout the financial tab template
+        $rptTotalFees      = $rptEnrollAll->sum('total_fee');
+        $rptTotalCollected = $rptEnrollAll->sum('payment_amount');
+        $rptOutstanding    = $rptEnrollAll->sum('remaining_balance');
+        $rptPaid           = $rptEnrollAll->where('payment_status','paid')->count();
+        $rptPartial        = $rptEnrollAll->where('payment_status','partial')->count();
+        $rptUnpaid         = $rptEnrollAll->whereNotIn('payment_status',['paid','partial'])->count();
+        $rptCollectionRate = $rptTotalFees > 0 ? round($rptTotalCollected / $rptTotalFees * 100, 1) : 0;
+
+        $rptFinByGrade = $rptEnrollAll
+            ->groupBy(fn($e) => $e->student_data['grade_level'] ?? '')
+            ->map(fn($g) => [
+                'count'       => $g->count(),
+                'total_fee'   => $g->sum('total_fee'),
+                'collected'   => $g->sum('payment_amount'),
+                'outstanding' => $g->sum('remaining_balance'),
+                'paid'        => $g->where('payment_status','paid')->count(),
+                'partial'     => $g->where('payment_status','partial')->count(),
+            ]);
+
+        $rptFinByOption = $rptEnrollAll->whereNotNull('payment_option')
+            ->groupBy('payment_option')
+            ->map(fn($g) => [
+                'count'       => $g->count(),
+                'total_fee'   => $g->sum('total_fee'),
+                'collected'   => $g->sum('payment_amount'),
+                'outstanding' => $g->sum('remaining_balance'),
+                'paid'        => $g->where('payment_status','paid')->count(),
+            ]);
+
+        $rptOutstandingList = $rptEnrollAll
+            ->filter(fn($e) => ($e->remaining_balance ?? 0) > 0)
+            ->sortByDesc('remaining_balance')
+            ->values();
+        $rptOutstandingPage     = $rptPaginate($rptOutstandingList, 20, 'rpt_outstanding_page');
+        $rptOutstandingTotalBal = $rptOutstandingList->sum('remaining_balance');
+
+        // Section capacity — full table, independent of Section Management's
+        // own paginated $sections (adminIndex() caps that at 15 rows — using
+        // it here would have undercounted capacity for any school year with
+        // more sections than one page's worth; this report always needs the
+        // true total).
+        $rptAllSections  = \App\Models\Section::select('id','name','grade_level','max_students','school_year')->withCount('students')->get();
+        $rptAllSections->each(fn($s) => $s->current_enrollment = $s->students_count);
+        $rptTotalCapacity    = $rptAllSections->sum('max_students');
+        $rptTotalEnrolledSec = $rptAllSections->sum('current_enrollment');
+
+        $rptApprovedDocs = \App\Models\StudentDocument::where('document_type','!=','payment_screenshot')->where('status','approved')->count();
+        $rptPendingDocs  = \App\Models\StudentDocument::where('document_type','!=','payment_screenshot')->where('status','pending')->count();
+        $rptRejectedDocs = \App\Models\StudentDocument::where('document_type','!=','payment_screenshot')->where('status','rejected')->count();
+        $rptTotalDocs    = $rptApprovedDocs + $rptPendingDocs + $rptRejectedDocs;
+
+        $rptInstTotal   = \App\Models\PaymentInstallment::count();
+        $rptInstOverdue = \App\Models\PaymentInstallment::where('status','pending')
+            ->where('due_date','<',\Carbon\Carbon::today())->count();
+
+        // PROMOTION / ASSESSMENT report data — sliced by the school year
+        // that's ending (from_school_year), same eligibility rule as the
+        // Assessment & Promotion page itself: Nursery-Grade6, enrolled or
+        // completed, non-transferee.
+        $rptPromoAll = \App\Models\Promotion::where('from_school_year', $currentSchoolYear)
+            ->get(['student_id', 'from_grade', 'to_grade', 'from_school_year', 'to_school_year']);
+
+        $rptPromoPromoted  = $rptPromoAll->filter(fn($p) => $p->to_grade !== $p->from_grade && $p->to_grade !== 'graduated')->count();
+        $rptPromoRetained  = $rptPromoAll->filter(fn($p) => $p->to_grade === $p->from_grade)->count();
+        $rptPromoGraduated = $rptPromoAll->filter(fn($p) => $p->to_grade === 'graduated')->count();
+
+        $rptPromoEligible = User::where('role', 'student')
+            ->with(['latestEnrollment'])
+            ->whereHas('latestEnrollment', fn($q) => $q
+                ->where('school_year', $currentSchoolYear)
+                ->whereIn('status', ['enrolled', 'completed'])
+                ->whereIn('grade_level', array_keys($rptGradeLevels))
+            )
+            ->get()
+            ->filter(fn($s) => ($s->latestEnrollment->student_data['student_type'] ?? '') !== 'transferee');
+
+        $rptPromoEligibleTotal = $rptPromoEligible->count();
+        $rptPromoPending       = max(0, $rptPromoEligibleTotal - $rptPromoAll->count());
+
+        $rptPromoByGrade = [];
+        foreach ($rptGradeLevels as $gk => $gl) {
+            $gradeEligible = $rptPromoEligible->filter(fn($s) => ($s->latestEnrollment->grade_level ?? '') === $gk)->count();
+            $gradePromos   = $rptPromoAll->where('from_grade', $gk);
+            $rptPromoByGrade[$gk] = [
+                'eligible'  => $gradeEligible,
+                'promoted'  => $gradePromos->filter(fn($p) => $p->to_grade !== $p->from_grade && $p->to_grade !== 'graduated')->count(),
+                'retained'  => $gradePromos->filter(fn($p) => $p->to_grade === $p->from_grade)->count(),
+                'graduated' => $gradePromos->filter(fn($p) => $p->to_grade === 'graduated')->count(),
+                'pending'   => max(0, $gradeEligible - $gradePromos->count()),
+            ];
+        }
+
+        $rptPromoStudentList = $rptPromoEligible->map(function ($s) use ($rptPromoAll, $rptGradeLevels) {
+            $promo = $rptPromoAll->where('student_id', $s->id)->sortByDesc('id')->first();
+            $gl    = $s->latestEnrollment->grade_level ?? '';
+            $result = 'Pending';
+            $toGradeLabel = null;
+            if ($promo) {
+                if ($promo->to_grade === 'graduated') {
+                    $result = 'Graduated';
+                } elseif ($promo->to_grade === $promo->from_grade) {
+                    $result = 'Retained';
+                } else {
+                    $result = 'Promoted';
+                    $toGradeLabel = $rptGradeLevels[$promo->to_grade] ?? ucfirst($promo->to_grade);
+                }
+            }
+            return (object) [
+                'id'          => $s->id,
+                'name'        => $s->name,
+                'grade_level' => $rptGradeLevels[$gl] ?? ucfirst($gl),
+                'section'     => $s->latestEnrollment->section ?? '—',
+                'result'      => $result,
+                'to_grade'    => $toGradeLabel,
+            ];
+        })->sortBy('name')->values();
+
+        $rptPromoListPage = $rptPaginate($rptPromoStudentList, 20, 'rpt_promo_page');
+
+        $rptDailyDays = [];
+        for ($d = 6; $d >= 0; $d--) {
+            $day = \Carbon\Carbon::today()->subDays($d);
+            $rptDailyDays[] = [
+                'label' => $day->format('D, M j'),
+                'count' => Enrollment::where('school_year', $currentSchoolYear)
+                    ->whereDate('created_at', $day->toDateString())->count(),
+            ];
+        }
+
+        $rptChartGradeLabels = collect($rptStudentsByGrade ?? [])->keys()->map(fn($k)=>ucwords(str_replace(['grade','_'],['Grade ',' '],$k)))->values()->toArray();
+        $rptChartGradeData   = collect($rptStudentsByGrade ?? [])->values()->toArray();
+
+        return view('admin.sections.reports-content', compact(
+            'currentSchoolYear', 'rptGradeLevels',
+            'rptTotalStudents', 'rptActiveStudents',
+            'rptEnrollTotal', 'rptEnrollApproved', 'rptEnrollPending', 'rptEnrollDeclined', 'rptEnrollDropped',
+            'rptEnrollNew', 'rptEnrollReturning', 'rptEnrollTransferee',
+            'rptMale', 'rptFemale', 'rptEnrollByGrade', 'rptStudentsByGrade', 'rptMasterListPage',
+            'rptEnrollAll', 'rptFinAll', 'rptTotalFees', 'rptTotalCollected', 'rptOutstanding',
+            'rptPaid', 'rptPartial', 'rptUnpaid', 'rptCollectionRate',
+            'rptFinByGrade', 'rptFinByOption',
+            'rptOutstandingList', 'rptOutstandingPage', 'rptOutstandingTotalBal',
+            'rptAllSections', 'rptTotalCapacity', 'rptTotalEnrolledSec',
+            'rptApprovedDocs', 'rptPendingDocs', 'rptRejectedDocs', 'rptTotalDocs',
+            'rptInstTotal', 'rptInstOverdue',
+            'rptPromoByGrade', 'rptPromoEligibleTotal', 'rptPromoPending',
+            'rptPromoPromoted', 'rptPromoRetained', 'rptPromoGraduated', 'rptPromoListPage',
+            'rptDailyDays', 'rptChartGradeLabels', 'rptChartGradeData'
+        ));
+    }
+
+    /**
+     * Subject Management tab content, loaded on demand (GET
+     * /admin/section/subjects) — see docs/system-improvement-plan.md item
+     * #2. $allSchedules is re-fetched here (not shared from adminIndex(),
+     * which only renders the main page shell) because the partial's "In
+     * Schedule" column needs it — same query adminIndex() still runs for
+     * the Schedule Management grid and Teacher Management.
+     */
+    public function sectionSubjects(Request $request)
+    {
+        $subjects = \App\Models\Subject::with('teacher:id,name')
+            ->select('id', 'code', 'name', 'description', 'grade_level', 'teacher_id', 'is_active')
+            ->orderByDesc('created_at')
+            ->paginate(15, ['*'], 'subject_page');
+
+        $allSchedules = \App\Models\Schedule::with(['section', 'subject', 'teacher'])
+            ->orderByRaw("FIELD(day_of_week,'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday')")
+            ->orderBy('start_time')
+            ->get();
+
+        return view('admin.sections.subjects-content', compact('subjects', 'allSchedules'));
+    }
+
+    /**
+     * Archives tab content, loaded on demand (GET /admin/section/archives)
+     * — see docs/system-improvement-plan.md item #2.
+     */
+    public function sectionArchives(Request $request)
+    {
+        $archivedStudents = User::onlyTrashed()
+            ->where('role', 'student')
+            ->with(['latestEnrollment'])
+            ->orderByDesc('deleted_at')
+            ->paginate(15, ['*'], 'archive_page');
+
+        return view('admin.sections.archives-content', compact('archivedStudents'));
+    }
+
+    /**
+     * Enrollment Management tab content, loaded on demand (GET
+     * /admin/section/enrollment) — see docs/system-improvement-plan.md
+     * item #2. Exact relocation of what adminIndex() used to compute
+     * inline, reading the same request params fresh.
+     */
+    public function sectionEnrollment(Request $request)
+    {
+        $sort = $request->get('sort', 'newest');
+        $statusFilter = $request->get('status', 'all');
+        $gradeFilter = $request->get('grade', 'all');
+        $enrollmentSearch = trim((string) $request->get('enrollment_search', ''));
+
+        $enrollmentQuery = Enrollment::select('id', 'user_id', 'reference_number', 'status', 'student_data', 'payment_status', 'payment_amount', 'payment_method', 'payment_reference', 'payment_type', 'total_fee', 'remaining_balance', 'payment_due_date', 'created_at', 'updated_at');
+
+        if ($statusFilter !== 'all') {
+            $enrollmentQuery->where('status', $statusFilter);
+        }
+
+        if ($gradeFilter !== 'all') {
+            $enrollmentQuery->where('student_data->grade_level', $gradeFilter);
+        }
+
+        if ($enrollmentSearch !== '') {
+            $enrollmentQuery->where(function ($q) use ($enrollmentSearch) {
+                $term = '%' . $enrollmentSearch . '%';
+                $q->where('reference_number', 'like', $term)
+                  ->orWhere('student_data->first_name', 'like', $term)
+                  ->orWhere('student_data->middle_name', 'like', $term)
+                  ->orWhere('student_data->last_name', 'like', $term)
+                  ->orWhere('student_data->student_email', 'like', $term)
+                  ->orWhereRaw("CONCAT(JSON_UNQUOTE(JSON_EXTRACT(student_data, '$.first_name')), ' ', JSON_UNQUOTE(JSON_EXTRACT(student_data, '$.last_name'))) LIKE ?", [$term]);
+            });
+        }
+
+        switch ($sort) {
+            case 'name_asc':
+                $enrollmentQuery->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT(student_data, '$.last_name')) ASC");
+                break;
+            case 'name_desc':
+                $enrollmentQuery->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT(student_data, '$.last_name')) DESC");
+                break;
+            case 'oldest':
+                $enrollmentQuery->orderBy('created_at', 'asc');
+                break;
+            case 'newest':
+            default:
+                $enrollmentQuery->orderBy('created_at', 'desc');
+                break;
+        }
+
+        $enrollments = $enrollmentQuery->paginate(20, ['*'], 'enrollment_page');
+        $enrollmentOpen = Setting::get('enrollment_open', true);
+
+        return view('admin.sections.enrollment-content', compact(
+            'enrollments', 'sort', 'statusFilter', 'gradeFilter', 'enrollmentSearch', 'enrollmentOpen'
         ));
     }
 

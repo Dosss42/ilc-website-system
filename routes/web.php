@@ -268,7 +268,21 @@ Route::middleware(['auth', 'superadmin'])->prefix('superadmin')->name('superadmi
 // ─────────────────────────────────────────
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [EnrollmentController::class, 'adminIndex'])->name('dashboard');
-    
+
+    // On-demand dashboard tab loading — see docs/system-improvement-plan.md
+    // item #2. adminIndex() used to compute every tab's data on every
+    // request; tabs converted here instead fetch their own data only when
+    // actually opened. Returns just that section's HTML fragment, not a
+    // full page.
+    Route::get('/section/guidance', [EnrollmentController::class, 'sectionGuidance'])->name('section.guidance');
+    Route::get('/section/announcements', [EnrollmentController::class, 'sectionAnnouncements'])->name('section.announcements');
+    Route::get('/section/news', [EnrollmentController::class, 'sectionNews'])->name('section.news');
+    Route::get('/section/archives', [EnrollmentController::class, 'sectionArchives'])->name('section.archives');
+    Route::get('/section/enrollment', [EnrollmentController::class, 'sectionEnrollment'])->name('section.enrollment');
+    Route::get('/section/students', [EnrollmentController::class, 'sectionStudents'])->name('section.students');
+    Route::get('/section/subjects', [EnrollmentController::class, 'sectionSubjects'])->name('section.subjects');
+    Route::get('/section/reports', [EnrollmentController::class, 'sectionReports'])->name('section.reports');
+
     // ENROLLMENT MANAGEMENT
     Route::prefix('enrollments')->name('enrollments.')->group(function () {
         Route::get('/', [EnrollmentController::class, 'adminIndex'])->name('index');
