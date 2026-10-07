@@ -6,10 +6,10 @@
 
         
         <?php
-            $msgUnread  = ($contactMessages ?? collect())->where('status','unread')->count();
-            $msgRead    = ($contactMessages ?? collect())->where('status','read')->count();
-            $msgReplied = ($contactMessages ?? collect())->where('status','replied')->count();
-            $msgTotal   = ($contactMessages ?? collect())->count();
+            $msgUnread  = $unreadMessagesCount ?? 0;
+            $msgRead    = $readMessagesCount ?? 0;
+            $msgReplied = $repliedMessagesCount ?? 0;
+            $msgTotal   = $totalMessagesCount ?? 0;
         ?>
         <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:22px;">
             <div style="flex:1;min-width:120px;background:#fff;border:1px solid #e8edf5;border-radius:12px;padding:16px 18px;text-align:center;">

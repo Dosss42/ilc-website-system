@@ -147,15 +147,23 @@
 
                     <tbody>
 
+                        <?php
+                            // Advisory teacher per section — one query for every section
+                            // instead of one query per row inside the loop below (was a
+                            // real N+1: 15-17 extra `teacher_assignments` queries on the
+                            // current dataset, confirmed via query log). Same technique
+                            // $allSchedules already uses for $secScheduleCount just below.
+                            $secAdvisoryBySection = \App\Models\TeacherAssignment::where('is_advisory', true)
+                                ->with('teacher:id,name')
+                                ->get()
+                                ->keyBy('section_id');
+                        ?>
+
                         <?php $__empty_1 = true; $__currentLoopData = ($sections ?? collect()); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sec): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
 
                         <?php
                             $sec = collect([$sec])->first();
-                            // Advisory teacher for this section (from TeacherAssignment, is_advisory=true)
-                            $secAdvisory = \App\Models\TeacherAssignment::where('section_id', $sec->id)
-                                ->where('is_advisory', true)
-                                ->with('teacher:id,name')
-                                ->first();
+                            $secAdvisory = $secAdvisoryBySection->get($sec->id);
                             $secAdviserName = $secAdvisory?->teacher?->name ?? null;
                             // Schedule count for this section
                             $secScheduleCount = ($allSchedules ?? collect())->where('section_id', $sec->id)->count();

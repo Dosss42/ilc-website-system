@@ -585,7 +585,7 @@ class CashierController extends Controller
             \App\Services\PaymentService::reconcileInstallmentStatuses($enrollment);
         }
 
-        $this->advanceEnrollmentAfterPayment($enrollment->fresh());
+        \App\Services\PaymentService::advanceEnrollmentAfterPayment($enrollment->fresh());
 
         ActivityLogger::log(
             'cash_payment',
@@ -822,63 +822,4 @@ class CashierController extends Controller
         };
     }
 
-    // Advance enrollment status and payment_status after any payment — mirrors Finance portal logic.
-    private function advanceEnrollmentAfterPayment(Enrollment $enrollment): void
-    {
-        $totalPaid = (float) ($enrollment->payment_amount ?? 0);
-        $totalFee  = (float) ($enrollment->total_fee ?? 0);
-
-        // Update payment_status
-        if ($totalFee > 0) {
-            if ($totalPaid >= $totalFee) {
-                $enrollment->update(['payment_status' => 'paid', 'remaining_balance' => 0]);
-            } elseif ($totalPaid > 0) {
-                $enrollment->update([
-                    'payment_status'    => 'partial',
-                    'remaining_balance' => max(0, $totalFee - $totalPaid),
-                ]);
-            }
-        } elseif ($totalPaid > 0) {
-            // total_fee isn't set yet (plan not finalized before this payment), but
-            // remaining_balance was already blindly decremented by the caller — clamp
-            // it back to 0 here instead of leaving it negative forever, same as the
-            // totalFee>0 branch above already does.
-            $remaining = (float) ($enrollment->remaining_balance ?? 0);
-            $enrollment->update([
-                'payment_status'    => $remaining <= 0 ? 'paid' : 'partial',
-                'remaining_balance' => max(0, $remaining),
-            ]);
-        }
-
-        // Advance enrollment status to 'enrolled' and assign section (same as Finance)
-        if (in_array($enrollment->status, ['approved', 'pending']) && $totalPaid > 0) {
-            $enrollment->update(['status' => 'enrolled', 'enrolled_at' => now()]);
-
-            $gradeLevel = $enrollment->grade_level ?? ($enrollment->student_data['grade_level'] ?? null);
-            $schoolYear = $enrollment->school_year ?? (now()->year . '-' . (now()->year + 1));
-
-            if ($gradeLevel && $enrollment->user_id) {
-                $section = \App\Models\Section::where('grade_level', $gradeLevel)
-                    ->where('school_year', $schoolYear)
-                    ->where('is_active', true)
-                    ->first();
-
-                if ($section) {
-                    $enrollment->update(['section' => $section->name]);
-                    $exists = \Illuminate\Support\Facades\DB::table('section_student')
-                        ->where('section_id', $section->id)
-                        ->where('user_id', $enrollment->user_id)
-                        ->exists();
-                    if (!$exists) {
-                        \Illuminate\Support\Facades\DB::table('section_student')->insert([
-                            'section_id' => $section->id,
-                            'user_id'    => $enrollment->user_id,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
-                }
-            }
-        }
-    }
 }

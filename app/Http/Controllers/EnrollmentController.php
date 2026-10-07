@@ -946,9 +946,19 @@ class EnrollmentController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'role']);
 
-        // Contact messages for admin inbox
-        $contactMessages      = \App\Models\ContactMessage::orderByDesc('created_at')->get();
-        $unreadMessagesCount  = $contactMessages->where('status', 'unread')->count();
+        // Contact messages for admin inbox — capped at 50 (was unbounded,
+        // loading every contact-form submission ever received into memory
+        // on every dashboard visit — see docs/system-improvement-plan.md
+        // item #3). Stat counts computed independently via cheap COUNT
+        // queries rather than from the capped list — same
+        // counts-from-a-limited-list bug already fixed elsewhere
+        // (Student Management, Teacher Management) would otherwise make
+        // these undercount once there are more than 50 messages.
+        $contactMessages      = \App\Models\ContactMessage::orderByDesc('created_at')->limit(50)->get();
+        $unreadMessagesCount  = \App\Models\ContactMessage::where('status', 'unread')->count();
+        $totalMessagesCount   = \App\Models\ContactMessage::count();
+        $readMessagesCount    = \App\Models\ContactMessage::where('status', 'read')->count();
+        $repliedMessagesCount = \App\Models\ContactMessage::where('status', 'replied')->count();
 
         // Announcements — moved to sectionAnnouncements(), loaded on-demand
         // via GET /admin/section/announcements. See
@@ -981,7 +991,7 @@ class EnrollmentController extends Controller
             'assessSummerStatus', 'guidanceCounselors',
             'assessGradeFilter', 'assessStatusFilter', 'assessSearchTerm',
             'assessTotal', 'assessPending', 'assessDone', 'assessByGrade', 'assessNextSchoolYear',
-            'contactMessages', 'unreadMessagesCount'
+            'contactMessages', 'unreadMessagesCount', 'totalMessagesCount', 'readMessagesCount', 'repliedMessagesCount'
         ));
     }
 

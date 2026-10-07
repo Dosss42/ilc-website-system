@@ -4,12 +4,16 @@
             <small class="text-muted">Messages submitted through the website contact form</small>
         </div>
 
-        {{-- Stats row --}}
+        {{-- Stats row — independent COUNT queries (computed in
+             EnrollmentController@adminIndex), not derived from
+             $contactMessages, which is capped at 50 rows and would
+             otherwise undercount once there are more messages than that.
+             See docs/system-improvement-plan.md item #3. --}}
         @php
-            $msgUnread  = ($contactMessages ?? collect())->where('status','unread')->count();
-            $msgRead    = ($contactMessages ?? collect())->where('status','read')->count();
-            $msgReplied = ($contactMessages ?? collect())->where('status','replied')->count();
-            $msgTotal   = ($contactMessages ?? collect())->count();
+            $msgUnread  = $unreadMessagesCount ?? 0;
+            $msgRead    = $readMessagesCount ?? 0;
+            $msgReplied = $repliedMessagesCount ?? 0;
+            $msgTotal   = $totalMessagesCount ?? 0;
         @endphp
         <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:22px;">
             <div style="flex:1;min-width:120px;background:#fff;border:1px solid #e8edf5;border-radius:12px;padding:16px 18px;text-align:center;">

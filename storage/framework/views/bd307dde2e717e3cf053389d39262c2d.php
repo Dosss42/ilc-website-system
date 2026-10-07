@@ -106,12 +106,20 @@
 
         
         <?php
-            $chMonths = []; $chEnroll = [];
+            // Single aggregate query instead of one COUNT per month (was 6
+            // queries — see docs/system-improvement-plan.md item #5).
+            $chMonths = []; $chMonthKeys = [];
             for ($i=5;$i>=0;$i--) {
                 $m = now()->subMonths($i);
                 $chMonths[] = $m->format('M Y');
-                $chEnroll[] = \App\Models\Enrollment::whereYear('created_at',$m->year)->whereMonth('created_at',$m->month)->count();
+                $chMonthKeys[] = $m->format('Y-m');
             }
+            $chEnrollByMonth = \App\Models\Enrollment::selectRaw("DATE_FORMAT(created_at, '%Y-%m') as ym, COUNT(*) as cnt")
+                ->where('created_at', '>=', now()->subMonths(5)->startOfMonth())
+                ->groupBy('ym')
+                ->pluck('cnt', 'ym');
+            $chEnroll = array_map(fn($k) => (int) ($chEnrollByMonth[$k] ?? 0), $chMonthKeys);
+
             $chPaid    = \App\Models\Enrollment::where('payment_status','paid')->count();
             $chPartial = \App\Models\Enrollment::where('payment_status','partial')->count();
             $chUnpaid  = \App\Models\Enrollment::whereNotIn('payment_status',['paid','partial'])->count();
