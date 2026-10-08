@@ -341,14 +341,40 @@
             --sch-blue-tint: #e8f0fb;
         }
 
+        .sched-filter-card {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px 20px 20px;
+            margin-bottom: 20px;
+        }
+
+        .sched-filter-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 12px;
+        }
+
         .sched-toolbar {
             display: flex;
-            align-items: center;
-            gap: 10px;
+            align-items: flex-end;
+            gap: 14px;
             flex-wrap: wrap;
-            padding: 16px 0 22px;
-            margin-bottom: 22px;
-            border-bottom: 1px solid #edf1f6;
+        }
+
+        .sched-field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .sched-field-group label {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: var(--muted);
         }
 
         .sched-toolbar .form-fld {
@@ -357,6 +383,58 @@
         }
 
         .sched-toolbar .btn-dash { flex-shrink: 0; }
+
+        /* ── Empty-state quick-pick grade chips ── */
+        .sched-empty-card {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 56px 24px;
+            text-align: center;
+        }
+
+        .sched-empty-icon {
+            width: 72px; height: 72px; border-radius: 50%;
+            background: var(--sch-blue-tint, var(--blue-pale));
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 18px;
+        }
+
+        .sched-empty-icon i {
+            font-size: 32px;
+            color: var(--sch-blue, var(--blue));
+        }
+
+        .sched-quickpick {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+            max-width: 560px;
+            margin: 22px auto 0;
+        }
+
+        .sched-quickpick-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 9px 16px;
+            border-radius: 20px;
+            border: 1.5px solid var(--border);
+            background: var(--white);
+            color: var(--text);
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .sched-quickpick-btn:hover {
+            border-color: var(--sch-blue, var(--blue));
+            background: var(--sch-blue-tint, var(--blue-pale));
+            color: var(--sch-blue, var(--blue));
+            transform: translateY(-1px);
+        }
+
+        .sched-quickpick-btn i { font-size: 11px; opacity: 0.7; }
 
         .schedule-grid-table {
             width: 100%;
@@ -4530,6 +4608,17 @@ function openWalkInEnrollmentModal() {
     let _scheduleCacheKey = '';
     // â”€â”€ Entry currently being drag-and-dropped on the schedule grid â”€â”€
     let _draggedScheduleEntry = null;
+
+    // â”€â”€ Quick-pick a grade from the empty-state chips â”€â”€ sets the dropdown,
+    // dispatches a real 'change' event (the existing section-repopulation
+    // listener is bound via addEventListener, which setting .value alone
+    // does not trigger), then loads the grid immediately.
+    function quickSelectScheduleGrade(grade) {
+        const gradeSelect = document.getElementById('scheduleGradeFilter');
+        gradeSelect.value = grade;
+        gradeSelect.dispatchEvent(new Event('change'));
+        loadScheduleGrid();
+    }
 
     // â”€â”€ Load Schedule Grid â”€â”€
 
