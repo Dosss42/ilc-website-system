@@ -1556,26 +1556,17 @@ class DashboardController extends Controller
     }
 
     /**
-     * Helper: Format school year — cached for 24 hours to avoid repeated DB hits
+     * Helper: current school year. Delegates to
+     * Setting::getCurrentSchoolYear() — the single source of truth — so
+     * editing "Current School Year" in Admin > Settings actually takes
+     * effect here, which it didn't before (this used to derive the year
+     * from Section data only, ignoring the setting entirely, and was a
+     * near-exact duplicate of EnrollmentController's own copy of the same
+     * logic). See docs/system-improvement-plan.md.
      */
     private function formatSchoolYear()
     {
-        return \Illuminate\Support\Facades\Cache::remember('current_school_year', 86400, function () {
-            $latestSchoolYear = Section::where('is_active', true)
-                ->orderByDesc('school_year')
-                ->value('school_year');
-
-            if ($latestSchoolYear) {
-                return $latestSchoolYear;
-            }
-
-            $currentYear = Carbon::now()->year;
-            $month       = Carbon::now()->month;
-
-            return $month >= 6
-                ? $currentYear . '-' . ($currentYear + 1)
-                : ($currentYear - 1) . '-' . $currentYear;
-        });
+        return \App\Models\Setting::getCurrentSchoolYear();
     }
 
     /**

@@ -91,6 +91,42 @@ class Setting extends Model
     }
 
     /**
+     * The system's single source of truth for "what school year is it right
+     * now." Previously reimplemented independently in at least four places
+     * (EnrollmentController, Finance\DashboardController,
+     * TeacherAssignmentController, ProfileController) — two of which
+     * ignored this setting entirely and derived the year from whichever
+     * active Section had the newest `school_year` instead. That meant
+     * editing "Current School Year" in Admin > Settings silently had no
+     * effect on Reports, the Finance dashboard, or most of the Admin
+     * dashboard's stats — only new enrollment applications actually
+     * respected it. All of those call sites now delegate here instead.
+     *
+     * Priority: (1) this setting, when an admin has actually configured it
+     * — authoritative, since editing it is the one explicit control meant
+     * to drive this system-wide; (2) the latest active Section's
+     * school_year, for the period before anyone has set it; (3) a
+     * date-based guess (new school year starts in June) as the last resort.
+     */
+    public static function getCurrentSchoolYear(): string
+    {
+        $configured = static::get('current_school_year');
+        if ($configured && preg_match('/^\d{4}-\d{4}$/', $configured)) {
+            return $configured;
+        }
+
+        $latestSectionYear = \App\Models\Section::where('is_active', true)
+            ->orderByDesc('school_year')
+            ->value('school_year');
+        if ($latestSectionYear) {
+            return $latestSectionYear;
+        }
+
+        $year = now()->month >= 6 ? now()->year : now()->year - 1;
+        return $year . '-' . ($year + 1);
+    }
+
+    /**
      * Shared "school year" dropdown range, e.g. ['2021-2022', ..., '2026-2027', '2027-2028'].
      *
      * Several school-year filters across the app (Student Management, Teacher
@@ -106,10 +142,7 @@ class Setting extends Model
      */
     public static function schoolYearOptions(int $yearsBack = 5, int $yearsForward = 2): array
     {
-        $current = static::get('current_school_year');
-        $baseYear = $current
-            ? (int) substr($current, 0, 4)
-            : (now()->month >= 6 ? now()->year : now()->year - 1);
+        $baseYear = (int) substr(static::getCurrentSchoolYear(), 0, 4);
 
         $years = [];
         for ($y = $baseYear + $yearsForward; $y >= $baseYear - $yearsBack; $y--) {

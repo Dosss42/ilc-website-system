@@ -134,8 +134,6 @@ class SectionController extends Controller
 
         $section = Section::create($validated);
 
-        Cache::forget('current_school_year');
-
         // Automatically assign subjects based on DepEd curriculum
         $this->assignCurriculumSubjects($section);
 
@@ -215,8 +213,6 @@ class SectionController extends Controller
 
         $oldGradeLevel = $section->grade_level;
         $section->update($validated);
-
-        Cache::forget('current_school_year');
 
         // Re-assign subjects if grade level changed
         if ($oldGradeLevel !== $section->grade_level) {

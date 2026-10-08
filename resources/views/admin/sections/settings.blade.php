@@ -137,6 +137,11 @@
                             <div class="col-md-4">
                                 <label class="form-lbl">Current School Year</label>
                                 <input type="text" id="set-current_school_year" class="form-fld" placeholder="e.g. 2026-2027">
+                                <div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5;">
+                                    <i class="bi bi-info-circle"></i>
+                                    Drives Reports, Finance, Teacher Assignments, new enrollment applications, and every school-year filter dropdown system-wide.
+                                    Make sure active Sections exist for this year before changing it — reports for a year with no sections will show empty.
+                                </div>
                             </div>
                             <div class="col-md-4">
                                 <label class="form-lbl">School Year Start</label>

@@ -241,11 +241,12 @@ class ProfileController extends Controller
         ]);
 
         $user = Auth::user();
-        
-        $currentYear = now()->year;
-        $schoolYear = now()->month >= 6
-            ? "{$currentYear}-" . ($currentYear + 1)
-            : ($currentYear - 1) . "-{$currentYear}";
+
+        // Was pure date math, ignoring the admin-configured "Current School
+        // Year" setting entirely — now uses the same single source of
+        // truth as the rest of the system. See
+        // docs/system-improvement-plan.md.
+        $schoolYear = \App\Models\Setting::getCurrentSchoolYear();
 
         Enrollment::updateOrCreate(
             ['user_id' => $user->id, 'school_year' => $schoolYear],

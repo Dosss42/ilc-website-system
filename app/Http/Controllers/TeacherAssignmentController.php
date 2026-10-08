@@ -258,21 +258,16 @@ class TeacherAssignmentController extends Controller
         ]);
     }
 
+    /**
+     * Delegates to Setting::getCurrentSchoolYear() — the single source of
+     * truth — so editing "Current School Year" in Admin > Settings
+     * actually takes effect here, which it didn't before (this used to
+     * derive the year from Section data only, ignoring the setting
+     * entirely). See docs/system-improvement-plan.md.
+     */
     private function getCurrentSchoolYear(): string
     {
-        // Get the most recent active school year from sections
-        $latestSchoolYear = Section::where('is_active', true)
-            ->orderByDesc('school_year')
-            ->value('school_year');
-
-        if ($latestSchoolYear) {
-            return $latestSchoolYear;
-        }
-
-        // Fallback: compute from current date
-        $now = now();
-        $year = $now->month >= 6 ? $now->year : $now->year - 1;
-        return $year . '-' . ($year + 1);
+        return \App\Models\Setting::getCurrentSchoolYear();
     }
 
     private function getSchoolYearRange(): array

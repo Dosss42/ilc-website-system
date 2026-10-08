@@ -204,18 +204,19 @@ class StudentPortalController extends Controller
         // ── Re-enrollment detection ──
         $enrollmentWindowOpen = Setting::get('enrollment_open', true);
 
-        // Target school year: admin-configured, or derived from current_school_year setting
-        $savedTargetYear  = Setting::get('enrollment_target_year', '');
-        $adminCurrentSY   = Setting::get('current_school_year', '');
+        // Target school year: admin-configured, or the year after "Current
+        // School Year" (e.g. current 2026-2027 → target 2027-2028) — uses
+        // Setting::getCurrentSchoolYear(), the same single source of truth
+        // as the rest of the system now, instead of an independent date
+        // calculation. See docs/system-improvement-plan.md.
+        $savedTargetYear = Setting::get('enrollment_target_year', '');
 
         if ($savedTargetYear) {
             $targetSchoolYear = $savedTargetYear;
-        } elseif ($adminCurrentSY && preg_match('/^(\d{4})-(\d{4})$/', $adminCurrentSY, $m)) {
-            // 2026-2027 → next year is 2027-2028
-            $targetSchoolYear = $m[2] . '-' . ((int)$m[2] + 1);
         } else {
-            $baseY = now()->month >= 6 ? now()->year : now()->year - 1;
-            $targetSchoolYear = ($baseY + 1) . '-' . ($baseY + 2);
+            preg_match('/^(\d{4})-\d{4}$/', \App\Models\Setting::getCurrentSchoolYear(), $m);
+            $nextStart = (int) $m[1] + 1;
+            $targetSchoolYear = $nextStart . '-' . ($nextStart + 1);
         }
 
         $currentSchoolYear  = $targetSchoolYear; // passed to view for display
@@ -307,18 +308,16 @@ class StudentPortalController extends Controller
         }
 
         // Determine which school year we're enrolling INTO.
-        // Priority: (1) admin enrollment_target_year setting, (2) current_school_year setting, (3) date fallback.
+        // Priority: (1) admin enrollment_target_year setting, (2) the
+        // system's single source of truth for "current school year" —
+        // Setting::getCurrentSchoolYear(), which already falls back
+        // through Section data and date math on its own. See
+        // docs/system-improvement-plan.md.
         $savedTarget = Setting::get('enrollment_target_year', '');
-        $currentSY   = Setting::get('current_school_year', '');
 
-        if ($savedTarget && preg_match('/^\d{4}-\d{4}$/', $savedTarget)) {
-            $currentSchoolYear = $savedTarget;
-        } elseif ($currentSY && preg_match('/^\d{4}-\d{4}$/', $currentSY)) {
-            $currentSchoolYear = $currentSY;
-        } else {
-            $baseY = now()->month >= 6 ? now()->year : now()->year - 1;
-            $currentSchoolYear = $baseY . '-' . ($baseY + 1);
-        }
+        $currentSchoolYear = ($savedTarget && preg_match('/^\d{4}-\d{4}$/', $savedTarget))
+            ? $savedTarget
+            : \App\Models\Setting::getCurrentSchoolYear();
 
         // Prevent duplicate enrollment for the same target year (allow re-apply if declined)
         $existing = Enrollment::where('user_id', $user->id)
