@@ -55,7 +55,7 @@ class SecurityHeaders
             "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; " .
             "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; " .
             "img-src 'self' data: https:; " .
-            "connect-src 'self' https://cdn.jsdelivr.net; " .
+            "connect-src 'self' https://cdn.jsdelivr.net https://www.google.com https://www.gstatic.com; " .
             "frame-src https://www.google.com; " .
             "object-src 'none';"
         );

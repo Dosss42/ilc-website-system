@@ -151,12 +151,17 @@ Route::get('/enrollment/application', function () {
     return view('enrollment-application');
 })->name('enrollment.form');
 
-Route::post('/enrollment/submit',     [EnrollmentController::class, 'store'])->name('enrollment.submit');
-Route::post('/enrollment/send-otp',   [EnrollmentController::class, 'sendOtp'])->name('enrollment.send-otp');
-Route::post('/enrollment/verify-otp', [EnrollmentController::class, 'verifyOtp'])->name('enrollment.verify-otp');
+// Rate limited per IP — public, unauthenticated endpoints. sendOtp/verifyOtp
+// already have their own per-email cooldown/attempt-limit logic in the
+// controller, but that doesn't stop a single IP from spamming OTP emails to
+// many different addresses or hammering submit with junk applications;
+// these add a second, IP-keyed layer on top.
+Route::post('/enrollment/submit',     [EnrollmentController::class, 'store'])->middleware('throttle:10,1')->name('enrollment.submit');
+Route::post('/enrollment/send-otp',   [EnrollmentController::class, 'sendOtp'])->middleware('throttle:10,1')->name('enrollment.send-otp');
+Route::post('/enrollment/verify-otp', [EnrollmentController::class, 'verifyOtp'])->middleware('throttle:10,1')->name('enrollment.verify-otp');
 
 // REST API Routes for React Components
-Route::post('/api/enrollment/submit', [EnrollmentController::class, 'submitApi'])->name('api.enrollment.submit');
+Route::post('/api/enrollment/submit', [EnrollmentController::class, 'submitApi'])->middleware('throttle:10,1')->name('api.enrollment.submit');
 
 }); // end maintenance-gated public routes
 
@@ -193,9 +198,12 @@ Route::post('/logout',   [AuthController::class, 'logout'])->name('logout');
 // Finance, and Cashier all resolve through the same 'users' table)
 // ─────────────────────────────────────────
 Route::get('/forgot-password',  [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
-Route::post('/forgot-password', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
+// sendResetLinkEmail already has a per-email 5-attempt/15-min lockout; this
+// IP throttle stops the same visitor from cycling through many different
+// target emails to mass-send reset links / enumerate accounts.
+Route::post('/forgot-password', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'sendResetLinkEmail'])->middleware('throttle:5,1')->name('password.email');
 Route::get('/reset-password/{token}', [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'showResetForm'])->name('password.reset');
-Route::post('/reset-password',  [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'reset'])->name('password.update');
+Route::post('/reset-password',  [\App\Http\Controllers\Auth\ForgotPasswordController::class, 'reset'])->middleware('throttle:10,1')->name('password.update');
 
 // ─────────────────────────────────────────
 // EMAIL VERIFICATION ROUTES
@@ -237,11 +245,13 @@ Route::middleware(['auth', 'superadmin'])->prefix('superadmin')->name('superadmi
     // System Logs
     Route::get('/logs/export', [SuperAdminController::class, 'exportLogs'])->name('logs.export');
 
-    // Backup & Restore
-    Route::post('/backup/create',          [SuperAdminController::class, 'createBackup'])->name('backup.create');
+    // Backup & Restore — throttled: both run a full mysqldump/mysql process,
+    // so a compromised/misused superadmin session (or a double-click) can't
+    // pile up several of these at once and exhaust DB/disk resources.
+    Route::post('/backup/create',          [SuperAdminController::class, 'createBackup'])->middleware('throttle:3,1')->name('backup.create');
     Route::get('/backup/download/{file}',  [SuperAdminController::class, 'downloadBackup'])->name('backup.download');
     Route::delete('/backup/{file}',        [SuperAdminController::class, 'deleteBackup'])->name('backup.destroy');
-    Route::post('/backup/restore/{file}',  [SuperAdminController::class, 'restoreBackup'])->name('backup.restore');
+    Route::post('/backup/restore/{file}',  [SuperAdminController::class, 'restoreBackup'])->middleware('throttle:3,1')->name('backup.restore');
 
     // Settings
     Route::put('/settings/password', [SuperAdminController::class, 'updatePassword'])->name('settings.password');
@@ -679,7 +689,7 @@ Route::middleware(['auth', 'teacher', 'maintenance'])->prefix('teacher')->name('
     Route::get('/sf5',            [\App\Http\Controllers\Teacher\DashboardController::class, 'exportSF5'])->name('sf5');
 
     // Settings — password (OTP-protected)
-    Route::post('/settings/password/send-otp', [\App\Http\Controllers\Teacher\DashboardController::class, 'sendPasswordOtp'])->name('settings.password.otp');
+    Route::post('/settings/password/send-otp', [\App\Http\Controllers\Teacher\DashboardController::class, 'sendPasswordOtp'])->middleware('throttle:5,1')->name('settings.password.otp');
     Route::put('/settings/password', [\App\Http\Controllers\Teacher\DashboardController::class, 'updatePassword'])->name('settings.password');
     // Settings — profile photo
     Route::post('/settings/photo', [\App\Http\Controllers\Teacher\DashboardController::class, 'updatePhoto'])->name('settings.photo');
@@ -707,7 +717,7 @@ Route::middleware(['auth', 'student', 'maintenance'])->prefix('student')->name('
     // through and just sits there until the student manually reloads it.
     Route::get('/payment/xendit-status', [StudentPortalController::class, 'checkXenditStatus'])->name('payment.xendit-status');
     // Settings — password (OTP-protected)
-    Route::post('/settings/password/send-otp', [StudentPortalController::class, 'sendPasswordOtp'])->name('settings.password.otp');
+    Route::post('/settings/password/send-otp', [StudentPortalController::class, 'sendPasswordOtp'])->middleware('throttle:5,1')->name('settings.password.otp');
     Route::put('/settings/password', [StudentPortalController::class, 'updatePassword'])->name('settings.password');
 });
 
