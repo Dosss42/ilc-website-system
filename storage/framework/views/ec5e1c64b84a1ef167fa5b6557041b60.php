@@ -4300,7 +4300,7 @@ function openWalkInEnrollmentModal() {
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 </style>
 
-<div class="modal fade" id="genericConfirmModal" tabindex="-1">
+<div class="modal fade" id="genericConfirmModal" tabindex="-1" style="z-index:1070;">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border:0; border-radius:16px; overflow:hidden;">
             <div class="modal-header" id="genericConfirmHeader" style="color:#fff; border:0; padding:20px 24px;">

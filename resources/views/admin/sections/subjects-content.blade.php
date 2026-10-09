@@ -24,7 +24,7 @@
 
                     <div>
 
-                        <div class="stat-value">0</div>
+                        <div class="stat-value">{{ ($subjects ?? null)?->total() ?? 0 }}</div>
 
                         <div class="stat-label">Total Subjects</div>
 
@@ -42,7 +42,7 @@
 
                     <div>
 
-                        <div class="stat-value">0</div>
+                        <div class="stat-value">{{ $activeSubjectsCount ?? 0 }}</div>
 
                         <div class="stat-label">Active</div>
 
@@ -60,7 +60,7 @@
 
                     <div>
 
-                        <div class="stat-value">0</div>
+                        <div class="stat-value">{{ $inactiveSubjectsCount ?? 0 }}</div>
 
                         <div class="stat-label">Inactive</div>
 

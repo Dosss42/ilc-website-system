@@ -58,7 +58,7 @@
 
                     <div>
 
-                        <div class="stat-value">0</div>
+                        <div class="stat-value"><?php echo e($enrolledThisYear ?? 0); ?></div>
 
                         <div class="stat-label">Enrolled This Year</div>
 
@@ -76,7 +76,7 @@
 
                     <div>
 
-                        <div class="stat-value">₱0</div>
+                        <div class="stat-value">₱<?php echo e(number_format($totalFeesCollected ?? 0, 2)); ?></div>
 
                         <div class="stat-label">Total Fees Collected</div>
 
@@ -94,7 +94,7 @@
 
                     <div>
 
-                        <div class="stat-value">0</div>
+                        <div class="stat-value"><?php echo e($pendingPaymentsCount ?? 0); ?></div>
 
                         <div class="stat-label">Pending Payments</div>
 

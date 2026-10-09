@@ -1442,7 +1442,18 @@ class EnrollmentController extends Controller
             ->orderBy('start_time')
             ->get();
 
-        return view('admin.sections.subjects-content', compact('subjects', 'allSchedules'));
+        // Stat cards — one grouped query for active/inactive, $subjects->total()
+        // (already a paginator) for the overall total rather than a 4th query.
+        $subjectStatusCounts = \App\Models\Subject::selectRaw(
+            "SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) as active_count,
+             SUM(CASE WHEN is_active = 0 THEN 1 ELSE 0 END) as inactive_count"
+        )->first();
+        $activeSubjectsCount = $subjectStatusCounts->active_count ?? 0;
+        $inactiveSubjectsCount = $subjectStatusCounts->inactive_count ?? 0;
+
+        return view('admin.sections.subjects-content', compact(
+            'subjects', 'allSchedules', 'activeSubjectsCount', 'inactiveSubjectsCount'
+        ));
     }
 
     /**
@@ -1514,8 +1525,30 @@ class EnrollmentController extends Controller
         $enrollments = $enrollmentQuery->paginate(20, ['*'], 'enrollment_page');
         $enrollmentOpen = Setting::get('enrollment_open', true);
 
+        // Stat cards — scoped to the whole table, not the current page/filter,
+        // same "full query, not the paginated subset" rule the other stat
+        // cards in this controller already follow.
+        $enrolledThisYear = Enrollment::where('status', 'enrolled')
+            ->where('school_year', Setting::getCurrentSchoolYear())
+            ->count();
+
+        // Same aggregate query adminIndex() already uses for its own
+        // paid/unpaid/collected stat cards (one DB round-trip, scoped to
+        // each student's latest enrollment) — reused here for consistency
+        // rather than computing a second, possibly-diverging figure.
+        $enrollmentFinanceSummary = DB::selectOne("
+            SELECT
+                COUNT(CASE WHEN e.payment_status IS NULL OR e.payment_status = 'pending' THEN 1 END) as unpaid_count,
+                COALESCE(SUM(CASE WHEN e.payment_status IN ('paid','partial') THEN e.payment_amount ELSE 0 END), 0) as total_collected
+            FROM enrollments e
+            WHERE e.id IN (SELECT MAX(id) FROM enrollments GROUP BY user_id)
+        ");
+        $totalFeesCollected = $enrollmentFinanceSummary->total_collected ?? 0;
+        $pendingPaymentsCount = $enrollmentFinanceSummary->unpaid_count ?? 0;
+
         return view('admin.sections.enrollment-content', compact(
-            'enrollments', 'sort', 'statusFilter', 'gradeFilter', 'enrollmentSearch', 'enrollmentOpen'
+            'enrollments', 'sort', 'statusFilter', 'gradeFilter', 'enrollmentSearch', 'enrollmentOpen',
+            'enrolledThisYear', 'totalFeesCollected', 'pendingPaymentsCount'
         ));
     }
 
