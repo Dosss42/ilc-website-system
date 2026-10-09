@@ -1,8 +1,6 @@
-@extends('finance.layout')
+<?php $__env->startSection('title', 'Installments'); ?>
 
-@section('title', 'Installments')
-
-@section('skeleton')
+<?php $__env->startSection('skeleton'); ?>
 <div class="skel skel-header-title"></div>
 <div class="skel skel-header-sub"></div>
 <div class="skel-row-gap">
@@ -28,9 +26,9 @@
     <div class="skel skel-table-row"></div>
     <div class="skel skel-table-row"></div>
 </div>
-@endsection
+<?php $__env->stopSection(); ?>
 
-@section('content')
+<?php $__env->startSection('content'); ?>
 <div class="section-header">
     <div>
         <h1><i class="bi bi-calendar-check-fill" style="color:var(--gold);"></i> Installments</h1>
@@ -38,57 +36,57 @@
     </div>
 </div>
 
-{{-- Stats Row --}}
-@php
+
+<?php
     $totalInstStudents  = $installmentEnrollments->total();
     $overdueInstStudents = $instStats['overdue'] ?? 0;
     $fullyPaidInst      = $instStats['fully_paid'] ?? 0;
     $partialPaidInst    = $instStats['partial'] ?? 0;
-@endphp
+?>
 
 <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px;">
     <div class="stat-card">
         <div class="stat-icon blue"><i class="bi bi-people"></i></div>
         <div>
-            <div class="stat-value">{{ $totalInstStudents }}</div>
+            <div class="stat-value"><?php echo e($totalInstStudents); ?></div>
             <div class="stat-label">Installment Students</div>
         </div>
     </div>
     <div class="stat-card">
         <div class="stat-icon red"><i class="bi bi-exclamation-triangle"></i></div>
         <div>
-            <div class="stat-value">{{ $overdueInstStudents }}</div>
+            <div class="stat-value"><?php echo e($overdueInstStudents); ?></div>
             <div class="stat-label">Overdue</div>
         </div>
     </div>
     <div class="stat-card">
         <div class="stat-icon green"><i class="bi bi-check-circle"></i></div>
         <div>
-            <div class="stat-value">{{ $fullyPaidInst }}</div>
+            <div class="stat-value"><?php echo e($fullyPaidInst); ?></div>
             <div class="stat-label">Fully Paid</div>
         </div>
     </div>
     <div class="stat-card">
         <div class="stat-icon gold"><i class="bi bi-hourglass-split"></i></div>
         <div>
-            <div class="stat-value">{{ $partialPaidInst }}</div>
+            <div class="stat-value"><?php echo e($partialPaidInst); ?></div>
             <div class="stat-label">Partially Paid</div>
         </div>
     </div>
 </div>
 
-@if(($totalLateFeesAll ?? 0) > 0)
+<?php if(($totalLateFeesAll ?? 0) > 0): ?>
 <div style="background:#fff3e0; border:1px solid #ffe0b2; border-radius:10px; padding:14px 20px; margin-bottom:20px; display:flex; align-items:center; gap:10px;">
     <i class="bi bi-exclamation-triangle-fill" style="color:#e65100; font-size:18px;"></i>
     <div>
         <span style="font-weight:600; color:#e65100;">Late Fees Accumulated:</span>
-        <span style="font-weight:700; color:#bf360c; font-size:16px;">₱{{ number_format($totalLateFeesAll, 2) }}</span>
-        <span style="color:#666; font-size:12px; margin-left:8px;">across {{ $overdueInstStudents }} overdue student(s)</span>
+        <span style="font-weight:700; color:#bf360c; font-size:16px;">₱<?php echo e(number_format($totalLateFeesAll, 2)); ?></span>
+        <span style="color:#666; font-size:12px; margin-left:8px;">across <?php echo e($overdueInstStudents); ?> overdue student(s)</span>
     </div>
 </div>
-@endif
+<?php endif; ?>
 
-{{-- Filter Panel --}}
+
 <div class="content-card mb-4">
     <div class="content-card-header">
         <h6><i class="bi bi-funnel me-2" style="color:var(--gold);"></i>Filter Installments</h6>
@@ -98,9 +96,9 @@
             <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">School Year</label>
             <select id="instFilterYear" class="form-select" style="font-size:13px; padding:8px 12px;" onchange="filterInstallments()">
                 <option value="all">All Years</option>
-                @foreach($schoolYears as $year)
-                    <option value="{{ $year }}">{{ $year }}</option>
-                @endforeach
+                <?php $__currentLoopData = $schoolYears; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $year): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <option value="<?php echo e($year); ?>"><?php echo e($year); ?></option>
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </select>
         </div>
         <div style="flex:1; min-width:140px;">
@@ -132,11 +130,11 @@
     </div>
 </div>
 
-{{-- Installments Table --}}
+
 <div class="content-card mb-4">
     <div class="content-card-header" style="display:flex; justify-content:space-between; align-items:center;">
         <h6><i class="bi bi-table me-2" style="color:var(--gold);"></i>Student Installments</h6>
-        <span style="font-size:12px; color:var(--muted);" id="instRowCount">{{ $totalInstStudents }} student(s) on installment plans</span>
+        <span style="font-size:12px; color:var(--muted);" id="instRowCount"><?php echo e($totalInstStudents); ?> student(s) on installment plans</span>
     </div>
     <div style="overflow-x:auto;">
         <table class="dash-table" id="installmentsTable">
@@ -152,8 +150,8 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse($installmentEnrollments as $enrollment)
-                @php
+                <?php $__empty_1 = true; $__currentLoopData = $installmentEnrollments; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $enrollment): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                <?php
                     $totalPaid        = (float)($enrollment->payment_amount ?? 0);
                     $totalFee         = (float)($enrollment->total_fee ?? 0);
                     $progress         = $enrollment->installment_progress ?? ($totalFee > 0 ? min(100, $totalPaid / $totalFee * 100) : 0);
@@ -168,145 +166,150 @@
                         || ($enrollment->payment_type === 'full' && !in_array($enrollment->payment_option, ['B','C','D']));
                     $balance          = max(0, $totalFee - $totalPaid);
                     $examStatus       = $isCashBasis ? ['held' => false] : \App\Services\PaymentService::getExamPermitStatus($enrollment);
-                @endphp
-                <tr style="{{ $isOverdue ? 'background:#fff8f8;' : '' }}"
-                    data-status="{{ $enrollment->payment_status }}"
-                    data-year="{{ $enrollment->school_year ?? '' }}"
-                    data-overdue="{{ $isOverdue ? 'yes' : 'no' }}"
-                    data-plan="{{ $isCashBasis ? 'cash' : 'installment' }}"
-                    data-student="{{ strtolower($enrollment->user->name ?? '') }} {{ strtolower($enrollment->user->email ?? '') }}">
+                ?>
+                <tr style="<?php echo e($isOverdue ? 'background:#fff8f8;' : ''); ?>"
+                    data-status="<?php echo e($enrollment->payment_status); ?>"
+                    data-year="<?php echo e($enrollment->school_year ?? ''); ?>"
+                    data-overdue="<?php echo e($isOverdue ? 'yes' : 'no'); ?>"
+                    data-plan="<?php echo e($isCashBasis ? 'cash' : 'installment'); ?>"
+                    data-student="<?php echo e(strtolower($enrollment->user->name ?? '')); ?> <?php echo e(strtolower($enrollment->user->email ?? '')); ?>">
                     <td>
-                        <div style="font-weight:600; color:var(--text);">{{ $enrollment->user->name ?? 'N/A' }}</div>
-                        <div style="font-size:11px; color:var(--muted);">{{ $enrollment->user->email ?? '' }}</div>
+                        <div style="font-weight:600; color:var(--text);"><?php echo e($enrollment->user->name ?? 'N/A'); ?></div>
+                        <div style="font-size:11px; color:var(--muted);"><?php echo e($enrollment->user->email ?? ''); ?></div>
                     </td>
-                    <td><span class="grade-chip">{{ $enrollment->grade_level ?? 'N/A' }}</span></td>
+                    <td><span class="grade-chip"><?php echo e($enrollment->grade_level ?? 'N/A'); ?></span></td>
                     <td>
-                        @if($isCashBasis)
+                        <?php if($isCashBasis): ?>
                             <div style="display:inline-flex;align-items:center;gap:5px;font-weight:700;color:#16a34a;background:#f0fdf4;padding:3px 10px;border-radius:20px;font-size:12px;">
                                 <i class="bi bi-cash-stack"></i> Plan A – Cash
                             </div>
                             <div style="font-size:11px; color:var(--muted); margin-top:3px;">Full payment, ₱1,501 discount</div>
-                        @else
-                            <div style="font-weight:600; color:var(--blue);">Option {{ $enrollment->payment_option ?? 'N/A' }}</div>
+                        <?php else: ?>
+                            <div style="font-weight:600; color:var(--blue);">Option <?php echo e($enrollment->payment_option ?? 'N/A'); ?></div>
                             <div style="font-size:11px; color:var(--muted);">
-                                ₱{{ number_format($enrollment->monthly_amount ?? 0, 2) }}/month
-                                @if($totalLateFees > 0)
-                                    <span style="color:var(--red);">(+₱{{ number_format($totalLateFees, 0) }} fees)</span>
-                                @endif
+                                ₱<?php echo e(number_format($enrollment->monthly_amount ?? 0, 2)); ?>/month
+                                <?php if($totalLateFees > 0): ?>
+                                    <span style="color:var(--red);">(+₱<?php echo e(number_format($totalLateFees, 0)); ?> fees)</span>
+                                <?php endif; ?>
                             </div>
-                        @endif
+                        <?php endif; ?>
                     </td>
                     <td style="width:180px;">
                         <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
                             <span style="font-weight:500;">
-                                @if($isCashBasis)
+                                <?php if($isCashBasis): ?>
                                     Full payment
-                                @else
-                                    @if($downpaymentAmount > 0)
-                                        <span style="color:{{ $downpaymentPaid ? 'var(--green)' : 'var(--red)' }}; font-size:11px;"><i class="bi bi-{{ $downpaymentPaid ? 'check-circle' : 'circle' }}"></i> DP</span>
+                                <?php else: ?>
+                                    <?php if($downpaymentAmount > 0): ?>
+                                        <span style="color:<?php echo e($downpaymentPaid ? 'var(--green)' : 'var(--red)'); ?>; font-size:11px;"><i class="bi bi-<?php echo e($downpaymentPaid ? 'check-circle' : 'circle'); ?>"></i> DP</span>
                                         <span style="margin:0 4px;">|</span>
-                                    @endif
-                                    {{ $paidMonths }}/{{ $totalMonths }} monthly
-                                @endif
+                                    <?php endif; ?>
+                                    <?php echo e($paidMonths); ?>/<?php echo e($totalMonths); ?> monthly
+                                <?php endif; ?>
                             </span>
-                            <span style="font-weight:600; color:{{ $progress >= 100 ? 'var(--green)' : 'var(--blue)' }};">{{ number_format($progress, 0) }}%</span>
+                            <span style="font-weight:600; color:<?php echo e($progress >= 100 ? 'var(--green)' : 'var(--blue)'); ?>;"><?php echo e(number_format($progress, 0)); ?>%</span>
                         </div>
                         <div style="height:8px; background:#e8eaf0; border-radius:4px; overflow:hidden;">
                             <div class="installment-progress-bar"
-                                 data-progress="{{ $progress }}"
-                                 data-type="{{ $progress >= 100 ? 'complete' : ($isOverdue ? 'overdue' : 'normal') }}">
+                                 data-progress="<?php echo e($progress); ?>"
+                                 data-type="<?php echo e($progress >= 100 ? 'complete' : ($isOverdue ? 'overdue' : 'normal')); ?>">
                             </div>
                         </div>
                         <div style="font-size:11px; color:var(--muted); margin-top:4px;">
-                            ₱{{ number_format($totalPaid, 0) }} of ₱{{ $totalFee > 0 ? number_format($totalFee, 0) : '—' }}
+                            ₱<?php echo e(number_format($totalPaid, 0)); ?> of ₱<?php echo e($totalFee > 0 ? number_format($totalFee, 0) : '—'); ?>
+
                         </div>
                     </td>
                     <td>
-                        @if($isCashBasis)
-                            @if($balance <= 0)
+                        <?php if($isCashBasis): ?>
+                            <?php if($balance <= 0): ?>
                                 <span style="display:inline-flex;align-items:center;gap:4px;color:var(--green);font-weight:600;">
                                     <i class="bi bi-check-circle-fill"></i> Fully Paid
                                 </span>
-                            @else
-                                <div style="font-weight:600; color:var(--text);">Remaining: ₱{{ number_format($balance, 2) }}</div>
+                            <?php else: ?>
+                                <div style="font-weight:600; color:var(--text);">Remaining: ₱<?php echo e(number_format($balance, 2)); ?></div>
                                 <div style="font-size:11px; color:var(--muted);">Full payment upon enrollment</div>
-                            @endif
-                        @elseif($enrollment->next_due_date)
-                            <div style="font-weight:600; color:{{ $isOverdue ? 'var(--red)' : 'var(--text)' }};">
-                                {{ $enrollment->next_month_name ?? 'Monthly' }}: ₱{{ number_format($enrollment->next_due_amount ?? 0, 2) }}
+                            <?php endif; ?>
+                        <?php elseif($enrollment->next_due_date): ?>
+                            <div style="font-weight:600; color:<?php echo e($isOverdue ? 'var(--red)' : 'var(--text)'); ?>;">
+                                <?php echo e($enrollment->next_month_name ?? 'Monthly'); ?>: ₱<?php echo e(number_format($enrollment->next_due_amount ?? 0, 2)); ?>
+
                             </div>
-                            <div style="font-size:11px; color:var(--muted);">Due: {{ $enrollment->next_due_date->format('M d, Y') }}</div>
-                            @if($isOverdue)
+                            <div style="font-size:11px; color:var(--muted);">Due: <?php echo e($enrollment->next_due_date->format('M d, Y')); ?></div>
+                            <?php if($isOverdue): ?>
                                 <span style="display:inline-flex;align-items:center;gap:4px;margin-top:4px;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;background:#ffebee;color:#c62828;">
                                     <i class="bi bi-exclamation-triangle-fill"></i>
-                                    {{ $weeksOverdue > 0 ? $weeksOverdue . 'w overdue' : 'Overdue' }}
+                                    <?php echo e($weeksOverdue > 0 ? $weeksOverdue . 'w overdue' : 'Overdue'); ?>
+
                                 </span>
-                            @endif
-                            @if($examStatus['held'])
+                            <?php endif; ?>
+                            <?php if($examStatus['held']): ?>
                                 <span style="display:inline-flex;align-items:center;gap:4px;margin-top:4px;margin-left:4px;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;background:#3e1a1a;color:#ffcdd2;"
-                                      title="{{ $examStatus['reason'] === 'broken_promise' ? 'Promissory Note broken — promised date passed unpaid' : $examStatus['overdue_months'] . ' consecutive months unpaid' }}">
+                                      title="<?php echo e($examStatus['reason'] === 'broken_promise' ? 'Promissory Note broken — promised date passed unpaid' : $examStatus['overdue_months'] . ' consecutive months unpaid'); ?>">
                                     <i class="bi bi-file-earmark-lock-fill"></i> Exam Permit Held
                                 </span>
-                            @endif
-                        @else
+                            <?php endif; ?>
+                        <?php else: ?>
                             <span style="display:inline-flex;align-items:center;gap:4px;color:var(--green);font-weight:600;">
-                                <i class="bi bi-check-circle-fill"></i> {{ $enrollment->next_month_name ?? 'Fully Paid' }}
+                                <i class="bi bi-check-circle-fill"></i> <?php echo e($enrollment->next_month_name ?? 'Fully Paid'); ?>
+
                             </span>
-                        @endif
+                        <?php endif; ?>
                     </td>
                     <td style="white-space:nowrap;">
-                        @if($balance <= 0)
+                        <?php if($balance <= 0): ?>
                             <div style="font-weight:700; color:var(--green);">
                                 <i class="bi bi-check-circle-fill"></i> Fully Paid
                             </div>
-                        @else
-                            <div style="font-weight:700; color:{{ $isOverdue ? 'var(--red)' : 'var(--blue)' }}; font-size:14px;">
-                                ₱{{ number_format($balance, 2) }}
+                        <?php else: ?>
+                            <div style="font-weight:700; color:<?php echo e($isOverdue ? 'var(--red)' : 'var(--blue)'); ?>; font-size:14px;">
+                                ₱<?php echo e(number_format($balance, 2)); ?>
+
                             </div>
                             <div style="font-size:11px; color:var(--muted);">remaining</div>
-                        @endif
+                        <?php endif; ?>
                     </td>
                     <td style="white-space:nowrap;">
-                        <button type="button" class="action-btn view js-view-installments" title="{{ $isCashBasis ? 'View Payment Summary' : 'View Installment Details' }}"
-                            data-id="{{ $enrollment->id }}"
-                            data-name="{{ htmlspecialchars($enrollment->user->name ?? 'N/A', ENT_QUOTES, 'UTF-8') }}"
-                            data-grade="{{ $enrollment->grade_level ?? 'N/A' }}"
-                            data-option="{{ $enrollment->payment_option ?? 'N/A' }}"
-                            data-monthly="{{ $enrollment->monthly_amount ?? 0 }}"
-                            data-downpayment="{{ $enrollment->downpayment_amount ?? 0 }}"
-                            data-total-fee="{{ $totalFee }}"
-                            data-total-paid="{{ $totalPaid }}"
-                            data-is-cash="{{ $isCashBasis ? '1' : '0' }}"
+                        <button type="button" class="action-btn view js-view-installments" title="<?php echo e($isCashBasis ? 'View Payment Summary' : 'View Installment Details'); ?>"
+                            data-id="<?php echo e($enrollment->id); ?>"
+                            data-name="<?php echo e(htmlspecialchars($enrollment->user->name ?? 'N/A', ENT_QUOTES, 'UTF-8')); ?>"
+                            data-grade="<?php echo e($enrollment->grade_level ?? 'N/A'); ?>"
+                            data-option="<?php echo e($enrollment->payment_option ?? 'N/A'); ?>"
+                            data-monthly="<?php echo e($enrollment->monthly_amount ?? 0); ?>"
+                            data-downpayment="<?php echo e($enrollment->downpayment_amount ?? 0); ?>"
+                            data-total-fee="<?php echo e($totalFee); ?>"
+                            data-total-paid="<?php echo e($totalPaid); ?>"
+                            data-is-cash="<?php echo e($isCashBasis ? '1' : '0'); ?>"
                             onclick="showInstallmentModal(this)">
                             <i class="bi bi-eye"></i>
                         </button>
-                        @if($balance > 0)
+                        <?php if($balance > 0): ?>
                         <button type="button" class="action-btn"
                             style="background:#e8f0fb;color:var(--blue);border:1px solid #bfdbfe;"
                             title="Record Walk-in Payment"
-                            onclick="quickPayCash({{ $enrollment->id }}, {{ $balance }}, '{{ route('finance.installments.pay', $enrollment->id) }}')">
+                            onclick="quickPayCash(<?php echo e($enrollment->id); ?>, <?php echo e($balance); ?>, '<?php echo e(route('finance.installments.pay', $enrollment->id)); ?>')">
                             <i class="bi bi-cash-stack"></i>
                         </button>
-                        @endif
-                        @if($isOverdue)
+                        <?php endif; ?>
+                        <?php if($isOverdue): ?>
                         <button type="button" class="action-btn"
                             style="background:#fff3e0;color:#e65100;border:1px solid #f5a623;"
                             title="Add Promissory Note"
-                            onclick="openPromissoryModal({{ $enrollment->id }}, '{{ addslashes($enrollment->user->name ?? '') }}', {{ $balance }}, '{{ addslashes($enrollment->user->guardian->name ?? '') }}')">
+                            onclick="openPromissoryModal(<?php echo e($enrollment->id); ?>, '<?php echo e(addslashes($enrollment->user->name ?? '')); ?>', <?php echo e($balance); ?>, '<?php echo e(addslashes($enrollment->user->guardian->name ?? '')); ?>')">
                             <i class="bi bi-file-earmark-text"></i>
                         </button>
-                        @endif
-                        @if($enrollment->promissoryNotes->count() > 0)
+                        <?php endif; ?>
+                        <?php if($enrollment->promissoryNotes->count() > 0): ?>
                         <button type="button" class="action-btn"
                             style="background:#f3e8fd;color:#7b1fa2;border:1px solid #ce93d8;"
-                            title="View / Manage Promissory Notes ({{ $enrollment->promissoryNotes->count() }})"
-                            onclick="openNotesManager({{ $enrollment->id }}, '{{ addslashes($enrollment->user->name ?? '') }}')">
+                            title="View / Manage Promissory Notes (<?php echo e($enrollment->promissoryNotes->count()); ?>)"
+                            onclick="openNotesManager(<?php echo e($enrollment->id); ?>, '<?php echo e(addslashes($enrollment->user->name ?? '')); ?>')">
                             <i class="bi bi-clipboard2-check"></i>
                         </button>
-                        @endif
+                        <?php endif; ?>
                     </td>
                 </tr>
-                @empty
+                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                 <tr id="instEmptyRow">
                     <td colspan="7" style="text-align:center; color:var(--muted); padding:60px;">
                         <i class="bi bi-wallet2" style="font-size:48px; display:block; margin-bottom:12px; opacity:0.2;"></i>
@@ -314,19 +317,20 @@
                         <div style="font-size:12px;">Enrolled students with payment plans will appear here.</div>
                     </td>
                 </tr>
-                @endforelse
+                <?php endif; ?>
             </tbody>
         </table>
     </div>
     <div class="p-3 border-top" style="border-color:var(--border);">
-        {{ $installmentEnrollments->links() }}
+        <?php echo e($installmentEnrollments->links()); ?>
+
         <div class="pagination-info">
-            Showing {{ $installmentEnrollments->firstItem() ?? 0 }} to {{ $installmentEnrollments->lastItem() ?? 0 }} of {{ $installmentEnrollments->total() }} installments
+            Showing <?php echo e($installmentEnrollments->firstItem() ?? 0); ?> to <?php echo e($installmentEnrollments->lastItem() ?? 0); ?> of <?php echo e($installmentEnrollments->total()); ?> installments
         </div>
     </div>
 </div>
 
-{{-- Installment Details Modal --}}
+
 <div class="modal fade" id="installmentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content" style="border-radius:12px; border:none; box-shadow:0 20px 60px rgba(0,0,0,0.15);">
@@ -347,7 +351,7 @@
     </div>
 </div>
 
-{{-- Walk-in Payment Modal --}}
+
 <div class="modal fade" id="walkInPayModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
         <div class="modal-content" style="border-radius:12px; border:none; box-shadow:0 10px 40px rgba(0,0,0,0.18);">
@@ -358,7 +362,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="walkInPayForm" method="POST" action="">
-                @csrf
+                <?php echo csrf_field(); ?>
                 <input type="hidden" name="installment_id" id="wiInstallmentId">
                 <div class="modal-body" style="padding:20px 24px;">
                     <div style="background:#f0f4ff; border-radius:8px; padding:12px 16px; margin-bottom:16px;">
@@ -405,7 +409,7 @@
     </div>
 </div>
 
-{{-- Promissory Note Modal --}}
+
 <div class="modal fade" id="promissoryModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" style="max-width:520px;">
         <div class="modal-content" style="border-radius:14px; border:none; box-shadow:0 20px 60px rgba(0,0,0,0.15);">
@@ -419,7 +423,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" style="padding:24px;">
-                <meta name="csrf-token" content="{{ csrf_token() }}">
+                <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
                 <input type="hidden" id="pn-enrollment-id">
                 <div style="background:#f8f9fa; border-radius:8px; padding:12px 16px; margin-bottom:18px;">
                     <div style="font-size:11px; color:var(--muted); font-weight:600; text-transform:uppercase;">Student</div>
@@ -459,7 +463,7 @@
     </div>
 </div>
 
-{{-- Promissory Notes Manager Modal — history + status changes for one student --}}
+
 <div class="modal fade" id="notesManagerModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content" style="border-radius:14px; border:none; box-shadow:0 20px 60px rgba(0,0,0,0.15);">
@@ -488,9 +492,9 @@
         </div>
     </div>
 </div>
-@endsection
+<?php $__env->stopSection(); ?>
 
-@section('scripts')
+<?php $__env->startSection('scripts'); ?>
 <script>
 // ── Client-side filter ──
 function filterInstallments() {
@@ -562,7 +566,7 @@ document.querySelectorAll('.installment-progress-bar').forEach(function(bar) {
 
 // ── Show Installment Modal (AJAX) ──
 let _currentPayRoute = '';
-let _currentCsrf     = '{{ csrf_token() }}';
+let _currentCsrf     = '<?php echo e(csrf_token()); ?>';
 
 function showInstallmentModal(btn) {
     const id          = btn.dataset.id;
@@ -883,7 +887,7 @@ function openNotesManager(enrollmentId, studentName) {
 }
 
 function loadNotesList(enrollmentId) {
-    fetch('{{ route("promissory.list") }}?enrollment_id=' + enrollmentId, {
+    fetch('<?php echo e(route("promissory.list")); ?>?enrollment_id=' + enrollmentId, {
         headers: { 'Accept': 'application/json' }
     })
     .then(r => r.json())
@@ -983,4 +987,6 @@ function promptExtendNote(noteId) {
     }, { title: 'Extend Promise Date', placeholder: 'YYYY-MM-DD', inputType: 'date', confirmLabel: 'Extend' });
 }
 </script>
-@endsection
+<?php $__env->stopSection(); ?>
+
+<?php echo $__env->make('finance.layout', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Users\ron28\Desktop\ILC SYSTEM\ilc-website-system\resources\views/finance/installments.blade.php ENDPATH**/ ?>

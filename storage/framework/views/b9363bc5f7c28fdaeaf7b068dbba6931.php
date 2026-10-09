@@ -67,11 +67,11 @@
     </style>
 </head>
 <body>
-    @include('partials.student-header')
+    <?php echo $__env->make('partials.student-header', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
     <div class="container-fluid">
         <div class="row">
-            @include('partials.student-sidebar')
+            <?php echo $__env->make('partials.student-sidebar', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
             
             <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
                 <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
@@ -82,21 +82,23 @@
                 </div>
 
                 <!-- Success/Error Messages -->
-                @if(session('success'))
+                <?php if(session('success')): ?>
                     <div class="alert alert-success alert-dismissible fade show" role="alert">
                         <i class="bi bi-check-circle-fill me-2"></i>
-                        {{ session('success') }}
+                        <?php echo e(session('success')); ?>
+
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
-                @endif
+                <?php endif; ?>
 
-                @if(session('error'))
+                <?php if(session('error')): ?>
                     <div class="alert alert-danger alert-dismissible fade show" role="alert">
                         <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                        {{ session('error') }}
+                        <?php echo e(session('error')); ?>
+
                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                     </div>
-                @endif
+                <?php endif; ?>
 
                 <!-- Upload Form -->
                 <div class="card mb-4">
@@ -104,8 +106,8 @@
                         <h5 class="mb-0"><i class="bi bi-cloud-upload-fill me-2"></i>Upload New Document</h5>
                     </div>
                     <div class="card-body">
-                        <form action="{{ route('student.documents.upload') }}" method="POST" enctype="multipart/form-data">
-                            @csrf
+                        <form action="<?php echo e(route('student.documents.upload')); ?>" method="POST" enctype="multipart/form-data">
+                            <?php echo csrf_field(); ?>
                             <div class="row">
                                 <div class="col-md-6">
                                     <div class="mb-3">
@@ -160,58 +162,60 @@
                         <h5 class="mb-0"><i class="bi bi-file-earmark-text me-2"></i>Uploaded Documents</h5>
                     </div>
                     <div class="card-body">
-                        @if($documents->count() > 0)
+                        <?php if($documents->count() > 0): ?>
                             <div class="row">
-                                @foreach($documents as $document)
+                                <?php $__currentLoopData = $documents; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $document): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                     <div class="col-md-6 mb-3">
                                         <div class="document-card">
                                             <div class="d-flex justify-content-between align-items-start">
                                                 <div class="d-flex align-items-start">
                                                     <div class="me-3">
-                                                        @switch($document->document_type)
-                                                            @case('birth_certificate')
+                                                        <?php switch($document->document_type):
+                                                            case ('birth_certificate'): ?>
                                                                 <i class="bi bi-file-earmark-person document-icon"></i>
-                                                                @break
-                                                            @case('form_137')
+                                                                <?php break; ?>
+                                                            <?php case ('form_137'): ?>
                                                                 <i class="bi bi-file-earmark-medical document-icon"></i>
-                                                                @break
-                                                            @case('report_card')
+                                                                <?php break; ?>
+                                                            <?php case ('report_card'): ?>
                                                                 <i class="bi bi-file-earmark-check document-icon"></i>
-                                                                @break
-                                                            @case('two_by_two_picture')
+                                                                <?php break; ?>
+                                                            <?php case ('two_by_two_picture'): ?>
                                                                 <i class="bi bi-person-bounding-box document-icon"></i>
-                                                                @break
-                                                            @default
+                                                                <?php break; ?>
+                                                            <?php default: ?>
                                                                 <i class="bi bi-file-earmark document-icon"></i>
-                                                        @endswitch
+                                                        <?php endswitch; ?>
                                                     </div>
                                                     <div>
-                                                        <h6 class="mb-1">{{ $document->document_type_display }}</h6>
-                                                        <p class="mb-1 text-muted">{{ $document->original_name }}</p>
+                                                        <h6 class="mb-1"><?php echo e($document->document_type_display); ?></h6>
+                                                        <p class="mb-1 text-muted"><?php echo e($document->original_name); ?></p>
                                                         <div class="file-info">
-                                                            <i class="bi bi-hdd me-1"></i>{{ $document->file_size_display }}
+                                                            <i class="bi bi-hdd me-1"></i><?php echo e($document->file_size_display); ?>
+
                                                             <span class="ms-3">
                                                                 <i class="bi bi-calendar me-1"></i>
-                                                                {{ $document->created_at->format('M d, Y h:i A') }}
+                                                                <?php echo e($document->created_at->format('M d, Y h:i A')); ?>
+
                                                             </span>
                                                         </div>
-                                                        @if($document->description)
-                                                            <p class="mb-0 small text-muted">{{ $document->description }}</p>
-                                                        @endif
+                                                        <?php if($document->description): ?>
+                                                            <p class="mb-0 small text-muted"><?php echo e($document->description); ?></p>
+                                                        <?php endif; ?>
                                                     </div>
                                                 </div>
                                                 <div class="text-end">
-                                                    <div class="mb-2">{{ $document->status_badge }}</div>
+                                                    <div class="mb-2"><?php echo e($document->status_badge); ?></div>
                                                     <div class="btn-group btn-group-sm">
-                                                        <a href="{{ route('documents.view', $document) }}"
+                                                        <a href="<?php echo e(route('documents.view', $document)); ?>"
                                                            class="btn btn-outline-primary" target="_blank" title="View">
                                                             <i class="bi bi-eye"></i>
                                                         </a>
-                                                        <form action="{{ route('student.documents.delete', $document) }}"
+                                                        <form action="<?php echo e(route('student.documents.delete', $document)); ?>"
                                                               method="POST" style="display: inline-block;"
                                                               onsubmit="return confirmDeleteDocument(this)">
-                                                            @csrf
-                                                            @method('DELETE')
+                                                            <?php echo csrf_field(); ?>
+                                                            <?php echo method_field('DELETE'); ?>
                                                             <button type="submit" class="btn btn-outline-danger"
                                                                     title="Delete">
                                                                 <i class="bi bi-trash"></i>
@@ -222,15 +226,15 @@
                                             </div>
                                         </div>
                                     </div>
-                                @endforeach
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                             </div>
-                        @else
+                        <?php else: ?>
                             <div class="text-center py-5">
                                 <i class="bi bi-inbox fs-1 text-muted"></i>
                                 <h5 class="text-muted mt-3">No documents uploaded yet</h5>
                                 <p class="text-muted">Start by uploading your required documents above.</p>
                             </div>
-                        @endif
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -401,3 +405,4 @@
     </script>
 </body>
 </html>
+<?php /**PATH C:\Users\ron28\Desktop\ILC SYSTEM\ilc-website-system\resources\views/student/documents.blade.php ENDPATH**/ ?>

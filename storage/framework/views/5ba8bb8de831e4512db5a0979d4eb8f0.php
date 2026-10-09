@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
     <title>Schedule Cleanup — ILC Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
@@ -34,7 +34,7 @@
                         <input type="text" class="form-control" id="searchInput" placeholder="Search by subject, room, teacher, day...">
                     </div>
                 </div>
-                <div class="text-muted" style="white-space:nowrap;"><span id="visibleCount">{{ $schedules->count() }}</span> record(s)</div>
+                <div class="text-muted" style="white-space:nowrap;"><span id="visibleCount"><?php echo e($schedules->count()); ?></span> record(s)</div>
             </div>
 
             <div class="table-responsive">
@@ -54,44 +54,44 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($schedules as $sched)
-                            <tr data-search="{{ strtolower(($sched->subject->name ?? '') . ' ' . ($sched->room ?? '') . ' ' . ($sched->day_of_week ?? '') . ' ' . ($sched->teacher->name ?? '') . ' ' . ($sched->section->name ?? '')) }}">
-                                <td><code>#{{ $sched->id }}</code></td>
+                        <?php $__empty_1 = true; $__currentLoopData = $schedules; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sched): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                            <tr data-search="<?php echo e(strtolower(($sched->subject->name ?? '') . ' ' . ($sched->room ?? '') . ' ' . ($sched->day_of_week ?? '') . ' ' . ($sched->teacher->name ?? '') . ' ' . ($sched->section->name ?? ''))); ?>">
+                                <td><code>#<?php echo e($sched->id); ?></code></td>
                                 <td>
-                                    <div class="fw-semibold">{{ $sched->section->grade_level ?? '—' }}</div>
-                                    <small class="text-muted">{{ $sched->section->name ?? '—' }}</small>
+                                    <div class="fw-semibold"><?php echo e($sched->section->grade_level ?? '—'); ?></div>
+                                    <small class="text-muted"><?php echo e($sched->section->name ?? '—'); ?></small>
                                 </td>
-                                <td><span class="fw-semibold">{{ $sched->subject->name ?? '—' }}</span></td>
-                                <td>{{ $sched->teacher->name ?? '—' }}</td>
-                                <td>{{ $sched->day_of_week ?? '—' }}</td>
+                                <td><span class="fw-semibold"><?php echo e($sched->subject->name ?? '—'); ?></span></td>
+                                <td><?php echo e($sched->teacher->name ?? '—'); ?></td>
+                                <td><?php echo e($sched->day_of_week ?? '—'); ?></td>
                                 <td style="white-space:nowrap;">
-                                    {{ \Carbon\Carbon::parse($sched->start_time)->format('g:i A') }}<br>
-                                    <span class="text-muted">{{ \Carbon\Carbon::parse($sched->end_time)->format('g:i A') }}</span>
+                                    <?php echo e(\Carbon\Carbon::parse($sched->start_time)->format('g:i A')); ?><br>
+                                    <span class="text-muted"><?php echo e(\Carbon\Carbon::parse($sched->end_time)->format('g:i A')); ?></span>
                                 </td>
-                                <td>{{ $sched->room ?? '—' }}</td>
-                                <td>Term {{ $sched->term ?? '—' }}</td>
+                                <td><?php echo e($sched->room ?? '—'); ?></td>
+                                <td>Term <?php echo e($sched->term ?? '—'); ?></td>
                                 <td>
-                                    @if($sched->is_active)
+                                    <?php if($sched->is_active): ?>
                                         <span class="badge badge-active">Active</span>
-                                    @else
+                                    <?php else: ?>
                                         <span class="badge badge-inactive">Inactive</span>
-                                    @endif
+                                    <?php endif; ?>
                                 </td>
                                 <td>
-                                    <form action="/admin/schedules/{{ $sched->id }}" method="POST" class="d-inline" onsubmit="return confirmDeleteSchedule(this, {{ $sched->id }});">
-                                        @csrf
-                                        @method('DELETE')
+                                    <form action="/admin/schedules/<?php echo e($sched->id); ?>" method="POST" class="d-inline" onsubmit="return confirmDeleteSchedule(this, <?php echo e($sched->id); ?>);">
+                                        <?php echo csrf_field(); ?>
+                                        <?php echo method_field('DELETE'); ?>
                                         <button type="submit" class="btn btn-outline-danger btn-sm">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </form>
                                 </td>
                             </tr>
-                        @empty
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                             <tr>
                                 <td colspan="10" class="text-center text-muted py-5">No schedules found in the database.</td>
                             </tr>
-                        @endforelse
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
@@ -160,3 +160,4 @@
     </script>
 </body>
 </html>
+<?php /**PATH C:\Users\ron28\Desktop\ILC SYSTEM\ilc-website-system\resources\views/schedule-cleanup.blade.php ENDPATH**/ ?>

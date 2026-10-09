@@ -578,13 +578,13 @@ async function saveFeeSettings() {
         });
         const data = await response.json().catch(() => ({}));
         if (response.ok && data.success) {
-            alert('Fee settings saved successfully.');
-            window.location.reload();
+            showToast('Fee settings saved successfully.', 'success');
+            setTimeout(() => window.location.reload(), 900);
         } else {
-            alert('Failed to save fee settings: ' + (data.message || 'Unknown error'));
+            showToast('Failed to save fee settings: ' + (data.message || 'Unknown error'), 'error');
         }
     } catch (err) {
-        alert('Error saving fee settings: ' + err.message);
+        showToast('Error saving fee settings: ' + err.message, 'error');
     } finally {
         btnText.style.display    = 'inline';
         btnLoading.style.display = 'none';

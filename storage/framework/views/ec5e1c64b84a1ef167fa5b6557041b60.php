@@ -8,11 +8,11 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
 
     <title>Admin Dashboard — ILC</title>
 
-    {{-- Preconnect to CDN domains for faster resource loading --}}
+    
 
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 
@@ -20,9 +20,9 @@
 
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-    {{-- Critical CSS first, then non-blocking externals --}}
+    
 
-    <link rel="stylesheet" href="/css/adminDashboard.css?v={{ filemtime(public_path('css/adminDashboard.css')) }}">
+    <link rel="stylesheet" href="/css/adminDashboard.css?v=<?php echo e(filemtime(public_path('css/adminDashboard.css'))); ?>">
 
     <link rel="stylesheet" href="/css/global-scrollbar.css">
 
@@ -32,11 +32,10 @@
 
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 
-    {{-- Chart.js for Reports --}}
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    {{-- html2pdf.js for Reports PDF export — jsdelivr, since that's the only
-         CDN domain the app's CSP (SecurityHeaders middleware) allows scripts from --}}
+    
     <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
@@ -686,13 +685,9 @@
 
 <body>
 
-{{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-     INITIALIZE VARIABLES
 
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
-
-@php
+<?php
     // Ensure all variables are defined with safe defaults
     $teachers = $teachers ?? collect();
     $sections = $sections ?? collect();
@@ -729,7 +724,7 @@
     $studentStatusFilter = $studentStatusFilter ?? '';
     $studentPaymentFilter = $studentPaymentFilter ?? '';
     $studentSchoolYearFilter = $studentSchoolYearFilter ?? '';
-@endphp
+?>
 
 <script>
 // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -819,25 +814,25 @@ function showSection(name) {
     window.scrollTo(0, 0);
     applySectionSkeleton(name);
     if (name === 'guidance') {
-        loadGuidanceSection('{{ route("admin.section.guidance") }}');
+        loadGuidanceSection('<?php echo e(route("admin.section.guidance")); ?>');
     }
     if (name === 'announcements') {
-        loadAnnouncementsSection('{{ route("admin.section.announcements") }}');
+        loadAnnouncementsSection('<?php echo e(route("admin.section.announcements")); ?>');
     }
     if (name === 'news') {
-        loadNewsSection('{{ route("admin.section.news") }}');
+        loadNewsSection('<?php echo e(route("admin.section.news")); ?>');
     }
     if (name === 'archives') {
-        loadArchivesSection('{{ route("admin.section.archives") }}');
+        loadArchivesSection('<?php echo e(route("admin.section.archives")); ?>');
     }
     if (name === 'enrollment') {
-        loadEnrollmentSection('{{ route("admin.section.enrollment") }}');
+        loadEnrollmentSection('<?php echo e(route("admin.section.enrollment")); ?>');
     }
     if (name === 'students') {
-        loadStudentsSection('{{ route("admin.section.students") }}');
+        loadStudentsSection('<?php echo e(route("admin.section.students")); ?>');
     }
     if (name === 'subjects') {
-        loadSubjectsSection('{{ route("admin.section.subjects") }}');
+        loadSubjectsSection('<?php echo e(route("admin.section.subjects")); ?>');
     }
     if (name === 'settings' && typeof initSettings === 'function') {
         initSettings();
@@ -852,7 +847,7 @@ function showSection(name) {
         // loadReportsSection() and the DOMContentLoaded restore block below
         // for the other half of this. In normal operation (clicking the nav
         // link) there's no querystring, so this is just the base URL.
-        loadReportsSection('{{ route("admin.section.reports") }}' + window.location.search);
+        loadReportsSection('<?php echo e(route("admin.section.reports")); ?>' + window.location.search);
     }
     return false;
 }
@@ -893,7 +888,7 @@ document.addEventListener('submit', function (e) {
     if (e.target && e.target.id === 'guidance-filter-form') {
         e.preventDefault();
         const params = new URLSearchParams(new FormData(e.target)).toString();
-        loadGuidanceSection('{{ route("admin.section.guidance") }}?' + params);
+        loadGuidanceSection('<?php echo e(route("admin.section.guidance")); ?>?' + params);
     }
 });
 document.addEventListener('click', function (e) {
@@ -901,7 +896,7 @@ document.addEventListener('click', function (e) {
     if (link && !link.closest('.pagination')?.classList.contains('disabled')) {
         e.preventDefault();
         const url = new URL(link.href, window.location.origin);
-        loadGuidanceSection('{{ route("admin.section.guidance") }}?' + url.searchParams.toString());
+        loadGuidanceSection('<?php echo e(route("admin.section.guidance")); ?>?' + url.searchParams.toString());
     }
 });
 
@@ -934,7 +929,7 @@ document.addEventListener('click', function (e) {
     if (link && !link.closest('.pagination')?.classList.contains('disabled')) {
         e.preventDefault();
         const url = new URL(link.href, window.location.origin);
-        loadAnnouncementsSection('{{ route("admin.section.announcements") }}?' + url.searchParams.toString());
+        loadAnnouncementsSection('<?php echo e(route("admin.section.announcements")); ?>?' + url.searchParams.toString());
     }
 });
 
@@ -960,7 +955,7 @@ document.addEventListener('click', function (e) {
     if (link && !link.closest('.pagination')?.classList.contains('disabled')) {
         e.preventDefault();
         const url = new URL(link.href, window.location.origin);
-        loadNewsSection('{{ route("admin.section.news") }}?' + url.searchParams.toString());
+        loadNewsSection('<?php echo e(route("admin.section.news")); ?>?' + url.searchParams.toString());
     }
 });
 
@@ -990,7 +985,7 @@ document.addEventListener('click', function (e) {
     if (link && !link.closest('.pagination').classList.contains('disabled')) {
         e.preventDefault();
         const url = new URL(link.href, window.location.origin);
-        loadArchivesSection('{{ route("admin.section.archives") }}?' + url.searchParams.toString());
+        loadArchivesSection('<?php echo e(route("admin.section.archives")); ?>?' + url.searchParams.toString());
     }
 });
 
@@ -1018,7 +1013,7 @@ document.addEventListener('click', function (e) {
     if (link && !link.closest('.pagination').classList.contains('disabled')) {
         e.preventDefault();
         const url = new URL(link.href, window.location.origin);
-        loadEnrollmentSection('{{ route("admin.section.enrollment") }}?' + url.searchParams.toString());
+        loadEnrollmentSection('<?php echo e(route("admin.section.enrollment")); ?>?' + url.searchParams.toString());
     }
 });
 
@@ -1050,7 +1045,7 @@ document.addEventListener('submit', function (e) {
     if (e.target && e.target.id === 'student-filter-form') {
         e.preventDefault();
         const params = new URLSearchParams(new FormData(e.target)).toString();
-        loadStudentsSection('{{ route("admin.section.students") }}?' + params);
+        loadStudentsSection('<?php echo e(route("admin.section.students")); ?>?' + params);
     }
 });
 document.addEventListener('click', function (e) {
@@ -1058,7 +1053,7 @@ document.addEventListener('click', function (e) {
     if (link && !link.closest('.pagination').classList.contains('disabled')) {
         e.preventDefault();
         const url = new URL(link.href, window.location.origin);
-        loadStudentsSection('{{ route("admin.section.students") }}?' + url.searchParams.toString());
+        loadStudentsSection('<?php echo e(route("admin.section.students")); ?>?' + url.searchParams.toString());
     }
 });
 
@@ -1094,7 +1089,7 @@ document.addEventListener('click', function (e) {
     if (link && !link.closest('.pagination')?.classList.contains('disabled')) {
         e.preventDefault();
         const url = new URL(link.href, window.location.origin);
-        loadSubjectsSection('{{ route("admin.section.subjects") }}?' + url.searchParams.toString());
+        loadSubjectsSection('<?php echo e(route("admin.section.subjects")); ?>?' + url.searchParams.toString());
     }
 });
 
@@ -1144,7 +1139,7 @@ document.addEventListener('click', function (e) {
     if (link && !link.closest('.pagination')?.classList.contains('disabled')) {
         e.preventDefault();
         const url = new URL(link.href, window.location.origin);
-        loadReportsSection('{{ route("admin.section.reports") }}?' + url.searchParams.toString());
+        loadReportsSection('<?php echo e(route("admin.section.reports")); ?>?' + url.searchParams.toString());
     }
 });
 
@@ -1261,7 +1256,7 @@ function buildCurrentReportContent() {
         el.remove();
     });
 
-    var syText = 'S.Y. {{ $currentSchoolYear }}';
+    var syText = 'S.Y. <?php echo e($currentSchoolYear); ?>';
 
     var subTitles = {
         students: { master: 'Student Master List', grade: 'Students by Grade Level', newret: 'New vs Returning', docs: 'Document Compliance' },
@@ -1419,27 +1414,14 @@ function openWalkInEnrollmentModal() {
 
 </script>
 
-{{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-     TOPBAR
-
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
 
 <div class="dash-topbar">
 
     <div class="topbar-brand">
 
         <div class="brand-logos">
-        {{-- 
-            <div class="brand-logo-circle">
-
-                <img src="/images/logo1.png" alt=""
-
-                     onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\'bi bi-building\'></i>'">
-
-            </div>
-
-            --}}
+        
             <div class="brand-logo-circle">
 
                 <img src="/images/logo.png" alt=""
@@ -1474,13 +1456,13 @@ function openWalkInEnrollmentModal() {
 
     <div class="topbar-right">
 
-        {{-- Maintenance Mode Toggle --}}
-        @php $isMaintenance = $maintenanceMode ?? false; @endphp
+        
+        <?php $isMaintenance = $maintenanceMode ?? false; ?>
         <button id="maintenance-topbar-btn" onclick="toggleMaintenanceMode()"
-            title="{{ $isMaintenance ? 'Maintenance ON — click to turn off' : 'Turn on Maintenance Mode' }}"
-            style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid {{ $isMaintenance ? '#e74c3c' : '#ddd' }};background:{{ $isMaintenance ? '#fdecea' : '#f8f9fa' }};color:{{ $isMaintenance ? '#c0392b' : '#666' }};font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;">
-            <i class="bi bi-{{ $isMaintenance ? 'tools' : 'tools' }}" id="maintenance-topbar-icon"></i>
-            <span id="maintenance-topbar-label">{{ $isMaintenance ? 'Maintenance ON' : 'Maintenance' }}</span>
+            title="<?php echo e($isMaintenance ? 'Maintenance ON — click to turn off' : 'Turn on Maintenance Mode'); ?>"
+            style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1.5px solid <?php echo e($isMaintenance ? '#e74c3c' : '#ddd'); ?>;background:<?php echo e($isMaintenance ? '#fdecea' : '#f8f9fa'); ?>;color:<?php echo e($isMaintenance ? '#c0392b' : '#666'); ?>;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.2s;">
+            <i class="bi bi-<?php echo e($isMaintenance ? 'tools' : 'tools'); ?>" id="maintenance-topbar-icon"></i>
+            <span id="maintenance-topbar-label"><?php echo e($isMaintenance ? 'Maintenance ON' : 'Maintenance'); ?></span>
         </button>
 
         <a href="#" class="topbar-icon-btn">
@@ -1500,14 +1482,15 @@ function openWalkInEnrollmentModal() {
         <div class="dropdown">
             <div class="user-chip" data-bs-toggle="dropdown" aria-expanded="false">
                 <div class="user-avatar">
-                    @if(Auth::user()->profile_photo)
-                        <img src="{{ asset('storage/' . Auth::user()->profile_photo) }}" alt="Avatar">
-                    @else
-                        {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
-                    @endif
+                    <?php if(Auth::user()->profile_photo): ?>
+                        <img src="<?php echo e(asset('storage/' . Auth::user()->profile_photo)); ?>" alt="Avatar">
+                    <?php else: ?>
+                        <?php echo e(strtoupper(substr(Auth::user()->name, 0, 1))); ?>
+
+                    <?php endif; ?>
                 </div>
                 <div>
-                    <div class="user-chip-name">{{ Auth::user()->name }}</div>
+                    <div class="user-chip-name"><?php echo e(Auth::user()->name); ?></div>
                     <div class="user-chip-role">Admin / Registrar</div>
                 </div>
                 <i class="bi bi-chevron-down user-chip-caret"></i>
@@ -1515,15 +1498,16 @@ function openWalkInEnrollmentModal() {
             <div class="dropdown-menu dropdown-menu-end user-chip-dropdown">
                 <div class="ucd-header">
                     <div class="ucd-avatar">
-                        @if(Auth::user()->profile_photo)
-                            <img src="{{ asset('storage/' . Auth::user()->profile_photo) }}" alt="Avatar">
-                        @else
-                            {{ strtoupper(substr(Auth::user()->name, 0, 2)) }}
-                        @endif
+                        <?php if(Auth::user()->profile_photo): ?>
+                            <img src="<?php echo e(asset('storage/' . Auth::user()->profile_photo)); ?>" alt="Avatar">
+                        <?php else: ?>
+                            <?php echo e(strtoupper(substr(Auth::user()->name, 0, 2))); ?>
+
+                        <?php endif; ?>
                     </div>
                     <div class="ucd-info">
-                        <div class="ucd-name">{{ Auth::user()->name }}</div>
-                        <div class="ucd-email">{{ Auth::user()->email }}</div>
+                        <div class="ucd-name"><?php echo e(Auth::user()->name); ?></div>
+                        <div class="ucd-email"><?php echo e(Auth::user()->email); ?></div>
                         <span class="ucd-badge">Admin / Registrar</span>
                     </div>
                 </div>
@@ -1533,8 +1517,8 @@ function openWalkInEnrollmentModal() {
                 </div>
                 <div class="ucd-divider"></div>
                 <div class="ucd-footer">
-                    <form method="POST" action="{{ route('logout') }}" onsubmit="return confirmLogout(this)">
-                        @csrf
+                    <form method="POST" action="<?php echo e(route('logout')); ?>" onsubmit="return confirmLogout(this)">
+                        <?php echo csrf_field(); ?>
                         <button type="submit" class="ucd-item ucd-logout">
                             <i class="bi bi-box-arrow-left"></i> Logout
                         </button>
@@ -1547,11 +1531,7 @@ function openWalkInEnrollmentModal() {
 
 </div>
 
-{{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-     SIDEBAR
-
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
 
 <div class="dash-sidebar">
 
@@ -1567,28 +1547,28 @@ function openWalkInEnrollmentModal() {
 
     <button class="sidebar-link" id="nav-students" onclick="showSection('students')">
         <i class="bi bi-people-fill"></i> Student Management
-        <span class="sidebar-badge">@isset($studentCount){{ $studentCount }}@endisset</span>
+        <span class="sidebar-badge"><?php if(isset($studentCount)): ?><?php echo e($studentCount); ?><?php endif; ?></span>
     </button>
 
-    @php
+    <?php
         $sidebarAssessCount = ($assessStudents ?? collect())->filter(fn($s) => $s->promotions->isEmpty())->count();
-    @endphp
+    ?>
     <button class="sidebar-link" id="nav-assessment" onclick="showSection('assessment')">
         <i class="bi bi-mortarboard-fill"></i> Assessment &amp; Promotion
-        @if($sidebarAssessCount > 0)
-            <span class="sidebar-badge">{{ $sidebarAssessCount }}</span>
-        @endif
+        <?php if($sidebarAssessCount > 0): ?>
+            <span class="sidebar-badge"><?php echo e($sidebarAssessCount); ?></span>
+        <?php endif; ?>
     </button>
 
     <button class="sidebar-link" id="nav-enrollment" onclick="showSection('enrollment')">
 
         <i class="bi bi-clipboard-check-fill"></i> Enrollment Management
 
-        @isset($enrollmentCount)
+        <?php if(isset($enrollmentCount)): ?>
 
-        <span class="sidebar-badge">{{ $enrollmentCount }}</span>
+        <span class="sidebar-badge"><?php echo e($enrollmentCount); ?></span>
 
-        @endisset
+        <?php endif; ?>
 
     </button>
 
@@ -1622,8 +1602,8 @@ function openWalkInEnrollmentModal() {
     </button>
 
 
-    {{-- Finance/Fee sections are managed by the Finance Portal and Cashier Portal --}}
-    {{-- Hidden from admin sidebar: Finance Management, Payments, Installments, Fee Management --}}
+    
+    
     
 
     <div class="sidebar-section-lbl">Academic</div>
@@ -1660,26 +1640,15 @@ function openWalkInEnrollmentModal() {
 
     </button>
 
-    {{--  
-    <button class="sidebar-link" id="nav-grade-oversight" onclick="showSection('grade-oversight')">
-        <i class="bi bi-patch-check-fill"></i> Grade Oversight
-        <span class="sidebar-badge" id="gradeOversightBadge" style="display:none;"></span>
-    </button>
-
-    <button class="sidebar-link" id="nav-messages" onclick="showSection('messages')">
-        <i class="bi bi-envelope-fill"></i> Messages
-        @if(($unreadMessagesCount ?? 0) > 0)
-            <span class="sidebar-badge">{{ $unreadMessagesCount }}</span>
-        @endif
-    </button>--}}
+    
     <div class="sidebar-section-lbl">settings</div>
     <div class="sidebar-divider"></div>
 
     <button class="sidebar-link" id="nav-archives" onclick="showSection('archives')">
         <i class="bi bi-archive-fill"></i> Archives
-        @if(($archivedStudentsCount ?? 0) > 0)
-            <span class="sidebar-badge" style="background:#b45309;">{{ $archivedStudentsCount }}</span>
-        @endif
+        <?php if(($archivedStudentsCount ?? 0) > 0): ?>
+            <span class="sidebar-badge" style="background:#b45309;"><?php echo e($archivedStudentsCount); ?></span>
+        <?php endif; ?>
     </button>
 
     <button class="sidebar-link" id="nav-reports" onclick="showSection('reports')">
@@ -1696,11 +1665,11 @@ function openWalkInEnrollmentModal() {
 
         </button>
 
-        {{-- CHANGE: action="{{ route('logout') }}" --}}
+        
 
         <form method="POST" action="/logout" onsubmit="return confirmLogout(this)">
 
-            @csrf
+            <?php echo csrf_field(); ?>
 
             <button type="submit" class="sidebar-link"
 
@@ -1716,11 +1685,7 @@ function openWalkInEnrollmentModal() {
 
 </div>
 
-{{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-     MAIN CONTENT
-
-â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
 
 <div class="dash-main">
 
@@ -1738,26 +1703,16 @@ function openWalkInEnrollmentModal() {
         <span id="bc-current-skel" class="skel" style="display:none;width:110px;height:13px;border-radius:4px;"></span>
     </nav>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    
 
-         SECTION: DASHBOARD
+    <?php echo $__env->make('admin.sections.dashboard', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
 
-    @include('admin.sections.dashboard')
+    <?php echo $__env->make('admin.sections.students', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-         SECTION: STUDENT MANAGEMENT
-
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
-
-    @include('admin.sections.students')
-
-    {{-- ══════════════════════════════════════
-         SECTION: ARCHIVES
-    ══════════════════════════════════════ --}}
-    @include('admin.sections.archives')
+    
+    <?php echo $__env->make('admin.sections.archives', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
     <script>
     function filterArchiveRows() {
@@ -1779,7 +1734,7 @@ function openWalkInEnrollmentModal() {
     }
     </script>
 
-    {{-- â”€â”€ Change Status Modal â”€â”€ --}}
+    
     <div class="modal fade" id="changeStatusModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-sm">
             <div class="modal-content" style="border:0;border-radius:14px;overflow:hidden;">
@@ -1810,7 +1765,7 @@ function openWalkInEnrollmentModal() {
         </div>
     </div>
 
-    {{-- â”€â”€ SM Assess Modal (Student Management inline assessment) â”€â”€ --}}
+    
     <div class="modal fade" id="smAssessModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content" style="border:0;border-radius:14px;overflow:hidden;">
@@ -1822,7 +1777,7 @@ function openWalkInEnrollmentModal() {
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body" style="padding:0;">
-                    {{-- Tabs --}}
+                    
                     <div style="display:flex;border-bottom:1px solid #e5e7eb;">
                         <button class="sm-assess-tab active" onclick="smAssessTab('grades',this)" style="flex:1;padding:12px;border:0;background:#fff;font-size:13px;font-weight:600;color:var(--blue);border-bottom:2px solid var(--blue);cursor:pointer;">
                             <i class="bi bi-bar-chart-fill me-1"></i> Grades
@@ -1844,7 +1799,7 @@ function openWalkInEnrollmentModal() {
                         </button>
                     </div>
 
-                    {{-- Grades Tab --}}
+                    
                     <div id="sm-tab-grades" class="sm-assess-panel" style="padding:20px;">
                         <div id="sm-grades-loading" style="text-align:center;padding:30px;color:#999;">
                             <div class="spinner-border spinner-border-sm me-2"></div> Loading grades...
@@ -1852,7 +1807,7 @@ function openWalkInEnrollmentModal() {
                         <div id="sm-grades-content" style="display:none;"></div>
                     </div>
 
-                    {{-- Balance Tab --}}
+                    
                     <div id="sm-tab-balance" class="sm-assess-panel" style="display:none;padding:20px;">
                         <div id="sm-balance-content">
                             <div style="text-align:center;padding:30px;color:#999;">
@@ -1861,7 +1816,7 @@ function openWalkInEnrollmentModal() {
                         </div>
                     </div>
 
-                    {{-- Documents Tab --}}
+                    
                     <div id="sm-tab-docs" class="sm-assess-panel" style="display:none;padding:20px;">
                         <div id="sm-docs-loading" style="text-align:center;padding:30px;color:#999;">
                             <div class="spinner-border spinner-border-sm me-2"></div> Loading documents...
@@ -1869,7 +1824,7 @@ function openWalkInEnrollmentModal() {
                         <div id="sm-docs-content" style="display:none;"></div>
                     </div>
 
-                    {{-- Guidance Tab — informational only, does not block assessment --}}
+                    
                     <div id="sm-tab-guidance" class="sm-assess-panel" style="display:none;padding:20px;">
                         <div id="sm-guidance-loading" style="text-align:center;padding:30px;color:#999;">
                             <div class="spinner-border spinner-border-sm me-2"></div> Loading guidance records...
@@ -1877,7 +1832,7 @@ function openWalkInEnrollmentModal() {
                         <div id="sm-guidance-content" style="display:none;"></div>
                     </div>
 
-                    {{-- Summer Class Tab — informational only, does not block assessment --}}
+                    
                     <div id="sm-tab-summer" class="sm-assess-panel" style="display:none;padding:20px;">
                         <div id="sm-summer-loading" style="text-align:center;padding:30px;color:#999;">
                             <div class="spinner-border spinner-border-sm me-2"></div> Loading summer class status...
@@ -1885,7 +1840,7 @@ function openWalkInEnrollmentModal() {
                         <div id="sm-summer-content" style="display:none;"></div>
                     </div>
 
-                    {{-- Decision Tab --}}
+                    
                     <div id="sm-tab-decision" class="sm-assess-panel" style="display:none;padding:20px;">
                         <p style="font-size:13px;color:#555;margin-bottom:16px;">
                             Review the student's grades and balance above, then choose an action for the next school year.
@@ -1909,7 +1864,7 @@ function openWalkInEnrollmentModal() {
                         <div style="margin-bottom:12px;">
                             <label class="form-lbl">Next School Year</label>
                             <select id="sm-assess-to-sy" class="form-fld">
-                                @php
+                                <?php
                                     $syBase = $currentSchoolYear ?? '';
                                     $baseY  = $syBase ? (int) explode('-', $syBase)[0] : (now()->month >= 6 ? now()->year : now()->year - 1);
                                     for ($y = $baseY + 6; $y >= $baseY + 1; $y--) {
@@ -1917,7 +1872,7 @@ function openWalkInEnrollmentModal() {
                                         $sel = ($y === $baseY + 1) ? 'selected' : '';
                                         echo "<option value=\"$sy\" $sel>$sy</option>";
                                     }
-                                @endphp
+                                ?>
                             </select>
                         </div>
                         <div>
@@ -1936,7 +1891,7 @@ function openWalkInEnrollmentModal() {
         </div>
     </div>
 
-    {{-- Bulk Promote Modal --}}
+    
     <div class="modal fade" id="bulkPromoteModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content modal-content-styled">
@@ -1984,7 +1939,7 @@ function openWalkInEnrollmentModal() {
         </div>
     </div>
 
-    {{-- Auto-Advance Modal (Nursery/Kindergarten — no checks) --}}
+    
     <div class="modal fade" id="autoAdvanceModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content modal-content-styled">
@@ -2024,7 +1979,7 @@ function openWalkInEnrollmentModal() {
         </div>
     </div>
 
-    {{-- Walk-in Enrollment Modal --}}
+    
 
     <div class="modal fade" id="walkInEnrollmentModal" tabindex="-1">
 
@@ -2631,20 +2586,14 @@ function openWalkInEnrollmentModal() {
 
     </div>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    
 
-         SECTION: TEACHER MANAGEMENT
+    <?php echo $__env->make('admin.sections.teachers', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
+    <?php echo $__env->make('admin.sections.teacher-assignments', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-    @include('admin.sections.teachers')
-
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-         SECTION: TEACHER ASSIGNMENTS
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
-    @include('admin.sections.teacher-assignments')
-
-    {{-- Teacher Assignment Add/Edit Modal --}}
+    
     <div class="modal fade" id="assignmentModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content modal-content-styled">
@@ -2670,12 +2619,12 @@ function openWalkInEnrollmentModal() {
                         <div class="mb-3">
                             <label class="dash-form-label">School Year <span class="text-danger">*</span></label>
                             <select id="assignment-school-year" class="dash-form-control" required>
-                                @php
+                                <?php
                                     $amDefault = $currentSchoolYear ?? '';
-                                @endphp
-                                @foreach(\App\Models\Setting::schoolYearOptions() as $sy)
-                                    <option value="{{ $sy }}" {{ $sy === $amDefault ? 'selected' : '' }}>{{ $sy }}</option>
-                                @endforeach
+                                ?>
+                                <?php $__currentLoopData = \App\Models\Setting::schoolYearOptions(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sy): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <option value="<?php echo e($sy); ?>" <?php echo e($sy === $amDefault ? 'selected' : ''); ?>><?php echo e($sy); ?></option>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                             </select>
                         </div>
                         <div class="alert alert-info py-2 px-3 mb-3" style="font-size:12px; border-radius:8px;">
@@ -2693,39 +2642,23 @@ function openWalkInEnrollmentModal() {
         </div>
     </div>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    
 
-         SECTION: ENROLLMENT MANAGEMENT
+    <?php echo $__env->make('admin.sections.enrollment', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
 
-    @include('admin.sections.enrollment')
+    <?php echo $__env->make('admin.sections.finance', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    
 
-         SECTION: FINANCE MANAGEMENT
+    <?php echo $__env->make('admin.sections.payments', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
 
-    @include('admin.sections.finance')
+    <?php echo $__env->make('admin.sections.installments', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-         SECTION: PAYMENTS
-
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
-
-    @include('admin.sections.payments')
-
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-         SECTION: INSTALLMENTS
-
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
-
-    @include('admin.sections.installments')
-
-    {{-- â”€â”€ Promissory Note Modal (Admin) â”€â”€ --}}
+    
     <div class="modal fade" id="adminPromissoryModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" style="max-width:520px;">
             <div class="modal-content" style="border-radius:14px;border:none;box-shadow:0 20px 60px rgba(0,0,0,0.15);">
@@ -2778,36 +2711,28 @@ function openWalkInEnrollmentModal() {
         </div>
     </div>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    
 
-         SECTION: FEE MANAGEMENT
+    <?php echo $__env->make('admin.sections.fees', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
 
-    @include('admin.sections.fees')
+    <?php echo $__env->make('admin.sections.subjects', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    
 
-         SECTION: SUBJECT MANAGEMENT
+    <?php echo $__env->make('admin.sections.sections', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
 
-    @include('admin.sections.subjects')
+    <?php echo $__env->make('admin.sections.schedules', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-    {{-- Section Management --}}
+    
 
-    @include('admin.sections.sections')
+    <?php echo $__env->make('admin.sections.guidance', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-    {{-- Schedule Management --}}
-
-    @include('admin.sections.schedules')
-
-    {{-- Guidance Records --}}
-
-    @include('admin.sections.guidance')
-
-    {{-- ... rest of the code remains the same ... --}}
-    {{-- Guidance Record Modal --}}
+    
+    
     <div class="modal fade" id="guidanceModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content" style="border:0; border-radius:16px; overflow:hidden;">
@@ -2848,11 +2773,11 @@ function openWalkInEnrollmentModal() {
                                 <label class="form-lbl">Counselor *</label>
                                 <select id="guidance-counselor" class="form-fld" required>
                                     <option value="">Select Counselor</option>
-                                    @foreach($guidanceCounselors ?? [] as $gc)
-                                        <option value="{{ $gc->id }}" {{ auth()->id() === $gc->id ? 'selected' : '' }}>
-                                            {{ $gc->name }} ({{ ucfirst($gc->role) }})
+                                    <?php $__currentLoopData = $guidanceCounselors ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $gc): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                        <option value="<?php echo e($gc->id); ?>" <?php echo e(auth()->id() === $gc->id ? 'selected' : ''); ?>>
+                                            <?php echo e($gc->name); ?> (<?php echo e(ucfirst($gc->role)); ?>)
                                         </option>
-                                    @endforeach
+                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                 </select>
                             </div>
                             <div class="col-12">
@@ -2900,23 +2825,15 @@ function openWalkInEnrollmentModal() {
         </div>
     </div>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    
 
-         SECTION: ANNOUNCEMENTS
+    <?php echo $__env->make('admin.sections.announcements', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
 
-    @include('admin.sections.announcements')
+    <?php echo $__env->make('admin.sections.news', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-
-         SECTION: NEWS
-
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
-
-    @include('admin.sections.news')
-
-    {{-- EDIT ANNOUNCEMENT MODAL --}}
+    
     <div class="modal fade" id="editAnnouncementModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content" style="border-radius:16px;overflow:hidden;">
@@ -2971,7 +2888,7 @@ function openWalkInEnrollmentModal() {
         </div>
     </div>
 
-    {{-- EDIT NEWS MODAL --}}
+    
     <div class="modal fade" id="editNewsModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content" style="border-radius:16px;overflow:hidden;">
@@ -3098,20 +3015,14 @@ function openWalkInEnrollmentModal() {
     }
     </script>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    
 
-         SECTION: REPORTS
+    <?php echo $__env->make('admin.sections.reports', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    
+    <?php echo $__env->make('admin.sections.grade-oversight', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-    @include('admin.sections.reports')
-
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-         SECTION: GRADE OVERSIGHT
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
-    @include('admin.sections.grade-oversight')
-
-    {{-- Grade Reject Reason Modal --}}
+    
     <div class="modal fade" id="gradeRejectModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content" style="border-radius:14px; overflow:hidden; border:none;">
@@ -3133,15 +3044,11 @@ function openWalkInEnrollmentModal() {
         </div>
     </div>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    
 
-         SECTION: MESSAGES (Contact Form Inbox)
+    <?php echo $__env->make('admin.sections.messages', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
-
-    @include('admin.sections.messages')
-
-    {{-- Message View Modal --}}
+    
     <div class="modal fade" id="msgViewModal" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content" style="border:0;border-radius:16px;overflow:hidden;">
@@ -3184,7 +3091,7 @@ function openWalkInEnrollmentModal() {
         </div>
     </div>
 
-    {{-- JS for messages section --}}
+    
     <script>
     var _currentMsgId = null;
 
@@ -3417,32 +3324,23 @@ function openWalkInEnrollmentModal() {
     });
     </script>
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-         SECTION: SETTINGS
+    
 
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+    <?php echo $__env->make('admin.sections.settings', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-    @include('admin.sections.settings')
+    
 
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+    <?php echo $__env->make('admin.sections.summer', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
-         SECTION: SUMMER CLASSES
-
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
-
-    @include('admin.sections.summer')
-
-    {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-         SECTION: ASSESSMENT & PROMOTION
-    â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
-    @include('admin.sections.assessment')
+    
+    <?php echo $__env->make('admin.sections.assessment', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
 
-</div>{{-- /dash-main --}}
+</div>
 
 <!-- Include Enrollment View Modal -->
 
-@include('admin.enrollments.view-modal')
+<?php echo $__env->make('admin.enrollments.view-modal', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
 <!-- Student View Modal -->
 
@@ -3568,7 +3466,7 @@ function openWalkInEnrollmentModal() {
 
                 </div>
 
-                {{-- Documents Section --}}
+                
                 <div class="row g-3 mt-1">
 
                     <div class="col-md-12">
@@ -3616,7 +3514,7 @@ function openWalkInEnrollmentModal() {
     <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content" style="border:0;border-radius:20px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.18);">
 
-            {{-- Header --}}
+            
             <div style="background:linear-gradient(135deg,#1a3a6c 0%,#2563eb 100%);padding:22px 26px;position:relative;">
                 <div style="display:flex;align-items:center;gap:14px;">
                     <div style="width:46px;height:46px;border-radius:14px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
@@ -3634,7 +3532,7 @@ function openWalkInEnrollmentModal() {
                 <input type="hidden" id="se-id">
             </div>
 
-            {{-- Tab Navigation --}}
+            
             <div style="background:#f8faff;border-bottom:1.5px solid #e2e8f0;padding:0 24px;">
                 <div style="display:flex;gap:2px;overflow-x:auto;" id="se-tab-nav">
                     <button type="button" onclick="seTab('personal')" id="se-tab-btn-personal"
@@ -3656,10 +3554,10 @@ function openWalkInEnrollmentModal() {
                 </div>
             </div>
 
-            {{-- Body --}}
+            
             <div style="padding:24px 26px;background:#fff;max-height:60vh;overflow-y:auto;">
 
-                {{-- Personal Info --}}
+                
                 <div id="se-pane-personal">
                     <div style="background:#f8faff;border:1.5px solid #e2e8f0;border-radius:14px;padding:20px;margin-bottom:16px;">
                         <div style="font-size:11px;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:.7px;margin-bottom:14px;">
@@ -3721,7 +3619,7 @@ function openWalkInEnrollmentModal() {
                     </div>
                 </div>
 
-                {{-- Guardian --}}
+                
                 <div id="se-pane-guardian" style="display:none;">
                     <div style="background:#f8faff;border:1.5px solid #e2e8f0;border-radius:14px;padding:20px;">
                         <div style="font-size:11px;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:.7px;margin-bottom:14px;">
@@ -3756,7 +3654,7 @@ function openWalkInEnrollmentModal() {
                     </div>
                 </div>
 
-                {{-- Enrollment --}}
+                
                 <div id="se-pane-enrollment" style="display:none;">
                     <div style="background:#f8faff;border:1.5px solid #e2e8f0;border-radius:14px;padding:20px;margin-bottom:16px;">
                         <div style="font-size:11px;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:.7px;margin-bottom:14px;">
@@ -3814,7 +3712,7 @@ function openWalkInEnrollmentModal() {
                     </div>
                 </div>
 
-                {{-- Address --}}
+                
                 <div id="se-pane-address" style="display:none;">
                     <div style="background:#f8faff;border:1.5px solid #e2e8f0;border-radius:14px;padding:20px;">
                         <div style="font-size:11px;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:.7px;margin-bottom:14px;">
@@ -3859,7 +3757,7 @@ function openWalkInEnrollmentModal() {
 
             </div>
 
-            {{-- Footer --}}
+            
             <div style="padding:16px 26px;background:#f8faff;border-top:1.5px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;gap:10px;">
                 <button type="button" data-bs-dismiss="modal"
                     style="display:flex;align-items:center;gap:6px;padding:11px 18px;background:#fff;color:#64748b;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">
@@ -3902,14 +3800,14 @@ function openWalkInEnrollmentModal() {
                         <label class="form-lbl">School Year *</label>
 
                         <select id="sc-sy" class="form-fld">
-                            @php
+                            <?php
                                 $currentSY = now()->month >= 6 ? now()->year : now()->year - 1;
                                 for ($y = $currentSY + 1; $y >= 1994; $y--) {
                                     $sy = $y . '-' . ($y + 1);
                                     $selected = $y === $currentSY + 1 ? 'selected' : '';
                                     echo "<option value=\"$sy\" $selected>$sy</option>";
                                 }
-                            @endphp
+                            ?>
                         </select>
 
                     </div>
@@ -3948,15 +3846,15 @@ function openWalkInEnrollmentModal() {
 
                             <option value="">— Select Grade First —</option>
 
-                            @foreach($allActiveSubjects ?? [] as $sub)
+                            <?php $__currentLoopData = $allActiveSubjects ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sub): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
 
-                                @if($sub)
+                                <?php if($sub): ?>
 
-                                <option value="{{ $sub->id }}" data-grade="{{ $sub->grade_level }}" hidden>{{ $sub->code ?? '' }} — {{ $sub->name }}</option>
+                                <option value="<?php echo e($sub->id); ?>" data-grade="<?php echo e($sub->grade_level); ?>" hidden><?php echo e($sub->code ?? ''); ?> — <?php echo e($sub->name); ?></option>
 
-                                @endif
+                                <?php endif; ?>
 
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
 
                         </select>
 
@@ -3970,15 +3868,15 @@ function openWalkInEnrollmentModal() {
 
                             <option value="">— Assign Later —</option>
 
-                            @foreach($allActiveTeachers ?? [] as $t)
+                            <?php $__currentLoopData = $allActiveTeachers ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $t): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
 
-                                @if($t !== null)
+                                <?php if($t !== null): ?>
 
-                                <option value="{{ $t->id }}">{{ $t->name }}</option>
+                                <option value="<?php echo e($t->id); ?>"><?php echo e($t->name); ?></option>
 
-                                @endif
+                                <?php endif; ?>
 
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
 
                         </select>
 
@@ -4093,7 +3991,7 @@ function openWalkInEnrollmentModal() {
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
 <!-- Payment Flow Modal -->
-@php
+<?php
     $adminGcashNumber = \App\Models\Setting::get('gcash_number', null);
     $adminGcashName   = \App\Models\Setting::get('gcash_account_name', null);
     $adminGcashQr     = \App\Models\Setting::get('gcash_qr_path', null);
@@ -4101,12 +3999,12 @@ function openWalkInEnrollmentModal() {
         ? (str_starts_with($adminGcashQr, '/') || str_starts_with($adminGcashQr, 'http')
             ? asset($adminGcashQr) : asset("storage/{$adminGcashQr}"))
         : null;
-@endphp
+?>
 <div class="modal fade" id="paymentFlowModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered" style="max-width:520px;">
         <div class="modal-content" style="border:0;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.18);">
 
-            {{-- Header --}}
+            
             <div style="background:linear-gradient(135deg,#1a3a6c 0%,#2563eb 100%);padding:20px 24px;position:relative;">
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" style="position:absolute;top:16px;right:16px;"></button>
                 <div style="display:flex;align-items:center;gap:14px;">
@@ -4118,7 +4016,7 @@ function openWalkInEnrollmentModal() {
                         <div style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:2px;">Student: <span id="pay-flow-student-name" style="font-weight:600;">—</span></div>
                     </div>
                 </div>
-                {{-- Amount bubble (hidden until plan is selected) --}}
+                
                 <div id="pf-amount-bubble" style="display:none;margin-top:14px;background:rgba(255,255,255,0.15);border-radius:12px;padding:12px 16px;display:none;align-items:center;justify-content:space-between;gap:12px;">
                     <div>
                         <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:.5px;">Amount to Pay</div>
@@ -4126,7 +4024,7 @@ function openWalkInEnrollmentModal() {
                     </div>
                     <div style="font-size:24px;font-weight:800;color:#fff;" id="pf-amount-display">₱—</div>
                 </div>
-                {{-- Step pills --}}
+                
                 <div style="display:flex;align-items:center;gap:8px;margin-top:14px;">
                     <div id="pf-pill-1" style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;background:rgba(255,255,255,0.9);font-size:11px;font-weight:700;color:#1a3a6c;">
                         <span style="width:18px;height:18px;border-radius:50%;background:#1a3a6c;color:#fff;display:flex;align-items:center;justify-content:center;font-size:10px;">1</span> Select Plan
@@ -4138,7 +4036,7 @@ function openWalkInEnrollmentModal() {
                 </div>
             </div>
 
-            {{-- Body --}}
+            
             <div style="padding:22px 24px;background:#f8faff;max-height:72vh;overflow-y:auto;">
                 <input type="hidden" id="pay-flow-enrollment-id">
                 <input type="hidden" id="pay-flow-grade">
@@ -4148,7 +4046,7 @@ function openWalkInEnrollmentModal() {
                 <input type="hidden" id="admin-monthly-amount" value="0">
                 <input type="hidden" id="admin-total-amount" value="0">
 
-                {{-- Step 1: Select Payment Option --}}
+                
                 <div id="pay-flow-step-1">
                     <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:12px;">
                         <i class="bi bi-list-check me-1" style="color:#1d4ed8;"></i> Choose Payment Plan
@@ -4219,10 +4117,10 @@ function openWalkInEnrollmentModal() {
                     </div>
                 </div>
 
-                {{-- Step 2: Method + GCash + Amount --}}
+                
                 <div id="pay-flow-step-2" style="display:none;">
 
-                    {{-- Method cards --}}
+                    
                     <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">
                         <i class="bi bi-1-circle-fill me-1" style="color:#1d4ed8;font-size:13px;"></i> Payment Method
                     </div>
@@ -4245,7 +4143,7 @@ function openWalkInEnrollmentModal() {
                         </button>
                     </div>
 
-                    {{-- GCash Info Panel --}}
+                    
                     <div id="admin-gcash-info" style="display:none;margin-bottom:16px;">
                         <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">
                             <i class="bi bi-2-circle-fill me-1" style="color:#1d4ed8;font-size:13px;"></i> GCash Details
@@ -4262,34 +4160,34 @@ function openWalkInEnrollmentModal() {
                                 </button>
                             </div>
                             <div id="admin-gcash-tab-number" style="padding:18px;text-align:center;">
-                                @if($adminGcashNumber)
-                                    <div style="font-size:22px;font-weight:800;color:#1e3a5f;letter-spacing:4px;margin-bottom:3px;">{{ $adminGcashNumber }}</div>
-                                    @if($adminGcashName)
-                                        <div style="font-size:12px;color:#64748b;margin-bottom:14px;">{{ $adminGcashName }}</div>
-                                    @endif
-                                    <button type="button" onclick="copyAdminGcashNumber('{{ $adminGcashNumber }}')"
+                                <?php if($adminGcashNumber): ?>
+                                    <div style="font-size:22px;font-weight:800;color:#1e3a5f;letter-spacing:4px;margin-bottom:3px;"><?php echo e($adminGcashNumber); ?></div>
+                                    <?php if($adminGcashName): ?>
+                                        <div style="font-size:12px;color:#64748b;margin-bottom:14px;"><?php echo e($adminGcashName); ?></div>
+                                    <?php endif; ?>
+                                    <button type="button" onclick="copyAdminGcashNumber('<?php echo e($adminGcashNumber); ?>')"
                                         style="display:inline-flex;align-items:center;gap:6px;padding:7px 18px;background:#1d4ed8;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">
                                         <i class="bi bi-copy" id="admin-gcash-copy-icon"></i><span id="admin-gcash-copy-label">Copy Number</span>
                                     </button>
-                                @else
+                                <?php else: ?>
                                     <i class="bi bi-telephone-x" style="font-size:28px;display:block;margin-bottom:8px;color:#cbd5e1;"></i>
                                     <div style="font-size:12px;color:#94a3b8;">GCash number not configured in Settings.</div>
-                                @endif
+                                <?php endif; ?>
                             </div>
                             <div id="admin-gcash-tab-qr" style="display:none;padding:18px;text-align:center;">
-                                @if($adminGcashQrUrl)
-                                    <img src="{{ $adminGcashQrUrl }}" alt="GCash QR"
+                                <?php if($adminGcashQrUrl): ?>
+                                    <img src="<?php echo e($adminGcashQrUrl); ?>" alt="GCash QR"
                                         style="max-width:170px;width:100%;border-radius:12px;box-shadow:0 4px 14px rgba(29,78,216,.15);">
                                     <div style="font-size:11px;color:#64748b;margin-top:10px;"><i class="bi bi-phone me-1"></i>Scan with GCash app</div>
-                                @else
+                                <?php else: ?>
                                     <i class="bi bi-qr-code" style="font-size:34px;display:block;margin-bottom:8px;color:#cbd5e1;"></i>
                                     <div style="font-size:12px;color:#94a3b8;">QR code not configured in Settings.</div>
-                                @endif
+                                <?php endif; ?>
                             </div>
                         </div>
                     </div>
 
-                    {{-- Amount + Reference --}}
+                    
                     <div id="admin-payment-amount-section" style="display:none;">
                         <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;" id="admin-fields-label">
                             <i class="bi bi-2-circle-fill me-1" style="color:#1d4ed8;font-size:13px;"></i> Payment Details
@@ -4317,7 +4215,7 @@ function openWalkInEnrollmentModal() {
                             </div>
                         </div>
 
-                        {{-- Footer buttons --}}
+                        
                         <div style="display:flex;justify-content:space-between;gap:10px;">
                             <button type="button"
                                 onclick="document.getElementById('pay-flow-step-1').style.display='block';document.getElementById('pay-flow-step-2').style.display='none';document.getElementById('pf-pill-1').style.background='rgba(255,255,255,0.9)';document.getElementById('pf-pill-1').style.color='#1a3a6c';document.getElementById('pf-pill-2').style.background='rgba(255,255,255,0.2)';document.getElementById('pf-pill-2').style.color='rgba(255,255,255,0.6)';"
@@ -4525,7 +4423,7 @@ function openWalkInEnrollmentModal() {
     </div>
 </div>
 
-@php
+<?php
     // Non-paginated flat data for schedule modal dropdowns
     $modalSections = \App\Models\Section::with('subjects:id,name,code')
         ->select('id','name','grade_level','school_year','is_active','room_number')
@@ -4553,7 +4451,7 @@ function openWalkInEnrollmentModal() {
     // never actually be displayed. Confirmed via grep: no .js-view-installments
     // button exists anywhere reachable. See docs/system-improvement-plan.md.
     $allInstallmentData = [];
-@endphp
+?>
 
 <script>
 
@@ -4855,7 +4753,7 @@ function openWalkInEnrollmentModal() {
             Friday: { line: blueLine, tint: blueTint }
         };
         var schedules = _scheduleCache || [];
-        var logoUrl  = '{{ asset("images/logo.png") }}';
+        var logoUrl  = '<?php echo e(asset("images/logo.png")); ?>';
         var printDate = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
 
         // Every cell — filled or empty — gets the SAME fixed height so the
@@ -6645,7 +6543,7 @@ function openWalkInEnrollmentModal() {
             // SF10 download button — always visible for any student with an ID
             const sf10Btn = document.getElementById('sv-sf10-btn');
             if (sf10Btn) {
-                sf10Btn.href = '{{ url("admin/students") }}/' + studentId + '/sf10';
+                sf10Btn.href = '<?php echo e(url("admin/students")); ?>/' + studentId + '/sf10';
                 sf10Btn.style.display = 'inline-block';
             }
 
@@ -7075,9 +6973,9 @@ function openWalkInEnrollmentModal() {
     // free-text fields admins type in, and a name containing a closing
     // script tag followed by another script tag would otherwise execute as
     // real page JavaScript for every admin who opens this dashboard.
-    let sectionsList       = {!! \Illuminate\Support\Js::from($modalSections) !!};
-    let teachersList       = {!! \Illuminate\Support\Js::from($modalTeachers) !!};
-    let teacherAssignments = {!! \Illuminate\Support\Js::from($modalAssignments) !!};
+    let sectionsList       = <?php echo \Illuminate\Support\Js::from($modalSections); ?>;
+    let teachersList       = <?php echo \Illuminate\Support\Js::from($modalTeachers); ?>;
+    let teacherAssignments = <?php echo \Illuminate\Support\Js::from($modalAssignments); ?>;
 
     // Filter sections by grade level in schedule modal
     function onScheduleGradeLevelChange(gradeLevel) {
@@ -7275,7 +7173,7 @@ function openWalkInEnrollmentModal() {
     }
 
     // â”€â”€ Installment data for modal â”€â”€
-    window.installmentData = @json($allInstallmentData ?? []);
+    window.installmentData = <?php echo json_encode($allInstallmentData ?? [], 15, 512) ?>;
 
     // Subject modal: wire status radio buttons
     document.querySelectorAll('[name="subj-active-radio"]').forEach(function(radio) {
@@ -10893,7 +10791,7 @@ function openWalkInEnrollmentModal() {
         btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Copying…';
         resultEl.style.display = 'none';
 
-        fetch('{{ route("admin.schedules.copy-term") }}', {
+        fetch('<?php echo e(route("admin.schedules.copy-term")); ?>', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -12192,7 +12090,7 @@ function openWalkInEnrollmentModal() {
         params.set('grade', gradeValue);
         params.set('sort', sortValue);
         if (searchValue) params.set('enrollment_search', searchValue);
-        loadEnrollmentSection('{{ route("admin.section.enrollment") }}?' + params.toString());
+        loadEnrollmentSection('<?php echo e(route("admin.section.enrollment")); ?>?' + params.toString());
     }
 
     function filterEnrollmentsGrade() {
@@ -12498,12 +12396,12 @@ function openWalkInEnrollmentModal() {
     }
 
     // Auto-redirect to settings Account tab after photo/password update
-    @if(session('settings_tab') || session('photo_success') || session('password_success') || $errors->has('current_password'))
+    <?php if(session('settings_tab') || session('photo_success') || session('password_success') || $errors->has('current_password')): ?>
     document.addEventListener('DOMContentLoaded', function() {
         showSection('settings');
         showSettingsTab('account');
     });
-    @endif
+    <?php endif; ?>
 
     // Initialize payment filters when page loads
     document.addEventListener('DOMContentLoaded', function() {
@@ -13014,7 +12912,7 @@ function openWalkInEnrollmentModal() {
     // MAINTENANCE MODE TOGGLE
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    let _maintenanceOn = {{ ($maintenanceMode ?? false) ? 'true' : 'false' }};
+    let _maintenanceOn = <?php echo e(($maintenanceMode ?? false) ? 'true' : 'false'); ?>;
 
     function toggleMaintenanceMode() {
         const btn = document.getElementById('maintenance-topbar-btn');
@@ -13060,7 +12958,7 @@ function openWalkInEnrollmentModal() {
     // ENROLLMENT WINDOW TOGGLE
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
-    let _enrollmentCurrentlyOpen = {{ ($enrollmentOpen ?? true) ? 'true' : 'false' }};
+    let _enrollmentCurrentlyOpen = <?php echo e(($enrollmentOpen ?? true) ? 'true' : 'false'); ?>;
 
     function toggleEnrollmentWindow() {
         const btn = document.getElementById('enrollment-toggle-btn');
@@ -13902,8 +13800,8 @@ function openWalkInEnrollmentModal() {
         document.getElementById('bp-none-eligible').style.display = 'none';
 
         _bpGrade  = grade;
-        _bpFromSY = '{{ $currentSchoolYear }}';
-        _bpToSY   = '{{ $assessNextSchoolYear }}';
+        _bpFromSY = '<?php echo e($currentSchoolYear); ?>';
+        _bpToSY   = '<?php echo e($assessNextSchoolYear); ?>';
         document.getElementById('bp-to-sy').value = _bpToSY;
 
         const params = new URLSearchParams({ grade: _bpGrade, from_school_year: _bpFromSY });
@@ -13995,8 +13893,8 @@ function openWalkInEnrollmentModal() {
         document.getElementById('aa-none').style.display = 'none';
 
         _aaGrade  = grade;
-        _aaFromSY = '{{ $currentSchoolYear }}';
-        _aaToSY   = '{{ $assessNextSchoolYear }}';
+        _aaFromSY = '<?php echo e($currentSchoolYear); ?>';
+        _aaToSY   = '<?php echo e($assessNextSchoolYear); ?>';
         document.getElementById('aa-to-sy').value = _aaToSY;
 
         const params = new URLSearchParams({ grade: _aaGrade, from_school_year: _aaFromSY, to_school_year: _aaToSY });
@@ -14090,7 +13988,7 @@ function openWalkInEnrollmentModal() {
             </div>
             <div class="modal-body modal-body-styled">
                 <form id="rejectDocForm" method="POST">
-                    @csrf
+                    <?php echo csrf_field(); ?>
                     <input type="hidden" name="_method" value="PUT">
                     <div class="mb-3">
                         <label class="dash-form-label"><i class="bi bi-chat-left-text me-1"></i>Rejection Reason</label>
@@ -14111,7 +14009,7 @@ function openWalkInEnrollmentModal() {
     <div class="modal-dialog modal-dialog-centered" style="max-width:480px;">
         <div class="modal-content" style="border:0;border-radius:20px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.18);">
 
-            {{-- Header --}}
+            
             <div style="background:linear-gradient(135deg,#1a3a6c 0%,#2563eb 100%);padding:20px 24px;position:relative;">
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" style="position:absolute;top:16px;right:16px;"></button>
                 <div style="display:flex;align-items:center;gap:14px;">
@@ -14123,7 +14021,7 @@ function openWalkInEnrollmentModal() {
                         <div style="font-size:12px;color:rgba(255,255,255,0.8);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="pu-student-label">—</div>
                     </div>
                 </div>
-                {{-- Balance bubble --}}
+                
                 <div style="margin-top:14px;background:rgba(255,255,255,0.15);border-radius:12px;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
                     <div>
                         <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:.5px;">Remaining Balance</div>
@@ -14133,12 +14031,12 @@ function openWalkInEnrollmentModal() {
                 </div>
             </div>
 
-            {{-- Body --}}
+            
             <div style="padding:20px 24px;background:#f8faff;">
                 <input type="hidden" id="pay-enrollment-id">
                 <input type="hidden" id="pay-student-name">
 
-                {{-- Summary Grid --}}
+                
                 <div id="payment-breakdown-section" style="margin-bottom:18px;">
                     <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">
                         <i class="bi bi-receipt-cutoff me-1" style="color:#1d4ed8;"></i> Payment Plan Summary
@@ -14146,7 +14044,7 @@ function openWalkInEnrollmentModal() {
                     <div id="payment-breakdown-content" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;"></div>
                 </div>
 
-                {{-- Hidden inputs for controller compatibility --}}
+                
                 <input type="hidden" id="pay-amount" value="">
                 <input type="hidden" id="pay-reference" value="">
                 <input type="hidden" id="pay-method" value="">
@@ -14156,7 +14054,7 @@ function openWalkInEnrollmentModal() {
                     <option value="paid">Paid</option>
                 </select>
 
-                {{-- Plan Type Selection --}}
+                
                 <div style="margin-bottom:6px;">
                     <div style="font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">
                         <i class="bi bi-ui-checks me-1" style="color:#1d4ed8;"></i> Payment Plan Type
@@ -14185,7 +14083,7 @@ function openWalkInEnrollmentModal() {
                     </div>
                 </div>
 
-                {{-- Footer --}}
+                
                 <div style="display:flex;justify-content:space-between;gap:10px;">
                     <button type="button" data-bs-dismiss="modal"
                         style="display:flex;align-items:center;gap:6px;padding:11px 18px;background:#f0f4ff;color:#1d4ed8;border:1.5px solid #bfdbfe;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">
@@ -14252,7 +14150,7 @@ function openWalkInEnrollmentModal() {
             <div class="modal-footer" style="border-top:1px solid var(--border); padding:14px 20px; gap:8px; flex-wrap:wrap; justify-content:space-between;">
                 <div id="docViewerActions" style="display:flex; gap:8px; flex-wrap:wrap;">
                     <form id="docViewerApproveForm" method="POST" action="" style="display:inline;">
-                        @csrf
+                        <?php echo csrf_field(); ?>
                         <button type="submit" class="btn-dash btn-success" style="display:flex; align-items:center; gap:6px;" onclick="confirmAndSubmit(event, this.closest('form'), 'Approve this document?', {title:'Approve Document', btnText:'Approve', btnClass:'btn btn-success', btnIcon:'bi-check-circle-fill', headerBg:'linear-gradient(135deg,#27ae60,#1e8449)', headerIcon:'bi-check-circle-fill'})">
                             <i class="bi bi-check-lg"></i> Approve
                         </button>
@@ -14539,14 +14437,14 @@ function openWalkInEnrollmentModal() {
                     <div class="col-md-6">
                         <label class="dash-form-label"><i class="bi bi-calendar me-1" style="color:var(--green);"></i>School Year <span class="text-danger">*</span></label>
                         <select id="sec-sy" class="dash-form-control">
-                            @php
+                            <?php
                                 $cSY = now()->month >= 6 ? now()->year : now()->year - 1;
                                 for ($y = 2020; $y <= $cSY + 1; $y++) {
                                     $syOpt = $y . '-' . ($y + 1);
                                     $selOpt = $y === $cSY + 1 ? 'selected' : '';
                                     echo "<option value=\"$syOpt\" $selOpt>$syOpt</option>";
                                 }
-                            @endphp
+                            ?>
                         </select>
                     </div>
                     <div class="col-md-6">
@@ -14586,7 +14484,7 @@ function openWalkInEnrollmentModal() {
             <div class="modal-body modal-body-styled" style="padding:24px;">
                 <input type="hidden" id="sched-id">
 
-                {{-- Grade Level + Section row --}}
+                
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="dash-form-label"><i class="bi bi-layers me-1" style="color:#6f42c1;"></i>Grade Level <span class="text-danger">*</span></label>
@@ -14610,7 +14508,7 @@ function openWalkInEnrollmentModal() {
                     </div>
                 </div>
 
-                {{-- Subject row --}}
+                
                 <div class="mb-3">
                     <label class="dash-form-label"><i class="bi bi-book me-1" style="color:#6f42c1;"></i>Subject <span class="text-danger">*</span></label>
                     <select id="sched-subject" class="dash-form-control" onchange="onScheduleSubjectChange(document.getElementById('sched-section').value, this.value)">
@@ -14618,7 +14516,7 @@ function openWalkInEnrollmentModal() {
                     </select>
                 </div>
 
-                {{-- Teacher row --}}
+                
                 <div class="mb-3">
                     <label class="dash-form-label"><i class="bi bi-person-badge me-1" style="color:#6f42c1;"></i>Teacher <span style="color:var(--muted); font-size:11px;">(optional)</span></label>
                     <select id="sched-teacher" class="dash-form-control">
@@ -14627,15 +14525,15 @@ function openWalkInEnrollmentModal() {
                     <div style="font-size:11px; color:var(--muted); margin-top:4px;"><i class="bi bi-info-circle me-1"></i>All active teachers shown. Advisory/homeroom teachers for this section are marked with ✓.</div>
                 </div>
 
-                {{-- Day + Term row --}}
+                
                 <div class="row g-3 mb-3">
                     <div class="col-md-7">
                         <label class="dash-form-label"><i class="bi bi-calendar-week me-1" style="color:#6f42c1;"></i>Day of Week <span class="text-danger">*</span></label>
                         <div style="display:flex; gap:6px; flex-wrap:wrap;" id="sched-day-btns">
-                            @foreach(['Mon'=>'Monday','Tue'=>'Tuesday','Wed'=>'Wednesday','Thu'=>'Thursday','Fri'=>'Friday'] as $short=>$full)
-                            <button type="button" class="sched-day-btn" data-day="{{ $full }}"
-                                style="padding:7px 12px; border:2px solid #e2e8f0; border-radius:8px; background:#fff; font-size:12px; font-weight:700; cursor:pointer; transition:all .15s; color:var(--muted);">{{ $short }}</button>
-                            @endforeach
+                            <?php $__currentLoopData = ['Mon'=>'Monday','Tue'=>'Tuesday','Wed'=>'Wednesday','Thu'=>'Thursday','Fri'=>'Friday']; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $short=>$full): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <button type="button" class="sched-day-btn" data-day="<?php echo e($full); ?>"
+                                style="padding:7px 12px; border:2px solid #e2e8f0; border-radius:8px; background:#fff; font-size:12px; font-weight:700; cursor:pointer; transition:all .15s; color:var(--muted);"><?php echo e($short); ?></button>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </div>
                         <input type="hidden" id="sched-day" value="">
                     </div>
@@ -14650,7 +14548,7 @@ function openWalkInEnrollmentModal() {
                     </div>
                 </div>
 
-                {{-- Time + Room row --}}
+                
                 <div class="row g-3 mb-3">
                     <div class="col-md-4">
                         <label class="dash-form-label"><i class="bi bi-clock me-1" style="color:#6f42c1;"></i>Start Time <span class="text-danger">*</span></label>
@@ -14668,7 +14566,7 @@ function openWalkInEnrollmentModal() {
                     </div>
                 </div>
 
-                {{-- Status --}}
+                
                 <div class="mb-0">
                     <label class="dash-form-label"><i class="bi bi-toggle-on me-1" style="color:#6f42c1;"></i>Status</label>
                     <select id="sched-active" class="dash-form-control">
@@ -14788,7 +14686,7 @@ function openWalkInEnrollmentModal() {
             <div class="modal-body modal-body-styled" style="padding:0;">
                 <input type="hidden" id="viewSectionId">
                 <input type="hidden" id="viewSectionName">
-                {{-- Capacity bar --}}
+                
                 <div id="viewSectionCapacityRow" style="padding:12px 16px; background:var(--pale-bg,#f8fafc); border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px;">
                     <span style="font-size:12px; color:var(--muted); font-weight:600;">CAPACITY</span>
                     <div style="flex:1; height:8px; background:#e2e8f0; border-radius:4px; overflow:hidden;">
@@ -14877,19 +14775,19 @@ function openWalkInEnrollmentModal() {
                             </tr>
                         </thead>
                         <tbody>
-                            @php $allSubjectsForAssign = \App\Models\Subject::where('is_active', true)->orderBy('grade_level')->orderBy('name')->get(); @endphp
-                            @forelse($allSubjectsForAssign as $ms)
+                            <?php $allSubjectsForAssign = \App\Models\Subject::where('is_active', true)->orderBy('grade_level')->orderBy('name')->get(); ?>
+                            <?php $__empty_1 = true; $__currentLoopData = $allSubjectsForAssign; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $ms): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                             <tr>
                                 <td style="text-align:center;">
-                                    <input type="checkbox" class="subject-checkbox" value="{{ $ms->id }}" data-name="{{ $ms->name }}" data-code="{{ $ms->code }}">
+                                    <input type="checkbox" class="subject-checkbox" value="<?php echo e($ms->id); ?>" data-name="<?php echo e($ms->name); ?>" data-code="<?php echo e($ms->code); ?>">
                                 </td>
-                                <td style="font-size:12px; font-family:monospace;">{{ $ms->code }}</td>
-                                <td style="font-weight:600;">{{ $ms->name }}</td>
-                                <td><span class="grade-chip" style="font-size:11px;">{{ ucfirst(str_replace(['grade','_'],[' Grade ',''], $ms->grade_level ?? 'All')) }}</span></td>
+                                <td style="font-size:12px; font-family:monospace;"><?php echo e($ms->code); ?></td>
+                                <td style="font-weight:600;"><?php echo e($ms->name); ?></td>
+                                <td><span class="grade-chip" style="font-size:11px;"><?php echo e(ucfirst(str_replace(['grade','_'],[' Grade ',''], $ms->grade_level ?? 'All'))); ?></span></td>
                             </tr>
-                            @empty
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                             <tr><td colspan="4" style="text-align:center; padding:40px; color:var(--muted);">No subjects found. Add subjects first in Subject Management.</td></tr>
-                            @endforelse
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -14971,8 +14869,8 @@ function openWalkInEnrollmentModal() {
         new Chart(el, {
             type:'line',
             data:{
-                labels: @json($chMonths ?? []),
-                datasets:[{label:'Enrollments',data:@json($chEnroll ?? []),
+                labels: <?php echo json_encode($chMonths ?? [], 15, 512) ?>,
+                datasets:[{label:'Enrollments',data:<?php echo json_encode($chEnroll ?? [], 15, 512) ?>,
                     borderColor:_CC.blue,backgroundColor:_CC.bpale,
                     borderWidth:2,pointRadius:4,tension:0.4,fill:true}]
             },
@@ -14989,7 +14887,7 @@ function openWalkInEnrollmentModal() {
         new Chart(el, {
             type:'doughnut',
             data:{labels:['Paid','Partial','Unpaid'],
-                datasets:[{data:[{{$chPaid??0}},{{$chPartial??0}},{{$chUnpaid??0}}],
+                datasets:[{data:[<?php echo e($chPaid??0); ?>,<?php echo e($chPartial??0); ?>,<?php echo e($chUnpaid??0); ?>],
                     backgroundColor:[_CC.green,_CC.gold,_CC.red],borderWidth:0,hoverOffset:4}]},
             options:{responsive:true,maintainAspectRatio:false,cutout:'68%',
                 plugins:{legend:{position:'bottom',labels:{padding:12,font:{size:11}}}}}
@@ -15068,3 +14966,4 @@ function openWalkInEnrollmentModal() {
 </body>
 
 </html>
+<?php /**PATH C:\Users\ron28\Desktop\ILC SYSTEM\ilc-website-system\resources\views/adminDashboard.blade.php ENDPATH**/ ?>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
     <script>
         // Remember which Finance page was last open and, when landing back on
         // the bare Dashboard fresh (e.g. right after logging back in, or by
@@ -20,7 +20,7 @@
         // then incorrectly let every later legitimate click through — this
         // referrer check gets it right on every single load, new tab or not.
         (function () {
-            var isDashboard = @json(\Illuminate\Support\Facades\Route::currentRouteName() === 'finance.dashboard');
+            var isDashboard = <?php echo json_encode(\Illuminate\Support\Facades\Route::currentRouteName() === 'finance.dashboard', 15, 512) ?>;
             var currentPath = window.location.pathname;
             if (isDashboard) {
                 var ref = document.referrer || '';
@@ -36,7 +36,7 @@
             localStorage.setItem('financeLastPage', currentPath);
         })();
     </script>
-    <title>@yield('title', 'Finance Portal') - IEMELIF Learning Center</title>
+    <title><?php echo $__env->yieldContent('title', 'Finance Portal'); ?> - IEMELIF Learning Center</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -321,7 +321,7 @@
         .skel-chart{height:220px;border-radius:10px;}
         .skel-avatar-lg{width:100px;height:100px;border-radius:50%;margin:0 auto 20px;}
     </style>
-    @yield('styles')
+    <?php echo $__env->yieldContent('styles'); ?>
 </head>
 <body>
     <!-- Topbar -->
@@ -337,20 +337,21 @@
             </div>
         </div>
         <div class="topbar-center">
-            @yield('topbar-center')
+            <?php echo $__env->yieldContent('topbar-center'); ?>
         </div>
         <div class="topbar-right">
             <div class="dropdown">
                 <div class="user-chip" data-bs-toggle="dropdown" aria-expanded="false">
                     <div class="user-avatar">
-                        @if(auth('finance')->user()->profile_photo)
-                            <img src="{{ asset('storage/' . auth('finance')->user()->profile_photo) }}" alt="Avatar">
-                        @else
-                            {{ strtoupper(substr(auth('finance')->user()->name, 0, 1)) }}
-                        @endif
+                        <?php if(auth('finance')->user()->profile_photo): ?>
+                            <img src="<?php echo e(asset('storage/' . auth('finance')->user()->profile_photo)); ?>" alt="Avatar">
+                        <?php else: ?>
+                            <?php echo e(strtoupper(substr(auth('finance')->user()->name, 0, 1))); ?>
+
+                        <?php endif; ?>
                     </div>
                     <div>
-                        <div class="user-chip-name">{{ auth('finance')->user()->name }}</div>
+                        <div class="user-chip-name"><?php echo e(auth('finance')->user()->name); ?></div>
                         <div class="user-chip-role">Finance Officer</div>
                     </div>
                     <i class="bi bi-chevron-down user-chip-caret"></i>
@@ -358,25 +359,26 @@
                 <div class="dropdown-menu dropdown-menu-end user-chip-dropdown">
                     <div class="ucd-header">
                         <div class="ucd-avatar">
-                            @if(auth('finance')->user()->profile_photo)
-                                <img src="{{ asset('storage/' . auth('finance')->user()->profile_photo) }}" alt="Avatar">
-                            @else
-                                {{ strtoupper(substr(auth('finance')->user()->name, 0, 2)) }}
-                            @endif
+                            <?php if(auth('finance')->user()->profile_photo): ?>
+                                <img src="<?php echo e(asset('storage/' . auth('finance')->user()->profile_photo)); ?>" alt="Avatar">
+                            <?php else: ?>
+                                <?php echo e(strtoupper(substr(auth('finance')->user()->name, 0, 2))); ?>
+
+                            <?php endif; ?>
                         </div>
                         <div class="ucd-info">
-                            <div class="ucd-name">{{ auth('finance')->user()->name }}</div>
-                            <div class="ucd-email">{{ auth('finance')->user()->email }}</div>
+                            <div class="ucd-name"><?php echo e(auth('finance')->user()->name); ?></div>
+                            <div class="ucd-email"><?php echo e(auth('finance')->user()->email); ?></div>
                             <span class="ucd-badge">Finance Officer</span>
                         </div>
                     </div>
                     <div class="ucd-body">
-                        <a class="ucd-item" href="{{ route('finance.settings') }}"><i class="bi bi-gear-fill"></i> Settings</a>
+                        <a class="ucd-item" href="<?php echo e(route('finance.settings')); ?>"><i class="bi bi-gear-fill"></i> Settings</a>
                     </div>
                     <div class="ucd-divider"></div>
                     <div class="ucd-footer">
-                        <form method="POST" action="{{ route('finance.logout') }}" onsubmit="return confirmLogout(this)">
-                            @csrf
+                        <form method="POST" action="<?php echo e(route('finance.logout')); ?>" onsubmit="return confirmLogout(this)">
+                            <?php echo csrf_field(); ?>
                             <button type="submit" class="ucd-item ucd-logout">
                                 <i class="bi bi-box-arrow-left"></i> Logout
                             </button>
@@ -391,44 +393,44 @@
     <aside class="sidebar">
         <nav class="sidebar-menu">
             <div class="menu-section">Main</div>
-            <a href="{{ route('finance.dashboard') }}" class="menu-item {{ request()->routeIs('finance.dashboard') ? 'active' : '' }}">
+            <a href="<?php echo e(route('finance.dashboard')); ?>" class="menu-item <?php echo e(request()->routeIs('finance.dashboard') ? 'active' : ''); ?>">
                 <i class="bi bi-grid-fill"></i>
                 Dashboard
             </a>
 
             <div class="menu-section">Students</div>
-            <a href="{{ route('finance.students.index') }}" class="menu-item {{ request()->routeIs('finance.students.*') ? 'active' : '' }}">
+            <a href="<?php echo e(route('finance.students.index')); ?>" class="menu-item <?php echo e(request()->routeIs('finance.students.*') ? 'active' : ''); ?>">
                 <i class="bi bi-people-fill"></i>
                 All Students
             </a>
 
             <div class="menu-section">Finance</div>
-            <a href="{{ route('finance.installments.index') }}" class="menu-item {{ request()->routeIs('finance.installments.*') ? 'active' : '' }}">
+            <a href="<?php echo e(route('finance.installments.index')); ?>" class="menu-item <?php echo e(request()->routeIs('finance.installments.*') ? 'active' : ''); ?>">
                 <i class="bi bi-calendar-check-fill"></i>
                 Installments
             </a>
-            <a href="{{ route('finance.fees.index') }}" class="menu-item {{ request()->routeIs('finance.fees.*') ? 'active' : '' }}">
+            <a href="<?php echo e(route('finance.fees.index')); ?>" class="menu-item <?php echo e(request()->routeIs('finance.fees.*') ? 'active' : ''); ?>">
                 <i class="bi bi-cash-stack"></i>
                 Fee Management
             </a>
 
             <div class="menu-section">Reports</div>
-            <a href="{{ route('finance.reports.index') }}" class="menu-item {{ request()->routeIs('finance.reports.*') ? 'active' : '' }}">
+            <a href="<?php echo e(route('finance.reports.index')); ?>" class="menu-item <?php echo e(request()->routeIs('finance.reports.*') ? 'active' : ''); ?>">
                 <i class="bi bi-graph-up"></i>
                 Financial Reports
             </a>
-            <a href="{{ route('finance.audit-trail') }}" class="menu-item {{ request()->routeIs('finance.audit-trail') ? 'active' : '' }}">
+            <a href="<?php echo e(route('finance.audit-trail')); ?>" class="menu-item <?php echo e(request()->routeIs('finance.audit-trail') ? 'active' : ''); ?>">
                 <i class="bi bi-journal-check"></i>
                 Audit Trail
             </a>
 
             <div class="sidebar-bottom">
-                <a href="{{ route('finance.settings') }}" class="menu-item {{ request()->routeIs('finance.settings') ? 'active' : '' }}">
+                <a href="<?php echo e(route('finance.settings')); ?>" class="menu-item <?php echo e(request()->routeIs('finance.settings') ? 'active' : ''); ?>">
                     <i class="bi bi-gear-fill"></i>
                     Settings
                 </a>
-                <form method="POST" action="{{ route('finance.logout') }}" style="margin:0;" onsubmit="return confirmLogout(this)">
-                    @csrf
+                <form method="POST" action="<?php echo e(route('finance.logout')); ?>" style="margin:0;" onsubmit="return confirmLogout(this)">
+                    <?php echo csrf_field(); ?>
                     <button type="submit" class="menu-item w-100 text-start" style="background:none;border:none;cursor:pointer;color:rgba(248,113,113,0.8);border-left:3px solid transparent;">
                         <i class="bi bi-box-arrow-left" style="color:rgba(248,113,113,0.9);"></i>
                         Logout
@@ -441,10 +443,10 @@
     <!-- Main Content -->
     <main class="main-content">
         <div id="finSkeletonOverlay" class="fin-skeleton-overlay">
-            @yield('skeleton')
+            <?php echo $__env->yieldContent('skeleton'); ?>
         </div>
 
-        @php
+        <?php
             $__bcMap = [
                 'finance.dashboard'          => 'Dashboard',
                 'finance.payments.index'     => 'Payments',
@@ -456,7 +458,7 @@
             ];
             $__bcRoute = \Illuminate\Support\Facades\Route::currentRouteName();
             $__bcCurrent = $__bcMap[$__bcRoute] ?? ucwords(str_replace(['-', '.'], [' ', ' '], \Illuminate\Support\Str::afterLast($__bcRoute ?? '', '.')));
-        @endphp
+        ?>
         <style>
             .ilc-breadcrumb{display:flex;align-items:center;gap:8px;padding:0 0 18px;font-size:13px;color:#64748b;flex-wrap:wrap;}
             .ilc-breadcrumb a{color:var(--blue);text-decoration:none;font-weight:600;display:inline-flex;align-items:center;gap:5px;}
@@ -465,28 +467,30 @@
             .ilc-bc-current{color:#334155;font-weight:700;}
         </style>
         <nav class="ilc-breadcrumb" aria-label="breadcrumb">
-            <a href="{{ route('finance.dashboard') }}"><i class="bi bi-house-door-fill"></i> Home</a>
-            @if($__bcRoute !== 'finance.dashboard')
+            <a href="<?php echo e(route('finance.dashboard')); ?>"><i class="bi bi-house-door-fill"></i> Home</a>
+            <?php if($__bcRoute !== 'finance.dashboard'): ?>
                 <i class="bi bi-chevron-right ilc-bc-sep"></i>
-                <span class="ilc-bc-current">{{ $__bcCurrent }}</span>
-            @endif
+                <span class="ilc-bc-current"><?php echo e($__bcCurrent); ?></span>
+            <?php endif; ?>
         </nav>
 
-        @if(session('success'))
+        <?php if(session('success')): ?>
             <div class="alert alert-success alert-dismissible fade show" role="alert">
-                {{ session('success') }}
+                <?php echo e(session('success')); ?>
+
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
-        @endif
+        <?php endif; ?>
 
-        @if(session('error'))
+        <?php if(session('error')): ?>
             <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                {{ session('error') }}
+                <?php echo e(session('error')); ?>
+
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
-        @endif
+        <?php endif; ?>
 
-        @yield('content')
+        <?php echo $__env->yieldContent('content'); ?>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -653,8 +657,8 @@
             overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
         }
     </script>
-    @yield('scripts')
-    @stack('scripts')
+    <?php echo $__env->yieldContent('scripts'); ?>
+    <?php echo $__env->yieldPushContent('scripts'); ?>
     <script>
         (function(){
             var overlay = document.getElementById('finSkeletonOverlay');
@@ -696,3 +700,4 @@
     </script>
 </body>
 </html>
+<?php /**PATH C:\Users\ron28\Desktop\ILC SYSTEM\ilc-website-system\resources\views/finance/layout.blade.php ENDPATH**/ ?>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
     <title>Teacher Dashboard — ILC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
@@ -442,12 +442,7 @@
 <!-- TOPBAR -->
 <div class="dash-topbar">
     <div class="topbar-brand">
-        {{--  
-        <div class="brand-logos">
-            <div class="brand-logo-circle">
-                <img src="/images/logo1.png" alt=""
-                     onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\'bi bi-building\'></i>'">
-            </div>--}}
+        
             <div class="brand-logo-circle">
                 <img src="/images/logo.png" alt=""
                      onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\'bi bi-shield-fill\'></i>'">
@@ -474,14 +469,15 @@
         <div class="dropdown">
             <div class="user-chip" data-bs-toggle="dropdown" aria-expanded="false">
                 <div class="user-avatar">
-                    @if($teacher->profile_photo)
-                        <img src="{{ asset('storage/' . $teacher->profile_photo) }}" alt="Avatar">
-                    @else
-                        {{ strtoupper(substr($teacher->name, 0, 1)) }}
-                    @endif
+                    <?php if($teacher->profile_photo): ?>
+                        <img src="<?php echo e(asset('storage/' . $teacher->profile_photo)); ?>" alt="Avatar">
+                    <?php else: ?>
+                        <?php echo e(strtoupper(substr($teacher->name, 0, 1))); ?>
+
+                    <?php endif; ?>
                 </div>
                 <div>
-                    <div class="user-chip-name">{{ $teacher->name }}</div>
+                    <div class="user-chip-name"><?php echo e($teacher->name); ?></div>
                     <div class="user-chip-role">Teacher</div>
                 </div>
                 <i class="bi bi-chevron-down user-chip-caret"></i>
@@ -489,15 +485,16 @@
             <div class="dropdown-menu dropdown-menu-end user-chip-dropdown">
                 <div class="ucd-header">
                     <div class="ucd-avatar">
-                        @if($teacher->profile_photo)
-                            <img src="{{ asset('storage/' . $teacher->profile_photo) }}" alt="Avatar">
-                        @else
-                            {{ strtoupper(substr($teacher->name, 0, 2)) }}
-                        @endif
+                        <?php if($teacher->profile_photo): ?>
+                            <img src="<?php echo e(asset('storage/' . $teacher->profile_photo)); ?>" alt="Avatar">
+                        <?php else: ?>
+                            <?php echo e(strtoupper(substr($teacher->name, 0, 2))); ?>
+
+                        <?php endif; ?>
                     </div>
                     <div class="ucd-info">
-                        <div class="ucd-name">{{ $teacher->name }}</div>
-                        <div class="ucd-email">{{ $teacher->email }}</div>
+                        <div class="ucd-name"><?php echo e($teacher->name); ?></div>
+                        <div class="ucd-email"><?php echo e($teacher->email); ?></div>
                         <span class="ucd-badge">Teacher</span>
                     </div>
                 </div>
@@ -507,8 +504,8 @@
                 </div>
                 <div class="ucd-divider"></div>
                 <div class="ucd-footer">
-                    <form method="POST" action="{{ route('logout') }}" onsubmit="return confirmLogout(this)">
-                        @csrf
+                    <form method="POST" action="<?php echo e(route('logout')); ?>" onsubmit="return confirmLogout(this)">
+                        <?php echo csrf_field(); ?>
                         <button type="submit" class="ucd-item ucd-logout">
                             <i class="bi bi-box-arrow-left"></i> Logout
                         </button>
@@ -529,7 +526,7 @@
     <div class="sidebar-section-lbl">Academic</div>
     <button class="sidebar-link" id="nav-students" onclick="showSection('students')">
         <i class="bi bi-people-fill"></i> My Students
-        @if($draftCount > 0)<span class="sidebar-badge">{{ $draftCount }}</span>@endif
+        <?php if($draftCount > 0): ?><span class="sidebar-badge"><?php echo e($draftCount); ?></span><?php endif; ?>
     </button>
     <button class="sidebar-link" id="nav-schedule" onclick="showSection('schedule')">
         <i class="bi bi-calendar3"></i> My Schedule
@@ -547,7 +544,7 @@
             <i class="bi bi-gear-fill"></i> Settings
         </button>
         <form method="POST" action="/logout" onsubmit="return confirmLogout(this)">
-            @csrf
+            <?php echo csrf_field(); ?>
             <button type="submit" class="sidebar-link" style="color:rgba(248,113,113,0.8);">
                 <i class="bi bi-box-arrow-left" style="color:rgba(248,113,113,0.9);"></i> Logout
             </button>
@@ -583,7 +580,7 @@
         <div class="section-header">
             <div>
                 <h1>Teacher Dashboard</h1>
-                <p>{{ now()->format('l, F d, Y') }} — Welcome back, {{ $teacher->name }}!</p>
+                <p><?php echo e(now()->format('l, F d, Y')); ?> — Welcome back, <?php echo e($teacher->name); ?>!</p>
             </div>
             <a href="#" onclick="showSection('students')" class="btn-dash btn-primary">
                 <i class="bi bi-journal-check"></i> My Students
@@ -596,7 +593,7 @@
                 <div class="stat-card">
                     <div class="stat-icon blue"><i class="bi bi-people-fill"></i></div>
                     <div>
-                        <div class="stat-value">{{ $sections->sum(function($s) { return $s->students->count(); }) }}</div>
+                        <div class="stat-value"><?php echo e($sections->sum(function($s) { return $s->students->count(); })); ?></div>
                         <div class="stat-label">Total Students</div>
                         <div class="stat-change up">Across all sections</div>
                     </div>
@@ -606,9 +603,9 @@
                 <div class="stat-card">
                     <div class="stat-icon red"><i class="bi bi-pencil-square"></i></div>
                     <div>
-                        <div class="stat-value">{{ $draftCount }}</div>
+                        <div class="stat-value"><?php echo e($draftCount); ?></div>
                         <div class="stat-label">Pending Drafts</div>
-                        <div class="stat-change {{ $draftCount > 0 ? 'down' : 'up' }}">{{ $draftCount > 0 ? 'Awaiting review' : 'All submitted' }}</div>
+                        <div class="stat-change <?php echo e($draftCount > 0 ? 'down' : 'up'); ?>"><?php echo e($draftCount > 0 ? 'Awaiting review' : 'All submitted'); ?></div>
                     </div>
                 </div>
             </div>
@@ -616,7 +613,7 @@
                 <div class="stat-card">
                     <div class="stat-icon gold"><i class="bi bi-calendar3"></i></div>
                     <div>
-                        <div class="stat-value">{{ $schedules->count() }}</div>
+                        <div class="stat-value"><?php echo e($schedules->count()); ?></div>
                         <div class="stat-label">Total Classes</div>
                         <div class="stat-change up">S.Y. 2026–2027</div>
                     </div>
@@ -626,7 +623,7 @@
                 <div class="stat-card">
                     <div class="stat-icon green"><i class="bi bi-book-fill"></i></div>
                     <div>
-                        <div class="stat-value">{{ $subjects->count() }}</div>
+                        <div class="stat-value"><?php echo e($subjects->count()); ?></div>
                         <div class="stat-label">Subjects Handled</div>
                     </div>
                 </div>
@@ -642,35 +639,35 @@
                         <a href="#" onclick="showSection('schedule')">Full Schedule</a>
                     </div>
                     <div class="p-3">
-                        @php
+                        <?php
                             $todayDay = now()->format('l');
                             $todaySchedules = $schedules->where('day_of_week', $todayDay)->sortBy('start_time');
-                        @endphp
-                        @if($todaySchedules->count() > 0)
-                            @foreach($todaySchedules as $sched)
+                        ?>
+                        <?php if($todaySchedules->count() > 0): ?>
+                            <?php $__currentLoopData = $todaySchedules; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sched): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                 <div class="sched-card">
                                     <div class="sched-card-inner">
                                         <div class="sched-card-bar blue"></div>
                                         <div class="sched-card-content">
-                                            <div class="sched-subject">{{ $sched->subject->name ?? 'All Subjects' }}</div>
+                                            <div class="sched-subject"><?php echo e($sched->subject->name ?? 'All Subjects'); ?></div>
                                             <div class="sched-meta">
-                                                <span><i class="bi bi-people-fill"></i> {{ $sched->section->grade_level }} – {{ $sched->section->name }}</span>
-                                                <span><i class="bi bi-door-open-fill"></i> {{ $sched->room ?? '—' }}</span>
+                                                <span><i class="bi bi-people-fill"></i> <?php echo e($sched->section->grade_level); ?> – <?php echo e($sched->section->name); ?></span>
+                                                <span><i class="bi bi-door-open-fill"></i> <?php echo e($sched->room ?? '—'); ?></span>
                                             </div>
                                         </div>
                                         <div class="sched-time-badge">
-                                            <div class="sched-time-main">{{ \Carbon\Carbon::parse($sched->start_time)->format('g:i A') }}</div>
-                                            <div class="sched-time-sub">{{ \Carbon\Carbon::parse($sched->start_time)->diffInMinutes(\Carbon\Carbon::parse($sched->end_time)) }} mins</div>
+                                            <div class="sched-time-main"><?php echo e(\Carbon\Carbon::parse($sched->start_time)->format('g:i A')); ?></div>
+                                            <div class="sched-time-sub"><?php echo e(\Carbon\Carbon::parse($sched->start_time)->diffInMinutes(\Carbon\Carbon::parse($sched->end_time))); ?> mins</div>
                                         </div>
                                     </div>
                                 </div>
-                            @endforeach
-                        @else
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                        <?php else: ?>
                             <div style="text-align:center; padding:40px; color:var(--muted);">
                                 <i class="bi bi-calendar-x" style="font-size:36px; display:block; margin-bottom:8px; opacity:0.3;"></i>
-                                No classes scheduled for today ({{ $todayDay }}).
+                                No classes scheduled for today (<?php echo e($todayDay); ?>).
                             </div>
-                        @endif
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -683,20 +680,20 @@
                         <a href="#" onclick="showSection('students')">My Students</a>
                     </div>
                     <div style="padding:20px 30px;text-align:center;color:var(--muted);font-size:13px;">
-                        @if(($rejectedCount ?? 0) > 0)
+                        <?php if(($rejectedCount ?? 0) > 0): ?>
                             <div style="background:#ffebee;border:1px solid #ef9a9a;border-radius:8px;padding:12px 16px;margin-bottom:10px;text-align:left;">
                                 <i class="bi bi-x-circle-fill" style="color:#c62828;"></i>
-                                <strong style="color:#c62828;"> {{ $rejectedCount }} grade submission(s) were returned by admin for revision.</strong>
+                                <strong style="color:#c62828;"> <?php echo e($rejectedCount); ?> grade submission(s) were returned by admin for revision.</strong>
                                 <div style="font-size:11px;color:#b71c1c;margin-top:4px;">Please open the Class Record, correct the grades, and re-submit.</div>
                             </div>
-                        @endif
-                        @if($draftCount > 0)
+                        <?php endif; ?>
+                        <?php if($draftCount > 0): ?>
                             <i class="bi bi-exclamation-circle-fill" style="font-size:30px;display:block;margin-bottom:8px;color:var(--gold);opacity:0.85;"></i>
-                            <strong style="color:var(--text);">{{ $draftCount }} draft grade(s)</strong> awaiting review and submission.
-                        @elseif(($rejectedCount ?? 0) == 0)
+                            <strong style="color:var(--text);"><?php echo e($draftCount); ?> draft grade(s)</strong> awaiting review and submission.
+                        <?php elseif(($rejectedCount ?? 0) == 0): ?>
                             <i class="bi bi-check-circle-fill" style="font-size:30px;display:block;margin-bottom:8px;color:var(--green);opacity:0.7;"></i>
                             No pending drafts. All grades are submitted.
-                        @endif
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -708,7 +705,7 @@
          SECTION: SCHEDULE
     ═══════════════════════════ -->
     <div id="section-schedule" class="dash-section" style="display:none;">
-        @php
+        <?php
             // Always show Mon–Fri; only add Saturday if there's an actual Saturday class
             $usedDays  = $schedules->pluck('day_of_week')->unique()->toArray();
             $showDays  = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
@@ -746,7 +743,7 @@
 
             $todayName = now()->format('l'); // e.g. 'Monday'
             $todaySchedules = $schedules->filter(fn($s) => $s->day_of_week === $todayName)->sortBy('start_time');
-        @endphp
+        ?>
 
         <!-- Header -->
         <div class="section-header">
@@ -757,7 +754,7 @@
                     </span>
                     My Schedule
                 </h1>
-                <p>S.Y. {{ $currentSchoolYear }} &nbsp;·&nbsp; Weekly teaching timetable</p>
+                <p>S.Y. <?php echo e($currentSchoolYear); ?> &nbsp;·&nbsp; Weekly teaching timetable</p>
             </div>
             <button onclick="window.print()" class="btn-dash btn-secondary" style="padding:9px 16px;">
                 <i class="bi bi-printer-fill"></i> Print
@@ -771,7 +768,7 @@
                     <i class="bi bi-collection-fill" style="color:#1565c0;font-size:18px;"></i>
                 </div>
                 <div>
-                    <div style="font-size:22px;font-weight:700;color:var(--text);line-height:1;">{{ $totalPeriods }}</div>
+                    <div style="font-size:22px;font-weight:700;color:var(--text);line-height:1;"><?php echo e($totalPeriods); ?></div>
                     <div style="font-size:11px;color:var(--muted);margin-top:2px;">Total Periods</div>
                 </div>
             </div>
@@ -780,7 +777,7 @@
                     <i class="bi bi-book-fill" style="color:#1b5e20;font-size:18px;"></i>
                 </div>
                 <div>
-                    <div style="font-size:22px;font-weight:700;color:var(--text);line-height:1;">{{ $uniqueSubjects }}</div>
+                    <div style="font-size:22px;font-weight:700;color:var(--text);line-height:1;"><?php echo e($uniqueSubjects); ?></div>
                     <div style="font-size:11px;color:var(--muted);margin-top:2px;">Subjects</div>
                 </div>
             </div>
@@ -789,7 +786,7 @@
                     <i class="bi bi-diagram-3-fill" style="color:#6a1b9a;font-size:18px;"></i>
                 </div>
                 <div>
-                    <div style="font-size:22px;font-weight:700;color:var(--text);line-height:1;">{{ $uniqueSections }}</div>
+                    <div style="font-size:22px;font-weight:700;color:var(--text);line-height:1;"><?php echo e($uniqueSections); ?></div>
                     <div style="font-size:11px;color:var(--muted);margin-top:2px;">Sections</div>
                 </div>
             </div>
@@ -798,7 +795,7 @@
                     <i class="bi bi-calendar3" style="color:#e65100;font-size:18px;"></i>
                 </div>
                 <div>
-                    <div style="font-size:22px;font-weight:700;color:var(--text);line-height:1;">{{ $activeDays }}</div>
+                    <div style="font-size:22px;font-weight:700;color:var(--text);line-height:1;"><?php echo e($activeDays); ?></div>
                     <div style="font-size:11px;color:var(--muted);margin-top:2px;">Teaching Days</div>
                 </div>
             </div>
@@ -812,7 +809,7 @@
                         <h6 style="color:#fff;margin:0;display:flex;align-items:center;gap:8px;">
                             <i class="bi bi-grid-3x3-gap-fill"></i> Weekly Timetable
                         </h6>
-                        <span style="font-size:11px;color:rgba(255,255,255,0.75);">{{ $totalPeriods }} period{{ $totalPeriods !== 1 ? 's' : '' }} this week</span>
+                        <span style="font-size:11px;color:rgba(255,255,255,0.75);"><?php echo e($totalPeriods); ?> period<?php echo e($totalPeriods !== 1 ? 's' : ''); ?> this week</span>
                     </div>
 
                     <div style="overflow-x:auto;">
@@ -822,84 +819,89 @@
                                     <th style="background:#f8fafc;padding:10px 14px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid var(--border);white-space:nowrap;min-width:110px;">
                                         <i class="bi bi-clock" style="margin-right:4px;"></i> Time
                                     </th>
-                                    @foreach($showDays as $day)
+                                    <?php $__currentLoopData = $showDays; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $day): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                         <th style="background:#f8fafc;padding:10px 12px;text-align:center;
-                                                   border-bottom:{{ $day === $todayName ? '2px solid var(--blue)' : '2px solid var(--border)' }};
+                                                   border-bottom:<?php echo e($day === $todayName ? '2px solid var(--blue)' : '2px solid var(--border)'); ?>;
                                                    min-width:120px;">
-                                            <div style="font-size:12px;font-weight:700;color:{{ $day === $todayName ? 'var(--blue)' : 'var(--text)' }};">
-                                                {{ $dayShort[$day] ?? $day }}
+                                            <div style="font-size:12px;font-weight:700;color:<?php echo e($day === $todayName ? 'var(--blue)' : 'var(--text)'); ?>;">
+                                                <?php echo e($dayShort[$day] ?? $day); ?>
+
                                             </div>
-                                            <div style="font-size:10px;color:var(--muted);margin-top:1px;">{{ $day }}</div>
-                                            @if($day === $todayName)
+                                            <div style="font-size:10px;color:var(--muted);margin-top:1px;"><?php echo e($day); ?></div>
+                                            <?php if($day === $todayName): ?>
                                                 <div style="margin-top:4px;display:inline-block;background:var(--blue-pale);border-radius:10px;padding:1px 8px;font-size:9px;font-weight:700;color:var(--blue);">TODAY</div>
-                                            @endif
+                                            <?php endif; ?>
                                         </th>
-                                    @endforeach
+                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($timeSlots as $timeKey => $timeSlot)
+                                <?php $__currentLoopData = $timeSlots; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $timeKey => $timeSlot): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                     <tr style="border-bottom:1px solid var(--border);">
                                         <td style="background:#f8fafc;padding:12px 14px;vertical-align:middle;border-right:2px solid var(--border);">
                                             <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;">
-                                                {{ \Carbon\Carbon::parse($timeSlot['start'])->format('g:i') }}
+                                                <?php echo e(\Carbon\Carbon::parse($timeSlot['start'])->format('g:i')); ?>
+
                                             </div>
                                             <div style="font-size:10px;color:var(--muted);white-space:nowrap;">
-                                                {{ \Carbon\Carbon::parse($timeSlot['start'])->format('A') }} – {{ \Carbon\Carbon::parse($timeSlot['end'])->format('g:i A') }}
+                                                <?php echo e(\Carbon\Carbon::parse($timeSlot['start'])->format('A')); ?> – <?php echo e(\Carbon\Carbon::parse($timeSlot['end'])->format('g:i A')); ?>
+
                                             </div>
                                         </td>
-                                        @foreach($showDays as $day)
-                                            @php
+                                        <?php $__currentLoopData = $showDays; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $day): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                            <?php
                                                 $cell    = $timeSlot['days'][$day] ?? null;
                                                 $isToday = ($day === $todayName);
-                                            @endphp
+                                            ?>
                                             <td style="padding:8px 10px;vertical-align:middle;text-align:left;
-                                                {{ $isToday ? 'background:var(--blue-pale);' : '' }}">
-                                                @if($cell)
+                                                <?php echo e($isToday ? 'background:var(--blue-pale);' : ''); ?>">
+                                                <?php if($cell): ?>
                                                     <div style="background:#fff;border:1px solid var(--border);border-left:3px solid var(--blue);border-radius:6px;padding:8px 10px;">
                                                         <div style="font-size:12px;font-weight:700;color:var(--blue);line-height:1.3;margin-bottom:3px;">
-                                                            {{ $cell->subject->name ?? 'All Subjects' }}
+                                                            <?php echo e($cell->subject->name ?? 'All Subjects'); ?>
+
                                                         </div>
-                                                        @if($cell->subject && $cell->subject->code)
+                                                        <?php if($cell->subject && $cell->subject->code): ?>
                                                             <div style="display:inline-block;background:var(--blue-pale);color:var(--blue);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;margin-bottom:4px;">
-                                                                {{ $cell->subject->code }}
+                                                                <?php echo e($cell->subject->code); ?>
+
                                                             </div>
-                                                        @endif
+                                                        <?php endif; ?>
                                                         <div style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
-                                                            <span><i class="bi bi-diagram-2-fill" style="font-size:9px;"></i> {{ $cell->section->name ?? '—' }}</span>
-                                                            @if($cell->room)
+                                                            <span><i class="bi bi-diagram-2-fill" style="font-size:9px;"></i> <?php echo e($cell->section->name ?? '—'); ?></span>
+                                                            <?php if($cell->room): ?>
                                                                 <span style="color:#bbb;">·</span>
-                                                                <span><i class="bi bi-geo-alt-fill" style="font-size:9px;"></i> {{ $cell->room }}</span>
-                                                            @endif
+                                                                <span><i class="bi bi-geo-alt-fill" style="font-size:9px;"></i> <?php echo e($cell->room); ?></span>
+                                                            <?php endif; ?>
                                                         </div>
                                                     </div>
-                                                @else
+                                                <?php else: ?>
                                                     <div style="height:52px;display:flex;align-items:center;justify-content:center;">
                                                         <span style="color:#e2e8f0;font-size:18px;font-weight:300;">—</span>
                                                     </div>
-                                                @endif
+                                                <?php endif; ?>
                                             </td>
-                                        @endforeach
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                     </tr>
-                                @endforeach
-                                @if(count($timeSlots) === 0)
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                <?php if(count($timeSlots) === 0): ?>
                                     <tr>
                                         <td style="background:#f8fafc;padding:12px 14px;border-right:2px solid var(--border);"></td>
-                                        @foreach($showDays as $day)
+                                        <?php $__currentLoopData = $showDays; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $day): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                             <td style="padding:40px 10px;text-align:center;color:#d1d5db;font-size:11px;">
                                                 —
                                             </td>
-                                        @endforeach
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                                     </tr>
-                                @endif
+                                <?php endif; ?>
                             </tbody>
                         </table>
                     </div>
-                    @if(count($timeSlots) === 0)
+                    <?php if(count($timeSlots) === 0): ?>
                         <div style="padding:18px 20px;background:#f8fafc;border-top:1px solid var(--border);text-align:center;font-size:12px;color:var(--muted);">
                             <i class="bi bi-info-circle me-1"></i> No schedules assigned yet. Contact admin to set up your teaching schedule.
                         </div>
-                    @endif
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -915,49 +917,52 @@
                             <i class="bi bi-shield-fill-check" style="font-size:28px;color:#fff;"></i>
                         </div>
                         <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;position:relative;z-index:1;">Advisory Class</div>
-                        @if($adviserSections->count() > 0)
-                            @foreach($adviserSections as $advSec)
-                                <div style="font-size:{{ $adviserSections->count() > 1 ? '15px' : '20px' }};font-weight:700;color:#fff;position:relative;z-index:1;margin-bottom:2px;">
-                                    {{ $advSec->name }}
+                        <?php if($adviserSections->count() > 0): ?>
+                            <?php $__currentLoopData = $adviserSections; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $advSec): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <div style="font-size:<?php echo e($adviserSections->count() > 1 ? '15px' : '20px'); ?>;font-weight:700;color:#fff;position:relative;z-index:1;margin-bottom:2px;">
+                                    <?php echo e($advSec->name); ?>
+
                                 </div>
-                                <div style="font-size:12px;color:rgba(255,255,255,0.75);margin-bottom:{{ !$loop->last ? '6px' : '0' }};position:relative;z-index:1;">
-                                    {{ $gradeLabels[$advSec->grade_level] ?? ucfirst($advSec->grade_level) }}
+                                <div style="font-size:12px;color:rgba(255,255,255,0.75);margin-bottom:<?php echo e(!$loop->last ? '6px' : '0'); ?>;position:relative;z-index:1;">
+                                    <?php echo e($gradeLabels[$advSec->grade_level] ?? ucfirst($advSec->grade_level)); ?>
+
                                 </div>
-                            @endforeach
-                        @else
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                        <?php else: ?>
                             <div style="font-size:16px;font-weight:600;color:rgba(255,255,255,0.6);position:relative;z-index:1;">Not Assigned</div>
-                        @endif
+                        <?php endif; ?>
                     </div>
                     <div style="padding:16px;">
-                        @if($adviserSections->count() > 0)
-                            @foreach($adviserSections as $advSec)
+                        <?php if($adviserSections->count() > 0): ?>
+                            <?php $__currentLoopData = $adviserSections; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $advSec): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                 <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f0f0f0;">
                                     <span style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;">
-                                        <i class="bi bi-diagram-3-fill" style="color:var(--blue);"></i> {{ $advSec->name }}
+                                        <i class="bi bi-diagram-3-fill" style="color:var(--blue);"></i> <?php echo e($advSec->name); ?>
+
                                     </span>
-                                    <span style="font-size:13px;font-weight:700;color:var(--text);">{{ $advSec->students->count() }} students</span>
+                                    <span style="font-size:13px;font-weight:700;color:var(--text);"><?php echo e($advSec->students->count()); ?> students</span>
                                 </div>
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                             <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f0f0f0;margin-top:2px;">
                                 <span style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;">
                                     <i class="bi bi-people-fill" style="color:var(--blue);"></i> Total Students
                                 </span>
-                                <span style="font-size:14px;font-weight:700;color:var(--text);">{{ $adviserStudentCount }}</span>
+                                <span style="font-size:14px;font-weight:700;color:var(--text);"><?php echo e($adviserStudentCount); ?></span>
                             </div>
                             <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;margin-bottom:12px;">
                                 <span style="font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;">
                                     <i class="bi bi-calendar-check-fill" style="color:var(--blue);"></i> School Year
                                 </span>
-                                <span style="font-size:12px;font-weight:600;color:var(--text);">{{ $currentSchoolYear }}</span>
+                                <span style="font-size:12px;font-weight:600;color:var(--text);"><?php echo e($currentSchoolYear); ?></span>
                             </div>
                             <button onclick="showSection('students')" class="btn-dash btn-primary" style="width:100%;justify-content:center;">
                                 <i class="bi bi-people-fill"></i> View Class List
                             </button>
-                        @else
+                        <?php else: ?>
                             <div style="text-align:center;padding:12px 0;">
                                 <div style="font-size:12px;color:var(--muted);">No advisory class has been assigned to you yet.</div>
                             </div>
-                        @endif
+                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -968,46 +973,48 @@
                             <i class="bi bi-sunrise-fill" style="color:var(--gold);"></i>
                             Today's Classes
                         </h6>
-                        <span style="font-size:11px;color:var(--muted);font-weight:600;">{{ now()->format('l, M j') }}</span>
+                        <span style="font-size:11px;color:var(--muted);font-weight:600;"><?php echo e(now()->format('l, M j')); ?></span>
                     </div>
                     <div style="padding:0 4px 4px;">
-                        @if($todaySchedules->isEmpty())
+                        <?php if($todaySchedules->isEmpty()): ?>
                             <div style="text-align:center;padding:24px 16px;color:var(--muted);">
                                 <i class="bi bi-check-circle" style="font-size:28px;display:block;margin-bottom:8px;opacity:0.35;"></i>
                                 <div style="font-size:12px;">No classes scheduled for today.</div>
                             </div>
-                        @else
-                            @foreach($todaySchedules as $ts)
-                                @php
+                        <?php else: ?>
+                            <?php $__currentLoopData = $todaySchedules; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $ts): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <?php
                                     $dc = $dayColors[$todayName] ?? ['bg'=>'#1a3a6c','light'=>'#e8f0fb','text'=>'#1a3a6c'];
                                     $startDt = \Carbon\Carbon::parse($ts->start_time);
                                     $endDt   = \Carbon\Carbon::parse($ts->end_time);
                                     $nowTime = now();
                                     $isActive = $nowTime->between($startDt, $endDt);
                                     $isPast   = $nowTime->gt($endDt);
-                                @endphp
+                                ?>
                                 <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;margin:4px 0;border-radius:8px;
-                                    {{ $isActive ? 'background:'.$dc['light'].';border:1.5px solid '.$dc['border'].';' : ($isPast ? 'background:#fafafa;opacity:0.65;' : 'background:#f8fafc;') }}">
+                                    <?php echo e($isActive ? 'background:'.$dc['light'].';border:1.5px solid '.$dc['border'].';' : ($isPast ? 'background:#fafafa;opacity:0.65;' : 'background:#f8fafc;')); ?>">
                                     <div style="width:36px;text-align:center;flex-shrink:0;padding-top:2px;">
-                                        <div style="font-size:11px;font-weight:700;color:{{ $isActive ? $dc['text'] : 'var(--muted)' }};">{{ $startDt->format('g:i') }}</div>
-                                        <div style="font-size:9px;color:var(--muted);">{{ $startDt->format('A') }}</div>
+                                        <div style="font-size:11px;font-weight:700;color:<?php echo e($isActive ? $dc['text'] : 'var(--muted)'); ?>;"><?php echo e($startDt->format('g:i')); ?></div>
+                                        <div style="font-size:9px;color:var(--muted);"><?php echo e($startDt->format('A')); ?></div>
                                     </div>
                                     <div style="flex:1;min-width:0;">
-                                        <div style="font-size:12px;font-weight:700;color:{{ $isActive ? $dc['text'] : 'var(--text)' }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                                            {{ $ts->subject->name ?? 'All Subjects' }}
-                                            @if($isActive)<span style="font-size:9px;background:{{ $dc['bg'] }};color:#fff;border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:middle;">NOW</span>@endif
+                                        <div style="font-size:12px;font-weight:700;color:<?php echo e($isActive ? $dc['text'] : 'var(--text)'); ?>;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                                            <?php echo e($ts->subject->name ?? 'All Subjects'); ?>
+
+                                            <?php if($isActive): ?><span style="font-size:9px;background:<?php echo e($dc['bg']); ?>;color:#fff;border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:middle;">NOW</span><?php endif; ?>
                                         </div>
                                         <div style="font-size:11px;color:var(--muted);margin-top:1px;">
-                                            {{ $ts->section->name ?? '—' }}
-                                            @if($ts->room) · {{ $ts->room }}@endif
+                                            <?php echo e($ts->section->name ?? '—'); ?>
+
+                                            <?php if($ts->room): ?> · <?php echo e($ts->room); ?><?php endif; ?>
                                         </div>
                                     </div>
-                                    @if($isPast)
+                                    <?php if($isPast): ?>
                                         <i class="bi bi-check-circle-fill" style="color:#28a745;font-size:14px;flex-shrink:0;margin-top:2px;"></i>
-                                    @endif
+                                    <?php endif; ?>
                                 </div>
-                            @endforeach
-                        @endif
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -1026,32 +1033,32 @@
                     <h1>My Students</h1>
                     <p>Select a subject to encode grades.</p>
                 </div>
-                @if($draftCount > 0)
+                <?php if($draftCount > 0): ?>
                     <div style="background:#fff8ec;border:1.5px solid #f5a623;border-radius:10px;padding:10px 18px;display:flex;align-items:center;gap:10px;">
                         <i class="bi bi-exclamation-triangle-fill" style="color:var(--gold);font-size:18px;"></i>
                         <div>
-                            <div style="font-size:13px;font-weight:700;color:var(--text);">{{ $draftCount }} Draft(s) Pending</div>
+                            <div style="font-size:13px;font-weight:700;color:var(--text);"><?php echo e($draftCount); ?> Draft(s) Pending</div>
                             <div style="font-size:11px;color:var(--muted);">Open a subject to review and submit.</div>
                         </div>
                     </div>
-                @endif
+                <?php endif; ?>
             </div>
 
-            {{-- ── Filters ── --}}
+            
             <div class="content-card mb-3">
                 <div class="p-3">
                     <div class="row g-3 align-items-end">
                         <div class="col-md-4">
                             <label class="form-lbl">School Year</label>
                             <select class="form-fld" id="ms-list-sy" onchange="syncFiltersToGradeView()">
-                                @php
+                                <?php
                                     $baseSY = now()->month >= 6 ? now()->year : now()->year - 1;
                                     for ($y = $baseSY + 1; $y >= $baseSY - 2; $y--) {
                                         $sy = $y . '-' . ($y + 1);
                                         $selected = ($sy === $currentSchoolYear) ? 'selected' : '';
                                         echo "<option value=\"$sy\" $selected>$sy</option>";
                                     }
-                                @endphp
+                                ?>
                             </select>
                         </div>
                         <div class="col-md-4">
@@ -1066,7 +1073,7 @@
                             <div style="background:#f0f4ff;border:1px solid #c7d7ff;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--blue);font-weight:600;line-height:1.4;">
                                 <i class="bi bi-arrow-right-circle-fill me-1"></i>
                                 Clicking <strong>Enter Grades</strong> will open:<br>
-                                <span id="ms-filter-preview" style="color:#1a3a6c;">Term 1 &nbsp;·&nbsp; S.Y. {{ $currentSchoolYear }}</span>
+                                <span id="ms-filter-preview" style="color:#1a3a6c;">Term 1 &nbsp;·&nbsp; S.Y. <?php echo e($currentSchoolYear); ?></span>
                             </div>
                         </div>
                     </div>
@@ -1074,7 +1081,7 @@
             </div>
 
             <div class="content-card">
-                <div class="content-card-header"><h6>My Subject Assignments — S.Y. {{ $currentSchoolYear }}</h6></div>
+                <div class="content-card-header"><h6>My Subject Assignments — S.Y. <?php echo e($currentSchoolYear); ?></h6></div>
                 <div style="overflow-x:auto;">
                     <table class="dash-table">
                         <thead>
@@ -1086,47 +1093,47 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @forelse($teacherAssignments as $assignment)
-                                @php
+                            <?php $__empty_1 = true; $__currentLoopData = $teacherAssignments; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $assignment): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
+                                <?php
                                     $sec          = $assignment->section;
                                     $sub          = $assignment->subject;
                                     $studentCount = $sec ? $sec->students->count() : 0;
                                     $glLabel      = $sec ? ($gradeLabels[$sec->grade_level] ?? ucfirst($sec->grade_level)) : '—';
-                                @endphp
-                                @if($sec)
+                                ?>
+                                <?php if($sec): ?>
                                 <tr>
                                     <td>
-                                        <div style="font-weight:700;color:var(--blue);font-size:13px;">{{ $glLabel }}</div>
-                                        <div style="font-size:12px;color:var(--muted);">{{ $sec->name }}</div>
+                                        <div style="font-weight:700;color:var(--blue);font-size:13px;"><?php echo e($glLabel); ?></div>
+                                        <div style="font-size:12px;color:var(--muted);"><?php echo e($sec->name); ?></div>
                                     </td>
                                     <td>
-                                        <div style="font-weight:600;color:var(--text);">{{ $sub?->name ?? 'All Subjects' }}</div>
-                                        @if($sub)<div class="user-row-sub">{{ $sub->code }}</div>@endif
+                                        <div style="font-weight:600;color:var(--text);"><?php echo e($sub?->name ?? 'All Subjects'); ?></div>
+                                        <?php if($sub): ?><div class="user-row-sub"><?php echo e($sub->code); ?></div><?php endif; ?>
                                     </td>
                                     <td>
-                                        <span style="font-weight:700;color:var(--text);">{{ $studentCount }}</span>
+                                        <span style="font-weight:700;color:var(--text);"><?php echo e($studentCount); ?></span>
                                         <span style="font-size:11px;color:var(--muted);"> students</span>
                                     </td>
                                     <td style="white-space:nowrap;">
                                         <button class="btn-dash btn-primary" style="padding:7px 12px;font-size:12px;margin-right:6px;"
-                                            data-section-id="{{ $sec->id }}"
-                                            data-subject-id="{{ $sub?->id ?? '' }}"
-                                            data-subject-name="{{ $sub?->name ?? 'All Subjects' }}"
-                                            data-section-name="{{ $glLabel }} — {{ $sec->name }}"
-                                            data-grade-level="{{ $sec->grade_level ?? '' }}"
+                                            data-section-id="<?php echo e($sec->id); ?>"
+                                            data-subject-id="<?php echo e($sub?->id ?? ''); ?>"
+                                            data-subject-name="<?php echo e($sub?->name ?? 'All Subjects'); ?>"
+                                            data-section-name="<?php echo e($glLabel); ?> — <?php echo e($sec->name); ?>"
+                                            data-grade-level="<?php echo e($sec->grade_level ?? ''); ?>"
                                             onclick="openSubjectViewFromBtn(this)">
                                             <i class="bi bi-pencil-square"></i> Enter Grades
                                         </button>
                                         <button class="btn-dash btn-success" style="padding:7px 12px;font-size:12px;"
-                                            data-section-id="{{ $sec->id }}"
-                                            data-subject-id="{{ $sub?->id ?? '' }}"
+                                            data-section-id="<?php echo e($sec->id); ?>"
+                                            data-subject-id="<?php echo e($sub?->id ?? ''); ?>"
                                             onclick="downloadTemplate(this)">
                                             <i class="bi bi-file-earmark-excel-fill"></i> Download Excel
                                         </button>
                                     </td>
                                 </tr>
-                                @endif
-                            @empty
+                                <?php endif; ?>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                                 <tr>
                                     <td colspan="4" style="text-align:center;padding:40px;color:var(--muted);">
                                         <i class="bi bi-calendar-x" style="font-size:36px;display:block;margin-bottom:8px;opacity:0.3;"></i>
@@ -1134,7 +1141,7 @@
                                         <div style="font-size:12px;">Ask the admin to assign you a subject schedule. Advisory class alone does not give grade entry access.</div>
                                     </td>
                                 </tr>
-                            @endforelse
+                            <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
@@ -1158,25 +1165,25 @@
                 <!-- Row 2: Year + Term tabs + Actions (same layout as student portal) -->
                 <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:14px 18px;margin-bottom:4px;display:flex;flex-wrap:wrap;gap:16px;align-items:center;">
 
-                    {{-- School Year --}}
+                    
                     <div style="display:flex;flex-direction:column;gap:4px;">
                         <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;">School Year</label>
                         <select id="ms-sy" onchange="loadGradeView()"
                             style="border:1.5px solid #d1d5db;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;color:var(--text);background:#fff;cursor:pointer;min-width:130px;">
-                            @php
+                            <?php
                                 $baseSY = now()->month >= 6 ? now()->year : now()->year - 1;
                                 for ($y = $baseSY + 1; $y >= $baseSY - 2; $y--) {
                                     $sy = $y . '-' . ($y + 1);
                                     $selected = ($sy === $currentSchoolYear) ? 'selected' : '';
                                     echo "<option value=\"$sy\" $selected>$sy</option>";
                                 }
-                            @endphp
+                            ?>
                         </select>
                     </div>
 
                     <div style="width:1px;height:36px;background:#e5e7eb;"></div>
 
-                    {{-- Term tab buttons --}}
+                    
                     <div style="display:flex;flex-direction:column;gap:4px;">
                         <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;">Term</label>
                         <div style="display:flex;gap:6px;">
@@ -1195,7 +1202,7 @@
                         </div>
                     </div>
 
-                    {{-- Hidden select keeps existing JS working --}}
+                    
                     <select id="ms-term" style="display:none;">
                         <option value="1">Term 1</option>
                         <option value="2">Term 2</option>
@@ -1365,26 +1372,26 @@
                         <label class="form-lbl">Section</label>
                         <select class="form-fld" id="att-section" onchange="onAttSectionChange()">
                             <option value="">— Select Section —</option>
-                            @foreach($sections ?? [] as $sec)
-                                <option value="{{ $sec->id }}">{{ $sec->name }} ({{ $gradeLabels[$sec->grade_level] ?? ucfirst($sec->grade_level) }})</option>
-                            @endforeach
+                            <?php $__currentLoopData = $sections ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sec): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <option value="<?php echo e($sec->id); ?>"><?php echo e($sec->name); ?> (<?php echo e($gradeLabels[$sec->grade_level] ?? ucfirst($sec->grade_level)); ?>)</option>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </select>
                     </div>
                     <div class="col-md-3">
                         <label class="form-lbl">Subject</label>
                         <select class="form-fld" id="att-subject">
                             <option value="">— Select Subject —</option>
-                            @foreach($subjects ?? [] as $sub)
-                                <option value="{{ $sub->id }}">{{ $sub->name }}</option>
-                            @endforeach
-                            @if($teacherAssignments->whereNull('subject_id')->count() > 0)
+                            <?php $__currentLoopData = $subjects ?? []; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sub): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <option value="<?php echo e($sub->id); ?>"><?php echo e($sub->name); ?></option>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                            <?php if($teacherAssignments->whereNull('subject_id')->count() > 0): ?>
                                 <option value="all-subjects">All Subjects (Nursery/Kindergarten)</option>
-                            @endif
+                            <?php endif; ?>
                         </select>
                     </div>
                     <div class="col-md-3">
                         <label class="form-lbl">Date</label>
-                        <input type="date" class="form-fld" id="att-date" value="{{ now()->format('Y-m-d') }}">
+                        <input type="date" class="form-fld" id="att-date" value="<?php echo e(now()->format('Y-m-d')); ?>">
                     </div>
                     <div class="col-md-3" style="display:flex;align-items:flex-end;">
                         <button class="btn-dash btn-primary" style="width:100%;" onclick="loadAttendance()">
@@ -1511,11 +1518,11 @@
                             <label class="form-lbl">Student *</label>
                             <select id="ptc-student" class="form-fld" required>
                                 <option value="">Select Student</option>
-                                @foreach($sections as $sec)
-                                    @foreach($sec->students as $stu)
-                                        <option value="{{ $stu->id }}">{{ $stu->name }} &mdash; {{ $sec->name }}</option>
-                                    @endforeach
-                                @endforeach
+                                <?php $__currentLoopData = $sections; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $sec): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                    <?php $__currentLoopData = $sec->students; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $stu): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                        <option value="<?php echo e($stu->id); ?>"><?php echo e($stu->name); ?> &mdash; <?php echo e($sec->name); ?></option>
+                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                             </select>
                         </div>
                         <div class="col-md-4">
@@ -1601,30 +1608,31 @@
                     </div>
                     <div class="p-4">
 
-                        {{-- Photo success flash --}}
-                        @if(session('photo_success'))
+                        
+                        <?php if(session('photo_success')): ?>
                             <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#2e7d32;display:flex;align-items:center;gap:8px;">
-                                <i class="bi bi-check-circle-fill"></i> {{ session('photo_success') }}
-                            </div>
-                        @endif
+                                <i class="bi bi-check-circle-fill"></i> <?php echo e(session('photo_success')); ?>
 
-                        {{-- Profile photo upload --}}
-                        <form method="POST" action="{{ route('teacher.settings.photo') }}" enctype="multipart/form-data" id="photo-upload-form">
-                            @csrf
+                            </div>
+                        <?php endif; ?>
+
+                        
+                        <form method="POST" action="<?php echo e(route('teacher.settings.photo')); ?>" enctype="multipart/form-data" id="photo-upload-form">
+                            <?php echo csrf_field(); ?>
                             <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
-                                {{-- Avatar circle --}}
+                                
                                 <div id="settings-avatar-wrap" style="position:relative;flex-shrink:0;width:72px;height:72px;">
-                                    @if($teacher->profile_photo)
-                                        <img id="settings-avatar-img" src="{{ asset('storage/' . $teacher->profile_photo) }}" alt="Profile"
+                                    <?php if($teacher->profile_photo): ?>
+                                        <img id="settings-avatar-img" src="<?php echo e(asset('storage/' . $teacher->profile_photo)); ?>" alt="Profile"
                                              style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid var(--border);">
-                                    @else
+                                    <?php else: ?>
                                         <div id="settings-avatar-placeholder" style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--blue-light));display:flex;align-items:center;justify-content:center;">
                                             <i class="bi bi-person-fill" style="font-size:30px;color:#fff;"></i>
                                         </div>
                                         <img id="settings-avatar-img" src="" alt="Profile"
                                              style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:3px solid var(--border);display:none;">
-                                    @endif
-                                    {{-- Camera overlay button --}}
+                                    <?php endif; ?>
+                                    
                                     <label for="photo-file-input" title="Change photo"
                                            style="position:absolute;bottom:0;right:0;width:24px;height:24px;border-radius:50%;background:var(--blue);border:2px solid #fff;display:flex;align-items:center;justify-content:center;cursor:pointer;">
                                         <i class="bi bi-camera-fill" style="font-size:11px;color:#fff;"></i>
@@ -1633,23 +1641,23 @@
                                            style="display:none;" onchange="previewAndUploadPhoto(this)">
                                 </div>
                                 <div>
-                                    <div style="font-size:16px;font-weight:700;color:var(--text);">{{ $teacher->name }}</div>
-                                    <div style="font-size:12px;color:var(--muted);margin-top:2px;">{{ $teacher->email }}</div>
+                                    <div style="font-size:16px;font-weight:700;color:var(--text);"><?php echo e($teacher->name); ?></div>
+                                    <div style="font-size:12px;color:var(--muted);margin-top:2px;"><?php echo e($teacher->email); ?></div>
                                     <span style="display:inline-block;background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7;border-radius:20px;padding:2px 10px;font-size:11px;font-weight:600;margin-top:5px;">Teacher</span>
                                 </div>
                             </div>
-                            {{-- Hidden submit — triggered by JS after preview --}}
+                            
                             <button type="submit" id="photo-submit-btn" style="display:none;"></button>
                         </form>
 
                         <div style="border-top:1px solid var(--border);padding-top:16px;display:flex;flex-direction:column;gap:0;">
                             <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0f0;">
                                 <span style="font-size:12px;color:var(--muted);">Full Name</span>
-                                <span style="font-size:12px;font-weight:600;">{{ $teacher->name }}</span>
+                                <span style="font-size:12px;font-weight:600;"><?php echo e($teacher->name); ?></span>
                             </div>
                             <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0f0;">
                                 <span style="font-size:12px;color:var(--muted);">Email</span>
-                                <span style="font-size:12px;font-weight:600;">{{ $teacher->email }}</span>
+                                <span style="font-size:12px;font-weight:600;"><?php echo e($teacher->email); ?></span>
                             </div>
                             <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0f0;">
                                 <span style="font-size:12px;color:var(--muted);">Role</span>
@@ -1657,18 +1665,18 @@
                             </div>
                             <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0f0;">
                                 <span style="font-size:12px;color:var(--muted);">Total Classes</span>
-                                <span style="font-size:12px;font-weight:600;">{{ $schedules->count() }}</span>
+                                <span style="font-size:12px;font-weight:600;"><?php echo e($schedules->count()); ?></span>
                             </div>
                             <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;">
                                 <span style="font-size:12px;color:var(--muted);">Advisory Class</span>
                                 <span style="font-size:12px;font-weight:600;text-align:right;">
-                                    @if($adviserSections->count() > 0)
-                                        @foreach($adviserSections as $advSec)
-                                            <div>{{ $advSec->name }} <span style="font-size:11px;color:var(--muted);">({{ $gradeLabels[$advSec->grade_level] ?? '' }})</span></div>
-                                        @endforeach
-                                    @else
+                                    <?php if($adviserSections->count() > 0): ?>
+                                        <?php $__currentLoopData = $adviserSections; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $advSec): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                            <div><?php echo e($advSec->name); ?> <span style="font-size:11px;color:var(--muted);">(<?php echo e($gradeLabels[$advSec->grade_level] ?? ''); ?>)</span></div>
+                                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                    <?php else: ?>
                                         <span style="color:var(--muted);font-style:italic;">Not assigned</span>
-                                    @endif
+                                    <?php endif; ?>
                                 </span>
                             </div>
                         </div>
@@ -1683,19 +1691,21 @@
                         <h6><i class="bi bi-lock-fill me-2" style="color:var(--blue);"></i>Change Password</h6>
                     </div>
                     <div class="p-4">
-                        @if(session('password_success'))
+                        <?php if(session('password_success')): ?>
                             <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#2e7d32;display:flex;align-items:center;gap:8px;">
-                                <i class="bi bi-check-circle-fill"></i> {{ session('password_success') }}
-                            </div>
-                        @endif
-                        @if($errors->has('otp_code'))
-                            <div style="background:#fdecea;border:1px solid #f5c6cb;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#c0392b;display:flex;align-items:center;gap:8px;">
-                                <i class="bi bi-exclamation-circle-fill"></i> {{ $errors->first('otp_code') }}
-                            </div>
-                        @endif
+                                <i class="bi bi-check-circle-fill"></i> <?php echo e(session('password_success')); ?>
 
-                        {{-- Step 1: Enter passwords --}}
-                        <div id="tch-pwd-step1" @if(session('otp_token')) style="display:none;" @endif>
+                            </div>
+                        <?php endif; ?>
+                        <?php if($errors->has('otp_code')): ?>
+                            <div style="background:#fdecea;border:1px solid #f5c6cb;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;color:#c0392b;display:flex;align-items:center;gap:8px;">
+                                <i class="bi bi-exclamation-circle-fill"></i> <?php echo e($errors->first('otp_code')); ?>
+
+                            </div>
+                        <?php endif; ?>
+
+                        
+                        <div id="tch-pwd-step1" <?php if(session('otp_token')): ?> style="display:none;" <?php endif; ?>>
                             <div style="background:#e8f0fb;border-radius:8px;padding:12px 14px;margin-bottom:18px;font-size:12px;color:#1a3a6c;display:flex;align-items:center;gap:8px;">
                                 <i class="bi bi-shield-lock-fill" style="font-size:16px;"></i>
                                 For your security, a 6-digit OTP will be sent to your email to confirm the change.
@@ -1718,16 +1728,16 @@
                             </button>
                         </div>
 
-                        {{-- Step 2: Enter OTP --}}
-                        <div id="tch-pwd-step2" @if(!session('otp_token')) style="display:none;" @endif>
+                        
+                        <div id="tch-pwd-step2" <?php if(!session('otp_token')): ?> style="display:none;" <?php endif; ?>>
                             <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:12px 14px;margin-bottom:18px;font-size:13px;color:#2e7d32;">
                                 <i class="bi bi-envelope-check-fill"></i>
                                 OTP sent to <strong id="tch-otp-email">your email</strong>. Enter the 6-digit code below. Expires in 10 minutes.
                             </div>
-                            <form method="POST" action="{{ route('teacher.settings.password') }}" id="tch-otp-form">
-                                @csrf
-                                @method('PUT')
-                                <input type="hidden" name="otp_token" id="tch-otp-token" value="{{ session('otp_token') }}">
+                            <form method="POST" action="<?php echo e(route('teacher.settings.password')); ?>" id="tch-otp-form">
+                                <?php echo csrf_field(); ?>
+                                <?php echo method_field('PUT'); ?>
+                                <input type="hidden" name="otp_token" id="tch-otp-token" value="<?php echo e(session('otp_token')); ?>">
                                 <div class="mb-3">
                                     <label class="form-lbl">6-Digit OTP Code <span style="color:var(--red);">*</span></label>
                                     <input type="text" name="otp_code" class="form-fld" placeholder="e.g. 123456"
@@ -1762,9 +1772,9 @@
                         btn.disabled = true;
                         btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Sending…';
 
-                        fetch('{{ route('teacher.settings.password.otp') }}', {
+                        fetch('<?php echo e(route('teacher.settings.password.otp')); ?>', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '<?php echo e(csrf_token()); ?>' },
                             body: JSON.stringify({ current_password: cur, password: npwd, password_confirmation: conf })
                         })
                         .then(r => r.json())
@@ -1801,7 +1811,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     const sections = ['dashboard','schedule','students','attendance','announcements','ptc','settings'];
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '<?php echo e(csrf_token()); ?>';
 
     // ── Breadcrumbs ──
     const BREADCRUMB_LABELS = {
@@ -1878,12 +1888,12 @@
     document.addEventListener('DOMContentLoaded', function() {
         autoSelectFirst('att-section');
         autoSelectFirst('att-subject');
-        @if(session('settings_tab') || session('password_success') || session('photo_success') || $errors->has('current_password'))
+        <?php if(session('settings_tab') || session('password_success') || session('photo_success') || $errors->has('current_password')): ?>
         showSection('settings');
-        @else
+        <?php else: ?>
         // Default section is 'dashboard' — trigger skeleton on initial page load
         applySectionSkeleton('dashboard');
-        @endif
+        <?php endif; ?>
     });
 
     function previewAndUploadPhoto(input) {
@@ -2130,7 +2140,7 @@
                     ? (inputVal && inputVal !== 'DNME' ? 'submitted' : 'locked')
                     : (inputVal !== '' && parseFloat(inputVal) >= 75 ? 'submitted' : 'locked');
 
-                const sf9Url = '{{ route("teacher.sf9", ":sid") }}'.replace(':sid', s.student_id)
+                const sf9Url = '<?php echo e(route("teacher.sf9", ":sid")); ?>'.replace(':sid', s.student_id)
                     + '?school_year=' + encodeURIComponent(schoolYear);
                 const permitBadge = s.exam_permit_held
                     ? '<div style="font-size:10px;color:#c62828;margin-top:2px;font-weight:600;" title="' + (s.exam_permit_reason === 'broken_promise' ? 'Promissory Note broken — payment promise date passed unpaid' : 'Payments 3+ consecutive months behind') + '"><i class="bi bi-exclamation-triangle-fill"></i> Exam Permit Withheld</div>'
@@ -2870,3 +2880,4 @@
 </script>
 </body>
 </html>
+<?php /**PATH C:\Users\ron28\Desktop\ILC SYSTEM\ilc-website-system\resources\views/teacherDashboard.blade.php ENDPATH**/ ?>

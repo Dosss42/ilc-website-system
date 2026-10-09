@@ -382,9 +382,9 @@ function spMethodChange() {
 
 document.getElementById('studPayForm').addEventListener('submit', function(e) {
     const method = document.querySelector('input[name="payment_method"]:checked');
-    if (!method) { e.preventDefault(); alert('Please select a payment method.'); return; }
+    if (!method) { e.preventDefault(); showToast('Please select a payment method.', 'warning'); return; }
     const amount = parseFloat(document.getElementById('spAmount').value);
-    if (!amount || amount <= 0) { e.preventDefault(); alert('Please enter a valid amount.'); return; }
+    if (!amount || amount <= 0) { e.preventDefault(); showToast('Please enter a valid amount.', 'warning'); return; }
     document.getElementById('spSubmitBtn').disabled    = true;
     document.getElementById('spSubmitBtn').textContent = 'Processing…';
 });

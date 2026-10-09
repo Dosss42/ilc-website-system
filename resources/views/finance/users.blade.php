@@ -234,7 +234,7 @@
                                 </td>
                                 <td>{{ $user->created_at->format('M d, Y') }}</td>
                                 <td>
-                                    <form method="POST" action="{{ route('admin.finance.toggle-status', $user) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to change this user status?')">
+                                    <form method="POST" action="{{ route('admin.finance.toggle-status', $user) }}" style="display: inline;" onsubmit="return confirmToggleStatus(this)">
                                         @csrf
                                         <button type="submit" class="btn-toggle {{ $user->is_active ? 'deactivate' : 'activate' }}">
                                             @if($user->is_active)
@@ -267,5 +267,54 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // ── Confirmation modal ── replaces native confirm() popup with a
+        // styled, on-brand dialog (same look across every portal now).
+        function showConfirm(message, onConfirm, opts) {
+            opts = opts || {};
+            var title = opts.title || 'Please Confirm';
+            var confirmLabel = opts.confirmLabel || 'Yes, Continue';
+            var danger = !!opts.danger;
+            var iconBg = danger ? '#fdecea' : '#fff8ec';
+            var iconColor = danger ? '#c0392b' : '#b45309';
+            var okBg = danger ? '#dc2626' : '#1a3a6c';
+
+            var overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;';
+
+            var box = document.createElement('div');
+            box.style.cssText = 'background:#fff;border-radius:16px;padding:28px 26px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center;font-family:\'Open Sans\',sans-serif;';
+            box.innerHTML =
+                '<div style="width:52px;height:52px;border-radius:50%;background:' + iconBg + ';display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">' +
+                    '<i class="bi ' + (danger ? 'bi-exclamation-triangle-fill' : 'bi-question-circle-fill') + '" style="font-size:24px;color:' + iconColor + ';"></i>' +
+                '</div>' +
+                '<div style="font-size:15px;font-weight:700;color:#1a3a6c;margin-bottom:6px;">' + title + '</div>' +
+                '<div style="font-size:13px;color:#64748b;line-height:1.5;margin-bottom:20px;">' + message + '</div>' +
+                '<div style="display:flex;gap:10px;">' +
+                    '<button type="button" id="ilc-confirm-cancel" style="flex:1;padding:10px;border-radius:9px;border:1.5px solid #e2e8f0;background:#fff;color:#334155;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;">Cancel</button>' +
+                    '<button type="button" id="ilc-confirm-ok" style="flex:1;padding:10px;border-radius:9px;border:none;background:' + okBg + ';color:#fff;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;">' + confirmLabel + '</button>' +
+                '</div>';
+
+            overlay.appendChild(box);
+            document.body.appendChild(overlay);
+
+            function close() {
+                overlay.remove();
+                document.removeEventListener('keydown', onKey);
+            }
+            function onKey(e) { if (e.key === 'Escape') close(); }
+            document.addEventListener('keydown', onKey);
+
+            box.querySelector('#ilc-confirm-cancel').onclick = close;
+            box.querySelector('#ilc-confirm-ok').onclick = function () { close(); onConfirm(); };
+            overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+        }
+
+        function confirmToggleStatus(form) {
+            showConfirm('Are you sure you want to change this user status?', function () { form.submit(); },
+                { title: 'Change Status' });
+            return false;
+        }
+    </script>
 </body>
 </html>

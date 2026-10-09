@@ -6,7 +6,7 @@
             </div>
         </div>
 
-        {{-- Base Fee Components --}}
+        
         <div class="content-card mb-4">
             <div class="content-card-header">
                 <h6><i class="bi bi-grid-3x3 me-2"></i>Base Fee Components</h6>
@@ -17,14 +17,14 @@
                         <label class="form-lbl">Tuition Fee</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-tuition" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->tuition ?? 7505 }}" oninput="recalculateFromBaseFees()">
+                            <input type="number" id="fee-tuition" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->tuition ?? 7505); ?>" oninput="recalculateFromBaseFees()">
                         </div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-lbl">Misc/Reg/PTA Fee</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-misc" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->misc ?? 2800 }}" oninput="recalculateFromBaseFees()">
+                            <input type="number" id="fee-misc" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->misc ?? 2800); ?>" oninput="recalculateFromBaseFees()">
                         </div>
                         <small class="text-muted" style="font-size:10px;">2000+700+100</small>
                     </div>
@@ -32,21 +32,21 @@
                         <label class="form-lbl">Insurance Fee</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-insurance" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->insurance ?? 150 }}" oninput="recalculateFromBaseFees()">
+                            <input type="number" id="fee-insurance" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->insurance ?? 150); ?>" oninput="recalculateFromBaseFees()">
                         </div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-lbl">Electric Bill Fee</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-electric" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->electric ?? 2000 }}" oninput="recalculateFromBaseFees()">
+                            <input type="number" id="fee-electric" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->electric ?? 2000); ?>" oninput="recalculateFromBaseFees()">
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- Books Fees --}}
+        
         <div class="content-card mb-4">
             <div class="content-card-header">
                 <h6><i class="bi bi-book me-2"></i>Books Fees by Grade Level</h6>
@@ -57,54 +57,54 @@
                         <label class="form-lbl">Nursery / Kinder</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-books-nursery" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->books_nursery ?? 3550 }}" oninput="recalculateFromBaseFees()">
+                            <input type="number" id="fee-books-nursery" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->books_nursery ?? 3550); ?>" oninput="recalculateFromBaseFees()">
                         </div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-lbl">Grade 1 & 2</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-books-grade1" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->books_grade1 ?? 4550 }}" oninput="recalculateFromBaseFees()">
+                            <input type="number" id="fee-books-grade1" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->books_grade1 ?? 4550); ?>" oninput="recalculateFromBaseFees()">
                         </div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-lbl">Grade 3</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-books-grade3" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->books_grade3 ?? 5050 }}" oninput="recalculateFromBaseFees()">
+                            <input type="number" id="fee-books-grade3" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->books_grade3 ?? 5050); ?>" oninput="recalculateFromBaseFees()">
                         </div>
                     </div>
                     <div class="col-md-3">
                         <label class="form-lbl">Grade 4-6</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-books-grade4" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->books_grade4 ?? 5550 }}" oninput="recalculateFromBaseFees()">
+                            <input type="number" id="fee-books-grade4" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->books_grade4 ?? 5550); ?>" oninput="recalculateFromBaseFees()">
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        {{-- Payment Options --}}
+        
         <div class="content-card mb-4">
             <div class="content-card-header">
                 <h6><i class="bi bi-credit-card me-2"></i>Payment Options Configuration</h6>
             </div>
             <div class="p-4">
-                {{-- Option A --}}
+                
                 <h6 class="mb-3" style="font-weight:700; color:var(--text);"><i class="bi bi-cash-coin me-2"></i>Option A: Cash Basis</h6>
                 <div class="row g-3 mb-4">
                     <div class="col-md-4">
                         <label class="form-lbl">Cash Discount Amount</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-opta-discount" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->option_a_discount ?? 1501 }}">
+                            <input type="number" id="fee-opta-discount" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->option_a_discount ?? 1501); ?>">
                         </div>
                         <small class="text-muted" style="font-size:10px;">~20% discount on total</small>
                     </div>
                 </div>
 
-                {{-- Option B --}}
+                
                 <h6 class="mb-3" style="font-weight:700; color:var(--text);"><i class="bi bi-calendar-month me-2"></i>Option B: Monthly Payment (All Levels)</h6>
                 <div class="row g-3 mb-3">
                     <div class="col-md-2" style="width:18%;">
@@ -118,14 +118,14 @@
                         <label class="form-lbl">Tuition/Mo</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optb-monthly-tuition" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optb_monthly_tuition ?? 833.89 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optb-monthly-tuition" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optb_monthly_tuition ?? 833.89); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                     </div>
                     <div class="col-md-2" style="width:18%;">
                         <label class="form-lbl">Electric/Mo</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optb-monthly-electric" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optb_monthly_electric ?? 222.22 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optb-monthly-electric" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optb_monthly_electric ?? 222.22); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                     </div>
                 </div>
@@ -134,7 +134,7 @@
                         <label class="form-lbl">Nursery DP</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optb-dp-nursery" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optb_dp_nursery ?? 6500 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optb-dp-nursery" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optb_dp_nursery ?? 6500); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                         <small class="text-muted" style="font-size:9px;">(Books + Insurance + Misc/REG./PTA)</small>
                     </div>
@@ -142,7 +142,7 @@
                         <label class="form-lbl">Kinder DP</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optb-dp-kinder" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optb_dp_kinder ?? 6500 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optb-dp-kinder" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optb_dp_kinder ?? 6500); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                         <small class="text-muted" style="font-size:9px;">(Books + Insurance + Misc/REG./PTA)</small>
                     </div>
@@ -150,7 +150,7 @@
                         <label class="form-lbl">Grade 1-2 DP</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optb-dp-grade1" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optb_dp_grade1 ?? 7500 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optb-dp-grade1" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optb_dp_grade1 ?? 7500); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                         <small class="text-muted" style="font-size:9px;">(Books + Insurance + Misc/REG./PTA)</small>
                     </div>
@@ -158,7 +158,7 @@
                         <label class="form-lbl">Grade 3 DP</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optb-dp-grade3" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optb_dp_grade3 ?? 8000 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optb-dp-grade3" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optb_dp_grade3 ?? 8000); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                         <small class="text-muted" style="font-size:9px;">(Books + Insurance + Misc/REG./PTA)</small>
                     </div>
@@ -166,13 +166,13 @@
                         <label class="form-lbl">Grade 4-6 DP</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optb-dp-grade4" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optb_dp_grade4 ?? 8500 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optb-dp-grade4" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optb_dp_grade4 ?? 8500); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                         <small class="text-muted" style="font-size:9px;">(Books + Insurance + Misc/REG./PTA)</small>
                     </div>
                 </div>
 
-                {{-- Option C --}}
+                
                 <h6 class="mb-3" style="font-weight:700; color:var(--text);"><i class="bi bi-mortarboard me-2"></i>Option C: Elem. Pupils Only (Grade 1-6)</h6>
                 <div class="row g-3 mb-3">
                     <div class="col-md-2" style="width:18%;">
@@ -186,21 +186,21 @@
                         <label class="form-lbl">Tuition/Mo</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optc-monthly-tuition" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optc_monthly_tuition ?? 833.89 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optc-monthly-tuition" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optc_monthly_tuition ?? 833.89); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                     </div>
                     <div class="col-md-2" style="width:18%;">
                         <label class="form-lbl">Misc/Mo</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optc-monthly-misc" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optc_monthly_misc ?? 311.11 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optc-monthly-misc" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optc_monthly_misc ?? 311.11); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                     </div>
                     <div class="col-md-2" style="width:18%;">
                         <label class="form-lbl">Electric/Mo</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optc-monthly-electric" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optc_monthly_electric ?? 222.22 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optc-monthly-electric" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optc_monthly_electric ?? 222.22); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                     </div>
                 </div>
@@ -209,7 +209,7 @@
                         <label class="form-lbl">Grade 1-2 Downpayment</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optc-dp-grade1" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optc_dp_grade1 ?? 5500 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optc-dp-grade1" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optc_dp_grade1 ?? 5500); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                         <small class="text-muted" style="font-size:9px;">(Books + Insurance + Registration/PTA)</small>
                     </div>
@@ -217,7 +217,7 @@
                         <label class="form-lbl">Grade 3 Downpayment</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optc-dp-grade3" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optc_dp_grade3 ?? 6000 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optc-dp-grade3" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optc_dp_grade3 ?? 6000); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                         <small class="text-muted" style="font-size:9px;">(Books + Insurance + Registration/PTA)</small>
                     </div>
@@ -225,13 +225,13 @@
                         <label class="form-lbl">Grade 4-6 Downpayment</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optc-dp-grade4" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optc_dp_grade4 ?? 6500 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optc-dp-grade4" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optc_dp_grade4 ?? 6500); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                         <small class="text-muted" style="font-size:9px;">(Books + Insurance + Registration/PTA)</small>
                     </div>
                 </div>
 
-                {{-- Option D --}}
+                
                 <h6 class="mb-3" style="font-weight:700; color:var(--text);"><i class="bi bi-balloon me-2"></i>Option D: Pre-Elem Only (Nursery/Kinder)</h6>
                 <div class="row g-3 mb-3">
                     <div class="col-md-2" style="width:18%;">
@@ -245,21 +245,21 @@
                         <label class="form-lbl">Tuition/Mo</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optd-monthly-tuition" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optd_monthly_tuition ?? 833.89 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optd-monthly-tuition" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optd_monthly_tuition ?? 833.89); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                     </div>
                     <div class="col-md-2" style="width:18%;">
                         <label class="form-lbl">Misc/Mo</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optd-monthly-misc" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optd_monthly_misc ?? 311.11 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optd-monthly-misc" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optd_monthly_misc ?? 311.11); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                     </div>
                     <div class="col-md-2" style="width:18%;">
                         <label class="form-lbl">Electric/Mo</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optd-monthly-electric" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optd_monthly_electric ?? 222.22 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optd-monthly-electric" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optd_monthly_electric ?? 222.22); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                     </div>
                 </div>
@@ -268,7 +268,7 @@
                         <label class="form-lbl">Nursery Downpayment</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optd-dp-nursery" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optd_dp_nursery ?? 4505 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optd-dp-nursery" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optd_dp_nursery ?? 4505); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                         <small class="text-muted" style="font-size:9px;">(Books + Insurance + Registration/PTA)</small>
                     </div>
@@ -276,7 +276,7 @@
                         <label class="form-lbl">Kinder Downpayment</label>
                         <div class="input-group">
                             <span class="input-group-text" style="background:var(--blue-pale);border:1.5px solid var(--border);border-right:none;font-size:12px;">₱</span>
-                            <input type="number" id="fee-optd-dp-kinder" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="{{ $feeSettings->optd_dp_kinder ?? 4505 }}" oninput="recalculateMonthlyFees()">
+                            <input type="number" id="fee-optd-dp-kinder" class="form-fld" style="border-top-left-radius:0;border-bottom-left-radius:0;" min="0" step="0.01" value="<?php echo e($feeSettings->optd_dp_kinder ?? 4505); ?>" oninput="recalculateMonthlyFees()">
                         </div>
                         <small class="text-muted" style="font-size:9px;">(Books + Insurance + Registration/PTA)</small>
                     </div>
@@ -284,30 +284,30 @@
             </div>
         </div>
 
-        {{-- Summary Card --}}
+        
         <div class="alert alert-info mb-4" style="background:#e3f2fd;border:1px solid #90caf9;border-radius:8px;padding:16px;">
             <h6 style="font-weight:700;color:#1565c0;margin-bottom:12px;"><i class="bi bi-info-circle me-2"></i>Fee Summary Reference</h6>
             <div class="row" style="font-size:12px;">
                 <div class="col-md-3">
-                    <strong>Nursery/Kinder:</strong> <span id="summary-nursery">₱{{ number_format(($feeSettings->tuition ?? 7505) + ($feeSettings->misc ?? 2800) + ($feeSettings->books_nursery ?? 3550) + ($feeSettings->insurance ?? 150) + ($feeSettings->electric ?? 2000), 2) }}</span><br>
-                    <small class="text-muted" id="summary-nursery-breakdown">({{ ($feeSettings->tuition ?? 7505) . '+' . ($feeSettings->misc ?? 2800) . '+' . ($feeSettings->books_nursery ?? 3550) . '+' . ($feeSettings->insurance ?? 150) . '+' . ($feeSettings->electric ?? 2000) }})</small>
+                    <strong>Nursery/Kinder:</strong> <span id="summary-nursery">₱<?php echo e(number_format(($feeSettings->tuition ?? 7505) + ($feeSettings->misc ?? 2800) + ($feeSettings->books_nursery ?? 3550) + ($feeSettings->insurance ?? 150) + ($feeSettings->electric ?? 2000), 2)); ?></span><br>
+                    <small class="text-muted" id="summary-nursery-breakdown">(<?php echo e(($feeSettings->tuition ?? 7505) . '+' . ($feeSettings->misc ?? 2800) . '+' . ($feeSettings->books_nursery ?? 3550) . '+' . ($feeSettings->insurance ?? 150) . '+' . ($feeSettings->electric ?? 2000)); ?>)</small>
                 </div>
                 <div class="col-md-3">
-                    <strong>Grade 1-2:</strong> <span id="summary-grade1">₱{{ number_format(($feeSettings->tuition ?? 7505) + ($feeSettings->misc ?? 2800) + ($feeSettings->books_grade1 ?? 4550) + ($feeSettings->insurance ?? 150) + ($feeSettings->electric ?? 2000), 2) }}</span><br>
-                    <small class="text-muted" id="summary-grade1-breakdown">({{ ($feeSettings->tuition ?? 7505) . '+' . ($feeSettings->misc ?? 2800) . '+' . ($feeSettings->books_grade1 ?? 4550) . '+' . ($feeSettings->insurance ?? 150) . '+' . ($feeSettings->electric ?? 2000) }})</small>
+                    <strong>Grade 1-2:</strong> <span id="summary-grade1">₱<?php echo e(number_format(($feeSettings->tuition ?? 7505) + ($feeSettings->misc ?? 2800) + ($feeSettings->books_grade1 ?? 4550) + ($feeSettings->insurance ?? 150) + ($feeSettings->electric ?? 2000), 2)); ?></span><br>
+                    <small class="text-muted" id="summary-grade1-breakdown">(<?php echo e(($feeSettings->tuition ?? 7505) . '+' . ($feeSettings->misc ?? 2800) . '+' . ($feeSettings->books_grade1 ?? 4550) . '+' . ($feeSettings->insurance ?? 150) . '+' . ($feeSettings->electric ?? 2000)); ?>)</small>
                 </div>
                 <div class="col-md-3">
-                    <strong>Grade 3:</strong> <span id="summary-grade3">₱{{ number_format(($feeSettings->tuition ?? 7505) + ($feeSettings->misc ?? 2800) + ($feeSettings->books_grade3 ?? 5050) + ($feeSettings->insurance ?? 150) + ($feeSettings->electric ?? 2000), 2) }}</span><br>
-                    <small class="text-muted" id="summary-grade3-breakdown">({{ ($feeSettings->tuition ?? 7505) . '+' . ($feeSettings->misc ?? 2800) . '+' . ($feeSettings->books_grade3 ?? 5050) . '+' . ($feeSettings->insurance ?? 150) . '+' . ($feeSettings->electric ?? 2000) }})</small>
+                    <strong>Grade 3:</strong> <span id="summary-grade3">₱<?php echo e(number_format(($feeSettings->tuition ?? 7505) + ($feeSettings->misc ?? 2800) + ($feeSettings->books_grade3 ?? 5050) + ($feeSettings->insurance ?? 150) + ($feeSettings->electric ?? 2000), 2)); ?></span><br>
+                    <small class="text-muted" id="summary-grade3-breakdown">(<?php echo e(($feeSettings->tuition ?? 7505) . '+' . ($feeSettings->misc ?? 2800) . '+' . ($feeSettings->books_grade3 ?? 5050) . '+' . ($feeSettings->insurance ?? 150) . '+' . ($feeSettings->electric ?? 2000)); ?>)</small>
                 </div>
                 <div class="col-md-3">
-                    <strong>Grade 4-6:</strong> <span id="summary-grade4">₱{{ number_format(($feeSettings->tuition ?? 7505) + ($feeSettings->misc ?? 2800) + ($feeSettings->books_grade4 ?? 5550) + ($feeSettings->insurance ?? 150) + ($feeSettings->electric ?? 2000), 2) }}</span><br>
-                    <small class="text-muted" id="summary-grade4-breakdown">({{ ($feeSettings->tuition ?? 7505) . '+' . ($feeSettings->misc ?? 2800) . '+' . ($feeSettings->books_grade4 ?? 5550) . '+' . ($feeSettings->insurance ?? 150) . '+' . ($feeSettings->electric ?? 2000) }})</small>
+                    <strong>Grade 4-6:</strong> <span id="summary-grade4">₱<?php echo e(number_format(($feeSettings->tuition ?? 7505) + ($feeSettings->misc ?? 2800) + ($feeSettings->books_grade4 ?? 5550) + ($feeSettings->insurance ?? 150) + ($feeSettings->electric ?? 2000), 2)); ?></span><br>
+                    <small class="text-muted" id="summary-grade4-breakdown">(<?php echo e(($feeSettings->tuition ?? 7505) . '+' . ($feeSettings->misc ?? 2800) . '+' . ($feeSettings->books_grade4 ?? 5550) . '+' . ($feeSettings->insurance ?? 150) . '+' . ($feeSettings->electric ?? 2000)); ?>)</small>
                 </div>
             </div>
         </div>
 
-        {{-- Save Button --}}
+        
         <div class="d-flex justify-content-end">
             <button id="btn-save-fees" class="btn-dash btn-primary" onclick="confirmSaveFeeSettings()">
                 <span id="btn-save-fees-text"><i class="bi bi-floppy-fill me-1"></i> Save Fee Settings</span>
@@ -482,21 +482,22 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($feeBreakdowns as $grade => $breakdown)
+                            <?php $__currentLoopData = $feeBreakdowns; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $grade => $breakdown): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                 <tr>
-                                    <td style="text-transform: capitalize;">{{ str_replace(['grade', 'nursery', 'kindergarten'], ['Grade ', 'Nursery', 'Kindergarten'], $grade) }}</td>
-                                    <td>₱{{ number_format($breakdown['tuition'], 2) }}</td>
-                                    <td>₱{{ number_format($breakdown['misc'], 2) }}</td>
-                                    <td>₱{{ number_format($breakdown['insurance'], 2) }}</td>
-                                    <td>₱{{ number_format($breakdown['electric'], 2) }}</td>
-                                    <td>₱{{ number_format($breakdown['books'], 2) }}</td>
-                                    <td style="font-weight: 700; color: var(--blue);">₱{{ number_format($breakdown['base_total'], 2) }}</td>
+                                    <td style="text-transform: capitalize;"><?php echo e(str_replace(['grade', 'nursery', 'kindergarten'], ['Grade ', 'Nursery', 'Kindergarten'], $grade)); ?></td>
+                                    <td>₱<?php echo e(number_format($breakdown['tuition'], 2)); ?></td>
+                                    <td>₱<?php echo e(number_format($breakdown['misc'], 2)); ?></td>
+                                    <td>₱<?php echo e(number_format($breakdown['insurance'], 2)); ?></td>
+                                    <td>₱<?php echo e(number_format($breakdown['electric'], 2)); ?></td>
+                                    <td>₱<?php echo e(number_format($breakdown['books'], 2)); ?></td>
+                                    <td style="font-weight: 700; color: var(--blue);">₱<?php echo e(number_format($breakdown['base_total'], 2)); ?></td>
                                 </tr>
-                            @endforeach
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-    </div>{{-- /section-fees --}}
+    </div>
+<?php /**PATH C:\Users\ron28\Desktop\ILC SYSTEM\ilc-website-system\resources\views/admin/sections/fees.blade.php ENDPATH**/ ?>

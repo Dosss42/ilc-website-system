@@ -30,16 +30,17 @@
             top: 0;
             width: 260px;
             height: 100vh;
-            background: linear-gradient(180deg, var(--blue) 0%, var(--blue-light) 100%);
+            background: linear-gradient(180deg, #162f5c 0%, #1a3a6c 60%, #1c3f78 100%);
+            box-shadow: 3px 0 18px rgba(0,0,0,0.18);
             z-index: 1000;
             overflow-y: auto;
         }
-        
+
         .sidebar-header {
             padding: 24px 20px;
             border-bottom: 1px solid rgba(255,255,255,0.1);
         }
-        
+
         .sidebar-brand {
             display: flex;
             align-items: center;
@@ -47,46 +48,77 @@
             color: #fff;
             text-decoration: none;
         }
-        
+
         .sidebar-brand i {
             font-size: 28px;
             color: var(--gold);
         }
-        
+
+        /* Brand block — same markup/classes as every other portal now
+           (was a bare icon + single-line "Finance Portal"/"Payment Review"
+           label before). */
+        .brand-logo-circle {
+            width: 32px; height: 32px; border-radius: 50%;
+            overflow: hidden; border: 2px solid rgba(255,255,255,0.3);
+            background: rgba(255,255,255,0.1);
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .brand-logo-circle img { width: 100%; height: 100%; object-fit: cover; }
+        .brand-logo-circle i   { color: rgba(255,255,255,0.5); font-size: 14px; }
+        .brand-info h6 {
+            font-size: 11px; font-weight: 700; color: #fff;
+            margin: 0; line-height: 1.2;
+            text-transform: uppercase; letter-spacing: 0.3px;
+        }
+        .brand-info span { font-size: 9px; color: rgba(255,255,255,0.55); }
+
         .sidebar-menu {
             padding: 16px 0;
         }
-        
+
         .menu-section {
-            padding: 8px 20px;
-            color: rgba(255,255,255,0.5);
-            font-size: 11px;
-            font-weight: 600;
+            padding: 14px 20px 5px;
+            color: rgba(255,255,255,0.3);
+            font-size: 9px;
+            font-weight: 700;
             text-transform: uppercase;
+            letter-spacing: 1.6px;
         }
-        
+
         .menu-item {
             display: flex;
             align-items: center;
             gap: 12px;
-            padding: 12px 20px;
-            color: rgba(255,255,255,0.8);
+            padding: 10px 20px 10px 17px;
+            color: rgba(255,255,255,0.7);
             text-decoration: none;
             transition: all 0.2s;
             border-left: 3px solid transparent;
+            font-size: 13px;
         }
-        
+
         .menu-item:hover, .menu-item.active {
             background: rgba(255,255,255,0.1);
             color: #fff;
             border-left-color: var(--gold);
         }
-        
+        .menu-item.active { background: rgba(197,160,89,0.12); }
+
+        /* Icon badge — each nav icon sits in its own rounded square,
+           matching the Cashier portal's sidebar (the shared reference
+           look across every portal now). */
         .menu-item i {
-            font-size: 18px;
-            width: 24px;
-            text-align: center;
+            font-size: 15px;
+            width: 30px; height: 30px;
+            border-radius: 8px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(255,255,255,0.06);
+            transition: background 0.18s;
+            flex-shrink: 0;
         }
+        .menu-item:hover i { background: rgba(255,255,255,0.12); }
+        .menu-item.active i { background: rgba(197,160,89,0.25); color: var(--gold); }
         
         .main-content {
             margin-left: 260px;
@@ -291,8 +323,14 @@
         @if(($viewerContext ?? 'finance') === 'finance')
         <div class="sidebar-header">
             <a href="{{ route('finance.dashboard') }}" class="sidebar-brand">
-                <i class="bi bi-wallet2"></i>
-                <span>Finance Portal</span>
+                <div class="brand-logo-circle">
+                    <img src="/images/logo.png" alt=""
+                         onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\'bi bi-wallet2\'></i>'">
+                </div>
+                <div class="brand-info">
+                    <h6>IEMELIF Learning Center</h6>
+                    <span>General Tinio, Nueva Ecija</span>
+                </div>
             </a>
         </div>
         <nav class="sidebar-menu">
@@ -324,7 +362,7 @@
                 <i class="bi bi-gear-fill"></i>
                 Settings
             </a>
-            <form method="POST" action="{{ route('finance.logout') }}" style="margin: 0;">
+            <form method="POST" action="{{ route('finance.logout') }}" style="margin: 0;" onsubmit="return confirmLogout(this)">
                 @csrf
                 <button type="submit" class="menu-item" style="width: 100%; background: none; border: none; cursor: pointer;">
                     <i class="bi bi-box-arrow-left"></i>
@@ -339,8 +377,14 @@
              dashboard instead. --}}
         <div class="sidebar-header">
             <a href="{{ route('admin.dashboard') }}" class="sidebar-brand">
-                <i class="bi bi-wallet2"></i>
-                <span>Payment Review</span>
+                <div class="brand-logo-circle">
+                    <img src="/images/logo.png" alt=""
+                         onerror="this.style.display='none';this.parentElement.innerHTML='<i class=\'bi bi-wallet2\'></i>'">
+                </div>
+                <div class="brand-info">
+                    <h6>IEMELIF Learning Center</h6>
+                    <span>General Tinio, Nueva Ecija</span>
+                </div>
             </a>
         </div>
         <nav class="sidebar-menu">
@@ -566,9 +610,9 @@
                         </div>
                         <div class="card-body">
                             <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                                <form method="POST" action="{{ route('admin.payments.approve', $document) }}" style="display: inline;">
+                                <form method="POST" action="{{ route('admin.payments.approve', $document) }}" style="display: inline;" onsubmit="return confirmApprovePayment(this)">
                                     @csrf
-                                    <button type="submit" class="btn-approve" onclick="return confirm('Are you sure you want to APPROVE this payment?')">
+                                    <button type="submit" class="btn-approve">
                                         <i class="bi bi-check-lg"></i> Approve Payment
                                     </button>
                                 </form>
@@ -659,5 +703,62 @@
     @endif
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // ── Confirmation modal ── replaces native confirm() popups with a
+        // styled, on-brand dialog (same look across every portal now).
+        // onConfirm runs only if the user clicks the confirm button;
+        // nothing runs on cancel/backdrop-click/Escape.
+        function showConfirm(message, onConfirm, opts) {
+            opts = opts || {};
+            var title = opts.title || 'Please Confirm';
+            var confirmLabel = opts.confirmLabel || 'Yes, Continue';
+            var danger = !!opts.danger;
+            var iconBg = danger ? '#fdecea' : '#fff8ec';
+            var iconColor = danger ? '#c0392b' : '#b45309';
+            var okBg = danger ? '#dc2626' : '#1a3a6c';
+
+            var overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:100000;display:flex;align-items:center;justify-content:center;padding:20px;';
+
+            var box = document.createElement('div');
+            box.style.cssText = 'background:#fff;border-radius:16px;padding:28px 26px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center;font-family:\'Open Sans\',sans-serif;';
+            box.innerHTML =
+                '<div style="width:52px;height:52px;border-radius:50%;background:' + iconBg + ';display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">' +
+                    '<i class="bi ' + (danger ? 'bi-exclamation-triangle-fill' : 'bi-question-circle-fill') + '" style="font-size:24px;color:' + iconColor + ';"></i>' +
+                '</div>' +
+                '<div style="font-size:15px;font-weight:700;color:#1a3a6c;margin-bottom:6px;">' + title + '</div>' +
+                '<div style="font-size:13px;color:#64748b;line-height:1.5;margin-bottom:20px;">' + message + '</div>' +
+                '<div style="display:flex;gap:10px;">' +
+                    '<button type="button" id="ilc-confirm-cancel" style="flex:1;padding:10px;border-radius:9px;border:1.5px solid #e2e8f0;background:#fff;color:#334155;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;">Cancel</button>' +
+                    '<button type="button" id="ilc-confirm-ok" style="flex:1;padding:10px;border-radius:9px;border:none;background:' + okBg + ';color:#fff;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;">' + confirmLabel + '</button>' +
+                '</div>';
+
+            overlay.appendChild(box);
+            document.body.appendChild(overlay);
+
+            function close() {
+                overlay.remove();
+                document.removeEventListener('keydown', onKey);
+            }
+            function onKey(e) { if (e.key === 'Escape') close(); }
+            document.addEventListener('keydown', onKey);
+
+            box.querySelector('#ilc-confirm-cancel').onclick = close;
+            box.querySelector('#ilc-confirm-ok').onclick = function () { close(); onConfirm(); };
+            overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
+        }
+
+        function confirmLogout(form) {
+            showConfirm('Are you sure you want to log out?', function () { form.submit(); },
+                { title: 'Log Out', confirmLabel: 'Log Out', danger: true });
+            return false;
+        }
+
+        function confirmApprovePayment(form) {
+            showConfirm('Are you sure you want to APPROVE this payment?', function () { form.submit(); },
+                { title: 'Approve Payment', confirmLabel: 'Approve' });
+            return false;
+        }
+    </script>
 </body>
 </html>
