@@ -868,15 +868,13 @@ function loadGuidanceSection(url) {
             return r.text();
         })
         .then(html => {
-            container.innerHTML = html;
-            container.removeAttribute('data-loading');
+            swapSectionContent('guidance', html, () => container.removeAttribute('data-loading'));
         })
         .catch(() => {
-            container.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#dc2626;">' +
+            swapSectionContent('guidance', '<div style="text-align:center;padding:60px 20px;color:#dc2626;">' +
                 '<i class="bi bi-exclamation-triangle-fill" style="font-size:32px;display:block;margin-bottom:10px;"></i>' +
                 'Failed to load Guidance Records. <button onclick="loadGuidanceSection(\'' + url.replace(/'/g, "\\'") + '\')" style="margin-left:8px;padding:4px 12px;border:1px solid #dc2626;background:#fff;color:#dc2626;border-radius:6px;cursor:pointer;">Retry</button>' +
-                '</div>';
-            container.removeAttribute('data-loading');
+                '</div>', () => container.removeAttribute('data-loading'));
         });
 }
 
@@ -916,12 +914,12 @@ function loadAnnouncementsSection(url) {
             if (!r.ok) throw new Error('HTTP ' + r.status);
             return r.text();
         })
-        .then(html => { container.innerHTML = html; })
+        .then(html => { swapSectionContent('announcements', html); })
         .catch(() => {
-            container.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#dc2626;">' +
+            swapSectionContent('announcements', '<div style="text-align:center;padding:60px 20px;color:#dc2626;">' +
                 '<i class="bi bi-exclamation-triangle-fill" style="font-size:32px;display:block;margin-bottom:10px;"></i>' +
                 'Failed to load Announcements. <button onclick="loadAnnouncementsSection(\'' + url.replace(/'/g, "\\'") + '\')" style="margin-left:8px;padding:4px 12px;border:1px solid #dc2626;background:#fff;color:#dc2626;border-radius:6px;cursor:pointer;">Retry</button>' +
-                '</div>';
+                '</div>');
         });
 }
 document.addEventListener('click', function (e) {
@@ -942,12 +940,12 @@ function loadNewsSection(url) {
             if (!r.ok) throw new Error('HTTP ' + r.status);
             return r.text();
         })
-        .then(html => { container.innerHTML = html; })
+        .then(html => { swapSectionContent('news', html); })
         .catch(() => {
-            container.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#dc2626;">' +
+            swapSectionContent('news', '<div style="text-align:center;padding:60px 20px;color:#dc2626;">' +
                 '<i class="bi bi-exclamation-triangle-fill" style="font-size:32px;display:block;margin-bottom:10px;"></i>' +
                 'Failed to load News. <button onclick="loadNewsSection(\'' + url.replace(/'/g, "\\'") + '\')" style="margin-left:8px;padding:4px 12px;border:1px solid #dc2626;background:#fff;color:#dc2626;border-radius:6px;cursor:pointer;">Retry</button>' +
-                '</div>';
+                '</div>');
         });
 }
 document.addEventListener('click', function (e) {
@@ -972,12 +970,12 @@ function loadArchivesSection(url) {
             if (!r.ok) throw new Error('HTTP ' + r.status);
             return r.text();
         })
-        .then(html => { container.innerHTML = html; })
+        .then(html => { swapSectionContent('archives', html); })
         .catch(() => {
-            container.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#dc2626;">' +
+            swapSectionContent('archives', '<div style="text-align:center;padding:60px 20px;color:#dc2626;">' +
                 '<i class="bi bi-exclamation-triangle-fill" style="font-size:32px;display:block;margin-bottom:10px;"></i>' +
                 'Failed to load Archives. <button onclick="loadArchivesSection(\'' + url.replace(/'/g, "\\'") + '\')" style="margin-left:8px;padding:4px 12px;border:1px solid #dc2626;background:#fff;color:#dc2626;border-radius:6px;cursor:pointer;">Retry</button>' +
-                '</div>';
+                '</div>');
         });
 }
 document.addEventListener('click', function (e) {
@@ -1000,12 +998,12 @@ function loadEnrollmentSection(url) {
             if (!r.ok) throw new Error('HTTP ' + r.status);
             return r.text();
         })
-        .then(html => { container.innerHTML = html; })
+        .then(html => { swapSectionContent('enrollment', html); })
         .catch(() => {
-            container.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#dc2626;">' +
+            swapSectionContent('enrollment', '<div style="text-align:center;padding:60px 20px;color:#dc2626;">' +
                 '<i class="bi bi-exclamation-triangle-fill" style="font-size:32px;display:block;margin-bottom:10px;"></i>' +
                 'Failed to load Enrollment Management. <button onclick="loadEnrollmentSection(\'' + url.replace(/'/g, "\\'") + '\')" style="margin-left:8px;padding:4px 12px;border:1px solid #dc2626;background:#fff;color:#dc2626;border-radius:6px;cursor:pointer;">Retry</button>' +
-                '</div>';
+                '</div>');
         });
 }
 document.addEventListener('click', function (e) {
@@ -1033,12 +1031,12 @@ function loadStudentsSection(url) {
             if (!r.ok) throw new Error('HTTP ' + r.status);
             return r.text();
         })
-        .then(html => { container.innerHTML = html; })
+        .then(html => { swapSectionContent('students', html); })
         .catch(() => {
-            container.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#dc2626;">' +
+            swapSectionContent('students', '<div style="text-align:center;padding:60px 20px;color:#dc2626;">' +
                 '<i class="bi bi-exclamation-triangle-fill" style="font-size:32px;display:block;margin-bottom:10px;"></i>' +
                 'Failed to load Student Management. <button onclick="loadStudentsSection(\'' + url.replace(/'/g, "\\'") + '\')" style="margin-left:8px;padding:4px 12px;border:1px solid #dc2626;background:#fff;color:#dc2626;border-radius:6px;cursor:pointer;">Retry</button>' +
-                '</div>';
+                '</div>');
         });
 }
 document.addEventListener('submit', function (e) {
@@ -1076,12 +1074,12 @@ function loadSubjectsSection(url) {
             if (!r.ok) throw new Error('HTTP ' + r.status);
             return r.text();
         })
-        .then(html => { container.innerHTML = html; })
+        .then(html => { swapSectionContent('subjects', html); })
         .catch(() => {
-            container.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#dc2626;">' +
+            swapSectionContent('subjects', '<div style="text-align:center;padding:60px 20px;color:#dc2626;">' +
                 '<i class="bi bi-exclamation-triangle-fill" style="font-size:32px;display:block;margin-bottom:10px;"></i>' +
                 'Failed to load Subject Management. <button onclick="loadSubjectsSection(\'' + url.replace(/'/g, "\\'") + '\')" style="margin-left:8px;padding:4px 12px;border:1px solid #dc2626;background:#fff;color:#dc2626;border-radius:6px;cursor:pointer;">Retry</button>' +
-                '</div>';
+                '</div>');
         });
 }
 document.addEventListener('click', function (e) {
@@ -1117,21 +1115,22 @@ function loadReportsSection(url) {
             return r.text();
         })
         .then(html => {
-            container.innerHTML = html;
-            const params = new URL(url, window.location.origin).searchParams;
-            const rptTab = params.get('rpt_tab');
-            const rptSubreport = params.get('rpt_subreport');
-            if (rptTab) {
-                switchRptTab(rptTab);
-                if (rptSubreport) switchRptSubReport(rptTab, rptSubreport);
-            }
-            if (typeof initReportsCharts === 'function') initReportsCharts();
+            swapSectionContent('reports', html, () => {
+                const params = new URL(url, window.location.origin).searchParams;
+                const rptTab = params.get('rpt_tab');
+                const rptSubreport = params.get('rpt_subreport');
+                if (rptTab) {
+                    switchRptTab(rptTab);
+                    if (rptSubreport) switchRptSubReport(rptTab, rptSubreport);
+                }
+                if (typeof initReportsCharts === 'function') initReportsCharts();
+            });
         })
         .catch(() => {
-            container.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#dc2626;">' +
+            swapSectionContent('reports', '<div style="text-align:center;padding:60px 20px;color:#dc2626;">' +
                 '<i class="bi bi-exclamation-triangle-fill" style="font-size:32px;display:block;margin-bottom:10px;"></i>' +
                 'Failed to load Reports. <button onclick="loadReportsSection(\'' + url.replace(/'/g, "\\'") + '\')" style="margin-left:8px;padding:4px 12px;border:1px solid #dc2626;background:#fff;color:#dc2626;border-radius:6px;cursor:pointer;">Retry</button>' +
-                '</div>';
+                '</div>');
         });
 }
 document.addEventListener('click', function (e) {
@@ -1187,18 +1186,72 @@ function escHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
+// Sections whose content is fetched on demand (GET admin.section.*) rather
+// than already being present in the page's initial HTML — their skeleton
+// has to stay visible until that fetch actually resolves (see
+// swapSectionContent, called from each load*Section() below), not
+// disappear on a fixed timer regardless of whether the content has
+// actually arrived yet.
+const _ASYNC_SECTIONS = ['guidance', 'announcements', 'news', 'archives', 'enrollment', 'students', 'subjects', 'reports'];
+
+// Same minimum-visible + fade timing used everywhere — both for async
+// sections (where this is a real floor under how fast the fetch could
+// resolve) and already-rendered ones (where it's just the fixed cosmetic
+// transition), so every section's skeleton feels the same speed.
+const _SKEL_MIN_MS = 350;
+const _SKEL_FADE_MS = 320;
+
 function applySectionSkeleton(name) {
     var el = document.getElementById('section-' + name);
     if (!el) return;
     var old = el.querySelector('.p-skel'); if (old) old.remove();
     var s = document.createElement('div');
     s.className = 'p-skel';
+    s.dataset.shownAt = String(Date.now());
     s.innerHTML = _buildSkelHTML();
     el.appendChild(s);
+
+    if (_ASYNC_SECTIONS.includes(name)) {
+        // Left visible — swapSectionContent(name, ...) below replaces it
+        // once the section's own fetch actually completes.
+        return;
+    }
+
+    // Already-rendered sections: this skeleton is purely a brief visual
+    // transition, so it's safe to clear on a fixed timer.
     setTimeout(function() {
         s.style.opacity = '0';
-        setTimeout(function() { if (s.parentNode) s.remove(); }, 320);
-    }, 350);
+        setTimeout(function() { if (s.parentNode) s.remove(); }, _SKEL_FADE_MS);
+    }, _SKEL_MIN_MS);
+}
+
+// Swaps an async section's content in once its fetch resolves — used
+// instead of a plain `container.innerHTML = html` because that alone
+// destroys the skeleton overlay as a side effect of replacing every
+// child (it's appended inside the same container), with no transition:
+// content would just snap in instantly the moment the fetch finishes.
+// This waits out _SKEL_MIN_MS first, then re-attaches the (still-valid,
+// just detached) skeleton node on top of the new content and fades IT
+// out, producing an actual crossfade instead of an invisible one.
+function swapSectionContent(name, html, afterSwap) {
+    var container = document.getElementById('section-' + name);
+    if (!container) return;
+    var skel = container.querySelector('.p-skel');
+    var shownAt = skel ? (parseInt(skel.dataset.shownAt, 10) || 0) : 0;
+    var wait = skel ? Math.max(0, _SKEL_MIN_MS - (Date.now() - shownAt)) : 0;
+
+    setTimeout(function() {
+        if (skel && skel.parentNode) skel.remove(); // detach before the wipe, not as a side effect of it
+        container.innerHTML = html;
+        if (typeof afterSwap === 'function') afterSwap();
+        if (skel) {
+            container.appendChild(skel);
+            skel.style.transition = 'opacity ' + (_SKEL_FADE_MS / 1000) + 's ease';
+            skel.style.opacity = '1';
+            requestAnimationFrame(function() { skel.style.opacity = '0'; });
+            setTimeout(function() { if (skel.parentNode) skel.remove(); }, _SKEL_FADE_MS);
+        }
+    }, wait);
 }
 function _buildSkelHTML() {
     var c = '', r = '', i;

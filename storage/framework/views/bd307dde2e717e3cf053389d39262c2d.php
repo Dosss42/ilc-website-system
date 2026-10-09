@@ -32,7 +32,7 @@
 
                     <div>
 
-                        <div class="stat-value"><?php echo e(($students ?? collect())->count()); ?></div>
+                        <div class="stat-value"><?php echo e($recentStudents->total() ?? 0); ?></div>
 
                         <div class="stat-label">Total Students</div>
 

@@ -32,7 +32,7 @@
 
                     <div>
 
-                        <div class="stat-value">{{ ($students ?? collect())->count() }}</div>
+                        <div class="stat-value">{{ $recentStudents->total() ?? 0 }}</div>
 
                         <div class="stat-label">Total Students</div>
 
