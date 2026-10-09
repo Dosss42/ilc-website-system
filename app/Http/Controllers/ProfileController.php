@@ -337,7 +337,7 @@ class ProfileController extends Controller
             'total_complete' => $totalComplete,
             'total_sections' => $totalSections,
             'percentage' => round($percentage),
-            'is_complete' => $percentage === 100,
+            'is_complete' => $percentage == 100,
         ]);
     }
 }

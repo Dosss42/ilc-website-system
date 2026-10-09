@@ -1403,6 +1403,16 @@ class DashboardController extends Controller
             return response()->json(['success' => false, 'message' => 'Not assigned to this section.'], 403);
         }
 
+        if (!$this->teacherOwnsSubjectInSection($teacher->id, $request->section_id, $request->subject_id)) {
+            $hasAssignment = TeacherAssignment::where('teacher_id', $teacher->id)
+                ->where('section_id', $request->section_id)
+                ->where(fn($q) => $q->where('subject_id', $request->subject_id)->orWhereNull('subject_id'))
+                ->exists();
+            if (!$hasAssignment) {
+                return response()->json(['success' => false, 'message' => 'Not assigned to this subject.'], 403);
+            }
+        }
+
         $section = Section::findOrFail($request->section_id);
         $section = $this->loadSectionStudents($section);
         $validStudentIds = $section->students->pluck('id')->toArray();
@@ -1523,14 +1533,17 @@ class DashboardController extends Controller
 
         DB::beginTransaction();
         try {
-            // Remove previous drafts for same teacher/section/subject/term/school_year
+            // Remove previous drafts for same teacher/section/subject/term/school_year —
+            // scoped to only the students actually present in this import, not the
+            // whole section roster, so a student missing from a re-uploaded file
+            // doesn't silently lose a previously-entered draft.
             Grade::where('teacher_id', $teacher->id)
                 ->when($request->subject_id, fn($q) => $q->where('subject_id', $request->subject_id))
                 ->when(!$request->subject_id, fn($q) => $q->whereNull('subject_id'))
                 ->where('term', $request->term)
                 ->where('school_year', $schoolYear)
                 ->where('status', 'draft')
-                ->whereIn('student_id', $validStudentIds)
+                ->whereIn('student_id', array_column($rows, 'student_id'))
                 ->delete();
 
             foreach ($rows as $row) {
@@ -1614,6 +1627,16 @@ class DashboardController extends Controller
 
         if (!$this->teacherOwnsSection($teacher->id, $request->section_id)) {
             return response()->json(['success' => false, 'message' => 'Not assigned to this section.'], 403);
+        }
+
+        if (!$this->teacherOwnsSubjectInSection($teacher->id, $request->section_id, $request->subject_id)) {
+            $hasAssignment = TeacherAssignment::where('teacher_id', $teacher->id)
+                ->where('section_id', $request->section_id)
+                ->where(fn($q) => $q->where('subject_id', $request->subject_id)->orWhereNull('subject_id'))
+                ->exists();
+            if (!$hasAssignment) {
+                return response()->json(['success' => false, 'message' => 'Not assigned to this subject.'], 403);
+            }
         }
 
         $schoolYear = filled($request->school_year) ? $request->school_year : $this->getCurrentSchoolYear();
@@ -1726,11 +1749,15 @@ class DashboardController extends Controller
         $request->validate([
             'section_id' => 'required|exists:sections,id',
             'subject_id' => 'nullable|exists:subjects,id',
-            'date'       => 'required|date',
+            'date'       => 'required|date|before_or_equal:today',
         ]);
 
         if (!$this->teacherOwnsSection($teacher->id, $request->section_id)) {
             return response()->json(['success' => false, 'message' => 'Not assigned to this section.'], 403);
+        }
+
+        if (!$this->teacherOwnsSubjectInSection($teacher->id, $request->section_id, $request->subject_id)) {
+            return response()->json(['success' => false, 'message' => 'Not assigned to this subject in this section.'], 403);
         }
 
         $section = Section::findOrFail($request->section_id);
@@ -1761,7 +1788,7 @@ class DashboardController extends Controller
         $validated = $request->validate([
             'section_id'              => 'required|exists:sections,id',
             'subject_id'              => 'nullable|exists:subjects,id',
-            'date'                    => 'required|date',
+            'date'                    => 'required|date|before_or_equal:today',
             'records'                 => 'required|array',
             'records.*.student_id'    => 'required|exists:users,id',
             'records.*.status'        => 'required|in:present,absent,late,excused',
@@ -1770,6 +1797,23 @@ class DashboardController extends Controller
 
         if (!$this->teacherOwnsSection($teacher->id, $validated['section_id'])) {
             return response()->json(['success' => false, 'message' => 'Not assigned to this section.'], 403);
+        }
+
+        if (!$this->teacherOwnsSubjectInSection($teacher->id, $validated['section_id'], $validated['subject_id'] ?? null)) {
+            return response()->json(['success' => false, 'message' => 'Not assigned to this subject in this section.'], 403);
+        }
+
+        // Only students actually in this section may be marked — an owned
+        // section/subject alone doesn't imply an arbitrary student_id in the
+        // payload actually belongs to it.
+        $section = Section::findOrFail($validated['section_id']);
+        $section = $this->loadSectionStudents($section);
+        $validStudentIds = $section->students->pluck('id')->all();
+
+        foreach ($validated['records'] as $rec) {
+            if (!in_array($rec['student_id'], $validStudentIds)) {
+                return response()->json(['success' => false, 'message' => 'One or more students are not members of this section.'], 403);
+            }
         }
 
         DB::beginTransaction();
@@ -1859,6 +1903,21 @@ class DashboardController extends Controller
             'venue'        => 'nullable|string|max:255',
             'notes'        => 'nullable|string',
         ]);
+
+        // Only allow creating a PTC record for a student actually taught by
+        // this teacher (via an active schedule or an advisory assignment).
+        $teacherSectionIds = Schedule::where('teacher_id', $teacher->id)->where('is_active', true)->pluck('section_id')
+            ->merge(TeacherAssignment::where('teacher_id', $teacher->id)->where('is_advisory', true)->pluck('section_id'))
+            ->unique();
+
+        $studentBelongs = DB::table('section_student')
+            ->where('user_id', $request->student_id)
+            ->whereIn('section_id', $teacherSectionIds)
+            ->exists();
+
+        if (!$studentBelongs) {
+            return response()->json(['success' => false, 'message' => 'Student is not in any of your sections.'], 403);
+        }
 
         $ptc = ParentTeacherConference::create([
             'teacher_id'   => $teacher->id,

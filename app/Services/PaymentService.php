@@ -415,12 +415,20 @@ class PaymentService
             return;
         }
 
-        // How many monthly installments should be paid based on payment_amount
-        $amountForMonthly    = max(0, $totalPaid - $downpayment);
+        $installments = $enrollment->paymentInstallments;
+
+        // How many monthly installments should be paid based on payment_amount.
+        // payment_amount includes late fees already paid (incremented by
+        // amount + late_fee on approval, see Finance\DashboardController),
+        // so late fees on installments already marked 'paid' have to be
+        // subtracted here — otherwise every late fee paid inflates this count
+        // by a fraction of a month, and enough of them wrongly mark a
+        // never-paid installment as paid.
+        $alreadyCountedLateFees = $installments->where('status', 'paid')->sum('late_fee');
+        $amountForMonthly    = max(0, $totalPaid - $downpayment - $alreadyCountedLateFees);
         $expectedPaidMonths  = (int) floor($amountForMonthly / $monthly + 0.01); // +0.01 for float rounding
 
         // How many are currently marked paid
-        $installments      = $enrollment->paymentInstallments;
         $actualPaidMonths  = $installments->where('status', 'paid')->count();
         $toMark            = $expectedPaidMonths - $actualPaidMonths;
 

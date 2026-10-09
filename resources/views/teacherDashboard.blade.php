@@ -1375,9 +1375,11 @@
                         <select class="form-fld" id="att-subject">
                             <option value="">— Select Subject —</option>
                             @foreach($subjects ?? [] as $sub)
-                                <option value="{{ $sub->id }}">{{ $sub->name }}</option>
+                                <option value="{{ $sub->id }}" data-section-ids="{{ $teacherAssignments->where('subject_id', $sub->id)->pluck('section_id')->unique()->implode(',') }}">{{ $sub->name }}</option>
                             @endforeach
                             @if($teacherAssignments->whereNull('subject_id')->count() > 0)
+                                {{-- Deliberately no data-section-ids — this is a cross-section
+                                     catch-all for Nursery/Kindergarten, never filtered below. --}}
                                 <option value="all-subjects">All Subjects (Nursery/Kindergarten)</option>
                             @endif
                         </select>
@@ -1865,18 +1867,43 @@
         return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:22px;"><div><span class="skel" style="height:24px;width:190px;display:block;border-radius:4px;margin-bottom:8px;"></span><span class="skel" style="height:12px;width:140px;display:block;border-radius:4px;"></span></div><span class="skel" style="height:38px;width:110px;border-radius:8px;display:block;"></span></div><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:22px;">' + c + '</div><div style="background:#fff;border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;"><div style="padding:14px 18px;border-bottom:1px solid #f0f0f0;"><span class="skel" style="height:15px;width:130px;display:block;border-radius:4px;"></span></div>' + r + '</div>';
     }
 
-    // Auto-select first option in a select if only one real option exists
+    // Auto-select first option in a select if only one real (visible) option exists
     function autoSelectFirst(selectId) {
         const sel = document.getElementById(selectId);
         if (!sel) return;
-        const options = sel.querySelectorAll('option[value]:not([value=""])');
+        const options = Array.from(sel.querySelectorAll('option[value]:not([value=""])')).filter(o => !o.hidden);
         if (options.length === 1) sel.value = options[0].value;
     }
 
-    function onAttSectionChange() { autoSelectFirst('att-subject'); }
+    // The Subject dropdown previously listed a teacher's subjects across
+    // ALL their sections regardless of which section was selected, letting
+    // attendance be saved under a subject never taught in that section.
+    // This hides options that don't apply to the selected section instead.
+    function filterAttSubjectsForSection(sectionId) {
+        const subjectSel = document.getElementById('att-subject');
+        if (!subjectSel) return;
+        const currentValue = subjectSel.value;
+        let currentStillValid = false;
+        Array.from(subjectSel.options).forEach(function(opt) {
+            if (!opt.value) { opt.hidden = false; return; }
+            const ids = (opt.dataset.sectionIds || '').split(',').filter(Boolean);
+            // No section-ids data (the Nursery/Kinder "All Subjects" catch-all)
+            // is intentionally never filtered.
+            const visible = ids.length === 0 || ids.includes(String(sectionId));
+            opt.hidden = !visible;
+            if (visible && opt.value === currentValue) currentStillValid = true;
+        });
+        if (!currentStillValid) subjectSel.value = '';
+    }
+
+    function onAttSectionChange() {
+        filterAttSubjectsForSection(document.getElementById('att-section')?.value || '');
+        autoSelectFirst('att-subject');
+    }
 
     document.addEventListener('DOMContentLoaded', function() {
         autoSelectFirst('att-section');
+        filterAttSubjectsForSection(document.getElementById('att-section')?.value || '');
         autoSelectFirst('att-subject');
         @if(session('settings_tab') || session('password_success') || session('photo_success') || $errors->has('current_password'))
         showSection('settings');

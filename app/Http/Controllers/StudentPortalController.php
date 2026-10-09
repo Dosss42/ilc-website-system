@@ -251,8 +251,13 @@ class StudentPortalController extends Controller
         $autoAdvanceGrades = ['nursery', 'kindergarten'];
 
         if ($enrollment) {
+            // Exclude declined — a declined re-enrollment shouldn't count as
+            // "already has this year", or the student is permanently stuck
+            // with no way back to the re-enroll screen (submitReenrollment()
+            // itself already excludes declined the same way, below).
             $hasTargetYear = Enrollment::where('user_id', $user->id)
                 ->where('school_year', $targetSchoolYear)
+                ->whereNotIn('status', ['declined'])
                 ->exists();
 
             if (!$hasTargetYear) {
@@ -454,17 +459,6 @@ class StudentPortalController extends Controller
             'installment_id'    => 'nullable|integer',
             'number_of_months'  => 'nullable|integer|min:1',
         ]);
-
-        // Check if there's already a pending payment for this enrollment (prevent duplicates)
-        $existingPendingPayment = StudentDocument::where('enrollment_id', $enrollment->id)
-            ->where('document_type', 'payment_screenshot')
-            ->where('status', 'pending')
-            ->exists();
-
-        if ($existingPendingPayment) {
-            return redirect()->route('student.portal')
-                ->with('error', 'You already have a payment pending approval. Please wait for admin confirmation before submitting another.');
-        }
 
         // For installment payments - use PaymentService
         $isInstallment = $enrollment->payment_type === 'installment' || in_array($enrollment->payment_option, ['B', 'C', 'D']);
@@ -854,15 +848,18 @@ class StudentPortalController extends Controller
                 ->with('go_enrollment', true);
         }
 
-        // ── 8. Block re-upload of an already-approved document ────────────
-        $alreadyApproved = StudentDocument::where('user_id', $user->id)
+        // ── 8. Block re-upload of an already-approved or still-pending document ──
+        $existingDoc = StudentDocument::where('user_id', $user->id)
             ->where('document_type', $request->document_type)
-            ->where('status', 'approved')
-            ->exists();
+            ->whereIn('status', ['approved', 'pending'])
+            ->first();
 
-        if ($alreadyApproved) {
+        if ($existingDoc) {
+            $msg = $existingDoc->status === 'approved'
+                ? 'This document has already been approved and cannot be replaced.'
+                : 'This document is already pending review. Please wait for it to be reviewed before resubmitting.';
             return redirect()->back()
-                ->with('doc_error', 'This document has already been approved and cannot be replaced.')
+                ->with('doc_error', $msg)
                 ->with('go_enrollment', true);
         }
 
@@ -1083,6 +1080,14 @@ class StudentPortalController extends Controller
             return response()->json(['success' => false, 'message' => 'Section does not match your grade level.'], 422);
         }
 
+        if ($newSection->school_year !== $enrollment->school_year) {
+            return response()->json(['success' => false, 'message' => 'Section is not available for your current school year.'], 422);
+        }
+
+        if (!$newSection->is_active) {
+            return response()->json(['success' => false, 'message' => 'Section is not currently active.'], 422);
+        }
+
         // Live count, not the denormalized column (see
         // Section::getLiveEnrollmentCountAttribute())
         if ($newSection->live_enrollment_count >= $newSection->max_students) {
@@ -1219,7 +1224,7 @@ class StudentPortalController extends Controller
             // Later payment: the next unpaid installment, capped at what's
             // actually still owed (same formula approveDocument() uses).
             $installment = $enrollment->paymentInstallments()
-                ->where('status', 'pending')
+                ->whereIn('status', ['pending', 'overdue'])
                 ->orderBy('due_date')
                 ->first();
             $remaining = (float) ($enrollment->remaining_balance ?? 0);
