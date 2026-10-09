@@ -80,22 +80,12 @@
     </div>
 </div>
 
-{{-- Finance Charts --}}
-@php
-    $fnChMonths=[]; $fnChCollected=[];
-    for($i=5;$i>=0;$i--){
-        $m=now()->subMonths($i);
-        $fnChMonths[]=$m->format('M Y');
-        $fnChCollected[]=(float)\App\Models\PaymentTransaction::where('status','completed')
-            ->whereYear('processed_at',$m->year)->whereMonth('processed_at',$m->month)->sum('amount');
-    }
-    $fnPaid    = \App\Models\Enrollment::where('payment_status','paid')->count();
-    $fnPartial = \App\Models\Enrollment::where('payment_status','partial')->count();
-    $fnUnpaid  = \App\Models\Enrollment::whereNotIn('payment_status',['paid','partial'])->count();
-    $fnCash    = \App\Models\PaymentTransaction::where('status','completed')->where('payment_method','cash')->sum('amount');
-    $fnGcash   = \App\Models\PaymentTransaction::where('status','completed')->where('payment_method','gcash')->sum('amount');
-    $fnXendit  = \App\Models\PaymentTransaction::where('status','completed')->whereNotIn('payment_method',['cash','gcash'])->sum('amount');
-@endphp
+{{-- Finance Charts — $fnChMonths/$fnChCollected/$fnCash/$fnGcash/$fnXendit
+     are computed once in DashboardController::index() (was previously 9
+     separate queries run here on every page load); the Payment Status
+     doughnut below reuses $paidCount/$partialCount/$unpaidCount, the same
+     figures the stat cards above already show, instead of recomputing a
+     second, differently-scoped count here. --}}
 <div class="row g-3 mb-4">
     <div class="col-lg-8">
         <div class="content-card">
@@ -165,7 +155,7 @@
     // Payment status doughnut
     new Chart(document.getElementById('fnPayStatusDoughnut'),{type:'doughnut',
         data:{labels:['Paid','Partial','Unpaid'],
-            datasets:[{data:[{{$fnPaid}},{{$fnPartial}},{{$fnUnpaid}}],
+            datasets:[{data:[{{$paidCount}},{{$partialCount}},{{$unpaidCount}}],
                 backgroundColor:[_FC.green,_FC.gold,_FC.red],borderWidth:0,hoverOffset:4}]},
         options:{responsive:true,maintainAspectRatio:false,cutout:'68%',
             plugins:{legend:{position:'bottom',labels:{padding:12}}}}

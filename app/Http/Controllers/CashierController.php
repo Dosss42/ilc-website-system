@@ -160,13 +160,19 @@ class CashierController extends Controller
         $todayCash   = (float) $todayTransactions->where('payment_method', 'cash')->sum('amount');
         $todayOnline = (float) $todayTransactions->whereNotIn('payment_method', ['cash'])->sum('amount');
 
-        // Last 7 days for the bar chart
+        // Last 7 days for the bar chart — one grouped query instead of one
+        // sum() per day (was 7 queries, now 1).
+        $dailyTotals = PaymentTransaction::where('status', 'completed')
+            ->where('processed_at', '>=', now()->subDays(6)->startOfDay())
+            ->selectRaw('DATE(processed_at) as day, SUM(amount) as total')
+            ->groupBy('day')
+            ->pluck('total', 'day');
+
         $csChDays = []; $csChTotals = [];
         for ($i = 6; $i >= 0; $i--) {
             $d = now()->subDays($i);
             $csChDays[]   = $d->format('D, M j');
-            $csChTotals[] = (float) PaymentTransaction::where('status', 'completed')
-                ->whereDate('processed_at', $d->toDateString())->sum('amount');
+            $csChTotals[] = (float) ($dailyTotals[$d->toDateString()] ?? 0);
         }
 
         return view('cashier.dashboard', compact(
@@ -175,6 +181,41 @@ class CashierController extends Controller
             'todayCash', 'todayOnline',
             'csChDays', 'csChTotals'
         ));
+    }
+
+    // ── Collection Summary (on-demand, Collection tab only) ──────────
+    // Was previously computed unconditionally in the dashboard blade view
+    // on every dashboard load (9 queries) even when this tab was never
+    // opened — moved here as its own on-demand endpoint, and collapsed
+    // from 9 queries down to 2.
+    public function collectionSummary()
+    {
+        $monthlyTotals = PaymentTransaction::where('status', 'completed')
+            ->where('processed_at', '>=', now()->subMonths(5)->startOfMonth())
+            ->selectRaw("DATE_FORMAT(processed_at, '%Y-%m') as ym, SUM(amount) as total")
+            ->groupBy('ym')
+            ->pluck('total', 'ym');
+
+        $months = []; $totals = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $m = now()->subMonths($i);
+            $months[] = $m->format('M Y');
+            $totals[] = (float) ($monthlyTotals[$m->format('Y-m')] ?? 0);
+        }
+
+        $methodTotals = PaymentTransaction::where('status', 'completed')->selectRaw("
+                SUM(CASE WHEN payment_method = 'cash' THEN amount ELSE 0 END) as cash,
+                SUM(CASE WHEN payment_method = 'gcash' THEN amount ELSE 0 END) as gcash,
+                SUM(CASE WHEN payment_method NOT IN ('cash', 'gcash') THEN amount ELSE 0 END) as other
+            ")->first();
+
+        return response()->json([
+            'months' => $months,
+            'totals' => $totals,
+            'cash'   => (float) $methodTotals->cash,
+            'gcash'  => (float) $methodTotals->gcash,
+            'other'  => (float) $methodTotals->other,
+        ]);
     }
 
     // ── Daily Report ─────────────────────────────────

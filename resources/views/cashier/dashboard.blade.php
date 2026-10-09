@@ -1893,18 +1893,6 @@
             </div>
             <button class="btn-primary-cash"><i class="bi bi-download"></i> Export Excel</button>
         </div>
-        @php
-            $csColMonths=[]; $csColTotals=[];
-            for($i=5;$i>=0;$i--){
-                $m=now()->subMonths($i);
-                $csColMonths[]=$m->format('M Y');
-                $csColTotals[]=(float)\App\Models\PaymentTransaction::where('status','completed')
-                    ->whereYear('processed_at',$m->year)->whereMonth('processed_at',$m->month)->sum('amount');
-            }
-            $csColCash  = (float)\App\Models\PaymentTransaction::where('status','completed')->where('payment_method','cash')->sum('amount');
-            $csColGcash = (float)\App\Models\PaymentTransaction::where('status','completed')->where('payment_method','gcash')->sum('amount');
-            $csColOther = (float)\App\Models\PaymentTransaction::where('status','completed')->whereNotIn('payment_method',['cash','gcash'])->sum('amount');
-        @endphp
 
         <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px;">
             <div class="card-box" style="margin-bottom:0;">
@@ -2381,7 +2369,7 @@
                 contEl.style.display = 'block';
                 void contEl.offsetWidth;   // force reflow so transition fires
                 contEl.style.opacity = '1';
-                if (name === 'collection') setTimeout(initCollectionCharts, 80);
+                if (name === 'collection') setTimeout(loadCollectionSummary, 80);
             }
         }, delay);
     }
@@ -3780,15 +3768,39 @@
         });
     }
 
-    // Collection section charts (lazy)
-    function initCollectionCharts() {
-        if (window._csColInit) return;
-        window._csColInit = true;
+    // Collection section charts — data fetched on demand (was previously 9
+    // queries baked into the Blade view and run on every dashboard load
+    // regardless of which tab was open; now only runs when this tab opens).
+    var _csColCharts = null;
+
+    function loadCollectionSummary() {
+        fetch('{{ route("cashier.collection-summary") }}', { headers: { 'Accept': 'application/json' } })
+            .then(function (r) { return r.json(); })
+            .then(function (d) { renderCollectionCharts(d); })
+            .catch(function () { showToast('Failed to load collection summary.', 'error'); });
+    }
+
+    function renderCollectionCharts(d) {
+        if (_csColCharts) {
+            _csColCharts.line.data.labels = d.months;
+            _csColCharts.line.data.datasets[0].data = d.totals;
+            _csColCharts.line.update();
+
+            _csColCharts.method.data.datasets[0].data = [d.cash, d.gcash, d.other];
+            _csColCharts.method.update();
+
+            _csColCharts.bar.data.labels = d.months;
+            _csColCharts.bar.data.datasets[0].data = d.totals;
+            _csColCharts.bar.update();
+            return;
+        }
+
+        var line = null, method = null, bar = null;
 
         const lineEl = document.getElementById('csColLine');
-        if (lineEl) new Chart(lineEl,{type:'line',
-            data:{labels:@json($csColMonths??[]),
-                datasets:[{label:'Collections (₱)',data:@json($csColTotals??[]),
+        if (lineEl) line = new Chart(lineEl,{type:'line',
+            data:{labels:d.months,
+                datasets:[{label:'Collections (₱)',data:d.totals,
                     borderColor:_CsC.blue,backgroundColor:'rgba(26,58,108,.08)',
                     borderWidth:2,pointRadius:4,tension:0.4,fill:true}]},
             options:{responsive:true,maintainAspectRatio:false,
@@ -3798,24 +3810,26 @@
         });
 
         const methodEl = document.getElementById('csColMethodDoughnut');
-        if (methodEl) new Chart(methodEl,{type:'doughnut',
+        if (methodEl) method = new Chart(methodEl,{type:'doughnut',
             data:{labels:['Cash','GCash','E-Payment'],
-                datasets:[{data:[{{$csColCash??0}},{{$csColGcash??0}},{{$csColOther??0}}],
+                datasets:[{data:[d.cash, d.gcash, d.other],
                     backgroundColor:[_CsC.green,_CsC.mid,_CsC.gold],borderWidth:0,hoverOffset:4}]},
             options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
                 plugins:{legend:{position:'bottom',labels:{padding:10}}}}
         });
 
         const barEl = document.getElementById('csColBar');
-        if (barEl) new Chart(barEl,{type:'bar',
-            data:{labels:@json($csColMonths??[]),
-                datasets:[{label:'Collections (₱)',data:@json($csColTotals??[]),
+        if (barEl) bar = new Chart(barEl,{type:'bar',
+            data:{labels:d.months,
+                datasets:[{label:'Collections (₱)',data:d.totals,
                     backgroundColor:_CsC.mid,borderRadius:5,borderSkipped:false}]},
             options:{responsive:true,maintainAspectRatio:false,
                 plugins:{legend:{display:false}},
                 scales:{y:{beginAtZero:true,grid:{color:'rgba(0,0,0,.04)'},
                     ticks:{callback:v=>'₱'+Number(v).toLocaleString()}},x:{grid:{display:false}}}}
         });
+
+        _csColCharts = { line: line, method: method, bar: bar };
     }
 
 </script>

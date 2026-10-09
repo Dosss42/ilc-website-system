@@ -3691,6 +3691,7 @@
                     @foreach($availableSections as $sec)
                     @php $isFull = $sec->current_enrollment >= $sec->max_students; @endphp
                     @php $isCurrent = ($section->name ?? null) === $sec->name; @endphp
+                    @php $secAdviser = $advisoryTeachersBySection->get($sec->id)?->teacher; @endphp
                     <div class="section-pick-card {{ $isCurrent ? 'current' : '' }} {{ $isFull ? 'full' : '' }}"
                          onclick="{{ (!$isFull && !$isCurrent) ? 'confirmSectionChange(' . $sec->id . ', \'' . addslashes($sec->name) . '\')' : '' }}"
                          style="border:2px solid {{ $isCurrent ? 'var(--blue)' : ($isFull ? '#dee2e6' : '#e2e8f0') }}; border-radius:12px; padding:16px; cursor:{{ ($isFull || $isCurrent) ? 'default' : 'pointer' }}; background:{{ $isCurrent ? '#f0f4ff' : ($isFull ? '#f8f9fa' : '#fff') }}; transition:all .2s;">
@@ -3701,7 +3702,7 @@
                                 </div>
                                 <div style="font-size:12px; color:#888; margin-top:3px;">
                                     {{ $sec->grade_level }}
-                                    @if($sec->advisory_teacher) &nbsp;·&nbsp; Adviser: {{ $sec->advisory_teacher->name }} @endif
+                                    @if($secAdviser) &nbsp;·&nbsp; Adviser: {{ $secAdviser->name }} @endif
                                     @if($sec->room_number) &nbsp;·&nbsp; Room {{ $sec->room_number }} @endif
                                 </div>
                             </div>

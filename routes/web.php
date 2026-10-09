@@ -627,6 +627,7 @@ Route::prefix('cashier')->name('cashier.')->group(function () {
         Route::get('/daily-report', [\App\Http\Controllers\CashierController::class, 'dailyReport'])->name('daily.report');
         Route::get('/receipts', [\App\Http\Controllers\CashierController::class, 'receiptsList'])->name('receipts.list');
         Route::get('/audit-trail', [\App\Http\Controllers\CashierController::class, 'auditTrail'])->name('audit-trail');
+        Route::get('/collection-summary', [\App\Http\Controllers\CashierController::class, 'collectionSummary'])->name('collection-summary');
         Route::post('/payment/cash', [\App\Http\Controllers\CashierController::class, 'processCash'])->name('payment.cash');
         Route::post('/payment/xendit-link', [\App\Http\Controllers\CashierController::class, 'generateXenditLink'])->name('payment.xendit-link');
         Route::get('/payment/xendit-status', [\App\Http\Controllers\CashierController::class, 'checkXenditStatus'])->name('payment.xendit-status');

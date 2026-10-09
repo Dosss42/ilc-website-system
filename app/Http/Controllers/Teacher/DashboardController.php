@@ -84,12 +84,24 @@ class DashboardController extends Controller
         // responsible for making sure the section itself appears in
         // $sections below, which is derived from $teacherSchedules, not
         // teacher_assignments.
+        //
+        // Subjects for every Nursery/Kinder advisory section are batched
+        // into one query here (whereIn + groupBy, same pattern as the
+        // assessment batching in EnrollmentController) instead of one
+        // Subject query per section inside the loop below.
+        $nkGradeLevels = $adviserSections
+            ->filter(fn($s) => \App\Models\Grade::isNurseryKinder($s->grade_level ?? ''))
+            ->pluck('grade_level')->unique()->values();
+
+        $subjectsByGradeLevel = Subject::whereIn('grade_level', $nkGradeLevels)
+            ->where('is_active', true)
+            ->get()
+            ->groupBy('grade_level');
+
         foreach ($adviserSections as $advSection) {
             if (!\App\Models\Grade::isNurseryKinder($advSection->grade_level ?? '')) continue;
 
-            $sectionSubjects = Subject::where('grade_level', $advSection->grade_level)
-                ->where('is_active', true)
-                ->get();
+            $sectionSubjects = $subjectsByGradeLevel->get($advSection->grade_level, collect());
 
             foreach ($sectionSubjects as $subject) {
                 $alreadyExists = $teacherAssignments->first(
@@ -166,8 +178,19 @@ class DashboardController extends Controller
         ));
     }
 
+    // Section instances passed in here can be two independently-hydrated
+    // Eloquent models for the same section_id ($adviserSections comes from
+    // a TeacherAssignment query, $sections from a separate Schedule query),
+    // so without this cache the same section's students get loaded twice.
+    private array $sectionStudentsCache = [];
+
     private function loadSectionStudents($section)
     {
+        if (isset($this->sectionStudentsCache[$section->id])) {
+            $section->setRelation('students', $this->sectionStudentsCache[$section->id]);
+            return $section;
+        }
+
         $section->load(['students' => fn($q) => $q
             ->select('users.id', 'users.name', 'users.email', 'users.lrn')
             ->whereHas('enrollments', fn($q2) => $q2->where('status', 'enrolled'))
@@ -182,6 +205,8 @@ class DashboardController extends Controller
                 $section->setRelation('students', $enrolled);
             }
         }
+
+        $this->sectionStudentsCache[$section->id] = $section->students;
         return $section;
     }
 

@@ -184,6 +184,7 @@ class StudentPortalController extends Controller
 
         // Available sections for the student's grade level (for change-section feature)
         $availableSections = collect();
+        $advisoryTeachersBySection = collect();
         if ($enrollment && $enrollment->status === 'enrolled' && $enrollment->grade_level) {
             $schoolYear = $enrollment->school_year ?? (now()->year . '-' . (now()->year + 1));
             // current_enrollment is overwritten with the live section_student
@@ -199,6 +200,16 @@ class StudentPortalController extends Controller
                 ->withCount('students')
                 ->get();
             $availableSections->each(fn($s) => $s->current_enrollment = $s->students_count);
+
+            // Advisory teacher per section, batched in one query (whereIn)
+            // instead of Section::getAdvisoryTeacherAttribute() firing one
+            // query per section — and the blade evaluating it twice per
+            // section (once for @if, once for ->name) on top of that.
+            $advisoryTeachersBySection = \App\Models\TeacherAssignment::whereIn('section_id', $availableSections->pluck('id'))
+                ->where('is_advisory', true)
+                ->with('teacher')
+                ->get()
+                ->keyBy('section_id');
         }
 
         // ── Re-enrollment detection ──
@@ -288,6 +299,7 @@ class StudentPortalController extends Controller
             'enrollment', 'progress', 'documents', 'profileComplete',
             'schedules', 'section', 'hasRequiredDocuments',
             'paymentInstallments', 'paymentSummary', 'examPermitStatus', 'availableSections',
+            'advisoryTeachersBySection',
             'needsReenrollment', 'reenrollmentOpen', 'suggestedGrade',
             'currentSchoolYear', 'promotionRecord', 'enrollmentWindowOpen',
             'profile', 'address', 'guardian', 'mother', 'father', 'previousSchool',

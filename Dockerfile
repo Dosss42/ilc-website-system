@@ -40,6 +40,10 @@ RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
 # Copy nginx config
 COPY docker/nginx.conf /etc/nginx/sites-enabled/default
 
+# Copy PHP-FPM pool config — the base image's default (pm.max_children = 5)
+# caps the whole app at 5 concurrent requests; see docker/www.conf.
+COPY docker/www.conf /usr/local/etc/php-fpm.d/www.conf
+
 # Cache routes/views for production (config:cache is done at container
 # start in entrypoint.sh, since env vars aren't available at build time)
 RUN php artisan route:cache \
