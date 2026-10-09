@@ -235,13 +235,19 @@
 
         .btn-eye:hover { color: #1a3a6c; background: #fff; }
 
-        /* ── REMEMBER ME ── */
+        /* ── REMEMBER ME + FORGOT PASSWORD — one row, vertically centered
+           against each other, instead of two separately-margined blocks
+           that happened to sit close together ── */
+        .remember-forgot-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px;
+        }
         .remember-row {
             display: flex;
             align-items: center;
             gap: 7px;
-            margin-bottom: 10px;
-            margin-top: -4px;
         }
         .remember-row input[type=checkbox] { accent-color: #1a3a6c; width: 15px; height: 15px; cursor: pointer; }
         .remember-row label { font-size: 12px; color: #6b7280; cursor: pointer; }
@@ -252,10 +258,6 @@
             color: #1a3a6c;
             text-decoration: none;
             font-weight: 500;
-            display: block;
-            text-align: right;
-            margin-bottom: 18px;
-            margin-top: -4px;
         }
 
         .forgot-link:hover { text-decoration: underline; color: #1a3a6c; }
@@ -288,6 +290,13 @@
         }
 
         .btn-main:active { transform: translateY(0); box-shadow: 0 2px 8px rgba(26,58,108,0.3); }
+        .btn-main:disabled {
+            opacity: 0.75;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 2px 8px rgba(26,58,108,0.2);
+        }
+        .btn-main .spinner-border { width: 15px; height: 15px; border-width: 2px; vertical-align: -2px; }
 
         /* ── SWITCH TEXT ── */
         .switch-text {
@@ -393,7 +402,7 @@
                 </div>
             @endif
 
-            <form method="POST" action="/login">
+            <form method="POST" action="/login" id="loginForm">
                 @csrf
 
                 <div class="field-wrap">
@@ -419,12 +428,13 @@
                     </div>
                 </div>
 
-                <div class="remember-row">
-                    <input type="checkbox" name="remember" id="rememberMe" value="1">
-                    <label for="rememberMe">Remember me</label>
+                <div class="remember-forgot-row">
+                    <div class="remember-row">
+                        <input type="checkbox" name="remember" id="rememberMe" value="1">
+                        <label for="rememberMe">Remember me</label>
+                    </div>
+                    <a href="{{ route('password.request') }}" class="forgot-link">Forgot password?</a>
                 </div>
-
-                <a href="{{ route('password.request') }}" class="forgot-link">Forgot password?</a>
 
                 @if(config('services.recaptcha.site_key') && config('services.recaptcha.site_key') !== 'your_site_key_here')
                 <div class="recaptcha-wrap">
@@ -432,7 +442,7 @@
                 </div>
                 @endif
 
-                <button type="submit" class="btn-main">
+                <button type="submit" class="btn-main" id="loginSubmitBtn">
                     <i class="bi bi-box-arrow-in-right"></i> Sign In
                 </button>
             </form>
@@ -507,6 +517,28 @@
         const icon  = document.getElementById(iconId);
         input.type  = input.type === 'password' ? 'text' : 'password';
         icon.className = input.type === 'text' ? 'bi bi-eye-slash' : 'bi bi-eye';
+    }
+
+    // Loading state on Sign In — gives feedback that the click registered
+    // and blocks double-submission while the request is in flight. This is
+    // a plain full-page form submit (not fetch/AJAX); on localhost the
+    // whole round trip can finish in well under 50ms, so even a correctly
+    // *painted* spinner can be too brief to register. Holding the real
+    // submission back by a short, fixed delay guarantees it's visible for
+    // a perceptible moment — confirmed working via a loud diagnostic
+    // version before landing on this one.
+    var loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', function (e) {
+            var btn = document.getElementById('loginSubmitBtn');
+            if (btn.disabled) { e.preventDefault(); return; } // already submitting
+            e.preventDefault();
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Signing In...';
+            setTimeout(function () {
+                loginForm.submit(); // bypasses 'submit' listeners/validation — both already satisfied to get here
+            }, 450);
+        });
     }
 </script>
 </body>

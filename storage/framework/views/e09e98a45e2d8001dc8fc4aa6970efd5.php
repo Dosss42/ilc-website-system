@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="csrf-token" content="<?php echo e(csrf_token()); ?>">
     <title>Cashier Portal — ILC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    {{-- Open Sans, matching every other portal (Admin, Super Admin, Teacher, Student) --}}
+    
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    {{-- Work Sans + IBM Plex Mono — used only inside the Process Payment
-         "ticket" (see .pp-* rules below); everything else keeps Open Sans. --}}
+    
     <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -626,7 +625,7 @@
 </head>
 <body>
 
-{{-- ══ TOPBAR ══ --}}
+
 <div class="topbar">
     <div class="topbar-brand">
         <div class="brand-logo-circle">
@@ -650,9 +649,9 @@
         </div>
         <div class="dropdown">
             <div class="user-chip" data-bs-toggle="dropdown" aria-expanded="false">
-                <div class="user-avatar">{{ strtoupper(substr(auth('cashier')->user()->name, 0, 1)) }}</div>
+                <div class="user-avatar"><?php echo e(strtoupper(substr(auth('cashier')->user()->name, 0, 1))); ?></div>
                 <div>
-                    <div class="user-name">{{ auth('cashier')->user()->name }}</div>
+                    <div class="user-name"><?php echo e(auth('cashier')->user()->name); ?></div>
                     <div class="user-role">Cashier</div>
                 </div>
                 <i class="bi bi-chevron-down" style="font-size:11px;color:#94a3b8;margin-left:4px;"></i>
@@ -660,17 +659,18 @@
             <div class="dropdown-menu dropdown-menu-end" style="min-width:220px;border-radius:12px;border:1px solid #e5e7eb;box-shadow:0 8px 24px rgba(0,0,0,.12);padding:0;overflow:hidden;margin-top:6px!important;">
                 <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:linear-gradient(135deg,#f0f5ff 0%,#fff 100%);border-bottom:1px solid #f0f0f0;">
                     <div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#1a3a6c,#2471a3);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;color:#fff;flex-shrink:0;">
-                        {{ strtoupper(substr(auth('cashier')->user()->name, 0, 1)) }}
+                        <?php echo e(strtoupper(substr(auth('cashier')->user()->name, 0, 1))); ?>
+
                     </div>
                     <div>
-                        <div style="font-weight:700;font-size:13px;color:#1a3a6c;">{{ auth('cashier')->user()->name }}</div>
-                        <div style="font-size:11px;color:#64748b;">{{ auth('cashier')->user()->email }}</div>
+                        <div style="font-weight:700;font-size:13px;color:#1a3a6c;"><?php echo e(auth('cashier')->user()->name); ?></div>
+                        <div style="font-size:11px;color:#64748b;"><?php echo e(auth('cashier')->user()->email); ?></div>
                         <span style="display:inline-block;margin-top:4px;background:#e8f0fb;color:#1a3a6c;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">Cashier</span>
                     </div>
                 </div>
                 <div style="padding:6px 0;">
-                    <form method="POST" action="{{ route('cashier.logout') }}" style="margin:0;" onsubmit="return confirmLogout(this)">
-                        @csrf
+                    <form method="POST" action="<?php echo e(route('cashier.logout')); ?>" style="margin:0;" onsubmit="return confirmLogout(this)">
+                        <?php echo csrf_field(); ?>
                         <button type="submit" style="display:flex;align-items:center;gap:10px;padding:9px 16px;font-size:13px;color:#dc2626;text-decoration:none;cursor:pointer;transition:background .15s;border:none;background:none;width:100%;font-family:'Open Sans',sans-serif;">
                             <i class="bi bi-box-arrow-left" style="font-size:15px;width:18px;"></i> Log Out
                         </button>
@@ -681,10 +681,10 @@
     </div>
 </div>
 
-{{-- ══ SIDEBAR ══ --}}
+
 <div class="sidebar" id="sidebar">
 
-    {{-- MAIN --}}
+    
     <div class="sidebar-section-lbl">Overview</div>
 
     <button class="sidebar-link" data-section="dashboard" onclick="showSection('dashboard', this)">
@@ -694,7 +694,7 @@
 
     <div class="sidebar-divider"></div>
 
-    {{-- PAYMENTS --}}
+    
     <div class="sidebar-section-lbl">Payments</div>
 
     <button class="sidebar-link" data-section="process" onclick="showSection('process', this)">
@@ -713,7 +713,7 @@
 
     <div class="sidebar-divider"></div>
 
-    {{-- REPORTS --}}
+    
     <div class="sidebar-section-lbl">Reports</div>
 
     <button class="sidebar-link" data-section="daily" onclick="showSection('daily', this)">
@@ -733,15 +733,15 @@
         <span class="link-label">Audit Trail</span>
     </button>
 
-    {{-- BOTTOM --}}
+    
     <div class="sidebar-bottom">
         <button class="sidebar-link" data-section="settings" onclick="showSection('settings', this)">
             <span class="link-icon"><i class="bi bi-gear-fill"></i></span>
             <span class="link-label">Settings</span>
         </button>
-        <form method="POST" action="{{ route('cashier.logout') }}" style="margin:0;"
+        <form method="POST" action="<?php echo e(route('cashier.logout')); ?>" style="margin:0;"
               onsubmit="return confirmLogout(this)">
-            @csrf
+            <?php echo csrf_field(); ?>
             <button type="submit" class="sidebar-link" style="color:rgba(248,113,113,0.8);">
                 <span class="link-icon" style="background:rgba(220,38,38,0.12);"><i class="bi bi-box-arrow-left" style="color:rgba(248,113,113,0.9);"></i></span>
                 <span class="link-label">Log Out</span>
@@ -751,7 +751,7 @@
 
 </div>
 
-{{-- ══ MAIN CONTENT ══ --}}
+
 <div class="main" id="main-content">
 
 <style>
@@ -772,10 +772,10 @@
     </span>
 </nav>
 
-{{-- ══ GLOBAL SKELETON — shown when switching any section ══ --}}
+
 <div id="cs-global-skeleton" style="display:none;opacity:1;transition:opacity .2s ease;">
 
-    {{-- Page header placeholder --}}
+    
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
         <div>
             <span class="skel" style="height:26px;width:240px;margin-bottom:10px;border-radius:8px;"></span>
@@ -784,7 +784,7 @@
         <span class="skel" style="height:40px;width:130px;border-radius:10px;"></span>
     </div>
 
-    {{-- Filter / action bar placeholder --}}
+    
     <div style="background:#fff;border-radius:14px;padding:16px 20px;margin-bottom:18px;border:1.5px solid #e2e8f0;display:flex;gap:10px;flex-wrap:wrap;">
         <span class="skel" style="height:36px;flex:1;min-width:200px;border-radius:10px;"></span>
         <span class="skel" style="height:36px;width:130px;border-radius:10px;"></span>
@@ -792,25 +792,25 @@
         <span class="skel" style="height:36px;width:100px;border-radius:10px;"></span>
     </div>
 
-    {{-- Table card placeholder --}}
+    
     <div style="background:#fff;border-radius:14px;border:1.5px solid #e2e8f0;overflow:hidden;">
-        {{-- Card header --}}
+        
         <div style="padding:16px 20px;border-bottom:1.5px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;">
             <span class="skel" style="height:15px;width:180px;border-radius:6px;"></span>
             <span class="skel" style="height:15px;width:100px;border-radius:6px;"></span>
         </div>
-        {{-- Table column headers --}}
+        
         <div style="padding:10px 20px;background:#f8faff;border-bottom:1.5px solid #e2e8f0;display:flex;gap:16px;">
-            @for($si=0;$si<7;$si++)
-            <span class="skel" style="height:11px;width:{{ [70,120,80,60,90,60,40][$si] }}px;border-radius:4px;"></span>
-            @endfor
+            <?php for($si=0;$si<7;$si++): ?>
+            <span class="skel" style="height:11px;width:<?php echo e([70,120,80,60,90,60,40][$si]); ?>px;border-radius:4px;"></span>
+            <?php endfor; ?>
         </div>
-        {{-- Table rows --}}
-        @for($si=0;$si<8;$si++)
+        
+        <?php for($si=0;$si<8;$si++): ?>
         <div style="padding:14px 20px;border-bottom:1px solid #f8faff;display:flex;gap:16px;align-items:center;">
             <span class="skel" style="height:34px;width:34px;border-radius:8px;flex-shrink:0;"></span>
             <div style="flex:1.5;">
-                <span class="skel" style="height:13px;width:{{ 100 + ($si * 10 % 60) }}px;margin-bottom:6px;border-radius:6px;"></span>
+                <span class="skel" style="height:13px;width:<?php echo e(100 + ($si * 10 % 60)); ?>px;margin-bottom:6px;border-radius:6px;"></span>
                 <span class="skel" style="height:11px;width:80px;border-radius:5px;"></span>
             </div>
             <span class="skel" style="height:13px;width:60px;border-radius:6px;"></span>
@@ -820,34 +820,34 @@
             <span class="skel" style="height:13px;width:80px;border-radius:6px;"></span>
             <span class="skel" style="height:30px;width:32px;border-radius:8px;"></span>
         </div>
-        @endfor
+        <?php endfor; ?>
     </div>
 
 </div>
-{{-- ══ END GLOBAL SKELETON ══ --}}
 
-    {{-- ── DASHBOARD SECTION ── --}}
+
+    
     <div id="section-dashboard" style="display:none;">
 
-        {{-- ── Dashboard Skeleton ── --}}
+        
         <div id="db-skeleton">
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;">
-                @for($i=0;$i<4;$i++)
+                <?php for($i=0;$i<4;$i++): ?>
                 <div style="background:#fff;border-radius:14px;padding:20px;border:1.5px solid #e2e8f0;">
                     <span class="skel" style="width:46px;height:46px;border-radius:13px;margin-bottom:12px;"></span>
                     <span class="skel" style="height:28px;width:80px;margin-bottom:8px;"></span>
                     <span class="skel" style="height:12px;width:120px;"></span>
                 </div>
-                @endfor
+                <?php endfor; ?>
             </div>
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;">
-                @for($i=0;$i<4;$i++)
+                <?php for($i=0;$i<4;$i++): ?>
                 <div style="background:#fff;border-radius:14px;padding:20px;border:1.5px solid #e2e8f0;">
                     <span class="skel" style="width:52px;height:52px;border-radius:14px;margin:0 auto 12px;"></span>
                     <span class="skel" style="height:14px;width:90px;margin:0 auto 6px;border-radius:6px;"></span>
                     <span class="skel" style="height:11px;width:70px;margin:0 auto;border-radius:6px;"></span>
                 </div>
-                @endfor
+                <?php endfor; ?>
             </div>
             <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:24px;">
                 <div style="background:#fff;border-radius:14px;padding:20px;border:1.5px solid #e2e8f0;height:240px;">
@@ -861,13 +861,13 @@
             </div>
         </div>
 
-        {{-- ── Real Content ── --}}
+        
         <div id="db-content" style="display:none;opacity:0;transition:opacity .35s ease;">
 
         <div class="page-header">
             <div>
                 <div class="page-title">Cashier Dashboard</div>
-                <div class="page-sub">Welcome back, {{ auth('cashier')->user()->name ?? 'Cashier' }}! Here's today's overview.</div>
+                <div class="page-sub">Welcome back, <?php echo e(auth('cashier')->user()->name ?? 'Cashier'); ?>! Here's today's overview.</div>
             </div>
             <div style="display:flex;gap:10px;align-items:center;">
                 <div class="page-date"><i class="bi bi-calendar3"></i><span id="live-date"></span></div>
@@ -877,46 +877,48 @@
             </div>
         </div>
 
-        {{-- Stat Cards --}}
+        
         <div class="stats-grid">
             <div class="stat-card blue">
                 <div class="stat-icon-wrap blue"><i class="bi bi-cash-stack"></i></div>
-                <div class="stat-value">₱{{ number_format($todayTotal,2) }}</div>
+                <div class="stat-value">₱<?php echo e(number_format($todayTotal,2)); ?></div>
                 <div class="stat-label">Today's Collection</div>
-                <div class="stat-change {{ $todayTotal > 0 ? 'up' : '' }}" style="{{ $todayTotal == 0 ? 'color:#64748b;' : '' }}">
-                    @if($todayTotal > 0)
-                        <i class="bi bi-arrow-up-short"></i> {{ $todayCount }} transaction(s)
-                    @else
+                <div class="stat-change <?php echo e($todayTotal > 0 ? 'up' : ''); ?>" style="<?php echo e($todayTotal == 0 ? 'color:#64748b;' : ''); ?>">
+                    <?php if($todayTotal > 0): ?>
+                        <i class="bi bi-arrow-up-short"></i> <?php echo e($todayCount); ?> transaction(s)
+                    <?php else: ?>
                         No collections yet
-                    @endif
+                    <?php endif; ?>
                 </div>
             </div>
             <div class="stat-card green">
                 <div class="stat-icon-wrap green"><i class="bi bi-check-circle-fill"></i></div>
-                <div class="stat-value">{{ $todayCount }}</div>
+                <div class="stat-value"><?php echo e($todayCount); ?></div>
                 <div class="stat-label">Transactions Today</div>
                 <div class="stat-change" style="color:#64748b;">
-                    {{ $todayCount > 0 ? 'Processed today' : 'No transactions yet' }}
+                    <?php echo e($todayCount > 0 ? 'Processed today' : 'No transactions yet'); ?>
+
                 </div>
             </div>
             <div class="stat-card gold">
                 <div class="stat-icon-wrap gold"><i class="bi bi-hourglass-split"></i></div>
-                <div class="stat-value">{{ $pendingCount }}</div>
+                <div class="stat-value"><?php echo e($pendingCount); ?></div>
                 <div class="stat-label">Pending Payments</div>
-                <div class="stat-change" style="color:{{ $pendingCount > 0 ? '#b45309' : '#64748b' }};">
-                    {{ $pendingCount > 0 ? $pendingCount . ' awaiting payment' : 'No pending items' }}
+                <div class="stat-change" style="color:<?php echo e($pendingCount > 0 ? '#b45309' : '#64748b'); ?>;">
+                    <?php echo e($pendingCount > 0 ? $pendingCount . ' awaiting payment' : 'No pending items'); ?>
+
                 </div>
             </div>
             <div class="stat-card" style="background:linear-gradient(135deg,#f0fdf4,#fff);border:1.5px solid #e2e8f0;border-radius:var(--radius);padding:20px;position:relative;overflow:hidden;">
                 <div style="position:absolute;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#16a34a,#22c55e);"></div>
                 <div class="stat-icon-wrap green"><i class="bi bi-wallet2"></i></div>
-                <div class="stat-value" style="color:#16a34a;">₱{{ number_format($todayCash,2) }}</div>
+                <div class="stat-value" style="color:#16a34a;">₱<?php echo e(number_format($todayCash,2)); ?></div>
                 <div class="stat-label">Cash Collected</div>
                 <div class="stat-change" style="color:#64748b;">Today (cash only)</div>
             </div>
         </div>
 
-        {{-- Quick Actions --}}
+        
         <div class="quick-grid">
             <div class="quick-card" onclick="showSection('process',document.querySelector('.sidebar-link[data-section=process]'))">
                 <div class="quick-icon" style="background:#e8f0fb;"><i class="bi bi-cash-coin" style="color:#2471a3;font-size:24px;"></i></div>
@@ -940,7 +942,7 @@
             </div>
         </div>
 
-        {{-- Charts --}}
+        
         <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:24px;">
             <div class="card-box" style="margin-bottom:0;">
                 <div class="card-box-header">
@@ -956,7 +958,7 @@
             </div>
         </div>
 
-        {{-- Recent Transactions --}}
+        
         <div class="card-box" style="margin-bottom:20px;">
             <div class="card-box-header">
                 <div class="card-box-title"><i class="bi bi-clock-history" style="color:#2471a3;"></i> Today's Transactions</div>
@@ -970,45 +972,45 @@
                         <tr><th>Reference</th><th>Student</th><th>Grade</th><th>Type</th><th>Method</th><th>Amount</th><th>Time</th><th>Print</th></tr>
                     </thead>
                     <tbody>
-                        @forelse($todayTransactions as $tx)
+                        <?php $__empty_1 = true; $__currentLoopData = $todayTransactions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $tx): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
                         <tr>
-                            <td><span style="font-family:monospace;font-size:11.5px;background:#f8faff;padding:3px 8px;border-radius:6px;color:#475569;">{{ $tx->reference_number ?? '—' }}</span></td>
-                            <td style="font-weight:700;">{{ $tx->user?->name ?? '—' }}</td>
-                            <td>{{ $tx->enrollment?->grade_level ? ucfirst($tx->enrollment->grade_level) : '—' }}</td>
-                            <td style="font-size:12px;">{{ ucwords(str_replace('_',' ',$tx->payment_type??'—')) }}</td>
+                            <td><span style="font-family:monospace;font-size:11.5px;background:#f8faff;padding:3px 8px;border-radius:6px;color:#475569;"><?php echo e($tx->reference_number ?? '—'); ?></span></td>
+                            <td style="font-weight:700;"><?php echo e($tx->user?->name ?? '—'); ?></td>
+                            <td><?php echo e($tx->enrollment?->grade_level ? ucfirst($tx->enrollment->grade_level) : '—'); ?></td>
+                            <td style="font-size:12px;"><?php echo e(ucwords(str_replace('_',' ',$tx->payment_type??'—'))); ?></td>
                             <td>
-                                @if(strtolower($tx->payment_method??'')=='cash')
+                                <?php if(strtolower($tx->payment_method??'')=='cash'): ?>
                                     <span class="method-pill cash"><i class="bi bi-cash"></i> Cash</span>
-                                @else
-                                    <span class="method-pill gcash"><i class="bi bi-phone"></i> {{ ucfirst($tx->payment_method??'—') }}</span>
-                                @endif
+                                <?php else: ?>
+                                    <span class="method-pill gcash"><i class="bi bi-phone"></i> <?php echo e(ucfirst($tx->payment_method??'—')); ?></span>
+                                <?php endif; ?>
                             </td>
-                            <td style="font-weight:700;color:#16a34a;">₱{{ number_format($tx->amount,2) }}</td>
-                            <td style="font-size:12px;color:#64748b;">{{ $tx->processed_at?->format('h:i A') }}</td>
+                            <td style="font-weight:700;color:#16a34a;">₱<?php echo e(number_format($tx->amount,2)); ?></td>
+                            <td style="font-size:12px;color:#64748b;"><?php echo e($tx->processed_at?->format('h:i A')); ?></td>
                             <td>
-                                <button onclick="reprintTx('{{ $tx->reference_number }}','{{ $tx->user?->name }}','{{ $tx->enrollment?->grade_level }}','{{ $tx->enrollment?->school_year }}','{{ $tx->payment_type }}','{{ $tx->payment_method }}','{{ $tx->amount }}','{{ $tx->processed_at?->format('M d, Y') }}','{{ $tx->processed_at?->format('h:i A') }}')"
+                                <button onclick="reprintTx('<?php echo e($tx->reference_number); ?>','<?php echo e($tx->user?->name); ?>','<?php echo e($tx->enrollment?->grade_level); ?>','<?php echo e($tx->enrollment?->school_year); ?>','<?php echo e($tx->payment_type); ?>','<?php echo e($tx->payment_method); ?>','<?php echo e($tx->amount); ?>','<?php echo e($tx->processed_at?->format('M d, Y')); ?>','<?php echo e($tx->processed_at?->format('h:i A')); ?>')"
                                     class="action-btn-sm" title="Print"><i class="bi bi-printer-fill"></i></button>
                             </td>
                         </tr>
-                        @empty
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                         <tr><td colspan="8" style="text-align:center;padding:40px;color:#94a3b8;">
                             <i class="bi bi-inbox" style="font-size:32px;display:block;margin-bottom:8px;"></i>
                             No transactions yet today
                         </td></tr>
-                        @endforelse
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        {{-- Bottom row --}}
-        @php
+        
+        <?php
             $dayTotal = $todayCash + $todayOnline;
             $cashPct  = $dayTotal > 0 ? round(($todayCash / $dayTotal) * 100) : 0;
             $onlPct   = $dayTotal > 0 ? round(($todayOnline / $dayTotal) * 100) : 0;
-        @endphp
+        ?>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-            {{-- Payment Methods --}}
+            
             <div class="card-box" style="margin-bottom:0;">
                 <div class="card-box-header">
                     <div class="card-box-title"><i class="bi bi-pie-chart-fill" style="color:#16a34a;"></i> Payment Methods Today</div>
@@ -1018,38 +1020,38 @@
                         <div>
                             <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:6px;">
                                 <span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:3px;background:#16a34a;display:inline-block;"></span>Cash</span>
-                                <span style="color:#64748b;">₱{{ number_format($todayCash,2) }} ({{ $cashPct }}%)</span>
+                                <span style="color:#64748b;">₱<?php echo e(number_format($todayCash,2)); ?> (<?php echo e($cashPct); ?>%)</span>
                             </div>
                             <div style="height:8px;border-radius:4px;background:#f1f5f9;overflow:hidden;">
-                                <div style="height:100%;width:{{ $cashPct }}%;background:linear-gradient(90deg,#16a34a,#22c55e);border-radius:4px;transition:width .6s ease;"></div>
+                                <div style="height:100%;width:<?php echo e($cashPct); ?>%;background:linear-gradient(90deg,#16a34a,#22c55e);border-radius:4px;transition:width .6s ease;"></div>
                             </div>
                         </div>
                         <div>
                             <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:600;margin-bottom:6px;">
                                 <span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:3px;background:#2471a3;display:inline-block;"></span>Online / E-Wallet</span>
-                                <span style="color:#64748b;">₱{{ number_format($todayOnline,2) }} ({{ $onlPct }}%)</span>
+                                <span style="color:#64748b;">₱<?php echo e(number_format($todayOnline,2)); ?> (<?php echo e($onlPct); ?>%)</span>
                             </div>
                             <div style="height:8px;border-radius:4px;background:#f1f5f9;overflow:hidden;">
-                                <div style="height:100%;width:{{ $onlPct }}%;background:linear-gradient(90deg,#1a3a6c,#2471a3);border-radius:4px;transition:width .6s ease;"></div>
+                                <div style="height:100%;width:<?php echo e($onlPct); ?>%;background:linear-gradient(90deg,#1a3a6c,#2471a3);border-radius:4px;transition:width .6s ease;"></div>
                             </div>
                         </div>
                     </div>
-                    @if($dayTotal == 0)
+                    <?php if($dayTotal == 0): ?>
                     <div style="margin-top:20px;padding:14px;background:#f8faff;border-radius:10px;text-align:center;color:#94a3b8;font-size:12px;">
                         No payment data for today
                     </div>
-                    @endif
+                    <?php endif; ?>
                 </div>
             </div>
 
-            {{-- Shift Summary --}}
+            
             <div class="card-box" style="margin-bottom:0;">
                 <div class="card-box-header">
                     <div class="card-box-title"><i class="bi bi-person-badge-fill" style="color:#b45309;"></i> Shift Summary</div>
                 </div>
                 <div class="card-box-body">
                     <div style="display:flex;flex-direction:column;gap:10px;">
-                        @php
+                        <?php
                             $shiftRows = [
                                 ['label'=>'Date',            'value'=>date('F d, Y'),                                          'icon'=>'bi-calendar3'],
                                 ['label'=>'Cashier',         'value'=>auth('cashier')->user()->name ?? 'Cashier',              'icon'=>'bi-person-fill'],
@@ -1058,27 +1060,28 @@
                                 ['label'=>'Cash Collected',  'value'=>'₱' . number_format($todayCash,2),                      'icon'=>'bi-wallet2'],
                                 ['label'=>'Online Collected','value'=>'₱' . number_format($todayOnline,2),                    'icon'=>'bi-phone'],
                             ];
-                        @endphp
-                        @foreach($shiftRows as $row)
+                        ?>
+                        <?php $__currentLoopData = $shiftRows; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $row): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                         <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 12px;background:#f8faff;border-radius:9px;border:1px solid #e2e8f0;">
                             <span style="font-size:12px;color:#64748b;display:flex;align-items:center;gap:7px;">
-                                <i class="bi {{ $row['icon'] }}"></i>{{ $row['label'] }}
+                                <i class="bi <?php echo e($row['icon']); ?>"></i><?php echo e($row['label']); ?>
+
                             </span>
-                            <span style="font-size:13px;font-weight:700;color:#1e293b;">{{ $row['value'] }}</span>
+                            <span style="font-size:13px;font-weight:700;color:#1e293b;"><?php echo e($row['value']); ?></span>
                         </div>
-                        @endforeach
+                        <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                     </div>
                 </div>
             </div>
         </div>
 
-        </div>{{-- /db-content --}}
+        </div>
     </div>
 
-    {{-- ── PROCESS PAYMENT SECTION ── --}}
+    
     <div id="section-process">
 
-        {{-- Skeleton --}}
+        
         <div id="process-skel" style="display:none;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
                 <div><span class="skel" style="height:26px;width:220px;margin-bottom:8px;"></span><span class="skel" style="height:14px;width:300px;"></span></div>
@@ -1092,24 +1095,23 @@
                 <div class="skel-hdr"><span class="skel" style="height:18px;width:180px;"></span><div style="display:flex;gap:8px;"><span class="skel" style="height:38px;width:280px;border-radius:10px;"></span><span class="skel" style="height:38px;width:90px;border-radius:10px;"></span></div></div>
                 <div style="padding-top:4px;">
                     <div style="display:flex;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;"><span class="skel" style="height:12px;flex:1;max-width:80px;"></span><span class="skel" style="height:12px;flex:2;"></span><span class="skel" style="height:12px;flex:1;"></span><span class="skel" style="height:12px;flex:1;"></span><span class="skel" style="height:12px;flex:1;"></span><span class="skel" style="height:12px;flex:1;max-width:80px;"></span><span class="skel" style="height:12px;flex:1;max-width:70px;"></span></div>
-                    @for($i=0;$i<6;$i++)
+                    <?php for($i=0;$i<6;$i++): ?>
                     <div class="skel-trow"><span class="skel" style="height:14px;flex:1;max-width:80px;"></span><span class="skel" style="height:28px;flex:2;border-radius:6px;"></span><span class="skel" style="height:14px;flex:1;"></span><span class="skel" style="height:14px;flex:1;"></span><span class="skel" style="height:22px;flex:1;border-radius:20px;max-width:70px;"></span><span class="skel" style="height:14px;flex:1;max-width:90px;"></span><span class="skel" style="height:30px;width:60px;border-radius:8px;flex-shrink:0;"></span></div>
-                    @endfor
+                    <?php endfor; ?>
                 </div>
             </div>
         </div>
 
-        {{-- Real content --}}
+        
         <div id="process-content" class="sec-content">
 
-        {{-- ── Page header ── --}}
+        
         <div style="margin-bottom:20px;">
             <div class="page-title"><i class="bi bi-cash-coin me-2" style="color:#c5a059;"></i>Process Payment</div>
             <div class="page-sub">Search a student and collect payment at the counter.</div>
         </div>
 
-        {{-- ── Payment Guide — always visible, so it's the first thing a new
-             cashier sees, not something buried after a student is picked ── --}}
+        
         <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:14px;padding:12px 18px;margin-bottom:18px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
             <div style="font-size:11px;font-weight:800;color:#92400e;display:flex;align-items:center;gap:6px;white-space:nowrap;"><i class="bi bi-info-circle-fill"></i> How to process a payment:</div>
             <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;flex:1;">
@@ -1123,7 +1125,7 @@
             </div>
         </div>
 
-        {{-- ── Student List Panel ── --}}
+        
         <div id="studentListPanel">
             <div class="card-box" style="margin-bottom:0;">
                 <div class="card-box-header">
@@ -1172,18 +1174,18 @@
             </div>
         </div>
 
-        {{-- ── POS Two-Column Layout ── --}}
+        
         <div id="payPanel" style="display:none;grid-template-columns:5fr 6fr;gap:22px;align-items:start;">
 
-            {{-- ══ LEFT: Student Info ══ --}}
+            
             <div>
 
-                {{-- Back to list --}}
+                
                 <button onclick="backToStudentList()" class="btn-outline-cash" style="margin-bottom:14px;width:100%;">
                     <i class="bi bi-arrow-left"></i> Back to Student List
                 </button>
 
-                {{-- Identity strip --}}
+                
                 <div class="pp-card" style="padding:16px;margin-bottom:12px;">
                     <div style="display:flex;align-items:center;gap:11px;">
                         <div class="pp-avatar" id="studentInitial">?</div>
@@ -1217,9 +1219,7 @@
                     </div>
                 </div>
 
-                {{-- Recent Payments — lets the cashier verify this student's payment
-                     history before collecting a new one, instead of duplicating the
-                     balance numbers already shown in the card above. --}}
+                
                 <div class="pp-card">
                     <div class="pp-sec" style="display:flex;justify-content:space-between;align-items:center;padding:11px 18px;">
                         <div class="pp-sec-label" style="margin-bottom:0;">Recent Payments</div>
@@ -1232,17 +1232,15 @@
                     </div>
                 </div>
 
-            </div>{{-- /LEFT --}}
+            </div>
 
-            {{-- ══ RIGHT: Payment Register ══ --}}
+            
             <div>
 
-                {{-- The ticket — one continuous card reading top to bottom like a
-                     real receipt being built up: schedule, then amount, then
-                     method, then notes, then the total and the confirm action. --}}
+                
                 <div class="pp-card">
 
-                    {{-- Plan & Schedule --}}
+                    
                     <div id="planSelectorCard" style="display:none;">
                         <div id="planSelectorBox">
                             <div class="pp-sec" id="planSelectorHeader" style="display:flex;justify-content:space-between;align-items:center;padding-bottom:0;border-bottom:none;">
@@ -1252,14 +1250,14 @@
                                     <i class="bi bi-pencil-fill me-1"></i>Change
                                 </button>
                             </div>
-                            {{-- Collapsed summary (shown after plan is confirmed) --}}
+                            
                             <div id="planSummaryStrip" style="display:none;padding:0 18px 12px;">
                                 <div style="display:flex;align-items:center;gap:7px;">
                                     <i class="bi bi-check-circle-fill" style="color:var(--pp-good);font-size:13px;"></i>
                                     <div id="planSummaryText" class="pp-mono" style="font-size:12px;font-weight:600;color:var(--pp-good);flex:1;"></div>
                                 </div>
                             </div>
-                            {{-- Expandable options list --}}
+                            
                             <div id="planOptionsWrap">
                                 <div style="padding:0 18px 14px;" id="planOptionsList">
                                     <div style="text-align:center;padding:16px;color:var(--pp-faint);">
@@ -1271,8 +1269,7 @@
                         </div>
                     </div>
 
-                    {{-- Installment Timeline → rendered as dotted-leader schedule
-                         rows by renderInstallmentTimeline(). Hidden for full-payment (A). --}}
+                    
                     <div id="timelineCard" class="pp-sec" style="display:none;">
                         <div class="pp-sec-label">Schedule</div>
                         <div id="timelineBody">
@@ -1282,19 +1279,19 @@
                         </div>
                     </div>
 
-                    {{-- Amount --}}
+                    
                     <div class="pp-sec">
                         <div class="pp-sec-label" style="display:flex;justify-content:space-between;">
                             <span>Amount</span>
                             <span id="paymentTypeLabel" style="text-transform:none;letter-spacing:0;color:var(--pp-accent);font-weight:700;">Select type</span>
                         </div>
 
-                        {{-- Quick Presets --}}
+                        
                         <div id="quickAmountRow" style="display:none;margin-bottom:10px;">
                             <div style="display:flex;gap:8px;flex-wrap:wrap;" id="quickAmountBtns"></div>
                         </div>
 
-                        {{-- Amount Input --}}
+                        
                         <div id="amountInputWrap" style="display:flex;align-items:baseline;gap:10px;">
                             <span class="pp-peso pp-mono">₱</span>
                             <input type="number" id="paymentAmount" placeholder="0.00" step="0.01" min="0" class="pp-amount-input"
@@ -1304,7 +1301,7 @@
                         <div class="pp-amount-underline"></div>
                     </div>
 
-                    {{-- Payment Method --}}
+                    
                     <div class="pp-sec">
                         <div class="pp-sec-label">Method</div>
                         <div class="pp-method-toggle">
@@ -1313,25 +1310,26 @@
                         </div>
                         <div id="onlineMethodRow" style="display:none;margin-top:10px;">
                             <div style="display:flex;gap:8px;">
-                                @foreach([['gcash','bi-phone-fill','GCash'],['maya','bi-wallet2','Maya']] as [$m,$icon,$label])
-                                <button type="button" class="online-method-opt pp-wallet-chip" data-method="{{ $m }}" onclick="selectOnlineMethod('{{ $m }}')">
-                                    <i class="bi {{ $icon }} me-1"></i>{{ $label }}
+                                <?php $__currentLoopData = [['gcash','bi-phone-fill','GCash'],['maya','bi-wallet2','Maya']]; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as [$m,$icon,$label]): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                <button type="button" class="online-method-opt pp-wallet-chip" data-method="<?php echo e($m); ?>" onclick="selectOnlineMethod('<?php echo e($m); ?>')">
+                                    <i class="bi <?php echo e($icon); ?> me-1"></i><?php echo e($label); ?>
+
                                 </button>
-                                @endforeach
+                                <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                             </div>
                         </div>
                     </div>
 
-                    {{-- Notes field --}}
+                    
                     <div class="pp-sec">
                         <div class="pp-sec-label">Notes <span style="text-transform:none;font-weight:400;">(optional)</span></div>
                         <textarea id="paymentNotesField" rows="1" class="pp-notes" placeholder="e.g. Paid via manager, reference #, etc."
                             oninput="document.getElementById('paymentNotes').value=this.value;"></textarea>
                     </div>
 
-                    {{-- Totals + confirm — the receipt's own foot --}}
+                    
                     <div class="pp-sec">
-                        {{-- Transaction Summary --}}
+                        
                         <div id="txnSummary" style="display:none;">
                             <div class="pp-total-line"><span>Student</span><b id="txnStudent">—</b></div>
                             <div class="pp-total-line"><span>Payment Type</span><b id="txnType">—</b></div>
@@ -1339,7 +1337,7 @@
                             <div class="pp-grand"><span class="pp-l">Total</span><span class="pp-v pp-mono" id="txnAmount">₱0.00</span></div>
                         </div>
 
-                        {{-- Xendit link result --}}
+                        
                         <div id="xenditLinkResult" style="display:none;background:var(--pp-good-soft);border:1px solid var(--pp-good);border-radius:8px;padding:14px;">
                             <div style="font-size:12px;font-weight:700;color:var(--pp-good);margin-bottom:10px;display:flex;align-items:center;gap:8px;"><i class="bi bi-check-circle-fill"></i> Payment link generated!</div>
                             <div style="display:flex;gap:8px;margin-bottom:10px;">
@@ -1351,7 +1349,7 @@
                             <div id="xenditPollStatus" style="display:none;margin-top:10px;padding:8px 12px;border-radius:8px;font-size:11.5px;font-weight:600;"></div>
                         </div>
 
-                        {{-- Success Banner --}}
+                        
                         <div id="paySuccessBanner" style="display:none;text-align:center;">
                             <div style="width:48px;height:48px;border-radius:50%;background:var(--pp-good);display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">
                                 <i class="bi bi-check-lg" style="font-size:22px;color:#fff;"></i>
@@ -1368,7 +1366,7 @@
                             </div>
                         </div>
 
-                        {{-- Process Button --}}
+                        
                         <button id="processBtn" onclick="handleProcessPayment()" class="pp-confirm-btn">
                             <i class="bi bi-check-circle-fill" style="font-size:17px;"></i>
                             <span id="processBtnLabel">Collect &amp; Record Payment</span>
@@ -1376,7 +1374,7 @@
                     </div>
                 </div>
 
-                {{-- Hidden fields --}}
+                
                 <input type="hidden" id="selectedEnrollmentId">
                 <input type="hidden" id="selectedStudentEmail">
                 <input type="hidden" id="selectedStudentNameHidden">
@@ -1384,16 +1382,16 @@
                 <input type="hidden" id="paymentType" value="">
                 <input type="hidden" id="paymentNotes" value="">
 
-            </div>{{-- /RIGHT --}}
+            </div>
 
-        </div>{{-- /POS layout --}}
-        </div>{{-- /process-content --}}
+        </div>
+        </div>
     </div>
 
-    {{-- ── PAYMENT HISTORY SECTION ── --}}
+    
     <div id="section-history" style="display:none;">
 
-        {{-- Skeleton --}}
+        
         <div id="history-skel" style="display:none;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
                 <div><span class="skel" style="height:26px;width:200px;margin-bottom:8px;"></span><span class="skel" style="height:14px;width:340px;"></span></div>
@@ -1401,13 +1399,13 @@
             </div>
             <div class="skel-wrap">
                 <div style="display:flex;gap:10px;margin-bottom:18px;"><span class="skel" style="height:38px;width:150px;border-radius:9px;"></span><span class="skel" style="height:38px;width:140px;border-radius:9px;"></span><span class="skel" style="height:38px;width:140px;border-radius:9px;"></span><span class="skel" style="height:38px;flex:1;max-width:240px;border-radius:10px;"></span></div>
-                @for($i=0;$i<7;$i++)
+                <?php for($i=0;$i<7;$i++): ?>
                 <div class="skel-trow"><span class="skel" style="height:12px;width:24px;"></span><span class="skel" style="height:22px;width:120px;border-radius:6px;"></span><span class="skel" style="height:32px;flex:2;border-radius:6px;"></span><span class="skel" style="height:14px;flex:1;"></span><span class="skel" style="height:14px;flex:1;"></span><span class="skel" style="height:22px;width:60px;border-radius:20px;"></span><span class="skel" style="height:14px;flex:1;max-width:80px;"></span><span class="skel" style="height:22px;width:60px;border-radius:20px;"></span><span class="skel" style="height:14px;flex:1;"></span><span class="skel" style="height:30px;width:36px;border-radius:8px;"></span></div>
-                @endfor
+                <?php endfor; ?>
             </div>
         </div>
 
-        {{-- Real content --}}
+        
         <div id="history-content" class="sec-content">
         <div class="page-header">
             <div>
@@ -1415,7 +1413,7 @@
                 <div class="page-sub" id="historyPageSub">All transactions processed through this cashier terminal.</div>
             </div>
         </div>
-        {{-- Shown only when opened for one specific student (e.g. from Process Payment) --}}
+        
         <div id="historyStudentChip" style="display:none;margin-bottom:14px;background:#e8f0fb;border:1.5px solid #bcd6f2;border-radius:12px;padding:10px 16px;align-items:center;gap:10px;">
             <i class="bi bi-person-check-fill" style="color:#1a3a6c;"></i>
             <span style="font-size:13px;color:#1a3a6c;">Showing payment history for <strong id="historyStudentChipName">—</strong></span>
@@ -1464,24 +1462,24 @@
             </div>
             <div id="historyPagination"></div>
         </div>
-        </div>{{-- /history-content --}}
+        </div>
     </div>
 
-    {{-- ── STUDENT LOOKUP SECTION ── --}}
+    
     <div id="section-lookup" style="display:none;">
 
-        {{-- Skeleton --}}
+        
         <div id="lookup-skel" style="display:none;">
             <div style="margin-bottom:24px;"><span class="skel" style="height:26px;width:210px;margin-bottom:8px;"></span><span class="skel" style="height:14px;width:380px;"></span></div>
             <div class="skel-wrap">
                 <div class="skel-hdr"><span class="skel" style="height:18px;width:150px;"></span><div style="display:flex;gap:8px;"><span class="skel" style="height:38px;width:280px;border-radius:10px;"></span><span class="skel" style="height:38px;width:90px;border-radius:10px;"></span></div></div>
-                @for($i=0;$i<6;$i++)
+                <?php for($i=0;$i<6;$i++): ?>
                 <div class="skel-trow"><span class="skel" style="height:22px;width:90px;border-radius:6px;"></span><span class="skel" style="height:32px;flex:2;border-radius:6px;"></span><span class="skel" style="height:14px;flex:1;"></span><span class="skel" style="height:14px;flex:1;"></span><span class="skel" style="height:14px;flex:1;"></span><span class="skel" style="height:22px;width:80px;border-radius:20px;"></span><span class="skel" style="height:22px;width:70px;border-radius:20px;"></span><span class="skel" style="height:14px;flex:1;max-width:90px;"></span></div>
-                @endfor
+                <?php endfor; ?>
             </div>
         </div>
 
-        {{-- Real content --}}
+        
         <div id="lookup-content" class="sec-content">
         <div class="page-header" style="margin-bottom:20px;">
             <div>
@@ -1490,7 +1488,7 @@
             </div>
         </div>
 
-        {{-- Auto-loaded student table --}}
+        
         <div id="lookupListPanel">
             <div class="card-box" style="margin-bottom:16px;">
                 <div class="card-box-header">
@@ -1536,7 +1534,7 @@
             </div>
         </div>
 
-        {{-- Student detail panel (shown on row click) --}}
+        
         <div id="lookupPlaceholder" style="display:none;">
             <div style="padding:70px 24px;background:#fff;border-radius:20px;text-align:center;color:#94a3b8;border:2px dashed #e2e8f0;max-width:680px;">
                 <div style="width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,#e8f0fb,#f1f5f9);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;box-shadow:0 4px 16px rgba(26,58,108,.1);">
@@ -1552,13 +1550,13 @@
             </div>
         </div>
 
-        {{-- Student Profile Result --}}
+        
         <div id="lookupResult" style="display:none;max-width:900px;">
             <button onclick="backToLookupList()" class="btn-outline-cash" style="margin-bottom:16px;">
                 <i class="bi bi-arrow-left"></i> Back to Student List
             </button>
 
-            {{-- Identity Banner --}}
+            
             <div style="background:linear-gradient(145deg,#0f2451 0%,#1a3a6c 45%,#2471a3 100%);border-radius:22px;padding:28px;margin-bottom:18px;position:relative;overflow:hidden;">
                 <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.04);pointer-events:none;"></div>
                 <div style="position:absolute;bottom:-30px;left:-20px;width:120px;height:120px;border-radius:50%;background:rgba(197,160,89,.06);pointer-events:none;"></div>
@@ -1581,7 +1579,7 @@
                         </button>
                     </div>
                 </div>
-                {{-- Balance + Progress --}}
+                
                 <div style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(255,255,255,.12);position:relative;">
                     <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px;flex-wrap:wrap;gap:10px;">
                         <div>
@@ -1603,10 +1601,10 @@
                 </div>
             </div>
 
-            {{-- Details Grid --}}
+            
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;">
 
-                {{-- Account Summary --}}
+                
                 <div class="card-box">
                     <div class="card-box-header">
                         <div class="card-box-title"><i class="bi bi-wallet2" style="color:#2471a3;"></i> Account Summary</div>
@@ -1631,7 +1629,7 @@
                     </div>
                 </div>
 
-                {{-- Student Info --}}
+                
                 <div class="card-box">
                     <div class="card-box-header">
                         <div class="card-box-title"><i class="bi bi-person-badge" style="color:#2471a3;"></i> Student Info</div>
@@ -1662,7 +1660,7 @@
 
             </div>
 
-            {{-- Balance breakdown bar --}}
+            
             <div class="card-box" style="margin-bottom:18px;">
                 <div class="card-box-header">
                     <div class="card-box-title"><i class="bi bi-bar-chart-fill" style="color:#2471a3;"></i> Payment Overview</div>
@@ -1681,7 +1679,7 @@
                 </div>
             </div>
 
-            {{-- Action buttons --}}
+            
             <div style="display:flex;gap:12px;flex-wrap:wrap;">
                 <button onclick="goToProcessPayment()" style="padding:14px 28px;background:linear-gradient(135deg,#166534,#16a34a);color:#fff;border:none;border-radius:14px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:9px;box-shadow:0 8px 20px rgba(22,163,74,.35);transition:all .2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
                     <i class="bi bi-cash-coin" style="font-size:17px;"></i> Process Payment Now
@@ -1691,36 +1689,36 @@
                 </button>
             </div>
 
-        </div>{{-- /lookupResult --}}
-        </div>{{-- /lookup-content --}}
+        </div>
+        </div>
     </div>
 
-    {{-- ── DAILY REPORT SECTION ── --}}
+    
     <div id="section-daily" style="display:none;">
 
-        {{-- Skeleton --}}
+        
         <div id="daily-skel" style="display:none;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
                 <div><span class="skel" style="height:26px;width:190px;margin-bottom:8px;"></span><span class="skel" style="height:14px;width:260px;"></span></div>
                 <div style="display:flex;gap:10px;"><span class="skel" style="height:38px;width:160px;border-radius:10px;"></span><span class="skel" style="height:38px;width:130px;border-radius:10px;"></span></div>
             </div>
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px;">
-                @for($i=0;$i<4;$i++)
+                <?php for($i=0;$i<4;$i++): ?>
                 <div class="skel-wrap" style="margin-bottom:0;padding:20px;display:flex;align-items:center;gap:14px;">
                     <span class="skel" style="width:46px;height:46px;border-radius:12px;flex-shrink:0;"></span>
                     <div style="flex:1;"><span class="skel" style="height:26px;width:80px;margin-bottom:8px;"></span><span class="skel" style="height:13px;width:110px;"></span></div>
                 </div>
-                @endfor
+                <?php endfor; ?>
             </div>
             <div class="skel-wrap">
                 <div class="skel-hdr"><span class="skel" style="height:18px;width:200px;"></span><span class="skel" style="height:14px;width:100px;"></span></div>
-                @for($i=0;$i<6;$i++)
+                <?php for($i=0;$i<6;$i++): ?>
                 <div class="skel-trow"><span class="skel" style="height:12px;width:20px;"></span><span class="skel" style="height:14px;flex:1;max-width:70px;"></span><span class="skel" style="height:28px;flex:2;border-radius:6px;"></span><span class="skel" style="height:14px;flex:1;"></span><span class="skel" style="height:14px;flex:1;"></span><span class="skel" style="height:22px;width:60px;border-radius:20px;"></span><span class="skel" style="height:14px;flex:1;max-width:90px;"></span><span class="skel" style="height:22px;width:90px;border-radius:6px;"></span><span class="skel" style="height:30px;width:36px;border-radius:8px;"></span></div>
-                @endfor
+                <?php endfor; ?>
             </div>
         </div>
 
-        {{-- Real content --}}
+        
         <div id="daily-content" class="sec-content">
         <div class="page-header">
             <div>
@@ -1728,7 +1726,7 @@
                 <div class="page-sub" id="dailyReportSub">Summary of payments collected today.</div>
             </div>
             <div style="display:flex;gap:10px;align-items:center;">
-                <input type="date" class="form-fld" id="dailyReportDate" value="{{ date('Y-m-d') }}"
+                <input type="date" class="form-fld" id="dailyReportDate" value="<?php echo e(date('Y-m-d')); ?>"
                     style="max-width:160px;" onchange="loadDailyReport(this.value)">
                 <button onclick="printDailyReport()" class="btn-primary-cash">
                     <i class="bi bi-printer"></i> Print Report
@@ -1788,24 +1786,24 @@
                 </table>
             </div>
         </div>
-        </div>{{-- /daily-content --}}
+        </div>
     </div>
 
-    {{-- ── RECEIPTS SECTION ── --}}
+    
     <div id="section-receipts" style="display:none;">
 
-        {{-- Skeleton --}}
+        
         <div id="receipts-skel" style="display:none;">
             <div style="margin-bottom:24px;"><span class="skel" style="height:26px;width:160px;margin-bottom:8px;"></span><span class="skel" style="height:14px;width:310px;"></span></div>
             <div class="skel-wrap">
                 <div class="skel-hdr"><div style="display:flex;align-items:center;gap:10px;"><span class="skel" style="height:18px;width:120px;"></span><span class="skel" style="height:22px;width:34px;border-radius:20px;"></span></div><div style="display:flex;gap:8px;"><span class="skel" style="height:38px;width:280px;border-radius:10px;"></span><span class="skel" style="height:38px;width:90px;border-radius:10px;"></span></div></div>
-                @for($i=0;$i<7;$i++)
+                <?php for($i=0;$i<7;$i++): ?>
                 <div class="skel-trow"><span class="skel" style="height:12px;width:24px;"></span><span class="skel" style="height:22px;width:110px;border-radius:6px;"></span><span class="skel" style="height:28px;flex:2;border-radius:6px;"></span><span class="skel" style="height:14px;flex:1;"></span><span class="skel" style="height:14px;flex:1;"></span><span class="skel" style="height:22px;width:60px;border-radius:20px;"></span><span class="skel" style="height:14px;flex:1;max-width:90px;"></span><span class="skel" style="height:28px;flex:1;border-radius:6px;"></span><span class="skel" style="height:30px;width:70px;border-radius:8px;"></span></div>
-                @endfor
+                <?php endfor; ?>
             </div>
         </div>
 
-        {{-- Real content --}}
+        
         <div id="receipts-content" class="sec-content">
         <div class="page-header">
             <div>
@@ -1855,13 +1853,13 @@
             </div>
             <div id="receiptsPagination"></div>
         </div>
-        </div>{{-- /receipts-content --}}
+        </div>
     </div>
 
-    {{-- ── COLLECTION SUMMARY SECTION ── --}}
+    
     <div id="section-collection" style="display:none;">
 
-        {{-- Skeleton --}}
+        
         <div id="collection-skel" style="display:none;">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
                 <div><span class="skel" style="height:26px;width:230px;margin-bottom:8px;"></span><span class="skel" style="height:14px;width:270px;"></span></div>
@@ -1884,7 +1882,7 @@
             </div>
         </div>
 
-        {{-- Real content --}}
+        
         <div id="collection-content" class="sec-content">
         <div class="page-header">
             <div>
@@ -1915,24 +1913,24 @@
             </div>
             <div class="card-box-body" style="height:220px;"><canvas id="csColBar"></canvas></div>
         </div>
-        </div>{{-- /collection-content --}}
+        </div>
     </div>
 
-    {{-- ── AUDIT TRAIL SECTION ── --}}
+    
     <div id="section-audit" style="display:none;">
 
-        {{-- Skeleton --}}
+        
         <div id="audit-skel" style="display:none;">
             <div style="margin-bottom:24px;"><span class="skel" style="height:26px;width:160px;margin-bottom:8px;"></span><span class="skel" style="height:14px;width:310px;"></span></div>
             <div class="skel-wrap">
                 <div class="skel-hdr"><div style="display:flex;align-items:center;gap:10px;"><span class="skel" style="height:18px;width:120px;"></span><span class="skel" style="height:22px;width:34px;border-radius:20px;"></span></div></div>
-                @for($i=0;$i<7;$i++)
+                <?php for($i=0;$i<7;$i++): ?>
                 <div class="skel-trow"><span class="skel" style="height:12px;width:24px;"></span><span class="skel" style="height:22px;width:110px;border-radius:6px;"></span><span class="skel" style="height:28px;flex:2;border-radius:6px;"></span><span class="skel" style="height:14px;flex:1;"></span></div>
-                @endfor
+                <?php endfor; ?>
             </div>
         </div>
 
-        {{-- Real content --}}
+        
         <div id="audit-content" class="sec-content">
         <div class="page-header">
             <div>
@@ -1969,34 +1967,34 @@
             </div>
             <div id="auditPagination"></div>
         </div>
-        </div>{{-- /audit-content --}}
+        </div>
     </div>
 
-    {{-- ── SETTINGS SECTION ── --}}
+    
     <div id="section-settings" style="display:none;">
 
-        {{-- Skeleton --}}
+        
         <div id="settings-skel" style="display:none;">
             <div style="margin-bottom:24px;"><span class="skel" style="height:26px;width:150px;margin-bottom:8px;"></span><span class="skel" style="height:14px;width:290px;"></span></div>
             <span class="skel" style="display:block;height:110px;border-radius:16px;margin-bottom:20px;"></span>
             <div class="skel-wrap" style="max-width:540px;">
                 <div class="skel-hdr"><span class="skel" style="height:17px;width:120px;"></span></div>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-                    @for($i=0;$i<3;$i++)
+                    <?php for($i=0;$i<3;$i++): ?>
                     <div><span class="skel" style="height:12px;width:80px;margin-bottom:6px;"></span><span class="skel" style="height:40px;border-radius:8px;"></span></div>
-                    @endfor
+                    <?php endfor; ?>
                 </div>
             </div>
             <div class="skel-wrap" style="max-width:540px;">
                 <div class="skel-hdr"><span class="skel" style="height:17px;width:150px;"></span></div>
-                @for($i=0;$i<3;$i++)
+                <?php for($i=0;$i<3;$i++): ?>
                 <div style="margin-bottom:14px;"><span class="skel" style="height:12px;width:130px;margin-bottom:6px;"></span><span class="skel" style="height:42px;border-radius:8px;"></span></div>
-                @endfor
+                <?php endfor; ?>
                 <span class="skel" style="height:42px;width:160px;border-radius:10px;margin-top:8px;"></span>
             </div>
         </div>
 
-        {{-- Real content --}}
+        
         <div id="settings-content" class="sec-content">
         <div class="page-header">
             <div>
@@ -2005,19 +2003,19 @@
             </div>
         </div>
 
-        {{-- Profile banner --}}
+        
         <div class="settings-banner">
-            <div class="settings-banner-avatar">{{ strtoupper(substr(auth('cashier')->user()->name, 0, 1)) }}</div>
+            <div class="settings-banner-avatar"><?php echo e(strtoupper(substr(auth('cashier')->user()->name, 0, 1))); ?></div>
             <div class="settings-banner-info">
-                <div class="settings-banner-name">{{ auth('cashier')->user()->name }}</div>
+                <div class="settings-banner-name"><?php echo e(auth('cashier')->user()->name); ?></div>
                 <div class="settings-banner-meta">
                     <span class="settings-banner-badge">Cashier</span>
-                    <span><i class="bi bi-envelope me-1"></i>{{ auth('cashier')->user()->email }}</span>
+                    <span><i class="bi bi-envelope me-1"></i><?php echo e(auth('cashier')->user()->email); ?></span>
                 </div>
             </div>
         </div>
 
-        {{-- Profile Info --}}
+        
         <div class="card-box" style="max-width:540px;margin-bottom:20px;">
             <div class="card-box-header">
                 <div class="card-box-title"><i class="bi bi-person-lines-fill" style="color:#2471a3;"></i> Profile Information</div>
@@ -2028,14 +2026,14 @@
                         <label class="form-lbl">Full Name</label>
                         <div class="input-icon-wrap">
                             <i class="bi bi-person"></i>
-                            <input type="text" class="form-fld has-icon" value="{{ auth('cashier')->user()->name }}" readonly style="background:#f1f5f9;color:#64748b;">
+                            <input type="text" class="form-fld has-icon" value="<?php echo e(auth('cashier')->user()->name); ?>" readonly style="background:#f1f5f9;color:#64748b;">
                         </div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-lbl">Email</label>
                         <div class="input-icon-wrap">
                             <i class="bi bi-envelope"></i>
-                            <input type="text" class="form-fld has-icon" value="{{ auth('cashier')->user()->email }}" readonly style="background:#f1f5f9;color:#64748b;">
+                            <input type="text" class="form-fld has-icon" value="<?php echo e(auth('cashier')->user()->email); ?>" readonly style="background:#f1f5f9;color:#64748b;">
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -2049,26 +2047,35 @@
             </div>
         </div>
 
-        {{-- Change Password --}}
+        
         <div class="card-box" style="max-width:540px;">
             <div class="card-box-header">
                 <div class="card-box-title"><i class="bi bi-shield-lock" style="color:#c5a059;"></i> Security</div>
             </div>
             <div class="card-box-body">
 
-                @if(session('password_success'))
+                <?php if(session('password_success')): ?>
                     <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#16a34a;display:flex;align-items:center;gap:8px;">
-                        <i class="bi bi-check-circle-fill"></i> {{ session('password_success') }}
-                    </div>
-                @endif
-                @error('current_password')
-                    <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#dc2626;display:flex;align-items:center;gap:8px;">
-                        <i class="bi bi-exclamation-circle-fill"></i> {{ $message }}
-                    </div>
-                @enderror
+                        <i class="bi bi-check-circle-fill"></i> <?php echo e(session('password_success')); ?>
 
-                <form method="POST" action="{{ route('cashier.change-password') }}">
-                    @csrf
+                    </div>
+                <?php endif; ?>
+                <?php $__errorArgs = ['current_password'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?>
+                    <div style="background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#dc2626;display:flex;align-items:center;gap:8px;">
+                        <i class="bi bi-exclamation-circle-fill"></i> <?php echo e($message); ?>
+
+                    </div>
+                <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
+
+                <form method="POST" action="<?php echo e(route('cashier.change-password')); ?>">
+                    <?php echo csrf_field(); ?>
                     <div class="row g-3">
                         <div class="col-12">
                             <label class="form-lbl">Current Password <span style="color:#dc2626;">*</span></label>
@@ -2102,12 +2109,12 @@
                 </form>
             </div>
         </div>
-        </div>{{-- /settings-content --}}
+        </div>
     </div>
 
 </div>
 
-{{-- Old process payment modal removed — using section-process full page instead --}}
+
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
@@ -2228,14 +2235,14 @@
     (function () {
         if (window.history && window.history.pushState) {
             // Push a dummy "login" entry underneath the current dashboard entry.
-            window.history.pushState({ cashierPage: 'login' }, '', '{{ route("cashier.login") }}');
-            window.history.pushState({ cashierPage: 'dashboard' }, '', '{{ route("cashier.dashboard") }}');
+            window.history.pushState({ cashierPage: 'login' }, '', '<?php echo e(route("cashier.login")); ?>');
+            window.history.pushState({ cashierPage: 'dashboard' }, '', '<?php echo e(route("cashier.dashboard")); ?>');
 
             window.addEventListener('popstate', function (e) {
                 // User pressed back — always send them to the login route.
                 // If the session is still alive, showLogin() redirects them back
                 // to the dashboard automatically. If expired, they see the form.
-                window.location.replace('{{ route("cashier.login") }}');
+                window.location.replace('<?php echo e(route("cashier.login")); ?>');
             });
         }
     })();
@@ -2416,18 +2423,18 @@
     var searchTimer = null;
     var selectedStudent = null;
 
-    var _searchUrl      = '{{ route("cashier.students.search") }}';
-    var _listUrl        = '{{ route("cashier.students.list") }}';
-    var _loginUrl       = '{{ route("cashier.login") }}';
-    var _optionsUrl     = '{{ route("cashier.payment.options") }}';
-    var _setPlanUrl     = '{{ route("cashier.enrollment.set-plan") }}';
+    var _searchUrl      = '<?php echo e(route("cashier.students.search")); ?>';
+    var _listUrl        = '<?php echo e(route("cashier.students.list")); ?>';
+    var _loginUrl       = '<?php echo e(route("cashier.login")); ?>';
+    var _optionsUrl     = '<?php echo e(route("cashier.payment.options")); ?>';
+    var _setPlanUrl     = '<?php echo e(route("cashier.enrollment.set-plan")); ?>';
     var _csrfToken      = document.querySelector('meta[name=csrf-token]') ? document.querySelector('meta[name=csrf-token]').content : '';
-    var _logoUrl        = '{{ asset("images/logo.png") }}';
-    var _dailyUrl       = '{{ route("cashier.daily.report") }}';
-    var _receiptsUrl    = '{{ route("cashier.receipts.list") }}';
-    var _timelineUrlBase = '{{ url("cashier/installments") }}';
-    var _auditUrl       = '{{ route("cashier.audit-trail") }}';
-    var _cashierName    = '{{ auth("cashier")->user()->name ?? "Cashier" }}';
+    var _logoUrl        = '<?php echo e(asset("images/logo.png")); ?>';
+    var _dailyUrl       = '<?php echo e(route("cashier.daily.report")); ?>';
+    var _receiptsUrl    = '<?php echo e(route("cashier.receipts.list")); ?>';
+    var _timelineUrlBase = '<?php echo e(url("cashier/installments")); ?>';
+    var _auditUrl       = '<?php echo e(route("cashier.audit-trail")); ?>';
+    var _cashierName    = '<?php echo e(auth("cashier")->user()->name ?? "Cashier"); ?>';
     var _allStudents = [];
 
     /* ── Shared pagination control renderer ──────────────
@@ -3438,7 +3445,7 @@
                     description: type,
                     amount: Number(amount).toLocaleString('en-PH',{minimumFractionDigits:2}),
                     method: 'Cash',
-                    received_by: '{{ auth('cashier')->user()->name }}'
+                    received_by: '<?php echo e(auth('cashier')->user()->name); ?>'
                 };
                 // Show success banner
                 document.getElementById('paySuccessRef').textContent = 'Reference: ' + (data.reference || '—') + '  ·  Amount: ₱' + Number(amount).toLocaleString('en-PH',{minimumFractionDigits:2});
@@ -3608,7 +3615,7 @@
             school_year: sy, description: type, method: method,
             amount: Number(amount).toLocaleString('en-PH',{minimumFractionDigits:2}),
             date: date, time: time,
-            received_by: '{{ auth("cashier")->user()->name ?? "Cashier" }}'
+            received_by: '<?php echo e(auth("cashier")->user()->name ?? "Cashier"); ?>'
         });
     }
 
@@ -3755,8 +3762,8 @@
 
         const barEl = document.getElementById('csWeekBar');
         if (barEl) new Chart(barEl,{type:'bar',
-            data:{labels:@json($csChDays??[]),
-                datasets:[{label:'Collections (₱)',data:@json($csChTotals??[]),
+            data:{labels:<?php echo json_encode($csChDays??[], 15, 512) ?>,
+                datasets:[{label:'Collections (₱)',data:<?php echo json_encode($csChTotals??[], 15, 512) ?>,
                     backgroundColor:_CsC.blue,borderRadius:5,borderSkipped:false}]},
             options:{responsive:true,maintainAspectRatio:false,
                 plugins:{legend:{display:false}},
@@ -3767,7 +3774,7 @@
         const doughEl = document.getElementById('csMethodDoughnut');
         if (doughEl) new Chart(doughEl,{type:'doughnut',
             data:{labels:['Cash','Online'],
-                datasets:[{data:[{{ (float)$todayCash }},{{ (float)$todayOnline }}],
+                datasets:[{data:[<?php echo e((float)$todayCash); ?>,<?php echo e((float)$todayOnline); ?>],
                     backgroundColor:[_CsC.green,_CsC.mid],borderWidth:0,hoverOffset:4}]},
             options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
                 plugins:{legend:{position:'bottom',labels:{padding:10}}}}
@@ -3780,7 +3787,7 @@
     var _csColCharts = null;
 
     function loadCollectionSummary() {
-        fetch('{{ route("cashier.collection-summary") }}', { headers: { 'Accept': 'application/json' } })
+        fetch('<?php echo e(route("cashier.collection-summary")); ?>', { headers: { 'Accept': 'application/json' } })
             .then(function (r) { return r.json(); })
             .then(function (d) { renderCollectionCharts(d); })
             .catch(function () { showToast('Failed to load collection summary.', 'error'); });
@@ -3841,3 +3848,4 @@
 </script>
 </body>
 </html>
+<?php /**PATH C:\Users\ron28\Desktop\ILC SYSTEM\ilc-website-system\resources\views/cashier/dashboard.blade.php ENDPATH**/ ?>

@@ -291,10 +291,13 @@
 
             const div = document.createElement('div');
             div.style.cssText = 'min-width:290px;max-width:420px;background:' + c.bg + ';border:1.5px solid ' + c.border + ';border-left:4px solid ' + c.border + ';border-radius:10px;padding:13px 16px;display:flex;align-items:flex-start;gap:10px;box-shadow:0 6px 20px rgba(0,0,0,0.12);font-size:13px;pointer-events:all;';
+            // message is set via textContent below, not interpolated into this
+            // HTML string — it can carry server/user-controlled text.
             div.innerHTML =
                 '<i class="bi ' + c.icon + '" style="color:' + c.border + ';font-size:16px;margin-top:1px;flex-shrink:0;"></i>' +
-                '<span style="flex:1;color:' + c.text + ';font-weight:500;line-height:1.4;">' + message + '</span>' +
+                '<span style="flex:1;color:' + c.text + ';font-weight:500;line-height:1.4;"></span>' +
                 '<button type="button" style="background:none;border:none;color:' + c.text + ';opacity:0.6;cursor:pointer;font-size:16px;line-height:1;padding:0;" onclick="this.parentElement.remove()">&times;</button>';
+            div.querySelector('span').textContent = message;
 
             container.appendChild(div);
             setTimeout(() => div.remove(), 4500);
@@ -314,16 +317,22 @@
 
             var box = document.createElement('div');
             box.style.cssText = 'background:#fff;border-radius:16px;padding:28px 26px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center;';
+            // title/message/confirmLabel are set via textContent below, not
+            // interpolated into this HTML string — all three can carry
+            // server/user-controlled text.
             box.innerHTML =
                 '<div style="width:52px;height:52px;border-radius:50%;background:' + iconBg + ';display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">' +
                     '<i class="bi ' + (danger ? 'bi-exclamation-triangle-fill' : 'bi-question-circle-fill') + '" style="font-size:24px;color:' + iconColor + ';"></i>' +
                 '</div>' +
-                '<div style="font-size:15px;font-weight:700;color:#1a3a6c;margin-bottom:6px;">' + title + '</div>' +
-                '<div style="font-size:13px;color:#64748b;line-height:1.5;margin-bottom:20px;">' + message + '</div>' +
+                '<div id="ilc-confirm-title" style="font-size:15px;font-weight:700;color:#1a3a6c;margin-bottom:6px;"></div>' +
+                '<div id="ilc-confirm-message" style="font-size:13px;color:#64748b;line-height:1.5;margin-bottom:20px;"></div>' +
                 '<div style="display:flex;gap:10px;">' +
                     '<button type="button" id="ilc-confirm-cancel" style="flex:1;padding:10px;border-radius:9px;border:1.5px solid #e2e8f0;background:#fff;color:#334155;font-weight:600;font-size:13px;cursor:pointer;">Cancel</button>' +
-                    '<button type="button" id="ilc-confirm-ok" style="flex:1;padding:10px;border-radius:9px;border:none;background:' + okBg + ';color:#fff;font-weight:600;font-size:13px;cursor:pointer;">' + confirmLabel + '</button>' +
+                    '<button type="button" id="ilc-confirm-ok" style="flex:1;padding:10px;border-radius:9px;border:none;background:' + okBg + ';color:#fff;font-weight:600;font-size:13px;cursor:pointer;"></button>' +
                 '</div>';
+            box.querySelector('#ilc-confirm-title').textContent = title;
+            box.querySelector('#ilc-confirm-message').textContent = message;
+            box.querySelector('#ilc-confirm-ok').textContent = confirmLabel;
 
             overlay.appendChild(box);
             document.body.appendChild(overlay);

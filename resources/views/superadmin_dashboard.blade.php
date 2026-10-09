@@ -2833,9 +2833,14 @@
         var icons = { success: 'bi-check-circle-fill', error: 'bi-x-circle-fill', warning: 'bi-exclamation-triangle-fill' };
         var el = document.createElement('div');
         el.className = 'sa-toast sa-' + type;
+        // message/sub are set via textContent below, not interpolated into
+        // this HTML string — several callers pass a server response's
+        // `message` field straight through here.
         el.innerHTML =
             '<div class="sa-toast-icon"><i class="bi ' + (icons[type] || icons.success) + '"></i></div>' +
-            '<div><div class="sa-toast-msg">' + message + '</div>' + (sub ? '<div class="sa-toast-sub">' + sub + '</div>' : '') + '</div>';
+            '<div><div class="sa-toast-msg"></div>' + (sub ? '<div class="sa-toast-sub"></div>' : '') + '</div>';
+        el.querySelector('.sa-toast-msg').textContent = message;
+        if (sub) el.querySelector('.sa-toast-sub').textContent = sub;
         wrap.appendChild(el);
         setTimeout(function() { el.style.opacity = '0'; el.style.transform = 'translateX(30px)'; el.style.transition = 'all .3s'; setTimeout(function() { el.remove(); }, 300); }, 3500);
     }
@@ -3584,22 +3589,30 @@
 
         var box = document.createElement('div');
         box.style.cssText = 'background:#fff;border-radius:16px;padding:28px 26px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center;font-family:\'Open Sans\',sans-serif;';
+        // title/message/placeholder/confirmLabel are set via
+        // textContent/properties below, not interpolated into this HTML
+        // string — all can carry server/user-controlled text (e.g. a
+        // teacher's own name).
         box.innerHTML =
             '<div style="width:52px;height:52px;border-radius:50%;background:#fff8ec;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">' +
                 '<i class="bi bi-pencil-fill" style="font-size:22px;color:#b45309;"></i>' +
             '</div>' +
-            '<div style="font-size:15px;font-weight:700;color:#1a3a6c;margin-bottom:6px;">' + title + '</div>' +
-            '<div style="font-size:13px;color:#64748b;line-height:1.5;margin-bottom:14px;">' + message + '</div>' +
-            '<input type="' + inputType + '" id="ilc-prompt-input" placeholder="' + placeholder + '" style="width:100%;padding:10px 12px;border-radius:9px;border:1.5px solid #e2e8f0;font-size:13px;margin-bottom:18px;font-family:inherit;box-sizing:border-box;">' +
+            '<div id="ilc-prompt-title" style="font-size:15px;font-weight:700;color:#1a3a6c;margin-bottom:6px;"></div>' +
+            '<div id="ilc-prompt-message" style="font-size:13px;color:#64748b;line-height:1.5;margin-bottom:14px;"></div>' +
+            '<input type="' + inputType + '" id="ilc-prompt-input" style="width:100%;padding:10px 12px;border-radius:9px;border:1.5px solid #e2e8f0;font-size:13px;margin-bottom:18px;font-family:inherit;box-sizing:border-box;">' +
             '<div style="display:flex;gap:10px;">' +
                 '<button type="button" id="ilc-prompt-cancel" style="flex:1;padding:10px;border-radius:9px;border:1.5px solid #e2e8f0;background:#fff;color:#334155;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;">Cancel</button>' +
-                '<button type="button" id="ilc-prompt-ok" style="flex:1;padding:10px;border-radius:9px;border:none;background:#1a3a6c;color:#fff;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;">' + confirmLabel + '</button>' +
+                '<button type="button" id="ilc-prompt-ok" style="flex:1;padding:10px;border-radius:9px;border:none;background:#1a3a6c;color:#fff;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;"></button>' +
             '</div>';
+        box.querySelector('#ilc-prompt-title').textContent = title;
+        box.querySelector('#ilc-prompt-message').textContent = message;
+        box.querySelector('#ilc-prompt-ok').textContent = confirmLabel;
 
         overlay.appendChild(box);
         document.body.appendChild(overlay);
 
         var input = box.querySelector('#ilc-prompt-input');
+        input.placeholder = placeholder;
         setTimeout(function () { input.focus(); }, 50);
 
         function close() {

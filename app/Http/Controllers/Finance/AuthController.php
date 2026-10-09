@@ -65,8 +65,13 @@ class AuthController extends Controller
         // Find user by email
         $user = User::where('email', $request->email)->first();
 
-        // Check if user exists and has finance role
-        if (!$user || $user->role !== 'finance') {
+        // Check if user exists and is allowed into the finance portal —
+        // must match FinanceMiddleware's allowed roles exactly (it lets
+        // admin/superadmin through too), or an admin/superadmin account
+        // that the middleware would otherwise accept gets rejected right
+        // here before ever reaching it. CashierController::login() already
+        // gets this right; this previously didn't match it.
+        if (!$user || !in_array($user->role, ['finance', 'admin', 'superadmin'])) {
             $this->incrementLoginAttempts($lockKey, $unlockKey, $attempts);
             return back()->withErrors([
                 'email' => 'These credentials do not match our finance records.',

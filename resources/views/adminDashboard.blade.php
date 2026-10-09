@@ -5529,10 +5529,14 @@ function openWalkInEnrollmentModal() {
     // â”€â”€ Custom Alert System â”€â”€
 
     function showCustomAlert(type, title, message) {
+        // title/message can be server/user-controlled (e.g. a student's
+        // own name) — escaped here before being embedded in this HTML
+        // template, then passed to showToast with isHtml=true since it's
+        // now safe to render as-is.
         var combined = (title && message)
-            ? '<strong>' + title + '</strong><br><span style="font-weight:400;opacity:0.85;">' + message + '</span>'
-            : (title || message);
-        showToast(combined, type === 'loading' ? 'info' : type);
+            ? '<strong>' + escHtml(title) + '</strong><br><span style="font-weight:400;opacity:0.85;">' + escHtml(message) + '</span>'
+            : escHtml(title || message);
+        showToast(combined, type === 'loading' ? 'info' : type, true);
     }
 
     // â”€â”€ Lightweight confirmation modal â”€â”€ for simple yes/no prompts like
@@ -5556,16 +5560,22 @@ function openWalkInEnrollmentModal() {
 
         var box = document.createElement('div');
         box.style.cssText = 'background:#fff;border-radius:16px;padding:28px 26px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center;font-family:\'Open Sans\',sans-serif;';
+        // title/message/confirmLabel are set via textContent below, not
+        // interpolated into this HTML string — all three can carry
+        // server/user-controlled text.
         box.innerHTML =
             '<div style="width:52px;height:52px;border-radius:50%;background:' + iconBg + ';display:flex;align-items:center;justify-content:center;margin:0 auto 14px;">' +
                 '<i class="bi ' + (danger ? 'bi-exclamation-triangle-fill' : 'bi-question-circle-fill') + '" style="font-size:24px;color:' + iconColor + ';"></i>' +
             '</div>' +
-            '<div style="font-size:15px;font-weight:700;color:#1a3a6c;margin-bottom:6px;">' + title + '</div>' +
-            '<div style="font-size:13px;color:#64748b;line-height:1.5;margin-bottom:20px;">' + message + '</div>' +
+            '<div id="ilc-confirm-title" style="font-size:15px;font-weight:700;color:#1a3a6c;margin-bottom:6px;"></div>' +
+            '<div id="ilc-confirm-message" style="font-size:13px;color:#64748b;line-height:1.5;margin-bottom:20px;"></div>' +
             '<div style="display:flex;gap:10px;">' +
                 '<button type="button" id="ilc-confirm-cancel" style="flex:1;padding:10px;border-radius:9px;border:1.5px solid #e2e8f0;background:#fff;color:#334155;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;">Cancel</button>' +
-                '<button type="button" id="ilc-confirm-ok" style="flex:1;padding:10px;border-radius:9px;border:none;background:' + okBg + ';color:#fff;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;">' + confirmLabel + '</button>' +
+                '<button type="button" id="ilc-confirm-ok" style="flex:1;padding:10px;border-radius:9px;border:none;background:' + okBg + ';color:#fff;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit;"></button>' +
             '</div>';
+        box.querySelector('#ilc-confirm-title').textContent = title;
+        box.querySelector('#ilc-confirm-message').textContent = message;
+        box.querySelector('#ilc-confirm-ok').textContent = confirmLabel;
 
         overlay.appendChild(box);
         document.body.appendChild(overlay);
@@ -7744,7 +7754,7 @@ function openWalkInEnrollmentModal() {
         });
     }
 
-    function showToast(message, type) {
+    function showToast(message, type, isHtml) {
         if (!type) type = 'success';
         var icons   = { success:'bi-check-circle-fill', error:'bi-x-circle-fill', warning:'bi-exclamation-triangle-fill', info:'bi-info-circle-fill' };
         var colors  = { success:'#1a7a44', error:'#c0392b', warning:'#b45309', info:'#1565c0' };
@@ -7777,7 +7787,11 @@ function openWalkInEnrollmentModal() {
 
         var msgEl = document.createElement('span');
         msgEl.style.cssText = 'flex:1;font-weight:500;color:' + color + ';line-height:1.5;';
-        msgEl.innerHTML = message;
+        // Only showCustomAlert() opts into isHtml=true, and it pre-escapes
+        // the dynamic title/message it embeds before building that HTML —
+        // every other caller passes plain text here, so this defaults to
+        // textContent to stay safe against server/user-controlled messages.
+        if (isHtml) { msgEl.innerHTML = message; } else { msgEl.textContent = message; }
 
         t.appendChild(iconEl);
         t.appendChild(msgEl);
