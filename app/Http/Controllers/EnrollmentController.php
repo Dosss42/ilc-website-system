@@ -2103,10 +2103,10 @@ class EnrollmentController extends Controller
      */
     public function approveDocument(Request $request, StudentDocument $document)
     {
-        // Idempotency guard — a double-click, a network retry, or two staff
-        // members approving the same item within seconds would otherwise
-        // double-credit the payment amount below (mirrors the existing
-        // guard in deleteDocument(), which only allows acting on 'pending').
+        // Cheap pre-check — not authoritative for the payment-crediting path
+        // below (re-checked there under the enrollment lock). This just
+        // gives a fast, friendly response for the common already-approved
+        // case without opening a transaction for it.
         if ($document->status === 'approved') {
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => 'This document has already been approved.'], 409);
@@ -2114,17 +2114,30 @@ class EnrollmentController extends Controller
             return redirect()->back()->with('error', 'This document has already been approved.');
         }
 
-        $document->update([
-            'status' => 'approved',
-            'reviewed_by' => Auth::id(),
-            'reviewed_at' => now(),
-        ]);
+        // Non-payment documents don't touch money, so there's nothing for a
+        // double-click to double-credit — approve them the simple way.
+        if (!($document->document_type === 'payment_screenshot' && $document->enrollment_id)) {
+            $document->update([
+                'status' => 'approved',
+                'reviewed_by' => Auth::id(),
+                'reviewed_at' => now(),
+            ]);
+            ActivityLogger::log('update', "Approved {$document->document_type} for " . ($document->user->name ?? 'student #' . $document->user_id), 'StudentDocument', $document->id);
 
-        ActivityLogger::log('update', "Approved {$document->document_type} for " . ($document->user->name ?? 'student #' . $document->user_id), 'StudentDocument', $document->id);
+            if ($request->expectsJson()) {
+                return response()->json(['success' => true, 'message' => 'Document approved successfully.']);
+            }
+            return redirect()->back()->with('success', 'Document approved successfully.');
+        }
 
-        // If it's a payment screenshot, always process payment on approval
-        if ($document->document_type === 'payment_screenshot' && $document->enrollment_id) {
-            if (Enrollment::where('id', $document->enrollment_id)->exists()) {
+        // Payment screenshot with a linked enrollment — the whole
+        // approve-and-credit sequence must happen under the enrollment
+        // lock, with the document's status re-checked AFTER the lock is
+        // acquired. A double-click, a network retry, or two staff members
+        // approving the same document within seconds would otherwise both
+        // pass the pre-check above before either commits, and then both
+        // credit the payment amount below.
+        if (Enrollment::where('id', $document->enrollment_id)->exists()) {
                 DB::beginTransaction();
                 try {
                     // Row-locked re-fetch — see PaymentService::lockEnrollment()
@@ -2132,13 +2145,37 @@ class EnrollmentController extends Controller
                     // can't compute from the same stale payment_amount.
                     $enrollment = \App\Services\PaymentService::lockEnrollment($document->enrollment_id);
 
+                    // Authoritative re-check, now that we hold the enrollment
+                    // lock — closes the race the pre-check above can't.
+                    $document = StudentDocument::where('id', $document->id)->lockForUpdate()->first();
+                    if (!$document || $document->status === 'approved') {
+                        DB::rollBack();
+                        if ($request->expectsJson()) {
+                            return response()->json(['success' => false, 'message' => 'This document has already been approved.'], 409);
+                        }
+                        return redirect()->back()->with('error', 'This document has already been approved.');
+                    }
+
+                    $document->update([
+                        'status' => 'approved',
+                        'reviewed_by' => Auth::id(),
+                        'reviewed_at' => now(),
+                    ]);
+                    ActivityLogger::log('update', "Approved {$document->document_type} for " . ($document->user->name ?? 'student #' . $document->user_id), 'StudentDocument', $document->id);
+
                     // Get payment amount from linked installment or calculate from document
                     $paymentAmount = 0;
                     $installment = $document->paymentInstallment;
-                    
+                    // An installment already marked 'paid' (e.g. credited by
+                    // a different document approved moments earlier) must
+                    // not be credited again.
+                    if ($installment && $installment->status === 'paid') {
+                        $installment = null;
+                    }
+
                     if ($installment) {
                         $paymentAmount = $installment->total_due;
-                        
+
                         // Mark installment as paid
                         $installment->update([
                             'status' => 'paid',
@@ -2254,7 +2291,6 @@ class EnrollmentController extends Controller
                     Log::error('Payment approval failed: ' . $e->getMessage());
                     return redirect()->back()->with('error', 'Failed to process payment: ' . $e->getMessage());
                 }
-            }
         }
 
         if ($request->expectsJson()) {
@@ -2269,6 +2305,76 @@ class EnrollmentController extends Controller
     public function rejectDocument(Request $request, StudentDocument $document)
     {
         $request->validate(['reject_reason' => 'required|string|max:500']);
+
+        // Reversing a previously-approved payment screenshot: approveDocument()
+        // may have credited the enrollment's payment_amount and marked an
+        // installment 'paid' (and possibly flipped the enrollment itself to
+        // 'enrolled' with a section assigned). Rejecting it after the fact
+        // must undo those financial side-effects, or the student's balance
+        // and installment/enrollment status permanently drift from reality
+        // even though the document trail says the payment was rejected.
+        if ($document->status === 'approved'
+            && $document->document_type === 'payment_screenshot'
+            && $document->enrollment_id
+        ) {
+            DB::beginTransaction();
+            try {
+                $enrollment = \App\Services\PaymentService::lockEnrollment($document->enrollment_id);
+
+                $installment = $document->paymentInstallment;
+                $creditedAmount = $installment ? (float) $installment->amount_paid : null;
+
+                if ($installment && $installment->status === 'paid') {
+                    $installment->update([
+                        'status' => $installment->due_date && $installment->due_date->isPast() ? 'overdue' : 'pending',
+                        'paid_at' => null,
+                        'amount_paid' => 0,
+                        'payment_transaction_id' => null,
+                    ]);
+                }
+
+                // Fall back to re-deriving the credited amount from the
+                // description the same way approveDocument() computed it,
+                // when there was no linked installment (full/downpayment).
+                if ($creditedAmount === null) {
+                    preg_match('/₱([\d,]+\.?\d*)/', $document->description ?? '', $matches);
+                    $creditedAmount = isset($matches[1]) ? (float) str_replace(',', '', $matches[1]) : 0;
+                }
+
+                if ($creditedAmount > 0) {
+                    $newTotalPaid = max(0, (float) ($enrollment->payment_amount ?? 0) - $creditedAmount);
+                    $totalFee = (float) ($enrollment->total_fee ?? 0);
+                    $remainingBalance = max(0, $totalFee - $newTotalPaid);
+
+                    $enrollment->update([
+                        'payment_amount' => $newTotalPaid,
+                        'payment_status' => $newTotalPaid <= 0 ? 'pending' : ($remainingBalance <= 0 ? 'paid' : 'partial'),
+                        'remaining_balance' => $remainingBalance,
+                        'payment_updated_at' => now(),
+                    ]);
+                }
+
+                $document->update([
+                    'status' => 'rejected',
+                    'reject_reason' => $request->reject_reason,
+                    'reviewed_by' => Auth::id(),
+                    'reviewed_at' => now(),
+                ]);
+
+                ActivityLogger::log('delete', "Rejected {$document->document_type} for " . ($document->user->name ?? 'student #' . $document->user_id) . " — reason: {$request->reject_reason} (reversed ₱" . number_format($creditedAmount, 2) . " credit)", 'StudentDocument', $document->id);
+
+                DB::commit();
+            } catch (\Exception $e) {
+                DB::rollBack();
+                Log::error('Document rejection reversal failed: ' . $e->getMessage());
+                return redirect()->back()->with('error', 'Failed to reject document: ' . $e->getMessage());
+            }
+
+            if ($request->expectsJson()) {
+                return response()->json(['success' => true, 'message' => 'Document rejected.']);
+            }
+            return redirect()->back()->with('success', 'Document rejected.');
+        }
 
         $document->update([
             'status' => 'rejected',
@@ -2673,9 +2779,15 @@ class EnrollmentController extends Controller
                 $user = User::find($studentId);
                 if (!$user) continue;
 
-                // Check if student already has an enrollment for the target school year
+                // Check if student already has an enrollment for the target
+                // school year — a declined row doesn't count (matches
+                // store()/walkInEnrollment()'s own exclusion, and the unique
+                // index itself: 2026_09_20_202025_fix_unique_enrollment_to_exclude_declined.php).
+                // Otherwise a student whose re-application was declined for
+                // some reason becomes permanently unpromotable.
                 $existingEnrollment = Enrollment::where('user_id', $studentId)
                     ->where('school_year', $toSchoolYear)
+                    ->whereNotIn('status', ['declined'])
                     ->first();
 
                 if ($existingEnrollment) {
@@ -2924,9 +3036,12 @@ class EnrollmentController extends Controller
             return response()->json(['success' => false, 'message' => 'Student is at the last grade level or already graduated.'], 422);
         }
 
-        // Check if already has enrollment for next year
+        // Check if already has enrollment for next year — a declined row
+        // doesn't count (see massPromote()'s matching fix for the same
+        // reasoning; this method is also reused by bulkPromote()/autoAdvance()).
         $existingNext = Enrollment::where('user_id', $user->id)
             ->where('school_year', $validated['to_school_year'])
+            ->whereNotIn('status', ['declined'])
             ->first();
 
         if ($existingNext) {

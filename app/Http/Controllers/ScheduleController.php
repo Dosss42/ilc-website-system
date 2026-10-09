@@ -329,7 +329,18 @@ class ScheduleController extends Controller
             'replace_target'  => 'boolean',
         ]);
 
+        // Schedules carry no school_year of their own (only inherited via
+        // section_id), so without scoping by the owning section, a year
+        // rollover's term-copy would also drag in schedule rows belonging
+        // to archived/prior-year sections — detectConflicts() below only
+        // skips entries whose day/time actually collides, so a stale
+        // section's schedule at a non-colliding slot gets duplicated into
+        // the target term with no guard at all.
+        $currentSchoolYear = \App\Models\Setting::getCurrentSchoolYear();
         $sourceSchedules = Schedule::where('term', $validated['source_term'])
+            ->whereHas('section', function ($q) use ($currentSchoolYear) {
+                $q->where('is_active', true)->where('school_year', $currentSchoolYear);
+            })
             ->orderBy('day_of_week')
             ->orderBy('start_time')
             ->get();

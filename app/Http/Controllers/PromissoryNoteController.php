@@ -57,6 +57,18 @@ class PromissoryNoteController extends Controller
             'remarks'       => 'nullable|string|max:1000',
         ]);
 
+        // 'fulfilled' and 'broken' are terminal — without this, a note could
+        // be flipped fulfilled -> pending -> fulfilled repeatedly (re-setting
+        // fulfilled_at each time with no record of the reversal) or moved
+        // from broken back to pending with no trace it was ever broken.
+        if (in_array($note->status, ['fulfilled', 'broken']) && $request->status !== $note->status) {
+            $msg = 'This promissory note is already marked "' . ucfirst($note->status) . '" and cannot be changed further.';
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return back()->with('error', $msg);
+        }
+
         $data = ['status' => $request->status];
 
         if ($request->status === 'fulfilled') {

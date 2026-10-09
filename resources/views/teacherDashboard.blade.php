@@ -184,12 +184,86 @@
         .dash-main { margin-left: var(--sidebar-w); margin-top: var(--topbar-h); min-height: calc(100vh - var(--topbar-h)); }
         .dash-section { padding: 28px; }
 
+        /* MOBILE SIDEBAR TOGGLE — hidden on desktop, shown under 900px
+           (same pattern as the Student Portal's shared dashboard.css). */
+        .sidebar-toggle-btn {
+            display: none;
+            width: 40px; height: 40px;
+            border: none; background: transparent;
+            color: var(--blue); font-size: 22px;
+            align-items: center; justify-content: center;
+            cursor: pointer; flex-shrink: 0; margin-left: 6px;
+        }
+        .sidebar-backdrop {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.45);
+            z-index: 98;
+        }
+        .sidebar-backdrop.show { display: block; }
+
+        @media (max-width: 900px) {
+            .sidebar-toggle-btn { display: flex; }
+
+            .topbar-brand { width: auto; padding: 0 8px 0 4px; }
+            .brand-info { display: none; }
+            .topbar-center { padding: 0 8px; }
+            .dash-search { width: 100%; max-width: 220px; }
+            .topbar-right { padding-right: 12px; gap: 8px; }
+            .user-chip-name, .user-chip-role, .user-chip-caret { display: none; }
+
+            .dash-sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.25s ease;
+                z-index: 1000;
+                box-shadow: 4px 0 16px rgba(0,0,0,0.15);
+            }
+            .dash-sidebar.mobile-open { transform: translateX(0); }
+
+            .dash-main { margin-left: 0; }
+            .dash-section { padding: 16px; }
+        }
+
+        @media (max-width: 480px) {
+            .dash-search { display: none; }
+            .topbar-brand { padding: 0 4px; }
+        }
+
+        /* Fixed-width table columns eat most of a phone's width when the
+           table is squeezed to 100% — give it a floor and let the wrapping
+           overflow-x:auto div (already present around every table) scroll
+           it horizontally instead of mangling the columns. */
+        .mobile-scroll-hint {
+            display: none; align-items: center; gap: 6px;
+            font-size: 11px; color: var(--muted); margin-bottom: 8px;
+        }
+        /* Bootstrap's .row is display:flex, and flex items default to
+           min-width:auto — they refuse to shrink below a wide child's
+           content size. The Weekly Timetable's scrollable table sits
+           inside a .col-lg-8 flex item, so without this it can force the
+           whole column wider than the viewport instead of scrolling. */
+        .row > [class*="col-"] { min-width: 0; }
+
+        /* Reusable 4-up stat grid (used by the Schedule tab) — collapses
+           to 2 columns on tablet, 1 on phone so cards stay readable. */
+        @media (max-width: 768px) {
+            .resp-grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+        @media (max-width: 480px) {
+            .resp-grid-4 { grid-template-columns: 1fr !important; }
+        }
+
         .section-header {
             display: flex; align-items: flex-start;
             justify-content: space-between; margin-bottom: 24px; gap: 16px; flex-wrap: wrap;
         }
         .section-header h1 { font-size: 22px; font-weight: 700; color: var(--text); margin: 0; }
         .section-header p  { font-size: 13px; color: var(--muted); margin: 3px 0 0; }
+        @media (max-width: 900px) {
+            .section-header { flex-direction: column; align-items: stretch; }
+            .section-header > div:last-child,
+            .section-header .btn-dash { width: 100%; justify-content: center; }
+        }
 
         /* BUTTONS */
         .btn-dash {
@@ -253,6 +327,10 @@
         }
         .dash-table tbody tr:last-child td { border-bottom: none; }
         .dash-table tbody tr:hover { background: #f8fafc; }
+        @media (max-width: 900px) {
+            .dash-table { width: auto; min-width: 700px; }
+            .mobile-scroll-hint { display: flex; }
+        }
 
         /* BADGES */
         .status-badge {
@@ -441,6 +519,9 @@
 
 <!-- TOPBAR -->
 <div class="dash-topbar">
+    <button type="button" class="sidebar-toggle-btn" onclick="toggleMobileSidebar()" aria-label="Menu">
+        <i class="bi bi-list"></i>
+    </button>
     <div class="topbar-brand">
         {{--  
         <div class="brand-logos">
@@ -554,6 +635,8 @@
         </form>
     </div>
 </div>
+
+<div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeMobileSidebar()"></div>
 
 <!-- MAIN CONTENT -->
 <div class="dash-main">
@@ -765,7 +848,7 @@
         </div>
 
         <!-- Stats Row -->
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;">
+        <div class="resp-grid-4" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;">
             <div style="background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px 18px;display:flex;align-items:center;gap:14px;">
                 <div style="width:42px;height:42px;border-radius:10px;background:#e3f0ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                     <i class="bi bi-collection-fill" style="color:#1565c0;font-size:18px;"></i>
@@ -815,6 +898,7 @@
                         <span style="font-size:11px;color:rgba(255,255,255,0.75);">{{ $totalPeriods }} period{{ $totalPeriods !== 1 ? 's' : '' }} this week</span>
                     </div>
 
+                    <div class="mobile-scroll-hint" style="padding:10px 20px 0;color:var(--muted);"><i class="bi bi-arrow-left-right"></i> Swipe to see more columns</div>
                     <div style="overflow-x:auto;">
                         <table style="width:100%;border-collapse:collapse;min-width:480px;">
                             <thead>
@@ -1075,6 +1159,7 @@
 
             <div class="content-card">
                 <div class="content-card-header"><h6>My Subject Assignments — S.Y. {{ $currentSchoolYear }}</h6></div>
+                <div class="mobile-scroll-hint" style="padding:10px 20px 0;"><i class="bi bi-arrow-left-right"></i> Swipe to see more columns</div>
                 <div style="overflow-x:auto;">
                     <table class="dash-table">
                         <thead>
@@ -1268,6 +1353,7 @@
                         </button>
                     </div>
                 </div>
+                <div class="mobile-scroll-hint" style="padding:10px 20px 0;"><i class="bi bi-arrow-left-right"></i> Swipe to see more columns</div>
                 <div style="overflow-x:auto;">
                     <table class="dash-table">
                         <thead>
@@ -1406,6 +1492,7 @@
                     <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:var(--gold);border-radius:3px;display:inline-block;"></span>Late</span>
                 </div>
             </div>
+            <div class="mobile-scroll-hint" style="padding:10px 0 0;"><i class="bi bi-arrow-left-right"></i> Swipe to see more columns</div>
             <div style="overflow-x:auto;">
                 <table class="dash-table">
                     <thead>
@@ -1557,6 +1644,7 @@
 
         <div class="content-card">
             <div class="content-card-header"><h6>Scheduled Meetings</h6></div>
+            <div class="mobile-scroll-hint" style="padding:10px 20px 0;"><i class="bi bi-arrow-left-right"></i> Swipe to see more columns</div>
             <div style="overflow-x:auto;">
                 <table class="dash-table">
                     <thead>
@@ -1835,7 +1923,17 @@
         return false;
     }
 
+    function toggleMobileSidebar() {
+        document.querySelector('.dash-sidebar').classList.toggle('mobile-open');
+        document.getElementById('sidebarBackdrop').classList.toggle('show');
+    }
+    function closeMobileSidebar() {
+        document.querySelector('.dash-sidebar').classList.remove('mobile-open');
+        document.getElementById('sidebarBackdrop').classList.remove('show');
+    }
+
     function showSection(name) {
+        closeMobileSidebar();
         sections.forEach(s => {
             document.getElementById('section-' + s).style.display = s === name ? '' : 'none';
             const nav = document.getElementById('nav-' + s);

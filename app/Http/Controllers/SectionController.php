@@ -291,53 +291,73 @@ class SectionController extends Controller
             'student_id' => 'required|exists:users,id,role,student'
         ]);
 
-        // Check capacity — live count, not the denormalized column
-        // (see Section::getLiveEnrollmentCountAttribute())
-        $maxStudents = $section->max_students ?? 30;
-        if ($section->live_enrollment_count >= $maxStudents) {
-            return response()->json(['error' => "Section {$section->name} is already full ({$maxStudents} students max)."], 422);
-        }
-
-        // Check if student is already in this section
-        if ($section->students()->where('user_id', $validated['student_id'])->exists()) {
-            return response()->json(['error' => 'Student is already in this section'], 400);
-        }
-
-        // Check if student is already in another section for the same grade level
-        $existingSection = Section::whereHas('students', function($q) use ($validated) {
-            $q->where('user_id', $validated['student_id']);
-        })->where('grade_level', $section->grade_level)->first();
-
-        if ($existingSection) {
-            return response()->json(['error' => 'Student is already assigned to section ' . $existingSection->name], 400);
-        }
-
-        $section->students()->attach($validated['student_id']);
-
-        // Also update the enrollment's section field and status
         $user = User::find($validated['student_id']);
-        if ($user) {
-            $enrollment = $user->latestEnrollment;
-            if ($enrollment) {
-                $enrollment->section = $section->name;
-                // If enrollment is still 'approved', upgrade to 'enrolled'
-                if ($enrollment->status === 'approved') {
-                    $enrollment->status = 'enrolled';
-                    $enrollment->enrolled_at = now();
-                }
-                $enrollment->save();
-            }
+        $enrollment = $user?->latestEnrollment;
+
+        if (!$section->is_active) {
+            return response()->json(['error' => "Section {$section->name} is not currently active."], 422);
         }
 
-        ActivityLogger::log('update', "Added {$user->name} to section \"{$section->name}\"", 'Section', $section->id);
+        // A section from a different school year than the student's own
+        // enrollment shouldn't be assignable — matches the same constraint
+        // already enforced for the student-initiated section change
+        // (StudentPortalController::changeSection()).
+        if ($enrollment && $enrollment->school_year && $section->school_year !== $enrollment->school_year) {
+            return response()->json(['error' => "Section {$section->name} is not available for this student's school year ({$enrollment->school_year})."], 422);
+        }
 
-        // Return the updated section with current enrollment count
-        $section->refresh();
-        return response()->json([
-            'success' => true,
-            'current_enrollment' => $section->live_enrollment_count,
-            'students' => $section->students
-        ]);
+        return DB::transaction(function () use ($section, $validated, $user, $enrollment) {
+            // Lock the section row so two near-simultaneous adds/transfers
+            // targeting it can't both pass the capacity check below before
+            // either commits, pushing the section over max_students.
+            $section = Section::where('id', $section->id)->lockForUpdate()->first();
+
+            // Check capacity — live count, not the denormalized column
+            // (see Section::getLiveEnrollmentCountAttribute())
+            $maxStudents = $section->max_students ?? 30;
+            if ($section->live_enrollment_count >= $maxStudents) {
+                return response()->json(['error' => "Section {$section->name} is already full ({$maxStudents} students max)."], 422);
+            }
+
+            // Check if student is already in this section
+            if ($section->students()->where('user_id', $validated['student_id'])->exists()) {
+                return response()->json(['error' => 'Student is already in this section'], 400);
+            }
+
+            // Check if student is already in another section for the same grade level
+            $existingSection = Section::whereHas('students', function($q) use ($validated) {
+                $q->where('user_id', $validated['student_id']);
+            })->where('grade_level', $section->grade_level)->first();
+
+            if ($existingSection) {
+                return response()->json(['error' => 'Student is already assigned to section ' . $existingSection->name], 400);
+            }
+
+            $section->students()->attach($validated['student_id']);
+
+            // Also update the enrollment's section field and status
+            if ($user) {
+                if ($enrollment) {
+                    $enrollment->section = $section->name;
+                    // If enrollment is still 'approved', upgrade to 'enrolled'
+                    if ($enrollment->status === 'approved') {
+                        $enrollment->status = 'enrolled';
+                        $enrollment->enrolled_at = now();
+                    }
+                    $enrollment->save();
+                }
+            }
+
+            ActivityLogger::log('update', "Added {$user->name} to section \"{$section->name}\"", 'Section', $section->id);
+
+            // Return the updated section with current enrollment count
+            $section->refresh();
+            return response()->json([
+                'success' => true,
+                'current_enrollment' => $section->live_enrollment_count,
+                'students' => $section->students
+            ]);
+        });
     }
 
     public function removeStudent(Request $request, Section $section)
@@ -374,34 +394,66 @@ class SectionController extends Controller
 
         $target = Section::findOrFail($validated['target_section_id']);
 
-        // Live count, not the denormalized column (see
-        // Section::getLiveEnrollmentCountAttribute())
-        $max = $target->max_students ?? 30;
-        if ($target->live_enrollment_count >= $max) {
-            return response()->json(['error' => "Section {$target->name} is already full ({$max} students max)."], 422);
+        // Must actually confirm the student is in the source section before
+        // doing anything — otherwise a stale/wrong $section id makes the
+        // detach below a silent no-op while the attach to $target still
+        // goes through, leaving the student enrolled in two sections at
+        // once (their real section untouched, plus the new one).
+        if (!$section->students()->where('user_id', $validated['student_id'])->exists()) {
+            return response()->json(['error' => 'Student is not currently in section ' . $section->name . '.'], 422);
         }
 
-        // Remove from current section
-        $section->students()->detach($validated['student_id']);
-
-        // Add to target section
-        $target->students()->syncWithoutDetaching([$validated['student_id']]);
-
-        // Update enrollment record
         $user = User::find($validated['student_id']);
-        if ($user && $user->latestEnrollment) {
-            $enrollment = $user->latestEnrollment;
-            $enrollment->section = $target->name;
-            $enrollment->save();
+        $enrollment = $user?->latestEnrollment;
+
+        if (!$target->is_active) {
+            return response()->json(['error' => "Section {$target->name} is not currently active."], 422);
+        }
+        if ($enrollment && $enrollment->school_year && $target->school_year !== $enrollment->school_year) {
+            return response()->json(['error' => "Section {$target->name} is not available for this student's school year ({$enrollment->school_year})."], 422);
         }
 
-        ActivityLogger::log('update', ($user->name ?? 'Student') . " transferred from \"{$section->name}\" to \"{$target->name}\"", 'Section', $target->id);
+        // Everything from here on must happen inside a transaction — the
+        // row locks below only serialize concurrent requests while a
+        // transaction actually holds them.
+        return DB::transaction(function () use ($section, $target, $validated, $user, $enrollment) {
+            // Lock both section rows (consistently in ID order, to avoid two
+            // concurrent transfers in opposite directions deadlocking each
+            // other) so this capacity check can't race with another
+            // transfer/add targeting the same destination section.
+            $lockIds = [$section->id, $target->id];
+            sort($lockIds);
+            $locked = Section::whereIn('id', $lockIds)->lockForUpdate()->get()->keyBy('id');
+            $section = $locked[$section->id];
+            $target  = $locked[$target->id];
 
-        return response()->json([
-            'success'            => true,
-            'new_section'        => $target->name,
-            'current_enrollment' => $target->live_enrollment_count,
-        ]);
+            // Live count, not the denormalized column (see
+            // Section::getLiveEnrollmentCountAttribute())
+            $max = $target->max_students ?? 30;
+            if ($target->live_enrollment_count >= $max) {
+                return response()->json(['error' => "Section {$target->name} is already full ({$max} students max)."], 422);
+            }
+
+            // Remove from current section
+            $section->students()->detach($validated['student_id']);
+
+            // Add to target section
+            $target->students()->syncWithoutDetaching([$validated['student_id']]);
+
+            // Update enrollment record
+            if ($enrollment) {
+                $enrollment->section = $target->name;
+                $enrollment->save();
+            }
+
+            ActivityLogger::log('update', ($user->name ?? 'Student') . " transferred from \"{$section->name}\" to \"{$target->name}\"", 'Section', $target->id);
+
+            return response()->json([
+                'success'            => true,
+                'new_section'        => $target->name,
+                'current_enrollment' => $target->live_enrollment_count,
+            ]);
+        });
     }
 
     public function autoAssign(Request $request)
@@ -441,10 +493,18 @@ class SectionController extends Controller
 
         foreach ($students as $student) {
             $grade = $student->latestEnrollment->grade_level;
+            // A prior school year's section can still be is_active (e.g. a
+            // dropout leaving an open seat) — matching on grade_level alone
+            // could silently place a newly-approved student into a stale,
+            // wrong-year section. Must match the student's own enrollment
+            // school year too (same constraint already enforced for the
+            // student-initiated section change in StudentPortalController::changeSection()).
+            $schoolYear = $student->latestEnrollment->school_year;
 
-            // First section with available space for this grade
+            // First section with available space for this grade + year
             $target = $sections
                 ->where('grade_level', $grade)
+                ->where('school_year', $schoolYear)
                 ->first(fn($s) => $s->current_enrollment < ($s->max_students ?? 30));
 
             if (!$target) { $skipped++; continue; }

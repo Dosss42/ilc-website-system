@@ -728,10 +728,9 @@ class DashboardController extends Controller
             return redirect()->back()->with('error', 'Payment not found.');
         }
 
-        // Idempotency guard — a double-click, a network retry, or two staff
-        // members approving the same transaction within seconds would
-        // otherwise double-credit the enrollment's payment amount below
-        // (mirrors PaymentService::completeXenditPayment()'s existing guard).
+        // Cheap pre-check — not authoritative on its own (see the locked
+        // re-check below), just avoids opening a transaction for the common
+        // case of an obviously-already-processed payment.
         if ($payment->status === 'completed') {
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json(['success' => false, 'message' => 'This payment has already been processed.'], 409);
@@ -741,6 +740,24 @@ class DashboardController extends Controller
 
         DB::beginTransaction();
         try {
+            // Idempotency guard — re-checked here, under a row lock, not just
+            // above. A double-click, a network retry, or two staff members
+            // approving the same transaction within seconds can both pass the
+            // pre-check above before either commits; without re-verifying
+            // status after acquiring the lock, both would credit the
+            // enrollment's payment amount below, double-crediting it. Mirrors
+            // the already-correct pattern in CashierController::checkXenditStatus()
+            // (lockForUpdate() on the PaymentTransaction, then re-check) /
+            // PaymentService::completeXenditPayment()'s own guard.
+            $payment = PaymentTransaction::where('id', $payment->id)->lockForUpdate()->first();
+            if (!$payment || $payment->status === 'completed') {
+                DB::rollBack();
+                if ($request->expectsJson() || $request->ajax()) {
+                    return response()->json(['success' => false, 'message' => 'This payment has already been processed.'], 409);
+                }
+                return redirect()->back()->with('error', 'This payment has already been processed.');
+            }
+
             $payment->update([
                 'status' => 'completed',
                 'processed_by' => $this->actingStaffId(),
@@ -834,6 +851,22 @@ class DashboardController extends Controller
                     if ($installment && !$isDownpayment) {
                         $totalDue    = floatval($installment->amount ?? 0) + floatval($installment->late_fee ?? 0);
                         $amountPaid  = $docAmount > 0 ? $docAmount : $totalDue;
+
+                        // Must cover the full amount + late fee before the
+                        // installment can be marked paid — otherwise an
+                        // under-amount payment silently clears the whole
+                        // installment and waives the late fee. Same
+                        // hard-reject rule as PaymentService::processInstallmentPayment()
+                        // and the walk-in/admin-payment paths. Staff should
+                        // reject this payment instead if the amount is wrong.
+                        if ($amountPaid < $totalDue) {
+                            DB::rollBack();
+                            $msg = 'This payment (₱' . number_format($amountPaid, 2) . ') does not cover the installment due (₱' . number_format($totalDue, 2) . ' incl. late fee). Reject it instead if the amount is incorrect.';
+                            if ($request->expectsJson() || $request->ajax()) {
+                                return response()->json(['success' => false, 'message' => $msg], 422);
+                            }
+                            return redirect()->back()->with('error', $msg);
+                        }
 
                         $installment->update([
                             'status'         => 'paid',
@@ -1079,6 +1112,23 @@ class DashboardController extends Controller
             // from the same stale payment_amount.
             $enrollment = PaymentService::lockEnrollment($enrollment->id);
 
+            // Double-click / retried-request guard — a cash walk-in payment
+            // is recorded as already 'completed' immediately (unlike the
+            // Xendit-link flow, there's no 'pending' state to reuse), so a
+            // double-click here creates two independent, fully-credited
+            // transactions for the same handover of cash. Treat an
+            // identical amount+method for this enrollment in the last 15
+            // seconds as the same click landing twice, not two payments.
+            $recentDuplicate = PaymentTransaction::where('enrollment_id', $enrollment->id)
+                ->where('payment_method', $request->payment_method)
+                ->where('amount', $amountPaid)
+                ->where('created_at', '>=', now()->subSeconds(15))
+                ->exists();
+            if ($recentDuplicate) {
+                DB::rollBack();
+                return redirect()->back()->with('error', 'A matching payment was just recorded for this student — please check Payment History before submitting again.');
+            }
+
             // Check if this is a downpayment (not yet fully paid)
             $downpaymentAmount = floatval($enrollment->downpayment_amount ?? 0);
             $alreadyPaid       = floatval($enrollment->payment_amount ?? 0);
@@ -1104,6 +1154,20 @@ class DashboardController extends Controller
                 if ($installment->status === 'pending_approval') {
                     DB::rollBack();
                     return redirect()->back()->with('error', 'This installment has a student-submitted payment awaiting approval. Approve or reject it first.');
+                }
+
+                // Must cover the full amount + late fee before the
+                // installment can be marked paid — otherwise a typo'd
+                // partial amount (e.g. ₱200 entered for a ₱1,556 due
+                // installment) silently clears the whole installment,
+                // waiving the late fee and dropping it out of the overdue
+                // count the Exam Permit Hold relies on. Same hard-reject
+                // rule already enforced for the student-facing payment path
+                // in PaymentService::processInstallmentPayment().
+                $totalDue = floatval($installment->amount) + floatval($installment->late_fee ?? 0);
+                if ($amountPaid < $totalDue) {
+                    DB::rollBack();
+                    return redirect()->back()->with('error', 'Amount must be at least ₱' . number_format($totalDue, 2) . ' (includes ₱' . number_format($installment->late_fee ?? 0, 2) . ' late fee) to mark this installment paid.');
                 }
 
                 $installmentMonth = $installment->month_name;
@@ -1219,6 +1283,21 @@ class DashboardController extends Controller
             $methodLabel = $request->payment_method === 'gcash' ? 'GCash' : 'Cash';
             $amountPaid = (float) $request->payment_amount;
 
+            // Double-click / retried-request guard — same reasoning as
+            // recordWalkInPayment()'s matching check: this payment is
+            // recorded as already 'completed' immediately, so a double
+            // submit creates two independent, fully-credited transactions
+            // for what was really one handover of cash/GCash.
+            $recentDuplicate = PaymentTransaction::where('enrollment_id', $enrollment->id)
+                ->where('payment_method', $request->payment_method)
+                ->where('amount', $amountPaid)
+                ->where('created_at', '>=', now()->subSeconds(15))
+                ->exists();
+            if ($recentDuplicate) {
+                DB::rollBack();
+                return redirect()->back()->with('error', 'A matching payment was just recorded for this student — please check Payment History before submitting again.');
+            }
+
             // Persist total_fee from breakdown when the enrollment doesn't have it set yet
             $breakdown = $request->input('payment_breakdown', []);
             $breakdownTotal = floatval($breakdown['total'] ?? 0);
@@ -1260,6 +1339,17 @@ class DashboardController extends Controller
                 if ($request->installment_id) {
                     $installment = PaymentInstallment::find($request->installment_id);
                     if ($installment && $installment->enrollment_id === $enrollment->id) {
+                        // Must cover the full amount + late fee before the
+                        // installment can be marked paid — otherwise a typo'd
+                        // partial amount silently clears the whole
+                        // installment and waives the late fee. Same
+                        // hard-reject rule as PaymentService::processInstallmentPayment()
+                        // and the walk-in payment path above.
+                        $totalDue = floatval($installment->amount) + floatval($installment->late_fee ?? 0);
+                        if ($amountPaid < $totalDue) {
+                            DB::rollBack();
+                            return redirect()->back()->with('error', 'Amount must be at least ₱' . number_format($totalDue, 2) . ' (includes ₱' . number_format($installment->late_fee ?? 0, 2) . ' late fee) to mark this installment paid.');
+                        }
                         $installmentMonth = $installment->month_name ?? '';
                         $resolvedInstallmentId = $installment->id;
                         $installment->update([
@@ -1279,6 +1369,11 @@ class DashboardController extends Controller
                         ->orderBy('due_date')
                         ->first();
                     if ($nextInstallment) {
+                        $totalDue = floatval($nextInstallment->amount) + floatval($nextInstallment->late_fee ?? 0);
+                        if ($amountPaid < $totalDue) {
+                            DB::rollBack();
+                            return redirect()->back()->with('error', 'Amount must be at least ₱' . number_format($totalDue, 2) . ' (includes ₱' . number_format($nextInstallment->late_fee ?? 0, 2) . ' late fee) to mark the next installment paid.');
+                        }
                         $installmentMonth = $nextInstallment->month_name ?? '';
                         $resolvedInstallmentId = $nextInstallment->id;
                         $nextInstallment->update([
