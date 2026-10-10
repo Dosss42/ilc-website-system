@@ -120,8 +120,7 @@
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-table" style="color:var(--blue);margin-right:6px;"></i>Student Master List &mdash; S.Y. {{ $currentSchoolYear }}</h6>
                         <div style="display:flex;gap:6px;">
-                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
-                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                            <a href="{{ route('admin.reports.master-list-pdf') }}" class="btn-dash btn-primary btn-sm"><i class="bi bi-file-earmark-pdf"></i> Download PDF</a>
                         </div>
                     </div>
                     <div style="overflow-x:auto;">
@@ -203,8 +202,7 @@
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-diagram-3" style="color:var(--blue);margin-right:6px;"></i>Students by Grade Level &mdash; S.Y. {{ $currentSchoolYear }}</h6>
                         <div style="display:flex;gap:6px;">
-                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
-                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                            <a href="{{ route('admin.reports.students-by-grade-pdf') }}" class="btn-dash btn-primary btn-sm"><i class="bi bi-file-earmark-pdf"></i> Download PDF</a>
                         </div>
                     </div>
                     <div style="overflow-x:auto;">
@@ -275,8 +273,7 @@
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-people" style="color:var(--blue);margin-right:6px;"></i>New vs Returning vs Transferee &mdash; S.Y. {{ $currentSchoolYear }}</h6>
                         <div style="display:flex;gap:6px;">
-                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
-                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                            <a href="{{ route('admin.reports.students-new-vs-returning-pdf') }}" class="btn-dash btn-primary btn-sm"><i class="bi bi-file-earmark-pdf"></i> Download PDF</a>
                         </div>
                     </div>
                     @php $rptNRTotal = max(1, $rptEnrollNew + $rptEnrollReturning + $rptEnrollTransferee); @endphp
@@ -354,8 +351,7 @@
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-file-earmark-check" style="color:var(--blue);margin-right:6px;"></i>Document Compliance &mdash; S.Y. {{ $currentSchoolYear }}</h6>
                         <div style="display:flex;gap:6px;">
-                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
-                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                            <a href="{{ route('admin.reports.document-compliance-pdf') }}" class="btn-dash btn-primary btn-sm"><i class="bi bi-file-earmark-pdf"></i> Download PDF</a>
                         </div>
                     </div>
                     @php $rptDocTotal = max(1, $rptTotalDocs); @endphp
@@ -484,8 +480,7 @@
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-bar-chart" style="color:var(--blue);margin-right:6px;"></i>Enrollment Status Summary &mdash; S.Y. {{ $currentSchoolYear }}</h6>
                         <div style="display:flex;gap:6px;">
-                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
-                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                            <a href="{{ route('admin.reports.enrollment-status-pdf') }}" class="btn-dash btn-primary btn-sm"><i class="bi bi-file-earmark-pdf"></i> Download PDF</a>
                         </div>
                     </div>
                     <div style="overflow-x:auto;">
@@ -549,8 +544,7 @@
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-diagram-3" style="color:var(--blue);margin-right:6px;"></i>Enrollment by Grade Level &mdash; S.Y. {{ $currentSchoolYear }}</h6>
                         <div style="display:flex;gap:6px;">
-                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
-                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                            <a href="{{ route('admin.reports.enrollment-by-grade-pdf') }}" class="btn-dash btn-primary btn-sm"><i class="bi bi-file-earmark-pdf"></i> Download PDF</a>
                         </div>
                     </div>
                     <div style="overflow-x:auto;">
@@ -616,8 +610,7 @@
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-people" style="color:var(--blue);margin-right:6px;"></i>New vs Returning vs Transferee &mdash; S.Y. {{ $currentSchoolYear }}</h6>
                         <div style="display:flex;gap:6px;">
-                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
-                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                            <a href="{{ route('admin.reports.enrollment-new-vs-returning-pdf') }}" class="btn-dash btn-primary btn-sm"><i class="bi bi-file-earmark-pdf"></i> Download PDF</a>
                         </div>
                     </div>
                     <div style="overflow-x:auto;">
@@ -668,8 +661,7 @@
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-graph-up" style="color:var(--blue);margin-right:6px;"></i>Daily Enrollment &mdash; Last 7 Days</h6>
                         <div style="display:flex;gap:6px;">
-                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
-                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                            <a href="{{ route('admin.reports.enrollment-daily-trend-pdf') }}" class="btn-dash btn-primary btn-sm"><i class="bi bi-file-earmark-pdf"></i> Download PDF</a>
                         </div>
                     </div>
                     @php $rptDailyMax = max(1, collect($rptDailyDays)->max('count')); @endphp
@@ -773,8 +765,7 @@
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-cash" style="color:var(--blue);margin-right:6px;"></i>Collection Summary &mdash; S.Y. {{ $currentSchoolYear }}</h6>
                         <div style="display:flex;gap:6px;">
-                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
-                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                            <a href="{{ route('admin.reports.admin-collection-summary-pdf') }}" class="btn-dash btn-primary btn-sm"><i class="bi bi-file-earmark-pdf"></i> Download PDF</a>
                         </div>
                     </div>
                     @php
@@ -829,8 +820,7 @@
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-diagram-3" style="color:var(--blue);margin-right:6px;"></i>Financial by Grade Level &mdash; S.Y. {{ $currentSchoolYear }}</h6>
                         <div style="display:flex;gap:6px;">
-                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
-                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                            <a href="{{ route('admin.reports.financial-by-grade-pdf') }}" class="btn-dash btn-primary btn-sm"><i class="bi bi-file-earmark-pdf"></i> Download PDF</a>
                         </div>
                     </div>
                     <div style="overflow-x:auto;">
@@ -892,8 +882,7 @@
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-list-check" style="color:var(--blue);margin-right:6px;"></i>By Payment Option &mdash; S.Y. {{ $currentSchoolYear }}</h6>
                         <div style="display:flex;gap:6px;">
-                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
-                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                            <a href="{{ route('admin.reports.financial-by-option-pdf') }}" class="btn-dash btn-primary btn-sm"><i class="bi bi-file-earmark-pdf"></i> Download PDF</a>
                         </div>
                     </div>
                     @php $rptOptionLabels = ['A'=>'Option A — Full Payment','B'=>'Option B — 2 Installments','C'=>'Option C — 3 Installments','D'=>'Option D — Monthly']; @endphp
@@ -934,8 +923,7 @@
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-exclamation-triangle" style="color:var(--red);margin-right:6px;"></i>Outstanding Balances &mdash; S.Y. {{ $currentSchoolYear }}</h6>
                         <div style="display:flex;gap:6px;">
-                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
-                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                            <a href="{{ route('admin.reports.outstanding-balances-pdf') }}" class="btn-dash btn-primary btn-sm"><i class="bi bi-file-earmark-pdf"></i> Download PDF</a>
                         </div>
                     </div>
                     <div style="overflow-x:auto;">
@@ -1018,8 +1006,7 @@
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-mortarboard-fill" style="color:var(--blue);margin-right:6px;"></i>Assessment &amp; Promotion Overview &mdash; S.Y. {{ $currentSchoolYear }}</h6>
                         <div style="display:flex;gap:6px;">
-                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
-                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                            <a href="{{ route('admin.reports.promotion-overview-pdf') }}" class="btn-dash btn-primary btn-sm"><i class="bi bi-file-earmark-pdf"></i> Download PDF</a>
                         </div>
                     </div>
                     <div style="display:flex;gap:16px;padding:16px;flex-wrap:wrap;">
@@ -1064,8 +1051,7 @@
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-diagram-3" style="color:var(--blue);margin-right:6px;"></i>Promotion by Grade Level &mdash; S.Y. {{ $currentSchoolYear }}</h6>
                         <div style="display:flex;gap:6px;">
-                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
-                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                            <a href="{{ route('admin.reports.promotion-by-grade-pdf') }}" class="btn-dash btn-primary btn-sm"><i class="bi bi-file-earmark-pdf"></i> Download PDF</a>
                         </div>
                     </div>
                     <div style="overflow-x:auto;">
@@ -1116,8 +1102,7 @@
                     <div class="content-card-header" style="justify-content:space-between;">
                         <h6><i class="bi bi-list-ul" style="color:var(--blue);margin-right:6px;"></i>Promotion Student List &mdash; S.Y. {{ $currentSchoolYear }}</h6>
                         <div style="display:flex;gap:6px;">
-                            <button class="btn-dash btn-secondary btn-sm" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print</button>
-                            <button class="btn-dash btn-primary btn-sm" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                            <a href="{{ route('admin.reports.promotion-student-list-pdf') }}" class="btn-dash btn-primary btn-sm"><i class="bi bi-file-earmark-pdf"></i> Download PDF</a>
                         </div>
                     </div>
                     <div style="overflow-x:auto;">
@@ -1223,8 +1208,7 @@
                     <p style="color:var(--muted);font-size:13px;margin:4px 0 0;">Key Performance Indicators &mdash; S.Y. {{ $currentSchoolYear }}</p>
                 </div>
                 <div style="display:flex;gap:6px;">
-                    <button class="btn-dash btn-secondary" onclick="printCurrentReport()"><i class="bi bi-printer"></i> Print KPIs</button>
-                    <button class="btn-dash btn-primary" onclick="exportReportToPdf(this)"><i class="bi bi-file-earmark-pdf"></i> PDF</button>
+                    <a href="{{ route('admin.reports.kpi-overview-pdf') }}" class="btn-dash btn-primary"><i class="bi bi-file-earmark-pdf"></i> Download PDF</a>
                 </div>
             </div>
 

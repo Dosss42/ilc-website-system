@@ -1730,8 +1730,8 @@
             <div style="display:flex;gap:10px;align-items:center;">
                 <input type="date" class="form-fld" id="dailyReportDate" value="{{ date('Y-m-d') }}"
                     style="max-width:160px;" onchange="loadDailyReport(this.value)">
-                <button onclick="printDailyReport()" class="btn-primary-cash">
-                    <i class="bi bi-printer"></i> Print Report
+                <button onclick="downloadDailyReportPdf()" class="btn-primary-cash">
+                    <i class="bi bi-file-earmark-pdf"></i> Download PDF
                 </button>
             </div>
         </div>
@@ -1891,7 +1891,7 @@
                 <div class="page-title"><i class="bi bi-bar-chart-fill me-2" style="color:#2471a3;"></i>Collection Summary</div>
                 <div class="page-sub">Monthly and annual collection overview.</div>
             </div>
-            <button class="btn-primary-cash"><i class="bi bi-download"></i> Export Excel</button>
+            <a href="{{ route('cashier.collection-summary-pdf') }}" class="btn-primary-cash" style="text-decoration:none;"><i class="bi bi-file-earmark-pdf"></i> Export PDF</a>
         </div>
 
         <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px;">
@@ -2690,38 +2690,15 @@
         }).join('');
     }
 
-    function printDailyReport() {
-        var date   = document.getElementById('dailyReportDate').value || 'Today';
-        var total  = document.getElementById('drTotal').textContent;
-        var cash   = document.getElementById('drCash').textContent;
-        var online = document.getElementById('drOnline').textContent;
-        var count  = document.getElementById('drCount').textContent;
-        var w = window.open('','_blank','width=700,height=800,scrollbars=yes');
-        if (!w) { showToast('Pop-ups blocked. Please allow pop-ups to print.', 'warning'); return; }
-        var rows = _dailyRows.map(function(r,i){
-            return '<tr><td>'+(i+1)+'</td><td>'+r.time+'</td><td>'+r.student+'</td><td>'+r.grade+'</td><td>'+r.type+'</td><td>'+r.method+'</td><td style="text-align:right;">₱'+r.amount+'</td><td>'+r.reference+'</td></tr>';
-        }).join('') || '<tr><td colspan="8" style="text-align:center;padding:16px;color:#888;">No transactions</td></tr>';
-        var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Daily Report – '+date+'</title>'
-            +'<style>body{font-family:Arial,sans-serif;font-size:12px;padding:20px;}h2{margin:0;font-size:16px;}h3{margin:4px 0;font-size:12px;font-weight:400;}'
-            +'table{width:100%;border-collapse:collapse;margin-top:16px;}th,td{border:1px solid #ccc;padding:6px 8px;text-align:left;}'
-            +'th{background:#1a3a6c;color:#fff;}.stats{display:flex;gap:20px;margin:16px 0;}.stat-box{border:1px solid #e2e8f0;border-radius:8px;padding:10px 16px;text-align:center;min-width:120px;}'
-            +'</style></head>'
-            +'<body onload="setTimeout(function(){window.print();},400);">'
-            +'<div style="text-align:center;margin-bottom:16px;">'
-            +'<img src="'+_logoUrl+'" style="width:55px;height:55px;object-fit:contain;border-radius:50%;" onerror="this.style.display=\'none\'"><br>'
-            +'<h2>IEMELIF LEARNING CENTER</h2><h3>General Tinio, Nueva Ecija</h3>'
-            +'<h3 style="margin-top:8px;font-weight:700;font-size:14px;">DAILY COLLECTION REPORT</h3>'
-            +'<div style="font-size:12px;color:#555;">Date: <strong>'+date+'</strong></div></div>'
-            +'<div class="stats"><div class="stat-box"><div style="font-size:10px;color:#888;text-transform:uppercase;">Total Collected</div><div style="font-size:18px;font-weight:700;color:#1a3a6c;">'+total+'</div></div>'
-            +'<div class="stat-box"><div style="font-size:10px;color:#888;text-transform:uppercase;">Cash</div><div style="font-size:18px;font-weight:700;color:#16a34a;">'+cash+'</div></div>'
-            +'<div class="stat-box"><div style="font-size:10px;color:#888;text-transform:uppercase;">Online</div><div style="font-size:18px;font-weight:700;color:#2471a3;">'+online+'</div></div>'
-            +'<div class="stat-box"><div style="font-size:10px;color:#888;text-transform:uppercase;">Transactions</div><div style="font-size:18px;font-weight:700;color:#9333ea;">'+count+'</div></div></div>'
-            +'<table><thead><tr><th>#</th><th>Time</th><th>Student</th><th>Grade</th><th>Type</th><th>Method</th><th>Amount</th><th>Reference</th></tr></thead><tbody>'+rows+'</tbody></table>'
-            +'<div style="margin-top:30px;display:flex;justify-content:space-between;">'
-            +'<div><div style="border-top:1px solid #000;padding-top:4px;min-width:180px;text-align:center;margin-top:36px;">Prepared by: '+_cashierName+'</div></div>'
-            +'<div><div style="border-top:1px solid #000;padding-top:4px;min-width:180px;text-align:center;margin-top:36px;">Acknowledged by</div></div>'
-            +'</div></body></html>';
-        w.document.open(); w.document.write(html); w.document.close();
+    function downloadDailyReportPdf() {
+        var date = document.getElementById('dailyReportDate').value || '{{ date('Y-m-d') }}';
+        // Same-tab navigation, not window.open(..., '_blank') — a
+        // Content-Disposition:attachment response opened via a blank popup
+        // tab is unreliable (some browsers silently drop it, others pop a
+        // blocked-popup notice the user has to notice and approve). Plain
+        // navigation downloads without leaving the current page, matching
+        // every Finance report's plain <a href> download link.
+        window.location.href = '{{ route('cashier.daily-report-pdf') }}?date=' + encodeURIComponent(date);
     }
 
     /* ── Receipts ── */

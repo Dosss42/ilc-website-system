@@ -19,6 +19,8 @@ use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
+    use \App\Support\Traits\BuildsSchoolPdf;
+
     /**
      * Id of whichever staff account actually performed the action.
      *
@@ -31,6 +33,30 @@ class DashboardController extends Controller
     private function actingStaffId(): ?int
     {
         return Auth::guard('finance')->id() ?? Auth::guard('web')->id();
+    }
+
+    /**
+     * Common letterhead data every Finance PDF report shares (school
+     * identity, who generated it and when) — kept in one place so the five
+     * report PDFs can't quietly drift apart on this. Thin Finance-specific
+     * wrapper around the portal-agnostic BuildsSchoolPdf trait (Cashier and
+     * other portals have their own equally small wrapper).
+     */
+    private function financePdfLetterhead(): array
+    {
+        $staffId = $this->actingStaffId();
+        $staff   = $staffId ? \App\Models\User::find($staffId) : null;
+
+        return $this->schoolPdfLetterhead($staff->name ?? 'Finance Staff');
+    }
+
+    /**
+     * Shared DomPDF options for every Finance report — see
+     * BuildsSchoolPdf::schoolPdfOptions() for what this actually does.
+     */
+    private function financePdfOptions(\Barryvdh\DomPDF\PDF $pdf, array $meta = []): \Barryvdh\DomPDF\PDF
+    {
+        return $this->schoolPdfOptions($pdf, $meta);
     }
 
     /**
@@ -252,6 +278,72 @@ class DashboardController extends Controller
     }
 
     /**
+     * Transaction Report — every payment transaction (walk-in, admin,
+     * downpayment, online) in a date range, as a single downloadable PDF
+     * list. Optional date_from/date_to narrow it; omitted, defaults to the
+     * current month like the other Finance reports.
+     */
+    public function downloadTransactionsPdf(Request $request)
+    {
+        $dateFrom = $request->get('date_from', Carbon::now()->startOfMonth()->format('Y-m-d'));
+        $dateTo   = $request->get('date_to', Carbon::now()->format('Y-m-d'));
+
+        $transactions = PaymentTransaction::whereIn('payment_type', ['walkin', 'admin', 'downpayment', 'online'])
+            ->whereBetween('created_at', [$dateFrom, $dateTo . ' 23:59:59'])
+            ->with(['user:id,name'])
+            ->orderBy('created_at')
+            ->get();
+
+        $totalAmount = $transactions->where('status', '!=', 'rejected')->sum('amount');
+
+        $data = array_merge($this->financePdfLetterhead(), [
+            'reportTitle'    => 'Transaction Report',
+            'dateRangeLabel' => Carbon::parse($dateFrom)->format('M d, Y') . ' — ' . Carbon::parse($dateTo)->format('M d, Y'),
+            'transactions'   => $transactions,
+            'totalAmount'    => $totalAmount,
+        ]);
+
+        $pdf = $this->financePdfOptions(\Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.finance.transactions', $data), $data);
+
+        return $pdf->download('Transaction_Report_' . $dateFrom . '_to_' . $dateTo . '.pdf');
+    }
+
+    /**
+     * Official Receipt — single-transaction PDF, the downloadable
+     * counterpart to the existing browser-print receipt. Only issued for a
+     * transaction that actually completed; a pending/rejected one has
+     * nothing to receipt yet.
+     */
+    public function downloadReceiptPdf(PaymentTransaction $transaction)
+    {
+        if ($transaction->status !== 'completed' && $transaction->status !== 'approved') {
+            abort(404, 'No receipt available — this payment has not been completed.');
+        }
+
+        $transaction->load(['user', 'enrollment', 'installment', 'processedBy']);
+
+        $description = $transaction->installment
+            ? ($transaction->installment->month_name . ' Installment')
+            : ($transaction->installment_month ?? ucfirst($transaction->payment_type) . ' Payment');
+
+        $letterhead = $this->financePdfLetterhead();
+
+        $data = array_merge($letterhead, [
+            'reportTitle'    => 'Official Receipt',
+            'dateRangeLabel' => null,
+            'transaction'    => $transaction,
+            'orNumber'       => 'OR-' . str_pad($transaction->id, 6, '0', STR_PAD_LEFT),
+            'description'    => $description,
+            'receivedBy'     => $transaction->processedBy->name ?? $letterhead['generatedBy'],
+        ]);
+
+        $pdf = $this->financePdfOptions(\Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.finance.receipt', $data));
+        $pdf->setPaper([0, 0, 288, 420], 'portrait'); // narrow receipt-style page (4in wide)
+
+        return $pdf->download($data['orNumber'] . '.pdf');
+    }
+
+    /**
      * Show students with installments
      */
     public function installments(Request $request)
@@ -413,6 +505,359 @@ class DashboardController extends Controller
         $totalLateFeesAll = $instStats['total_late_fees'] ?? 0;
 
         return view('finance.installments', compact('installmentEnrollments', 'sort', 'schoolYears', 'instStats', 'totalLateFeesAll'));
+    }
+
+    /**
+     * Accounts Receivable Report — every currently-enrolled student who
+     * still owes money, as a single downloadable PDF. Reuses
+     * PaymentService::getExamPermitStatus() for the overdue-months figure so
+     * this can't disagree with what the Exam Permit Hold feature itself
+     * considers overdue.
+     */
+    public function downloadReceivablesPdf(Request $request)
+    {
+        $yearFilter = $request->get('school_year', $this->formatSchoolYear());
+
+        $enrollments = Enrollment::where('school_year', $yearFilter)
+            ->whereIn('status', ['enrolled', 'approved'])
+            ->where('remaining_balance', '>', 0)
+            ->with(['user:id,name', 'paymentInstallments', 'promissoryNotes'])
+            ->orderByDesc('remaining_balance')
+            ->get();
+
+        $enrollments->each(function ($e) {
+            $exam = PaymentService::getExamPermitStatus($e);
+            $e->overdue_months = $exam['overdue_months'];
+            $e->has_active_note = (bool) $exam['note'];
+        });
+
+        $totalReceivable = $enrollments->sum('remaining_balance');
+
+        $data = array_merge($this->financePdfLetterhead(), [
+            'reportTitle'     => 'Accounts Receivable Report',
+            'dateRangeLabel'  => 'School Year ' . $yearFilter,
+            'enrollments'     => $enrollments,
+            'totalReceivable' => $totalReceivable,
+        ]);
+
+        $pdf = $this->financePdfOptions(\Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.finance.receivables', $data), $data);
+
+        return $pdf->download('Accounts_Receivable_' . str_replace([' ', '-'], ['', '_'], $yearFilter) . '.pdf');
+    }
+
+    /**
+     * Aging of Receivables — same underlying balances as the Accounts
+     * Receivable Report, but bucketed by how overdue each one is (standard
+     * 0/1-30/31-60/61-90/90+ day aging format) instead of a flat list, so
+     * staff can prioritize who to follow up with first instead of reading
+     * every row. "Days overdue" is based on the OLDEST unpaid installment's
+     * due date — same installment data PaymentService::getExamPermitStatus()
+     * already uses for the Exam Permit Hold, just bucketed by days here
+     * instead of counting months.
+     */
+    public function downloadAgingReportPdf(Request $request)
+    {
+        $yearFilter = $request->get('school_year', $this->formatSchoolYear());
+        $today = Carbon::today();
+
+        $enrollments = Enrollment::where('school_year', $yearFilter)
+            ->whereIn('status', ['enrolled', 'approved'])
+            ->where('remaining_balance', '>', 0)
+            ->with(['user:id,name', 'paymentInstallments'])
+            ->get();
+
+        $buckets = ['current' => [], '1_30' => [], '31_60' => [], '61_90' => [], '90_plus' => []];
+        $bucketLabels = ['current' => 'Current', '1_30' => '1-30 Days', '31_60' => '31-60 Days', '61_90' => '61-90 Days', '90_plus' => 'Over 90 Days'];
+
+        foreach ($enrollments as $e) {
+            $oldestOverdue = $e->paymentInstallments
+                ->filter(fn ($i) => $i->due_date && $i->due_date->lt($today) && $i->status !== 'paid')
+                ->sortBy('due_date')
+                ->first();
+
+            $daysOverdue = $oldestOverdue ? (int) $today->diffInDays($oldestOverdue->due_date) : 0;
+            $e->days_overdue = $daysOverdue;
+
+            $bucketKey = match (true) {
+                $daysOverdue <= 0  => 'current',
+                $daysOverdue <= 30 => '1_30',
+                $daysOverdue <= 60 => '31_60',
+                $daysOverdue <= 90 => '61_90',
+                default            => '90_plus',
+            };
+            $e->aging_bucket = $bucketKey;
+            $buckets[$bucketKey][] = $e;
+        }
+
+        // Sort each bucket worst-first (most overdue at the top)
+        foreach ($buckets as $key => $rows) {
+            usort($rows, fn ($a, $b) => $b->days_overdue <=> $a->days_overdue);
+            $buckets[$key] = $rows;
+        }
+
+        $bucketTotals = [];
+        foreach ($buckets as $key => $rows) {
+            $bucketTotals[$key] = [
+                'count'  => count($rows),
+                'amount' => array_sum(array_map(fn ($e) => (float) $e->remaining_balance, $rows)),
+            ];
+        }
+        $grandTotal = array_sum(array_column($bucketTotals, 'amount'));
+        $grandCount = array_sum(array_column($bucketTotals, 'count'));
+
+        $data = array_merge($this->financePdfLetterhead(), [
+            'reportTitle'    => 'Aging of Receivables',
+            'dateRangeLabel' => 'School Year ' . $yearFilter . ' — As of ' . $today->format('M d, Y'),
+            'buckets'        => $buckets,
+            'bucketLabels'   => $bucketLabels,
+            'bucketTotals'   => $bucketTotals,
+            'grandTotal'     => $grandTotal,
+            'grandCount'     => $grandCount,
+        ]);
+
+        $pdf = $this->financePdfOptions(\Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.finance.aging', $data), $data);
+
+        return $pdf->download('Aging_of_Receivables_' . str_replace([' ', '-'], ['', '_'], $yearFilter) . '.pdf');
+    }
+
+    /**
+     * Statement of Account — one student's complete financial record: every
+     * payment transaction plus their full installment schedule, with
+     * running totals. Different from the Official Receipt (one transaction)
+     * or any of the other reports (whole-school summaries) — this is the
+     * document parents/registrar actually ask Finance for by name.
+     */
+    public function downloadStatementOfAccountPdf(Enrollment $enrollment)
+    {
+        $enrollment->load(['user', 'paymentInstallments' => fn ($q) => $q->orderBy('due_date')]);
+
+        $transactions = PaymentTransaction::where('enrollment_id', $enrollment->id)
+            ->whereIn('status', ['completed', 'approved'])
+            ->orderBy('created_at')
+            ->get();
+
+        $totalFee = (float) ($enrollment->total_fee ?? 0);
+        $totalPaid = (float) ($enrollment->payment_amount ?? 0);
+        $balance = (float) ($enrollment->remaining_balance ?? max(0, $totalFee - $totalPaid));
+
+        $data = array_merge($this->financePdfLetterhead(), [
+            'reportTitle'    => 'Statement of Account',
+            'dateRangeLabel' => null,
+            'enrollment'     => $enrollment,
+            'transactions'   => $transactions,
+            'totalFee'       => $totalFee,
+            'totalPaid'      => $totalPaid,
+            'balance'        => $balance,
+        ]);
+
+        $pdf = $this->financePdfOptions(\Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.finance.statement', $data), $data);
+
+        $filename = 'Statement_of_Account_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', $enrollment->user->name ?? $enrollment->id) . '.pdf';
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Collection by Grade Level — total fee / collected / outstanding per
+     * grade level, for a school year. Surfaces patterns a flat list hides
+     * (e.g. one grade level running far behind on collections).
+     */
+    public function downloadGradeLevelReportPdf(Request $request)
+    {
+        $yearFilter = $request->get('school_year', $this->formatSchoolYear());
+
+        $gradeOrder  = ['nursery' => 0, 'kindergarten' => 1, 'grade1' => 2, 'grade2' => 3, 'grade3' => 4, 'grade4' => 5, 'grade5' => 6, 'grade6' => 7];
+        $gradeLabels = ['nursery' => 'Nursery', 'kindergarten' => 'Kindergarten', 'grade1' => 'Grade 1', 'grade2' => 'Grade 2', 'grade3' => 'Grade 3', 'grade4' => 'Grade 4', 'grade5' => 'Grade 5', 'grade6' => 'Grade 6'];
+
+        $enrollments = Enrollment::where('school_year', $yearFilter)
+            ->whereIn('status', ['enrolled', 'approved'])
+            ->get(['grade_level', 'total_fee', 'payment_amount', 'remaining_balance']);
+
+        $rows = $enrollments
+            ->groupBy(fn ($e) => $e->grade_level ?? 'unspecified')
+            ->map(function ($group, $grade) use ($gradeLabels) {
+                return (object) [
+                    'grade_level'   => $grade,
+                    'grade_label'   => $gradeLabels[$grade] ?? ucfirst($grade),
+                    'student_count' => $group->count(),
+                    'total_fee'     => $group->sum(fn ($e) => (float) ($e->total_fee ?? 0)),
+                    'total_paid'    => $group->sum(fn ($e) => (float) ($e->payment_amount ?? 0)),
+                    'total_balance' => $group->sum(fn ($e) => (float) ($e->remaining_balance ?? 0)),
+                ];
+            })
+            ->sortBy(fn ($r) => $gradeOrder[$r->grade_level] ?? 99)
+            ->values();
+
+        $grand = (object) [
+            'student_count' => $rows->sum('student_count'),
+            'total_fee'     => $rows->sum('total_fee'),
+            'total_paid'    => $rows->sum('total_paid'),
+            'total_balance' => $rows->sum('total_balance'),
+        ];
+
+        $data = array_merge($this->financePdfLetterhead(), [
+            'reportTitle'    => 'Collection by Grade Level',
+            'dateRangeLabel' => 'School Year ' . $yearFilter,
+            'rows'           => $rows,
+            'grand'          => $grand,
+        ]);
+
+        $pdf = $this->financePdfOptions(\Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.finance.grade-level', $data), $data);
+
+        return $pdf->download('Collection_by_Grade_Level_' . str_replace([' ', '-'], ['', '_'], $yearFilter) . '.pdf');
+    }
+
+    /**
+     * Payment Plan Distribution — how many students are on Plan A (cash)
+     * vs B/C/D (installment), and how each plan is actually performing
+     * collection-wise, for a school year. Same cash-vs-installment
+     * derivation as students()/installments() (payment_option === 'A', or
+     * payment_type === 'full' with no B/C/D option set) — kept identical
+     * so this report can't disagree with what those pages already show.
+     */
+    public function downloadPaymentPlanReportPdf(Request $request)
+    {
+        $yearFilter = $request->get('school_year', $this->formatSchoolYear());
+
+        $planLabels = ['A' => 'Plan A — Cash', 'B' => 'Plan B — Installment', 'C' => 'Plan C — Installment', 'D' => 'Plan D — Installment'];
+
+        $enrollments = Enrollment::where('school_year', $yearFilter)
+            ->whereIn('status', ['enrolled', 'approved'])
+            ->get(['payment_option', 'payment_type', 'total_fee', 'payment_amount', 'remaining_balance']);
+
+        $rows = $enrollments
+            ->groupBy(function ($e) {
+                $isCash = $e->payment_option === 'A' || ($e->payment_type === 'full' && !in_array($e->payment_option, ['B', 'C', 'D']));
+                return $isCash ? 'A' : ($e->payment_option ?: 'B');
+            })
+            ->map(function ($group, $plan) use ($planLabels) {
+                $totalFee     = $group->sum(fn ($e) => (float) ($e->total_fee ?? 0));
+                $totalPaid    = $group->sum(fn ($e) => (float) ($e->payment_amount ?? 0));
+                $totalBalance = $group->sum(fn ($e) => (float) ($e->remaining_balance ?? 0));
+                return (object) [
+                    'plan'            => $plan,
+                    'plan_label'      => $planLabels[$plan] ?? ('Plan ' . $plan),
+                    'student_count'   => $group->count(),
+                    'total_fee'       => $totalFee,
+                    'total_paid'      => $totalPaid,
+                    'total_balance'   => $totalBalance,
+                    // Derived from the same outstanding-balance figure the
+                    // Outstanding column shows, not a separate paid/fee
+                    // ratio — those two can disagree (e.g. one student's
+                    // overpayment inflating total_paid without reducing
+                    // another's real remaining_balance), which showed up
+                    // here as a self-contradictory "100% collected, ₱243k
+                    // still outstanding" row during testing.
+                    'collection_rate' => $totalFee > 0 ? round(max(0, min(100, ($totalFee - $totalBalance) / $totalFee * 100)), 1) : 0,
+                ];
+            })
+            ->sortBy('plan')
+            ->values();
+
+        $grand = (object) [
+            'student_count' => $rows->sum('student_count'),
+            'total_fee'     => $rows->sum('total_fee'),
+            'total_paid'    => $rows->sum('total_paid'),
+            'total_balance' => $rows->sum('total_balance'),
+        ];
+
+        $data = array_merge($this->financePdfLetterhead(), [
+            'reportTitle'    => 'Payment Plan Distribution',
+            'dateRangeLabel' => 'School Year ' . $yearFilter,
+            'rows'           => $rows,
+            'grand'          => $grand,
+        ]);
+
+        $pdf = $this->financePdfOptions(\Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.finance.payment-plan', $data), $data);
+
+        return $pdf->download('Payment_Plan_Distribution_' . str_replace([' ', '-'], ['', '_'], $yearFilter) . '.pdf');
+    }
+
+    /**
+     * Enrollment & Payment Status Report — reconciles to EVERY student
+     * account in the system, not just the ones with an active enrollment.
+     * The other reports (Grade Level, Payment Plan, Accounts Receivable,
+     * Aging) are all deliberately scoped to enrolled/approved students only
+     * — a declined applicant isn't on a payment plan and owes the school
+     * nothing, so including them there wouldn't make sense. But that
+     * scoping can look like missing data if nothing ever says so out loud
+     * ("214 students" when the school has 290 student accounts looks like
+     * 76 went missing). This report is the one place that accounts for
+     * all of them: Paid / Partial / Pending / Declined / No Application.
+     */
+    public function downloadStatusOverviewPdf(Request $request)
+    {
+        $yearFilter = $request->get('school_year', $this->formatSchoolYear());
+
+        $totalStudentAccounts = \App\Models\User::where('role', 'student')->count();
+
+        $enrollmentsThisYear = Enrollment::where('school_year', $yearFilter)->get();
+        $enrolled  = $enrollmentsThisYear->whereIn('status', ['enrolled', 'approved']);
+        $declined  = $enrollmentsThisYear->where('status', 'declined')
+            // A student who re-applied after an earlier decline has both a
+            // declined row and an enrolled row for the same year — count
+            // them as enrolled, not declined, in that case.
+            ->whereNotIn('user_id', $enrolled->pluck('user_id'));
+
+        $appliedUserIds = $enrollmentsThisYear->pluck('user_id')->unique();
+        $noApplicationCount = max(0, $totalStudentAccounts - $appliedUserIds->count());
+
+        $statusRows = collect([
+            (object) [
+                'label'         => 'Paid',
+                'count'         => $enrolled->where('payment_status', 'paid')->count(),
+                'total_fee'     => $enrolled->where('payment_status', 'paid')->sum(fn ($e) => (float) ($e->total_fee ?? 0)),
+                'total_paid'    => $enrolled->where('payment_status', 'paid')->sum(fn ($e) => (float) ($e->payment_amount ?? 0)),
+                'total_balance' => $enrolled->where('payment_status', 'paid')->sum(fn ($e) => (float) ($e->remaining_balance ?? 0)),
+            ],
+            (object) [
+                'label'         => 'Partial',
+                'count'         => $enrolled->where('payment_status', 'partial')->count(),
+                'total_fee'     => $enrolled->where('payment_status', 'partial')->sum(fn ($e) => (float) ($e->total_fee ?? 0)),
+                'total_paid'    => $enrolled->where('payment_status', 'partial')->sum(fn ($e) => (float) ($e->payment_amount ?? 0)),
+                'total_balance' => $enrolled->where('payment_status', 'partial')->sum(fn ($e) => (float) ($e->remaining_balance ?? 0)),
+            ],
+            (object) [
+                'label'         => 'Not Paid (Pending)',
+                'count'         => $enrolled->whereNotIn('payment_status', ['paid', 'partial'])->count(),
+                'total_fee'     => $enrolled->whereNotIn('payment_status', ['paid', 'partial'])->sum(fn ($e) => (float) ($e->total_fee ?? 0)),
+                'total_paid'    => $enrolled->whereNotIn('payment_status', ['paid', 'partial'])->sum(fn ($e) => (float) ($e->payment_amount ?? 0)),
+                'total_balance' => $enrolled->whereNotIn('payment_status', ['paid', 'partial'])->sum(fn ($e) => (float) ($e->remaining_balance ?? 0)),
+            ],
+            (object) [
+                'label'         => 'Declined',
+                'count'         => $declined->count(),
+                'total_fee'     => null,
+                'total_paid'    => null,
+                'total_balance' => null,
+            ],
+            (object) [
+                'label'         => 'No Application Submitted',
+                'count'         => $noApplicationCount,
+                'total_fee'     => null,
+                'total_paid'    => null,
+                'total_balance' => null,
+            ],
+        ]);
+
+        // Within enrolled students only — cash (Plan A) vs installment
+        // (B/C/D), same derivation as Payment Plan Distribution so the two
+        // reports can't disagree.
+        $cashCount = $enrolled->filter(fn ($e) => $e->payment_option === 'A' || ($e->payment_type === 'full' && !in_array($e->payment_option, ['B', 'C', 'D'])))->count();
+        $installmentCount = $enrolled->count() - $cashCount;
+
+        $data = array_merge($this->financePdfLetterhead(), [
+            'reportTitle'          => 'Enrollment & Payment Status Report',
+            'dateRangeLabel'       => 'School Year ' . $yearFilter,
+            'totalStudentAccounts' => $totalStudentAccounts,
+            'enrolledCount'        => $enrolled->count(),
+            'statusRows'           => $statusRows,
+            'cashCount'            => $cashCount,
+            'installmentCount'     => $installmentCount,
+        ]);
+
+        $pdf = $this->financePdfOptions(\Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.finance.status-overview', $data), $data);
+
+        return $pdf->download('Enrollment_Payment_Status_' . str_replace([' ', '-'], ['', '_'], $yearFilter) . '.pdf');
     }
 
     /**
@@ -682,7 +1127,87 @@ class DashboardController extends Controller
 
         $reportData = $this->generateReport($reportType, $dateFrom, $dateTo);
 
-        return view('finance.reports', compact('reportData', 'reportType', 'dateFrom', 'dateTo'));
+        // For the Accounts Receivable Report section on this same page —
+        // moved here from the Installments page so every downloadable
+        // Finance report lives in one place.
+        $schoolYears = $this->getSchoolYears();
+        $currentSchoolYear = $this->formatSchoolYear();
+
+        return view('finance.reports', compact('reportData', 'reportType', 'dateFrom', 'dateTo', 'schoolYears', 'currentSchoolYear'));
+    }
+
+    /**
+     * Daily/Weekly/Monthly/Yearly Report, as a downloadable PDF instead of
+     * the browser's own print-to-PDF (window.print()) — same filters as the
+     * on-screen Reports page, reusing the same generateReport() so the two
+     * can never show different numbers for the same query.
+     */
+    public function downloadReportPdf(Request $request)
+    {
+        $reportType = $request->get('type', 'daily');
+        $dateFrom   = $request->get('date_from', Carbon::now()->startOfMonth()->format('Y-m-d'));
+        $dateTo     = $request->get('date_to', Carbon::now()->format('Y-m-d'));
+
+        $reportData = $this->generateReport($reportType, $dateFrom, $dateTo);
+
+        $reportTypeLabels = ['daily' => 'Daily', 'weekly' => 'Weekly', 'monthly' => 'Monthly', 'yearly' => 'Yearly'];
+        $reportTypeLabel  = $reportTypeLabels[$reportType] ?? 'Daily';
+
+        $totalAmount = collect($reportData['daily_breakdown'])->sum('total_amount');
+
+        $data = array_merge($this->financePdfLetterhead(), [
+            'reportTitle'    => $reportTypeLabel . ' Financial Report',
+            'dateRangeLabel' => Carbon::parse($dateFrom)->format('M d, Y') . ' — ' . Carbon::parse($dateTo)->format('M d, Y'),
+            'reportData'     => $reportData,
+            'reportTypeLabel'=> $reportTypeLabel,
+            'totalAmount'    => $totalAmount,
+        ]);
+
+        $pdf = $this->financePdfOptions(\Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.finance.report-breakdown', $data), $data);
+
+        $filename = 'Finance_Report_' . $reportType . '_' . $dateFrom . '_to_' . $dateTo . '.pdf';
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Collection Summary — grand totals only (no per-period breakdown,
+     * that's what the Daily/Weekly/Monthly/Yearly Report above already
+     * covers), grouped by payment type and payment method instead. A
+     * different cut of the same underlying data, not a duplicate report.
+     */
+    public function downloadCollectionSummaryPdf(Request $request)
+    {
+        $dateFrom = $request->get('date_from', Carbon::now()->startOfMonth()->format('Y-m-d'));
+        $dateTo   = $request->get('date_to', Carbon::now()->format('Y-m-d'));
+
+        $base = PaymentTransaction::whereIn('status', ['completed', 'approved'])
+            ->whereBetween('updated_at', [$dateFrom, $dateTo . ' 23:59:59']);
+
+        $byType = (clone $base)
+            ->selectRaw('payment_type, COUNT(*) as count, COALESCE(SUM(amount), 0) as total_amount')
+            ->groupBy('payment_type')
+            ->get();
+
+        $byMethod = (clone $base)
+            ->selectRaw('payment_method, COUNT(*) as count, COALESCE(SUM(amount), 0) as total_amount')
+            ->groupBy('payment_method')
+            ->get();
+
+        $grandTotal = (clone $base)->sum('amount');
+        $grandCount = (clone $base)->count();
+
+        $data = array_merge($this->financePdfLetterhead(), [
+            'reportTitle'    => 'Collection Summary',
+            'dateRangeLabel' => Carbon::parse($dateFrom)->format('M d, Y') . ' — ' . Carbon::parse($dateTo)->format('M d, Y'),
+            'byType'         => $byType,
+            'byMethod'       => $byMethod,
+            'grandTotal'     => $grandTotal,
+            'grandCount'     => $grandCount,
+        ]);
+
+        $pdf = $this->financePdfOptions(\Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.finance.collection-summary', $data), $data);
+
+        return $pdf->download('Collection_Summary_' . $dateFrom . '_to_' . $dateTo . '.pdf');
     }
 
     /**
@@ -1126,7 +1651,7 @@ class DashboardController extends Controller
                 ->exists();
             if ($recentDuplicate) {
                 DB::rollBack();
-                return redirect()->back()->with('error', 'A matching payment was just recorded for this student — please check Payment History before submitting again.');
+                return $this->walkInError($request, 'A matching payment was just recorded for this student — please check Payment History before submitting again.');
             }
 
             // Check if this is a downpayment (not yet fully paid)
@@ -1143,17 +1668,17 @@ class DashboardController extends Controller
 
                 if (!$installment || $installment->enrollment_id !== $enrollment->id) {
                     DB::rollBack();
-                    return redirect()->back()->with('error', 'Invalid installment record.');
+                    return $this->walkInError($request, 'Invalid installment record.');
                 }
 
                 if ($installment->status === 'paid') {
                     DB::rollBack();
-                    return redirect()->back()->with('error', 'This installment is already paid.');
+                    return $this->walkInError($request, 'This installment is already paid.');
                 }
 
                 if ($installment->status === 'pending_approval') {
                     DB::rollBack();
-                    return redirect()->back()->with('error', 'This installment has a student-submitted payment awaiting approval. Approve or reject it first.');
+                    return $this->walkInError($request, 'This installment has a student-submitted payment awaiting approval. Approve or reject it first.');
                 }
 
                 // Must cover the full amount + late fee before the
@@ -1167,7 +1692,7 @@ class DashboardController extends Controller
                 $totalDue = floatval($installment->amount) + floatval($installment->late_fee ?? 0);
                 if ($amountPaid < $totalDue) {
                     DB::rollBack();
-                    return redirect()->back()->with('error', 'Amount must be at least ₱' . number_format($totalDue, 2) . ' (includes ₱' . number_format($installment->late_fee ?? 0, 2) . ' late fee) to mark this installment paid.');
+                    return $this->walkInError($request, 'Amount must be at least ₱' . number_format($totalDue, 2) . ' (includes ₱' . number_format($installment->late_fee ?? 0, 2) . ' late fee) to mark this installment paid.');
                 }
 
                 $installmentMonth = $installment->month_name;
@@ -1239,7 +1764,7 @@ class DashboardController extends Controller
             DB::commit();
         } catch (\Exception $e) {
             DB::rollBack();
-            return redirect()->back()->with('error', 'Payment recording failed: ' . $e->getMessage());
+            return $this->walkInError($request, 'Payment recording failed: ' . $e->getMessage());
         }
 
         $monthDisplay = $installmentMonth ?? ($isDownpayment ? 'Downpayment' : 'Payment');
@@ -1251,8 +1776,42 @@ class DashboardController extends Controller
             $payment->id
         );
 
-        return redirect()->route('finance.payments.index')
-            ->with('success', 'Walk-in payment recorded for ' . $monthDisplay . ' — ₱' . number_format($amountPaid, 2) . ' via ' . $methodLabel . '. Payment is listed below.');
+        $successMessage = 'Walk-in payment recorded for ' . $monthDisplay . ' — ₱' . number_format($amountPaid, 2) . ' via ' . $methodLabel . '.';
+
+        // AJAX callers (the Installments and All Students "Pay" modals) get a
+        // JSON response so the page can refresh its own numbers in place —
+        // same immediate-feedback behavior as the Cashier portal's cash
+        // payment flow, instead of redirecting away to the Payments page
+        // (which is what both callers used to silently fall through to,
+        // landing the staff member somewhere they didn't ask to go while the
+        // page they were actually looking at stayed showing stale numbers).
+        if ($request->expectsJson() || $request->ajax()) {
+            $enrollment->refresh();
+            return response()->json([
+                'success'            => true,
+                'message'            => $successMessage,
+                'enrollment_id'      => $enrollment->id,
+                'payment_amount'     => $enrollment->payment_amount,
+                'remaining_balance'  => $enrollment->remaining_balance,
+                'payment_status'     => $enrollment->payment_status,
+                'reference_number'   => $payment->reference_number,
+            ]);
+        }
+
+        return redirect()->route('finance.payments.index')->with('success', $successMessage . ' Payment is listed below.');
+    }
+
+    /**
+     * Shared error responder for recordWalkInPayment() — JSON for the AJAX
+     * callers (Installments/All Students "Pay" modals), redirect-back
+     * fallback otherwise.
+     */
+    private function walkInError(Request $request, string $message)
+    {
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json(['success' => false, 'message' => $message], 422);
+        }
+        return redirect()->back()->with('error', $message);
     }
 
     /**

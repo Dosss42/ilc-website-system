@@ -32,6 +32,8 @@ use App\Services\ActivityLogger;
 
 class EnrollmentController extends Controller
 {
+    use \App\Support\Traits\BuildsSchoolPdf;
+
     /**
      * Show enrollment application form
      */
@@ -1208,6 +1210,24 @@ class EnrollmentController extends Controller
      */
     public function sectionReports(Request $request)
     {
+        return view('admin.sections.reports-content', $this->buildSectionReportsData());
+    }
+
+    /**
+     * All 16 Reports-tab sub-reports' data, computed once and shared by the
+     * on-screen tab (sectionReports() above) and every download*ReportPdf()
+     * method below — same query pass, same figures, never drifting apart.
+     * Previously this WAS sectionReports()'s body; extracted unchanged
+     * except for 'studentDocuments', which reports-content.blade.php:406
+     * has always expected but which was never actually computed or passed
+     * — the Document Compliance sub-report's table was silently empty in
+     * production (only its 4 stat cards, computed from separate counts
+     * below, were ever real). Added here using the same
+     * document_type != payment_screenshot filter those stat cards already
+     * use.
+     */
+    private function buildSectionReportsData(): array
+    {
         $currentSchoolYear = $this->getCurrentSchoolYear();
 
         $rptGradeLevels = ['nursery'=>'Nursery','kindergarten'=>'Kindergarten','grade1'=>'Grade 1','grade2'=>'Grade 2','grade3'=>'Grade 3','grade4'=>'Grade 4','grade5'=>'Grade 5','grade6'=>'Grade 6'];
@@ -1322,6 +1342,14 @@ class EnrollmentController extends Controller
         $rptRejectedDocs = \App\Models\StudentDocument::where('document_type','!=','payment_screenshot')->where('status','rejected')->count();
         $rptTotalDocs    = $rptApprovedDocs + $rptPendingDocs + $rptRejectedDocs;
 
+        // Fixes reports-content.blade.php:406's table, which has always
+        // expected this variable but never received it — see this method's
+        // docblock.
+        $studentDocuments = \App\Models\StudentDocument::with('user:id,name')
+            ->where('document_type', '!=', 'payment_screenshot')
+            ->latest()
+            ->get();
+
         $rptInstTotal   = \App\Models\PaymentInstallment::count();
         $rptInstOverdue = \App\Models\PaymentInstallment::where('status','pending')
             ->where('due_date','<',\Carbon\Carbon::today())->count();
@@ -1403,23 +1431,363 @@ class EnrollmentController extends Controller
         $rptChartGradeLabels = collect($rptStudentsByGrade ?? [])->keys()->map(fn($k)=>ucwords(str_replace(['grade','_'],['Grade ',' '],$k)))->values()->toArray();
         $rptChartGradeData   = collect($rptStudentsByGrade ?? [])->values()->toArray();
 
-        return view('admin.sections.reports-content', compact(
+        return compact(
             'currentSchoolYear', 'rptGradeLevels',
             'rptTotalStudents', 'rptActiveStudents',
             'rptEnrollTotal', 'rptEnrollApproved', 'rptEnrollPending', 'rptEnrollDeclined', 'rptEnrollDropped',
             'rptEnrollNew', 'rptEnrollReturning', 'rptEnrollTransferee',
-            'rptMale', 'rptFemale', 'rptEnrollByGrade', 'rptStudentsByGrade', 'rptMasterListPage',
+            'rptMale', 'rptFemale', 'rptEnrollByGrade', 'rptStudentsByGrade', 'rptMasterListPage', 'rptActiveSYEnrolls',
             'rptEnrollAll', 'rptFinAll', 'rptTotalFees', 'rptTotalCollected', 'rptOutstanding',
             'rptPaid', 'rptPartial', 'rptUnpaid', 'rptCollectionRate',
             'rptFinByGrade', 'rptFinByOption',
             'rptOutstandingList', 'rptOutstandingPage', 'rptOutstandingTotalBal',
             'rptAllSections', 'rptTotalCapacity', 'rptTotalEnrolledSec',
-            'rptApprovedDocs', 'rptPendingDocs', 'rptRejectedDocs', 'rptTotalDocs',
+            'rptApprovedDocs', 'rptPendingDocs', 'rptRejectedDocs', 'rptTotalDocs', 'studentDocuments',
             'rptInstTotal', 'rptInstOverdue',
             'rptPromoByGrade', 'rptPromoEligibleTotal', 'rptPromoPending',
-            'rptPromoPromoted', 'rptPromoRetained', 'rptPromoGraduated', 'rptPromoListPage',
+            'rptPromoPromoted', 'rptPromoRetained', 'rptPromoGraduated', 'rptPromoListPage', 'rptPromoStudentList',
             'rptDailyDays', 'rptChartGradeLabels', 'rptChartGradeData'
-        ));
+        );
+    }
+
+    // ── Reports tab PDFs — each pulls from the same buildSectionReportsData()
+    // pass as the on-screen tab, on the shared pdf.shared.* design (see
+    // app/Support/Traits/BuildsSchoolPdf.php) instead of the old client-side
+    // window.print()/html2pdf.js popups. ──
+
+    public function downloadMasterListReportPdf()
+    {
+        $data = $this->buildSectionReportsData();
+
+        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Admin'), [
+            'reportTitle'    => 'Student Master List',
+            'dateRangeLabel' => 'School Year ' . $data['currentSchoolYear'],
+            'enrollments'    => $data['rptActiveSYEnrolls']->values(),
+            'gradeLevels'    => $data['rptGradeLevels'],
+            'male'           => $data['rptMale'],
+            'female'         => $data['rptFemale'],
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.admin.master-list', $pdfData),
+            $pdfData
+        )->download('student-master-list-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function downloadStudentsByGradeReportPdf()
+    {
+        $data = $this->buildSectionReportsData();
+
+        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Admin'), [
+            'reportTitle'     => 'Students by Grade Level',
+            'dateRangeLabel'  => 'School Year ' . $data['currentSchoolYear'],
+            'gradeLevels'     => $data['rptGradeLevels'],
+            'studentsByGrade' => $data['rptStudentsByGrade'],
+            'allSections'     => $data['rptAllSections'],
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.admin.students-by-grade', $pdfData),
+            $pdfData
+        )->download('students-by-grade-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function downloadStudentsNewVsReturningReportPdf()
+    {
+        $data = $this->buildSectionReportsData();
+
+        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Admin'), [
+            'reportTitle'     => 'Students — New vs Returning',
+            'dateRangeLabel'  => 'School Year ' . $data['currentSchoolYear'],
+            'gradeLevels'     => $data['rptGradeLevels'],
+            'enrollByGrade'   => $data['rptEnrollByGrade'],
+            'newCount'        => $data['rptEnrollNew'],
+            'returningCount'  => $data['rptEnrollReturning'],
+            'transfereeCount' => $data['rptEnrollTransferee'],
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.admin.students-new-vs-returning', $pdfData),
+            $pdfData
+        )->download('students-new-vs-returning-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function downloadDocumentComplianceReportPdf()
+    {
+        $data = $this->buildSectionReportsData();
+
+        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Admin'), [
+            'reportTitle'    => 'Document Compliance',
+            'dateRangeLabel' => 'School Year ' . $data['currentSchoolYear'],
+            'approvedDocs'   => $data['rptApprovedDocs'],
+            'pendingDocs'    => $data['rptPendingDocs'],
+            'rejectedDocs'   => $data['rptRejectedDocs'],
+            'totalDocs'      => $data['rptTotalDocs'],
+            'documents'      => $data['studentDocuments'],
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.admin.document-compliance', $pdfData),
+            $pdfData
+        )->download('document-compliance-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function downloadEnrollmentStatusReportPdf()
+    {
+        $data = $this->buildSectionReportsData();
+
+        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Admin'), [
+            'reportTitle'    => 'Enrollment Status Summary',
+            'dateRangeLabel' => 'School Year ' . $data['currentSchoolYear'],
+            'enrollAll'      => $data['rptEnrollAll'],
+            'enrollTotal'    => $data['rptEnrollTotal'],
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.admin.enrollment-status', $pdfData),
+            $pdfData
+        )->download('enrollment-status-summary-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function downloadEnrollmentByGradeReportPdf()
+    {
+        $data = $this->buildSectionReportsData();
+
+        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Admin'), [
+            'reportTitle'    => 'Enrollment by Grade Level',
+            'dateRangeLabel' => 'School Year ' . $data['currentSchoolYear'],
+            'gradeLevels'    => $data['rptGradeLevels'],
+            'enrollByGrade'  => $data['rptEnrollByGrade'],
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.admin.enrollment-by-grade', $pdfData),
+            $pdfData
+        )->download('enrollment-by-grade-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function downloadEnrollmentNewVsReturningReportPdf()
+    {
+        $data = $this->buildSectionReportsData();
+
+        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Admin'), [
+            'reportTitle'    => 'Enrollment — New vs Returning',
+            'dateRangeLabel' => 'School Year ' . $data['currentSchoolYear'],
+            'gradeLevels'    => $data['rptGradeLevels'],
+            'enrollByGrade'  => $data['rptEnrollByGrade'],
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.admin.enrollment-new-vs-returning', $pdfData),
+            $pdfData
+        )->download('enrollment-new-vs-returning-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function downloadEnrollmentDailyTrendReportPdf()
+    {
+        $data = $this->buildSectionReportsData();
+
+        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Admin'), [
+            'reportTitle'    => 'Daily Enrollment Trend',
+            'dateRangeLabel' => 'Last 7 Days',
+            'dailyDays'      => $data['rptDailyDays'],
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.admin.enrollment-daily-trend', $pdfData),
+            $pdfData
+        )->download('enrollment-daily-trend-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function downloadAdminCollectionSummaryReportPdf()
+    {
+        $data = $this->buildSectionReportsData();
+
+        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Admin'), [
+            'reportTitle'    => 'Collection Summary',
+            'dateRangeLabel' => 'School Year ' . $data['currentSchoolYear'],
+            'finAll'         => $data['rptFinAll'],
+            'paid'           => $data['rptPaid'],
+            'partial'        => $data['rptPartial'],
+            'unpaid'         => $data['rptUnpaid'],
+            'totalFees'      => $data['rptTotalFees'],
+            'totalCollected' => $data['rptTotalCollected'],
+            'collectionRate' => $data['rptCollectionRate'],
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.admin.collection-summary', $pdfData),
+            $pdfData
+        )->download('admin-collection-summary-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function downloadFinancialByGradeReportPdf()
+    {
+        $data = $this->buildSectionReportsData();
+
+        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Admin'), [
+            'reportTitle'    => 'Financial — By Grade Level',
+            'dateRangeLabel' => 'School Year ' . $data['currentSchoolYear'],
+            'gradeLevels'    => $data['rptGradeLevels'],
+            'finByGrade'     => $data['rptFinByGrade'],
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.admin.financial-by-grade', $pdfData),
+            $pdfData
+        )->download('financial-by-grade-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function downloadFinancialByOptionReportPdf()
+    {
+        $data = $this->buildSectionReportsData();
+
+        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Admin'), [
+            'reportTitle'    => 'Financial — By Payment Option',
+            'dateRangeLabel' => 'School Year ' . $data['currentSchoolYear'],
+            'finByOption'    => $data['rptFinByOption'],
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.admin.financial-by-option', $pdfData),
+            $pdfData
+        )->download('financial-by-payment-option-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function downloadOutstandingBalancesReportPdf()
+    {
+        $data = $this->buildSectionReportsData();
+
+        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Admin'), [
+            'reportTitle'      => 'Outstanding Balances',
+            'dateRangeLabel'   => 'School Year ' . $data['currentSchoolYear'],
+            'gradeLevels'      => $data['rptGradeLevels'],
+            'outstandingList'  => $data['rptOutstandingList'],
+            'outstandingTotal' => $data['rptOutstandingTotalBal'],
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.admin.outstanding-balances', $pdfData),
+            $pdfData
+        )->download('outstanding-balances-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function downloadPromotionOverviewReportPdf()
+    {
+        $data = $this->buildSectionReportsData();
+
+        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Admin'), [
+            'reportTitle'    => 'Assessment & Promotion Overview',
+            'dateRangeLabel' => 'School Year ' . $data['currentSchoolYear'],
+            'promoted'       => $data['rptPromoPromoted'],
+            'retained'       => $data['rptPromoRetained'],
+            'graduated'      => $data['rptPromoGraduated'],
+            'pending'        => $data['rptPromoPending'],
+            'eligibleTotal'  => $data['rptPromoEligibleTotal'],
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.admin.promotion-overview', $pdfData),
+            $pdfData
+        )->download('promotion-overview-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function downloadPromotionByGradeReportPdf()
+    {
+        $data = $this->buildSectionReportsData();
+
+        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Admin'), [
+            'reportTitle'    => 'Promotion — By Grade Level',
+            'dateRangeLabel' => 'School Year ' . $data['currentSchoolYear'],
+            'gradeLevels'    => $data['rptGradeLevels'],
+            'promoByGrade'   => $data['rptPromoByGrade'],
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.admin.promotion-by-grade', $pdfData),
+            $pdfData
+        )->download('promotion-by-grade-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function downloadPromotionStudentListReportPdf()
+    {
+        $data = $this->buildSectionReportsData();
+
+        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Admin'), [
+            'reportTitle'    => 'Promotion Student List',
+            'dateRangeLabel' => 'School Year ' . $data['currentSchoolYear'],
+            'students'       => $data['rptPromoStudentList'],
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.admin.promotion-student-list', $pdfData),
+            $pdfData
+        )->download('promotion-student-list-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    public function downloadKpiOverviewReportPdf()
+    {
+        abort_unless(Auth::user()->role === 'superadmin', 403);
+
+        $data     = $this->buildSectionReportsData();
+        $kpiCards = $this->buildKpiCards($data);
+
+        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Admin'), [
+            'reportTitle'    => 'KPI Dashboard',
+            'dateRangeLabel' => 'School Year ' . $data['currentSchoolYear'],
+            'kpiCards'       => $kpiCards,
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.admin.kpi-overview', $pdfData),
+            $pdfData
+        )->download('kpi-dashboard-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    /**
+     * Same 8-metric computation reports-content.blade.php:1177-1218 does
+     * inline for the on-screen KPI tab — moved here too so the PDF doesn't
+     * re-derive it a second, independent way. Target thresholds match that
+     * Blade block exactly; icon/color fields are dropped since the PDF
+     * view styles status from met/warn directly rather than via Bootstrap
+     * icon classes (Dompdf can't render icon-font glyphs, same reason no
+     * other report view under pdf/finance or pdf/admin uses
+     * <i class="bi ..."> either).
+     */
+    private function buildKpiCards(array $data): array
+    {
+        $kpiEnrollTotal   = max(1, $data['rptEnrollTotal']);
+        $kpiEnrollRate    = round($data['rptEnrollApproved'] / $kpiEnrollTotal * 100, 1);
+        $kpiColRate       = $data['rptCollectionRate'];
+        $kpiTotalCap      = max(1, $data['rptTotalCapacity']);
+        $kpiSecUtil       = round($data['rptTotalEnrolledSec'] / $kpiTotalCap * 100, 1);
+        $kpiDropout       = round($data['rptEnrollDropped'] / $kpiEnrollTotal * 100, 1);
+        $kpiDocCompDenom  = max(1, $data['rptTotalDocs']);
+        $kpiDocComp       = round($data['rptApprovedDocs'] / $kpiDocCompDenom * 100, 1);
+        $kpiNewGrowth     = round($data['rptEnrollNew'] / $kpiEnrollTotal * 100, 1);
+        $kpiInstTotalSafe = max(1, $data['rptInstTotal']);
+        $kpiOverdueRate   = round($data['rptInstOverdue'] / $kpiInstTotalSafe * 100, 1);
+        $kpiOnline        = $data['rptEnrollAll']->filter(fn($e) => empty($e->student_data['is_walk_in']))->count();
+        $kpiOnlineRate    = round($kpiOnline / $kpiEnrollTotal * 100, 1);
+
+        return [
+            ['label' => 'Enrollment Completion Rate', 'value' => $kpiEnrollRate . '%', 'target' => '≥ 85%',
+             'met' => $kpiEnrollRate >= 85, 'warn' => $kpiEnrollRate >= 70, 'bar' => min(100, $kpiEnrollRate)],
+            ['label' => 'Collection Rate', 'value' => $kpiColRate . '%', 'target' => '≥ 90%',
+             'met' => $kpiColRate >= 90, 'warn' => $kpiColRate >= 70, 'bar' => min(100, $kpiColRate)],
+            ['label' => 'Section Utilization', 'value' => $kpiSecUtil . '%', 'target' => '80–95%',
+             'met' => $kpiSecUtil >= 80 && $kpiSecUtil <= 95, 'warn' => $kpiSecUtil >= 65, 'bar' => min(100, $kpiSecUtil)],
+            ['label' => 'Dropout Rate', 'value' => $kpiDropout . '%', 'target' => '≤ 5%',
+             'met' => $kpiDropout <= 5, 'warn' => $kpiDropout <= 10, 'bar' => min(100, $kpiDropout * 5)],
+            ['label' => 'Document Compliance', 'value' => $kpiDocComp . '%', 'target' => '≥ 95%',
+             'met' => $kpiDocComp >= 95, 'warn' => $kpiDocComp >= 80, 'bar' => min(100, $kpiDocComp)],
+            ['label' => 'New Student Growth', 'value' => $kpiNewGrowth . '%', 'target' => 'Growing',
+             'met' => $kpiNewGrowth >= 20, 'warn' => $kpiNewGrowth >= 10, 'bar' => min(100, $kpiNewGrowth * 2)],
+            ['label' => 'Overdue Installment Rate', 'value' => $kpiOverdueRate . '%', 'target' => '≤ 10%',
+             'met' => $kpiOverdueRate <= 10, 'warn' => $kpiOverdueRate <= 20, 'bar' => min(100, $kpiOverdueRate * 3)],
+            ['label' => 'Online Enrollment Adoption', 'value' => $kpiOnlineRate . '%', 'target' => 'Growing',
+             'met' => $kpiOnlineRate >= 50, 'warn' => $kpiOnlineRate >= 30, 'bar' => min(100, $kpiOnlineRate)],
+        ];
     }
 
     /**

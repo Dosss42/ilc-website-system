@@ -19,6 +19,14 @@
         <h1><i class="bi bi-credit-card-fill" style="color:var(--gold);"></i> Payments</h1>
         <p>View and manage all student payment records</p>
     </div>
+    <form method="GET" action="{{ route('finance.payments.transactions-pdf') }}" target="_blank" style="display:flex;gap:8px;align-items:center;">
+        <input type="date" name="date_from" value="{{ now()->startOfMonth()->format('Y-m-d') }}" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;">
+        <span style="color:var(--muted);font-size:12px;">to</span>
+        <input type="date" name="date_to" value="{{ now()->format('Y-m-d') }}" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:12px;">
+        <button type="submit" class="btn-dash btn-primary" style="padding:8px 14px;font-size:12px;">
+            <i class="bi bi-file-earmark-pdf"></i> Download Transaction Report
+        </button>
+    </form>
 </div>
 
 {{-- Stats --}}
@@ -201,6 +209,10 @@
                                     })">
                                     <i class="bi bi-printer-fill"></i>
                                 </button>
+                                <a href="{{ route('finance.payments.receipt-pdf', $walkInTx->id) }}" target="_blank"
+                                    class="action-btn" title="Download Receipt PDF" style="background:#e3f2fd;color:#1565c0;text-decoration:none;">
+                                    <i class="bi bi-file-earmark-pdf"></i>
+                                </a>
                             @else
                                 <span style="font-size:11px;color:var(--muted);">—</span>
                             @endif
@@ -287,14 +299,20 @@
                                 </span>
                             @endif
                         </td>
-                        <td>
+                        <td style="white-space:nowrap;">
                             @if($xTx->xendit_invoice_url)
                                 <a href="{{ $xTx->xendit_invoice_url }}" target="_blank"
                                     title="Open Xendit Invoice"
                                     style="display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border-radius:6px;font-size:12px;font-weight:500;background:#e8f5e9;color:#2e7d32;text-decoration:none;">
                                     <i class="bi bi-box-arrow-up-right"></i> Invoice
                                 </a>
-                            @else
+                            @endif
+                            @if($xTx->status === 'completed')
+                                <a href="{{ route('finance.payments.receipt-pdf', $xTx->id) }}" target="_blank"
+                                    class="action-btn" title="Download Receipt PDF" style="background:#e3f2fd;color:#1565c0;text-decoration:none;">
+                                    <i class="bi bi-file-earmark-pdf"></i>
+                                </a>
+                            @elseif(!$xTx->xendit_invoice_url)
                                 <span style="font-size:11px;color:var(--muted);">—</span>
                             @endif
                         </td>

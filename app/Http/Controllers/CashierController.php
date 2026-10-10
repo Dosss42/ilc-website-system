@@ -15,6 +15,20 @@ use App\Services\ActivityLogger;
 
 class CashierController extends Controller
 {
+    use \App\Support\Traits\BuildsSchoolPdf;
+
+    /**
+     * Cashier-specific wrapper around the shared letterhead builder —
+     * mirrors Finance\DashboardController::financePdfLetterhead(), just
+     * using the cashier auth guard instead of finance/web.
+     */
+    private function cashierPdfLetterhead(): array
+    {
+        $user = Auth::guard('cashier')->user();
+
+        return $this->schoolPdfLetterhead($user->name ?? 'Cashier');
+    }
+
     // ── Auth ──────────────────────────────────────────
 
     public function showLogin()
@@ -218,6 +232,49 @@ class CashierController extends Controller
         ]);
     }
 
+    /**
+     * PDF version of collectionSummary() above — same two queries, same
+     * numbers, just tabulated for print instead of feeding the on-screen
+     * Chart.js canvases. Same shared letterhead/running-header-footer
+     * design as every Finance report.
+     */
+    public function downloadCollectionSummaryPdf()
+    {
+        $monthlyTotals = PaymentTransaction::where('status', 'completed')
+            ->where('processed_at', '>=', now()->subMonths(5)->startOfMonth())
+            ->selectRaw("DATE_FORMAT(processed_at, '%Y-%m') as ym, SUM(amount) as total")
+            ->groupBy('ym')
+            ->pluck('total', 'ym');
+
+        $months = []; $totals = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $m = now()->subMonths($i);
+            $months[] = $m->format('M Y');
+            $totals[] = (float) ($monthlyTotals[$m->format('Y-m')] ?? 0);
+        }
+
+        $methodTotals = PaymentTransaction::where('status', 'completed')->selectRaw("
+                SUM(CASE WHEN payment_method = 'cash' THEN amount ELSE 0 END) as cash,
+                SUM(CASE WHEN payment_method = 'gcash' THEN amount ELSE 0 END) as gcash,
+                SUM(CASE WHEN payment_method NOT IN ('cash', 'gcash') THEN amount ELSE 0 END) as other
+            ")->first();
+
+        $data = array_merge($this->cashierPdfLetterhead(), [
+            'reportTitle'    => 'Collection Summary',
+            'dateRangeLabel' => $months[0] . ' — ' . $months[count($months) - 1],
+            'months'         => $months,
+            'totals'         => $totals,
+            'cash'           => (float) $methodTotals->cash,
+            'gcash'          => (float) $methodTotals->gcash,
+            'other'          => (float) $methodTotals->other,
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.cashier.collection-summary', $data),
+            $data
+        )->download('collection-summary-' . now()->format('Y-m-d') . '.pdf');
+    }
+
     // ── Daily Report ─────────────────────────────────
     public function dailyReport(Request $request)
     {
@@ -261,6 +318,58 @@ class CashierController extends Controller
             'count'  => $count,
             'rows'   => $rows,
         ]);
+    }
+
+    /**
+     * PDF version of dailyReport() above — same aggregates, but $rows is
+     * every transaction for the day (->get(), not ->paginate()), since a
+     * printed report needs the whole day, not just one on-screen page of
+     * it. Same shared letterhead/running-header-footer design as every
+     * Finance report.
+     */
+    public function downloadDailyReportPdf(Request $request)
+    {
+        $date = $request->get('date', today()->toDateString());
+
+        $baseQuery = fn () => PaymentTransaction::where('status', 'completed')
+            ->whereDate('processed_at', $date);
+
+        $total  = $baseQuery()->sum('amount');
+        $cash   = $baseQuery()->where('payment_method', 'cash')->sum('amount');
+        $online = $baseQuery()->whereNotIn('payment_method', ['cash'])->sum('amount');
+        $count  = $baseQuery()->count();
+
+        $rows = PaymentTransaction::with(['user', 'enrollment'])
+            ->where('status', 'completed')
+            ->whereDate('processed_at', $date)
+            ->latest('processed_at')
+            ->get()
+            ->map(function ($tx) {
+                return [
+                    'time'      => $tx->processed_at?->format('h:i A'),
+                    'student'   => $tx->user?->name ?? '—',
+                    'grade'     => $tx->enrollment?->grade_level ? ucfirst($tx->enrollment->grade_level) : '—',
+                    'type'      => ucwords(str_replace('_', ' ', $tx->payment_type ?? '—')),
+                    'method'    => ucfirst($tx->payment_method ?? '—'),
+                    'amount'    => $tx->amount,
+                    'reference' => $tx->reference_number ?? '—',
+                ];
+            });
+
+        $data = array_merge($this->cashierPdfLetterhead(), [
+            'reportTitle'    => 'Daily Collection Report',
+            'dateRangeLabel' => \Carbon\Carbon::parse($date)->format('F d, Y'),
+            'total'          => $total,
+            'cash'           => $cash,
+            'online'         => $online,
+            'count'          => $count,
+            'rows'           => $rows,
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.cashier.daily-report', $data),
+            $data
+        )->download('daily-report-' . $date . '.pdf');
     }
 
     // ── Receipts List ─────────────────────────────────

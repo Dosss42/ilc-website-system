@@ -35,10 +35,6 @@
     {{-- Chart.js for Reports --}}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    {{-- html2pdf.js for Reports PDF export — jsdelivr, since that's the only
-         CDN domain the app's CSP (SecurityHeaders middleware) allows scripts from --}}
-    <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
-
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
 
     <style>
@@ -1138,9 +1134,19 @@ function loadReportsSection(url) {
                 '</div>');
         });
 }
+// Scoped to .pagination specifically (same convention as Archives/
+// Enrollment/Students below) — NOT every a[href] in the section. This
+// used to intercept all of them, back when Master List/Outstanding
+// Balances/Promotion Student List's pagination links were the only
+// <a href> elements inside #section-reports. The 16 "Download PDF"
+// links (pdf.admin.* routes) are real <a href> too now; unscoped
+// delegation swallowed their clicks, preventDefault()'d the real
+// navigation, and fed the PDF binary response into swapSectionContent()
+// as if it were HTML — a request fired (200, visible in Network tab)
+// but nothing ever downloaded.
 document.addEventListener('click', function (e) {
-    const link = e.target.closest('#section-reports a[href]');
-    if (link && !link.closest('.pagination')?.classList.contains('disabled')) {
+    const link = e.target.closest('#section-reports .pagination a[href]');
+    if (link && !link.closest('.pagination').classList.contains('disabled')) {
         e.preventDefault();
         const url = new URL(link.href, window.location.origin);
         loadReportsSection('{{ route("admin.section.reports") }}?' + url.searchParams.toString());
@@ -1293,174 +1299,6 @@ function switchRptSubReport(tab, subreport) {
     });
 }
 
-function buildCurrentReportContent() {
-    // Find active sub-report panel, fallback to whole tab print area
-    var subreport = _currentRptSubReport[_currentRptTab];
-    var panelId = subreport
-        ? 'rpt-sub-' + _currentRptTab + '-' + subreport
-        : 'rpt-print-' + _currentRptTab;
-    var panel = document.getElementById(panelId);
-    if (!panel) {
-        panelId = 'rpt-print-' + _currentRptTab;
-        panel   = document.getElementById(panelId);
-    }
-    if (!panel) return null;
-
-    // Work on a clone so we never touch the live page, and strip out the
-    // parts that only make sense on-screen (the panel's own header button
-    // row, and pagination controls) — neither belongs on a printed page.
-    var clone = panel.cloneNode(true);
-    clone.querySelectorAll('.content-card-header, .p-3.border-top').forEach(function(el) {
-        el.remove();
-    });
-
-    var syText = 'S.Y. {{ $currentSchoolYear }}';
-
-    var subTitles = {
-        students: { master: 'Student Master List', grade: 'Students by Grade Level', newret: 'New vs Returning', docs: 'Document Compliance' },
-        enrollment: { status: 'Enrollment Status Summary', grade: 'Enrollment by Grade Level', newret: 'New vs Returning Enrollees', trend: 'Daily Enrollment Trend' },
-        financial: { collection: 'Collection Summary', grade: 'Financial by Grade Level', option: 'By Payment Option', outstanding: 'Outstanding Balances' },
-        promotion: { overview: 'Promotion Overview', grade: 'Promotion by Grade Level', list: 'Promotion Student List' },
-        kpi: { overview: 'KPI Dashboard' }
-    };
-    var tabTitles = { students: 'Students Report', enrollment: 'Enrollment Report', financial: 'Financial Report', promotion: 'Promotion Report', kpi: 'KPI Dashboard' };
-    var sub = (subTitles[_currentRptTab] || {})[subreport] || '';
-    var title = (tabTitles[_currentRptTab] || 'Report') + (sub ? ' — ' + sub : '');
-
-    var style =
-        'body{font-family:Arial,sans-serif;margin:0;padding:28px;font-size:13px;color:#222;}'
-        + '.header{text-align:center;border-bottom:3px solid #1a3a6c;padding-bottom:14px;margin-bottom:20px;}'
-        + '.header img{width:70px;height:70px;object-fit:contain;display:block;margin:0 auto 8px;}'
-        + '.school-name{font-size:20px;font-weight:700;color:#1a3a6c;}'
-        + '.school-addr{font-size:12px;color:#555;margin-top:2px;}'
-        + '.report-title{font-size:13px;font-weight:700;color:#2471a3;text-transform:uppercase;letter-spacing:2px;margin-top:6px;}'
-        + '.divider{width:50px;height:3px;background:#1a3a6c;margin:8px auto 0;border-radius:2px;}'
-        + '.sy-label{font-size:12px;color:#666;margin:14px 0 16px;text-align:center;}'
-        + 'table{width:100%;border-collapse:collapse;}'
-        + 'thead tr{background:#1a3a6c;color:#fff;}'
-        + 'th{padding:9px 12px;text-align:left;font-size:12px;font-weight:600;}'
-        + 'td{padding:9px 12px;border-bottom:1px solid #eee;font-size:13px;}'
-        + 'tr:nth-child(even){background:#f8fafc;}'
-        + 'tr:last-child{font-weight:700;background:#f0f4f8;}'
-        + '.footer{margin-top:26px;border-top:2px solid #1a3a6c;padding-top:14px;}'
-        + '.footer-verse{text-align:center;font-style:italic;color:#2471a3;font-size:11.5px;line-height:1.5;padding:0 24px 12px;border-bottom:1px solid #e5e7eb;margin-bottom:12px;}'
-        + '.footer-verse .ref{display:block;margin-top:5px;font-style:normal;font-weight:700;color:#1a3a6c;font-size:10px;text-transform:uppercase;letter-spacing:1px;}'
-        + '.footer-vmg{display:flex;gap:24px;margin-bottom:12px;}'
-        + '.footer-vmg-col{flex:1;}'
-        + '.footer-vmg-col b{display:block;color:#1a3a6c;font-size:10px;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:4px;}'
-        + '.footer-vmg-col p{margin:0;line-height:1.5;color:#666;font-size:10.5px;}'
-        + '.footer-meta{display:flex;justify-content:space-between;color:#aaa;font-size:10.5px;padding-top:8px;border-top:1px solid #f0f0f0;}';
-
-    var bodyInner =
-        '<div class="header">'
-        + '<img src="/images/logo.png" alt="ILC Logo" onerror="this.style.display=\'none\'">'
-        + '<div class="school-name">IEMELIF LEARNING CENTER</div>'
-        + '<div class="school-addr">General Tinio, Nueva Ecija</div>'
-        + '<div class="report-title">' + title + '</div>'
-        + '<div class="divider"></div>'
-        + '</div>'
-        + '<div class="sy-label">' + syText + '</div>'
-        + clone.outerHTML
-        + '<div class="footer">'
-        + '<div class="footer-verse">'
-        + '&ldquo;But Jesus said, Suffer little children, and forbid them not, to come unto me: for of such is the kingdom of heaven.&rdquo;'
-        + '<span class="ref">Matthew 19:14 (KJV)</span>'
-        + '</div>'
-        + '<div class="footer-vmg">'
-        + '<div class="footer-vmg-col">'
-        + '<b>Vision</b>'
-        + '<p>Creating and sustaining an integrated, wholesome, and appropriate environment for all phases of the learner\'s growth and development.</p>'
-        + '</div>'
-        + '<div class="footer-vmg-col">'
-        + '<b>Mission</b>'
-        + '<p>The IEMELIF Learning Center is a future-oriented school which gives opportunities to all children to discover their interests and God-given talents, which will be explored and developed as they grow up and become successful individuals. '
-        + 'The ILC aims to train and lead these children to have a &ldquo;Desire to Learn&rdquo; and integrate everything they have acquired in their daily experiences. '
-        + 'The ultimate goal of this school is to emulate and follow Jesus&rsquo; example, as He showed His love and care for the children.</p>'
-        + '</div>'
-        + '</div>'
-        + '<div class="footer-meta"><span>IEMELIF Learning Center &mdash; Official Report</span>'
-        + '<span>Printed: ' + new Date().toLocaleDateString('en-PH', {year:'numeric',month:'long',day:'numeric'}) + '</span></div>'
-        + '</div>';
-
-    return {
-        title: title,
-        fullHtml: '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + title + '</title><style>' + style + '</style></head><body>' + bodyInner + '</body></html>',
-        style: style,
-        bodyInner: bodyInner
-    };
-}
-
-function printCurrentReport() {
-    var built = buildCurrentReportContent();
-    if (!built) return;
-    var win = window.open('', '_blank', 'width=900,height=700');
-    win.document.write(built.fullHtml);
-    win.document.close();
-    win.onload = function() { win.focus(); win.print(); };
-}
-
-function exportReportToPdf(btn) {
-    var built = buildCurrentReportContent();
-    if (!built) { showAdminToast('Nothing to export yet.', 'error'); return; }
-
-    var originalBtnHtml = btn ? btn.innerHTML : null;
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Exporting...'; }
-
-    // html2canvas only captures real pixels when the source element is on
-    // screen (top:0/left:0) and fully opaque — opacity:0 and far off-screen
-    // positioning (e.g. left:-9999px) both produced a blank capture in
-    // testing. So the element renders on-screen for real, and a solid
-    // full-page overlay is what actually keeps this invisible to the user.
-    var overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;background:#fff;z-index:999999;display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--muted);';
-    overlay.innerHTML = '<div style="text-align:center;"><i class="bi bi-hourglass-split" style="font-size:28px;display:block;margin-bottom:10px;"></i>Generating PDF&hellip;</div>';
-    document.body.appendChild(overlay);
-
-    var container = document.createElement('div');
-    container.style.position = 'absolute';
-    container.style.top = '0';
-    container.style.left = '0';
-    container.style.width = '800px';
-    container.style.background = '#fff';
-    container.innerHTML = '<style>' + built.style + '</style>' + built.bodyInner;
-    document.body.appendChild(container);
-
-    var filename = built.title.replace(/[^a-z0-9]+/gi, '_') + '.pdf';
-
-    function cleanup() {
-        document.body.removeChild(container);
-        document.body.removeChild(overlay);
-        if (btn) { btn.disabled = false; btn.innerHTML = originalBtnHtml; }
-    }
-
-    html2pdf().set({
-        margin: 10,
-        filename: filename,
-        image: { type: 'jpeg', quality: 0.98 },
-        // width/height explicitly passed — html2canvas otherwise auto-measures
-        // the source element, which can come back as 0-height for elements
-        // hidden via opacity/positioning tricks, producing a blank PDF.
-        // Deliberately NOT passing windowWidth/windowHeight — those simulate
-        // resizing the WHOLE page (sidebar included) to that width for layout
-        // purposes, which shifted this dashboard's fixed-sidebar layout and
-        // cropped the left edge of the capture.
-        //
-        // scrollX/scrollY: 0 — html2canvas otherwise defaults to the page's
-        // CURRENT scroll position and offsets the capture by that amount.
-        // Since the Print/PDF buttons live inside each report panel (often
-        // below the fold), the page is usually scrolled when this runs,
-        // which without this override left a blank gap at the top of the
-        // PDF exactly the height of however far the page had been scrolled.
-        html2canvas: { scale: 2, useCORS: true, width: container.scrollWidth, height: container.scrollHeight, scrollX: 0, scrollY: 0 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    }).from(container).save().then(function() {
-        cleanup();
-    }).catch(function(err) {
-        cleanup();
-        showAdminToast('PDF export failed: ' + (err.message || 'Unknown error'), 'error');
-        console.error(err);
-    });
-}
 
 function openWalkInEnrollmentModal() {
     const modal = document.getElementById('walkInEnrollmentModal');

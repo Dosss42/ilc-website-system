@@ -36,6 +36,9 @@
         <h1><i class="bi bi-calendar-check-fill" style="color:var(--gold);"></i> Installments</h1>
         <p>View all student installment schedules and payment tracking</p>
     </div>
+    <a href="{{ route('finance.reports.index') }}" style="text-decoration:none;font-size:12.5px;color:var(--muted);display:inline-flex;align-items:center;gap:6px;">
+        <i class="bi bi-info-circle"></i> Looking for the Accounts Receivable Report PDF? It's now on the <span style="color:var(--blue);font-weight:600;">Financial Reports</span> page.
+    </a>
 </div>
 
 {{-- Stats Row --}}
@@ -280,14 +283,6 @@
                             onclick="showInstallmentModal(this)">
                             <i class="bi bi-eye"></i>
                         </button>
-                        @if($balance > 0)
-                        <button type="button" class="action-btn"
-                            style="background:#e8f0fb;color:var(--blue);border:1px solid #bfdbfe;"
-                            title="Record Walk-in Payment"
-                            onclick="quickPayCash({{ $enrollment->id }}, {{ $balance }}, '{{ route('finance.installments.pay', $enrollment->id) }}')">
-                            <i class="bi bi-cash-stack"></i>
-                        </button>
-                        @endif
                         @if($isOverdue)
                         <button type="button" class="action-btn"
                             style="background:#fff3e0;color:#e65100;border:1px solid #f5a623;"
@@ -343,64 +338,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-</div>
-
-{{-- Walk-in Payment Modal --}}
-<div class="modal fade" id="walkInPayModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
-        <div class="modal-content" style="border-radius:12px; border:none; box-shadow:0 10px 40px rgba(0,0,0,0.18);">
-            <div class="modal-header" style="background:linear-gradient(135deg,#1e3a5f,#2c5282); border-radius:12px 12px 0 0; border-bottom:none; padding:18px 24px 14px;">
-                <h5 class="modal-title text-white" style="font-weight:700; font-size:15px;">
-                    <i class="bi bi-cash-stack me-2"></i>Record Walk-in Payment
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="walkInPayForm" method="POST" action="">
-                @csrf
-                <input type="hidden" name="installment_id" id="wiInstallmentId">
-                <div class="modal-body" style="padding:20px 24px;">
-                    <div style="background:#f0f4ff; border-radius:8px; padding:12px 16px; margin-bottom:16px;">
-                        <div style="font-size:12px; color:#666; margin-bottom:2px;">Installment Month</div>
-                        <div id="wiMonthLabel" style="font-weight:700; font-size:16px; color:#1e3a5f;"></div>
-                        <div style="font-size:12px; color:#666; margin-top:4px;">
-                            Amount Due: <strong id="wiAmountDue" style="color:#c62828;"></strong>
-                        </div>
-                    </div>
-                    <div style="margin-bottom:14px;">
-                        <label style="font-size:13px; font-weight:600; color:#333; display:block; margin-bottom:6px;">Payment Method <span class="text-danger">*</span></label>
-                        <div style="display:flex; gap:10px;">
-                            <label style="flex:1; display:flex; align-items:center; gap:8px; padding:10px 14px; border:2px solid #e0e0e0; border-radius:8px; cursor:pointer;" id="wiCashLabel">
-                                <input type="radio" name="payment_method" value="cash" id="wiCashRadio" style="accent-color:#1e3a5f;" onchange="wiMethodChange()">
-                                <span style="font-weight:600; font-size:13px;"><i class="bi bi-cash-stack me-1" style="color:#28a745;"></i>Cash</span>
-                            </label>
-                            <label style="flex:1; display:flex; align-items:center; gap:8px; padding:10px 14px; border:2px solid #e0e0e0; border-radius:8px; cursor:pointer;" id="wiGcashLabel">
-                                <input type="radio" name="payment_method" value="gcash" id="wiGcashRadio" style="accent-color:#1e3a5f;" onchange="wiMethodChange()">
-                                <span style="font-weight:600; font-size:13px;"><i class="bi bi-phone me-1" style="color:#1976d2;"></i>GCash</span>
-                            </label>
-                        </div>
-                    </div>
-                    <div style="margin-bottom:14px;">
-                        <label style="font-size:13px; font-weight:600; color:#333; display:block; margin-bottom:6px;">Amount Paid (₱) <span class="text-danger">*</span></label>
-                        <input type="number" name="amount" id="wiAmount" step="0.01" min="1"
-                            style="width:100%; padding:10px 14px; border:2px solid #e0e0e0; border-radius:8px; font-size:14px; font-weight:600; color:#1e3a5f;"
-                            placeholder="0.00" required>
-                    </div>
-                    <div style="margin-bottom:6px;">
-                        <label style="font-size:13px; font-weight:600; color:#333; display:block; margin-bottom:6px;">Reference No. <span style="font-weight:400; color:#999;">(optional)</span></label>
-                        <input type="text" name="reference_number" id="wiReference"
-                            style="width:100%; padding:10px 14px; border:2px solid #e0e0e0; border-radius:8px; font-size:13px;"
-                            placeholder="GCash ref / receipt no.">
-                    </div>
-                </div>
-                <div class="modal-footer" style="border-top:1px solid #f0f0f0; padding:14px 24px; gap:8px;">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius:8px; font-size:13px;">Cancel</button>
-                    <button type="submit" style="background:#1e3a5f; color:#fff; border:none; border-radius:8px; padding:9px 22px; font-weight:700; font-size:13px; cursor:pointer;">
-                        <i class="bi bi-check-circle me-1"></i>Record Payment
-                    </button>
-                </div>
-            </form>
         </div>
     </div>
 </div>
@@ -535,20 +472,6 @@ function resetInstallmentFilters() {
     filterInstallments();
 }
 
-// ── Quick cash pay (for Plan A or any enrollment without selecting an installment) ──
-function quickPayCash(enrollmentId, balance, payRoute) {
-    document.getElementById('wiInstallmentId').value = '';
-    document.getElementById('wiMonthLabel').textContent = 'Payment';
-    document.getElementById('wiAmountDue').textContent  = '₱' + parseFloat(balance).toLocaleString('en-PH', {minimumFractionDigits: 2});
-    document.getElementById('wiAmount').value           = parseFloat(balance).toFixed(2);
-    document.getElementById('wiReference').value        = '';
-    document.getElementById('wiCashRadio').checked      = true;
-    document.getElementById('wiGcashRadio').checked     = false;
-    wiMethodChange();
-    document.getElementById('walkInPayForm').action = payRoute;
-    new bootstrap.Modal(document.getElementById('walkInPayModal')).show();
-}
-
 // ── Progress bars ──
 document.querySelectorAll('.installment-progress-bar').forEach(function(bar) {
     const progress = parseFloat(bar.dataset.progress) || 0;
@@ -561,7 +484,6 @@ document.querySelectorAll('.installment-progress-bar').forEach(function(bar) {
 });
 
 // ── Show Installment Modal (AJAX) ──
-let _currentPayRoute = '';
 let _currentCsrf     = '{{ csrf_token() }}';
 
 function showInstallmentModal(btn) {
@@ -574,8 +496,6 @@ function showInstallmentModal(btn) {
     const totalFee    = parseFloat(btn.dataset.totalFee)    || 0;
     const totalPaid   = parseFloat(btn.dataset.totalPaid)   || 0;
     const isCash      = btn.dataset.isCash === '1';
-
-    _currentPayRoute = '/finance/installments/' + id + '/pay';
 
     // Plan A — show a simple payment summary instead of installment schedule
     if (isCash) {
@@ -622,10 +542,9 @@ function showInstallmentModal(btn) {
                 </div>
             </div>
             ${balance > 0 ? `
-            <button type="button" onclick="openWalkInFromModal(0, 'Full Payment', ${balance})"
-                style="width:100%;padding:12px;background:linear-gradient(135deg,#166534,#16a34a);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
-                <i class="bi bi-cash-stack"></i> Record Cash Payment (${fmt(balance)} remaining)
-            </button>` : `
+            <div style="text-align:center;padding:12px;background:#f0f4ff;border-radius:10px;color:#334155;font-size:12.5px;">
+                <i class="bi bi-info-circle me-1"></i> Walk-in payments are now collected through the Cashier portal only.
+            </div>` : `
             <div style="text-align:center;padding:14px;background:#f0fdf4;border-radius:10px;color:#166534;font-weight:700;font-size:14px;">
                 <i class="bi bi-check-circle-fill me-2"></i> Fully Paid – No outstanding balance
             </div>`}
@@ -742,7 +661,6 @@ function showInstallmentModal(btn) {
             const rowBorder = inst.status === 'paid'              ? '#c8e6c9'
                             : inst.status === 'pending_approval'  ? '#bbdefb'
                             : isInstOverdue                       ? '#ffcdd2' : '#e0e0e0';
-            const canPay    = inst.status !== 'paid' && inst.status !== 'pending_approval';
 
             html += `
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:12px; margin-bottom:6px;
@@ -762,11 +680,6 @@ function showInstallmentModal(btn) {
                             ${inst.late_fee > 0 ? `<div style="font-size:10px; color:#dc3545;">Incl. ${fmt(inst.late_fee)} late fee</div>` : ''}
                             ${inst.status === 'paid' ? `<div style="font-size:10px; color:#28a745;">Paid: ${inst.paid_at || 'N/A'}</div>` : ''}
                         </div>
-                        ${canPay ? `<button type="button"
-                            onclick="openWalkInFromModal(${inst.id || 0}, '${(inst.month_name||'').replace(/'/g,"\\'")}', ${inst.total_due || 0})"
-                            style="background:#1e3a5f; color:#fff; border:none; border-radius:6px; padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap;">
-                            <i class="bi bi-cash-stack"></i> Pay
-                        </button>` : ''}
                     </div>
                 </div>
             `;
@@ -783,38 +696,6 @@ function showInstallmentModal(btn) {
             </div>`;
     });
 }
-
-// ── Walk-in from inside installment modal ──
-function openWalkInFromModal(installmentId, month, totalDue) {
-    document.getElementById('wiInstallmentId').value = installmentId;
-    document.getElementById('wiMonthLabel').textContent = month;
-    document.getElementById('wiAmountDue').textContent  = '₱' + parseFloat(totalDue).toLocaleString('en-PH', {minimumFractionDigits: 2});
-    document.getElementById('wiAmount').value           = parseFloat(totalDue).toFixed(2);
-    document.getElementById('wiReference').value        = '';
-    document.getElementById('wiCashRadio').checked      = true;
-    document.getElementById('wiGcashRadio').checked     = false;
-    wiMethodChange();
-    document.getElementById('walkInPayForm').action = _currentPayRoute;
-
-    const instModal = bootstrap.Modal.getInstance(document.getElementById('installmentModal'));
-    if (instModal) instModal.hide();
-    setTimeout(() => {
-        new bootstrap.Modal(document.getElementById('walkInPayModal')).show();
-    }, 300);
-}
-
-function wiMethodChange() {
-    const isCash = document.getElementById('wiCashRadio').checked;
-    document.getElementById('wiCashLabel').style.borderColor  = isCash  ? '#1e3a5f' : '#e0e0e0';
-    document.getElementById('wiGcashLabel').style.borderColor = !isCash ? '#1e3a5f' : '#e0e0e0';
-}
-
-document.getElementById('walkInPayForm').addEventListener('submit', function(e) {
-    const method = document.querySelector('input[name="payment_method"]:checked');
-    if (!method) { e.preventDefault(); showToast('Please select a payment method.', 'warning'); return; }
-    const amount = parseFloat(document.getElementById('wiAmount').value);
-    if (!amount || amount <= 0) { e.preventDefault(); showToast('Please enter a valid amount.', 'warning'); return; }
-});
 
 // ── Promissory Note ──
 function openPromissoryModal(enrollmentId, studentName, balance, guardianName) {
@@ -860,6 +741,14 @@ function savePromissoryNote() {
         if (data.success) {
             bootstrap.Modal.getInstance(document.getElementById('promissoryModal')).hide();
             showToast('Promissory note ' + (data.reference || '') + ' created successfully.', 'success');
+            // The "View/Manage Promissory Notes" button is only rendered at
+            // all when $enrollment->promissoryNotes->count() > 0 at page
+            // load (see the conditional in the table row above) — on an
+            // enrollment's very first note there's no existing button for
+            // JS to patch, so a full reload is needed either way. Matches
+            // the same location.reload() already used after mark-fulfilled/
+            // broken/extended, just below, for the same reason.
+            location.reload();
         } else {
             showToast(data.message || 'Failed to create promissory note.', 'error');
         }

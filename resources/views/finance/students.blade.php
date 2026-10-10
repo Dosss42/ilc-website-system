@@ -229,16 +229,17 @@
                         @endif
                     </td>
                     <td style="white-space:nowrap;">
-                        @if($s->enrollment_id && $s->balance > 0)
-                            <button type="button" class="btn-dash btn-primary"
-                                style="padding:6px 14px;font-size:12px;border-radius:8px;"
-                                onclick="openPayModal({{ $s->enrollment_id }}, '{{ addslashes($s->user->name) }}', {{ $s->balance }}, {{ $s->total_fee }}, {{ $s->amount_paid }}, '{{ $s->is_cash ? 'Plan A – Cash' : 'Plan ' . $s->payment_option }}')">
-                                <i class="bi bi-cash-stack"></i> Pay
-                            </button>
-                        @elseif($s->balance <= 0 && $s->amount_paid > 0)
-                            <span style="font-size:12px;color:#16a34a;font-weight:600;">
+                        @if($s->balance <= 0 && $s->amount_paid > 0)
+                            <span style="font-size:12px;color:#16a34a;font-weight:600;margin-right:8px;">
                                 <i class="bi bi-check-circle-fill"></i> Settled
                             </span>
+                        @endif
+                        @if($s->enrollment_id)
+                            <a href="{{ route('finance.statement-pdf', $s->enrollment_id) }}" target="_blank"
+                                title="Download Statement of Account"
+                                style="font-size:12px;color:var(--blue);font-weight:600;text-decoration:none;">
+                                <i class="bi bi-file-earmark-pdf"></i> Statement
+                            </a>
                         @else
                             <span style="font-size:12px;color:var(--muted);">—</span>
                         @endif
@@ -266,92 +267,10 @@
     </div>
 </div>
 
-{{-- Walk-in Payment Modal --}}
-<div class="modal fade" id="studPayModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered" style="max-width:460px;">
-        <div class="modal-content" style="border-radius:14px;border:none;box-shadow:0 10px 40px rgba(0,0,0,.18);">
-            <div class="modal-header" style="background:linear-gradient(135deg,var(--blue),#2471a3);border-radius:14px 14px 0 0;border:none;padding:18px 24px 14px;">
-                <div>
-                    <h5 class="modal-title text-white" style="font-weight:700;font-size:15px;margin:0;">
-                        <i class="bi bi-cash-stack me-2"></i>Record Walk-in Payment
-                    </h5>
-                    <div style="font-size:11px;color:rgba(255,255,255,.7);margin-top:2px;" id="spModalPlan"></div>
-                </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="studPayForm" method="POST" action="">
-                @csrf
-                <input type="hidden" name="installment_id" value="">
-                <div class="modal-body" style="padding:22px 24px;">
-
-                    {{-- Student summary --}}
-                    <div style="background:#f0f4ff;border-radius:10px;padding:14px 16px;margin-bottom:18px;">
-                        <div style="font-size:11px;color:#666;margin-bottom:2px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;">Student</div>
-                        <div id="spModalName" style="font-weight:700;font-size:16px;color:var(--blue);"></div>
-                        <div style="display:flex;gap:20px;margin-top:10px;font-size:12px;">
-                            <div>
-                                <div style="color:#888;">Total Fee</div>
-                                <div id="spModalTotal" style="font-weight:700;color:var(--text);"></div>
-                            </div>
-                            <div>
-                                <div style="color:#888;">Already Paid</div>
-                                <div id="spModalPaid" style="font-weight:700;color:#16a34a;"></div>
-                            </div>
-                            <div>
-                                <div style="color:#888;">Balance</div>
-                                <div id="spModalBalance" style="font-weight:700;color:#dc3545;"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Payment method --}}
-                    <div style="margin-bottom:16px;">
-                        <label style="font-size:13px;font-weight:600;color:#333;display:block;margin-bottom:8px;">Payment Method <span style="color:red;">*</span></label>
-                        <div style="display:flex;gap:10px;">
-                            <label style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 14px;border:2px solid #e0e0e0;border-radius:8px;cursor:pointer;" id="spCashLabel">
-                                <input type="radio" name="payment_method" value="cash" id="spCashRadio" onchange="spMethodChange()" style="accent-color:var(--blue);">
-                                <span style="font-weight:600;font-size:13px;"><i class="bi bi-cash-stack me-1" style="color:#28a745;"></i>Cash</span>
-                            </label>
-                            <label style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 14px;border:2px solid #e0e0e0;border-radius:8px;cursor:pointer;" id="spGcashLabel">
-                                <input type="radio" name="payment_method" value="gcash" id="spGcashRadio" onchange="spMethodChange()" style="accent-color:var(--blue);">
-                                <span style="font-weight:600;font-size:13px;"><i class="bi bi-phone me-1" style="color:#1976d2;"></i>GCash</span>
-                            </label>
-                        </div>
-                    </div>
-
-                    {{-- Amount --}}
-                    <div style="margin-bottom:14px;">
-                        <label style="font-size:13px;font-weight:600;color:#333;display:block;margin-bottom:6px;">Amount (₱) <span style="color:red;">*</span></label>
-                        <input type="number" name="amount" id="spAmount" step="0.01" min="1" required
-                            style="width:100%;padding:10px 14px;border:2px solid #e0e0e0;border-radius:8px;font-size:15px;font-weight:700;color:var(--blue);"
-                            placeholder="0.00">
-                    </div>
-
-                    {{-- Reference --}}
-                    <div>
-                        <label style="font-size:13px;font-weight:600;color:#333;display:block;margin-bottom:6px;">Reference No. <span style="font-weight:400;color:#999;">(optional)</span></label>
-                        <input type="text" name="reference_number" id="spReference"
-                            style="width:100%;padding:10px 14px;border:2px solid #e0e0e0;border-radius:8px;font-size:13px;"
-                            placeholder="Receipt no. / GCash ref">
-                    </div>
-                </div>
-                <div class="modal-footer" style="border-top:1px solid #f0f0f0;padding:14px 24px;gap:8px;">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius:8px;font-size:13px;">Cancel</button>
-                    <button type="submit" id="spSubmitBtn"
-                        style="background:linear-gradient(135deg,var(--blue),#2471a3);color:#fff;border:none;border-radius:8px;padding:9px 22px;font-weight:700;font-size:13px;cursor:pointer;">
-                        <i class="bi bi-check-circle me-1"></i>Record Payment
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
 @endsection
 
 @section('scripts')
 <script>
-const fmt = n => '₱' + parseFloat(n || 0).toLocaleString('en-PH', {minimumFractionDigits: 2});
-
 // Auto-searches ~600ms after the last keystroke instead of requiring the
 // Search button/Enter — same pattern used elsewhere across the dashboards.
 function debounceFormSubmit(el, ms) {
@@ -359,34 +278,5 @@ function debounceFormSubmit(el, ms) {
     el._debounceTimer = setTimeout(() => el.form.submit(), ms || 600);
 }
 
-function openPayModal(enrollmentId, name, balance, totalFee, amountPaid, plan) {
-    document.getElementById('spModalName').textContent    = name;
-    document.getElementById('spModalPlan').textContent    = plan;
-    document.getElementById('spModalTotal').textContent   = fmt(totalFee);
-    document.getElementById('spModalPaid').textContent    = fmt(amountPaid);
-    document.getElementById('spModalBalance').textContent = fmt(balance);
-    document.getElementById('spAmount').value             = parseFloat(balance).toFixed(2);
-    document.getElementById('spReference').value          = '';
-    document.getElementById('spCashRadio').checked        = true;
-    document.getElementById('spGcashRadio').checked       = false;
-    spMethodChange();
-    document.getElementById('studPayForm').action = '/finance/installments/' + enrollmentId + '/pay';
-    new bootstrap.Modal(document.getElementById('studPayModal')).show();
-}
-
-function spMethodChange() {
-    const isCash = document.getElementById('spCashRadio').checked;
-    document.getElementById('spCashLabel').style.borderColor  = isCash  ? 'var(--blue)' : '#e0e0e0';
-    document.getElementById('spGcashLabel').style.borderColor = !isCash ? 'var(--blue)' : '#e0e0e0';
-}
-
-document.getElementById('studPayForm').addEventListener('submit', function(e) {
-    const method = document.querySelector('input[name="payment_method"]:checked');
-    if (!method) { e.preventDefault(); showToast('Please select a payment method.', 'warning'); return; }
-    const amount = parseFloat(document.getElementById('spAmount').value);
-    if (!amount || amount <= 0) { e.preventDefault(); showToast('Please enter a valid amount.', 'warning'); return; }
-    document.getElementById('spSubmitBtn').disabled    = true;
-    document.getElementById('spSubmitBtn').textContent = 'Processing…';
-});
 </script>
 @endsection

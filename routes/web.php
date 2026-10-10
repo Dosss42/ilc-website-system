@@ -293,6 +293,27 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/section/subjects', [EnrollmentController::class, 'sectionSubjects'])->name('section.subjects');
     Route::get('/section/reports', [EnrollmentController::class, 'sectionReports'])->name('section.reports');
 
+    // REPORTS TAB — PDF downloads (shared pdf.shared.* design, see
+    // app/Support/Traits/BuildsSchoolPdf.php), one per sub-report.
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::get('/master-list-pdf', [EnrollmentController::class, 'downloadMasterListReportPdf'])->name('master-list-pdf');
+        Route::get('/students-by-grade-pdf', [EnrollmentController::class, 'downloadStudentsByGradeReportPdf'])->name('students-by-grade-pdf');
+        Route::get('/students-new-vs-returning-pdf', [EnrollmentController::class, 'downloadStudentsNewVsReturningReportPdf'])->name('students-new-vs-returning-pdf');
+        Route::get('/document-compliance-pdf', [EnrollmentController::class, 'downloadDocumentComplianceReportPdf'])->name('document-compliance-pdf');
+        Route::get('/enrollment-status-pdf', [EnrollmentController::class, 'downloadEnrollmentStatusReportPdf'])->name('enrollment-status-pdf');
+        Route::get('/enrollment-by-grade-pdf', [EnrollmentController::class, 'downloadEnrollmentByGradeReportPdf'])->name('enrollment-by-grade-pdf');
+        Route::get('/enrollment-new-vs-returning-pdf', [EnrollmentController::class, 'downloadEnrollmentNewVsReturningReportPdf'])->name('enrollment-new-vs-returning-pdf');
+        Route::get('/enrollment-daily-trend-pdf', [EnrollmentController::class, 'downloadEnrollmentDailyTrendReportPdf'])->name('enrollment-daily-trend-pdf');
+        Route::get('/admin-collection-summary-pdf', [EnrollmentController::class, 'downloadAdminCollectionSummaryReportPdf'])->name('admin-collection-summary-pdf');
+        Route::get('/financial-by-grade-pdf', [EnrollmentController::class, 'downloadFinancialByGradeReportPdf'])->name('financial-by-grade-pdf');
+        Route::get('/financial-by-option-pdf', [EnrollmentController::class, 'downloadFinancialByOptionReportPdf'])->name('financial-by-option-pdf');
+        Route::get('/outstanding-balances-pdf', [EnrollmentController::class, 'downloadOutstandingBalancesReportPdf'])->name('outstanding-balances-pdf');
+        Route::get('/promotion-overview-pdf', [EnrollmentController::class, 'downloadPromotionOverviewReportPdf'])->name('promotion-overview-pdf');
+        Route::get('/promotion-by-grade-pdf', [EnrollmentController::class, 'downloadPromotionByGradeReportPdf'])->name('promotion-by-grade-pdf');
+        Route::get('/promotion-student-list-pdf', [EnrollmentController::class, 'downloadPromotionStudentListReportPdf'])->name('promotion-student-list-pdf');
+        Route::get('/kpi-overview-pdf', [EnrollmentController::class, 'downloadKpiOverviewReportPdf'])->name('kpi-overview-pdf');
+    });
+
     // ENROLLMENT MANAGEMENT
     Route::prefix('enrollments')->name('enrollments.')->group(function () {
         Route::get('/', [EnrollmentController::class, 'adminIndex'])->name('index');
@@ -554,14 +575,18 @@ Route::middleware([\App\Http\Middleware\FinanceMiddleware::class])->prefix('fina
     // Payments Management (view-only — no approve/reject)
     Route::prefix('payments')->name('payments.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Finance\DashboardController::class, 'payments'])->name('index');
+        Route::get('/transactions-pdf', [\App\Http\Controllers\Finance\DashboardController::class, 'downloadTransactionsPdf'])->name('transactions-pdf');
+        Route::get('/{transaction}/receipt-pdf', [\App\Http\Controllers\Finance\DashboardController::class, 'downloadReceiptPdf'])->name('receipt-pdf');
     });
-    
+
     // All-Students Payment Overview
     Route::get('/students', [\App\Http\Controllers\Finance\DashboardController::class, 'students'])->name('students.index');
+    Route::get('/statement/{enrollment}', [\App\Http\Controllers\Finance\DashboardController::class, 'downloadStatementOfAccountPdf'])->name('statement-pdf');
 
     // Installments Management
     Route::prefix('installments')->name('installments.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Finance\DashboardController::class, 'installments'])->name('index');
+        Route::get('/receivables-pdf', [\App\Http\Controllers\Finance\DashboardController::class, 'downloadReceivablesPdf'])->name('receivables-pdf');
         Route::get('/{enrollment}/details', [\App\Http\Controllers\Finance\DashboardController::class, 'installmentDetails'])->name('details');
         Route::post('/{enrollment}/pay', [\App\Http\Controllers\Finance\DashboardController::class, 'recordWalkInPayment'])->name('pay');
     });
@@ -578,6 +603,12 @@ Route::middleware([\App\Http\Middleware\FinanceMiddleware::class])->prefix('fina
     // Reports
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Finance\DashboardController::class, 'reports'])->name('index');
+        Route::get('/pdf', [\App\Http\Controllers\Finance\DashboardController::class, 'downloadReportPdf'])->name('pdf');
+        Route::get('/collection-summary-pdf', [\App\Http\Controllers\Finance\DashboardController::class, 'downloadCollectionSummaryPdf'])->name('collection-summary-pdf');
+        Route::get('/aging-pdf', [\App\Http\Controllers\Finance\DashboardController::class, 'downloadAgingReportPdf'])->name('aging-pdf');
+        Route::get('/grade-level-pdf', [\App\Http\Controllers\Finance\DashboardController::class, 'downloadGradeLevelReportPdf'])->name('grade-level-pdf');
+        Route::get('/payment-plan-pdf', [\App\Http\Controllers\Finance\DashboardController::class, 'downloadPaymentPlanReportPdf'])->name('payment-plan-pdf');
+        Route::get('/status-overview-pdf', [\App\Http\Controllers\Finance\DashboardController::class, 'downloadStatusOverviewPdf'])->name('status-overview-pdf');
     });
 
     // Audit Trail — own actions only, see controller for why
@@ -635,9 +666,11 @@ Route::prefix('cashier')->name('cashier.')->group(function () {
         Route::get('/installments/{enrollmentId}', [\App\Http\Controllers\CashierController::class, 'installmentTimeline'])->name('installments.timeline');
         Route::post('/enrollment/set-plan', [\App\Http\Controllers\CashierController::class, 'setEnrollmentPlan'])->name('enrollment.set-plan');
         Route::get('/daily-report', [\App\Http\Controllers\CashierController::class, 'dailyReport'])->name('daily.report');
+        Route::get('/daily-report-pdf', [\App\Http\Controllers\CashierController::class, 'downloadDailyReportPdf'])->name('daily-report-pdf');
         Route::get('/receipts', [\App\Http\Controllers\CashierController::class, 'receiptsList'])->name('receipts.list');
         Route::get('/audit-trail', [\App\Http\Controllers\CashierController::class, 'auditTrail'])->name('audit-trail');
         Route::get('/collection-summary', [\App\Http\Controllers\CashierController::class, 'collectionSummary'])->name('collection-summary');
+        Route::get('/collection-summary-pdf', [\App\Http\Controllers\CashierController::class, 'downloadCollectionSummaryPdf'])->name('collection-summary-pdf');
         Route::post('/payment/cash', [\App\Http\Controllers\CashierController::class, 'processCash'])->name('payment.cash');
         Route::post('/payment/xendit-link', [\App\Http\Controllers\CashierController::class, 'generateXenditLink'])->name('payment.xendit-link');
         Route::get('/payment/xendit-status', [\App\Http\Controllers\CashierController::class, 'checkXenditStatus'])->name('payment.xendit-status');

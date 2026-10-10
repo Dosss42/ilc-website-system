@@ -31,31 +31,54 @@
 
     .filters {
         display: flex;
-        gap: 12px;
-        margin-bottom: 20px;
+        gap: 10px;
         flex-wrap: wrap;
+        align-items: center;
     }
 
     .filter-input {
-        padding: 10px 16px;
+        padding: 8px 12px;
         border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        font-size: 13px;
+        border-radius: 7px;
+        font-size: 12.5px;
     }
 
     .btn-filter {
-        padding: 10px 20px;
+        padding: 8px 14px;
         background: var(--blue);
         color: #fff;
         border: none;
-        border-radius: 8px;
-        font-size: 13px;
+        border-radius: 7px;
+        font-size: 12.5px;
         font-weight: 500;
         cursor: pointer;
+        white-space: nowrap;
     }
 
     .btn-filter:hover {
         background: var(--blue-light);
+    }
+
+    /* One row per report instead of a separate card each — the fix for
+       the previous layout eating too much vertical space. */
+    .rpt-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        padding: 12px 24px;
+        border-bottom: 1px solid #f5f5f5;
+    }
+    .rpt-row:last-child { border-bottom: none; }
+    .rpt-row-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--blue);
+        min-width: 170px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
     .print-only { display: none; }
@@ -166,14 +189,37 @@
 @endphp
 <div class="page-header no-print">
     <h1 class="page-title">Financial Reports</h1>
-    <button type="button" class="btn-filter" onclick="window.print()">
-        <i class="bi bi-printer"></i> Print Report
-    </button>
 </div>
 
-<!-- Report Filters -->
+{{-- One compact card, one row per report, instead of four separate cards
+     each with their own header/body padding and margin stacking up. Every
+     report still has its own filter inputs (a date range for breakdown/
+     summary, a school year for the two receivable-based ones — mixing them
+     into one shared control would mean hiding/showing fields depending on
+     what's picked, more confusing not less) and its own specifically-
+     labeled download button. The plain browser Print button is gone —
+     every report here already has a real, specifically-named PDF. --}}
 <div class="content-card no-print">
-    <div class="card-body">
+    <div class="card-header">
+        <h3 class="card-title"><i class="bi bi-file-earmark-pdf" style="color:var(--gold);"></i> Download Reports</h3>
+    </div>
+
+    <div class="rpt-row" style="background:#f8f9fa;">
+        <div class="rpt-row-label"><i class="bi bi-people-fill"></i> Enrollment &amp; Payment Status</div>
+        <form method="GET" action="{{ route('finance.reports.status-overview-pdf') }}" class="filters">
+            <select name="school_year" class="filter-input">
+                @foreach($schoolYears as $year)
+                    <option value="{{ $year }}" {{ $year === $currentSchoolYear ? 'selected' : '' }}>{{ $year }}</option>
+                @endforeach
+            </select>
+            <button type="submit" class="btn-filter" style="background:#495057;">
+                <i class="bi bi-file-earmark-pdf"></i> Download Enrollment &amp; Payment Status PDF
+            </button>
+        </form>
+    </div>
+
+    <div class="rpt-row">
+        <div class="rpt-row-label"><i class="bi bi-bar-chart-fill"></i> Collection Breakdown</div>
         <form method="GET" action="{{ route('finance.reports.index') }}" class="filters">
             <select name="type" class="filter-input">
                 <option value="daily" {{ $reportType === 'daily' ? 'selected' : '' }}>Daily Report</option>
@@ -184,10 +230,87 @@
             <input type="date" name="date_from" class="filter-input" value="{{ $dateFrom }}" placeholder="From Date">
             <input type="date" name="date_to" class="filter-input" value="{{ $dateTo }}" placeholder="To Date">
             <button type="submit" class="btn-filter">
-                <i class="bi bi-search"></i> Generate Report
+                <i class="bi bi-search"></i> Generate
+            </button>
+            <a href="{{ route('finance.reports.pdf', ['type' => $reportType, 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}"
+                class="btn-filter" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+                <i class="bi bi-file-earmark-pdf"></i> Download {{ $reportTypeLabel }} Report PDF
+            </a>
+        </form>
+    </div>
+
+    <div class="rpt-row">
+        <div class="rpt-row-label"><i class="bi bi-clipboard2-data"></i> Collection Summary</div>
+        <form method="GET" action="{{ route('finance.reports.collection-summary-pdf') }}" class="filters">
+            <input type="date" name="date_from" class="filter-input" value="{{ $dateFrom }}" placeholder="From Date">
+            <input type="date" name="date_to" class="filter-input" value="{{ $dateTo }}" placeholder="To Date">
+            <button type="submit" class="btn-filter" style="background:#2e7d32;">
+                <i class="bi bi-file-earmark-pdf"></i> Download Collection Summary PDF
             </button>
         </form>
     </div>
+
+    <div class="rpt-row">
+        <div class="rpt-row-label"><i class="bi bi-cash-coin"></i> Accounts Receivable</div>
+        <form method="GET" action="{{ route('finance.installments.receivables-pdf') }}" class="filters">
+            <select name="school_year" class="filter-input">
+                @foreach($schoolYears as $year)
+                    <option value="{{ $year }}" {{ $year === $currentSchoolYear ? 'selected' : '' }}>{{ $year }}</option>
+                @endforeach
+            </select>
+            <button type="submit" class="btn-filter" style="background:#7b1fa2;">
+                <i class="bi bi-file-earmark-pdf"></i> Download Accounts Receivable Report PDF
+            </button>
+        </form>
+    </div>
+
+    <div class="rpt-row">
+        <div class="rpt-row-label"><i class="bi bi-hourglass-split"></i> Aging of Receivables</div>
+        <form method="GET" action="{{ route('finance.reports.aging-pdf') }}" class="filters">
+            <select name="school_year" class="filter-input">
+                @foreach($schoolYears as $year)
+                    <option value="{{ $year }}" {{ $year === $currentSchoolYear ? 'selected' : '' }}>{{ $year }}</option>
+                @endforeach
+            </select>
+            <button type="submit" class="btn-filter" style="background:#dc3545;">
+                <i class="bi bi-file-earmark-pdf"></i> Download Aging of Receivables PDF
+            </button>
+        </form>
+    </div>
+
+    <div class="rpt-row">
+        <div class="rpt-row-label"><i class="bi bi-mortarboard-fill"></i> Collection by Grade Level</div>
+        <form method="GET" action="{{ route('finance.reports.grade-level-pdf') }}" class="filters">
+            <select name="school_year" class="filter-input">
+                @foreach($schoolYears as $year)
+                    <option value="{{ $year }}" {{ $year === $currentSchoolYear ? 'selected' : '' }}>{{ $year }}</option>
+                @endforeach
+            </select>
+            <button type="submit" class="btn-filter" style="background:#0d6efd;">
+                <i class="bi bi-file-earmark-pdf"></i> Download Collection by Grade Level PDF
+            </button>
+        </form>
+    </div>
+
+    <div class="rpt-row">
+        <div class="rpt-row-label"><i class="bi bi-pie-chart-fill"></i> Payment Plan Distribution</div>
+        <form method="GET" action="{{ route('finance.reports.payment-plan-pdf') }}" class="filters">
+            <select name="school_year" class="filter-input">
+                @foreach($schoolYears as $year)
+                    <option value="{{ $year }}" {{ $year === $currentSchoolYear ? 'selected' : '' }}>{{ $year }}</option>
+                @endforeach
+            </select>
+            <button type="submit" class="btn-filter" style="background:#e65100;">
+                <i class="bi bi-file-earmark-pdf"></i> Download Payment Plan Distribution PDF
+            </button>
+        </form>
+    </div>
+</div>
+
+<div style="margin-bottom:12px;" class="no-print">
+    <a href="{{ route('finance.students.index') }}" style="font-size:12.5px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
+        <i class="bi bi-info-circle"></i> Need one student's <span style="color:var(--blue);font-weight:600;">Statement of Account</span>? Download it from the All Students page.
+    </a>
 </div>
 
 <div class="print-only" style="display:none;">

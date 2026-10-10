@@ -10,6 +10,24 @@ use Carbon\Carbon;
 
 class PromissoryNoteController extends Controller
 {
+    use \App\Support\Traits\BuildsSchoolPdf;
+
+    /**
+     * Id of whichever staff account actually created/is viewing this note.
+     *
+     * Every route on this controller sits behind FinanceMiddleware, which
+     * authenticates via Auth::guard('finance') specifically — Auth::id()
+     * (no guard = the default 'web' guard) has nothing to do with that
+     * login at all. It was silently recording whatever 'web'-guard session
+     * happened to also be active in the same browser (e.g. an Admin tab),
+     * not the finance account that actually submitted the form — same bug
+     * class already fixed in Finance\DashboardController::actingStaffId().
+     */
+    private function actingStaffId(): ?int
+    {
+        return Auth::guard('finance')->id() ?? Auth::id();
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -27,7 +45,7 @@ class PromissoryNoteController extends Controller
             'reference_number' => PromissoryNote::generateReference(),
             'enrollment_id'    => $enrollment->id,
             'student_id'       => $enrollment->user_id,
-            'created_by'       => Auth::id(),
+            'created_by'       => $this->actingStaffId(),
             'amount_overdue'   => $validated['amount_overdue'],
             'amount_promised'  => $validated['amount_promised'],
             'promise_date'     => $validated['promise_date'],
@@ -118,10 +136,31 @@ class PromissoryNoteController extends Controller
         return response()->json(['success' => true, 'data' => $notes]);
     }
 
+    /**
+     * Real DomPDF-rendered promissory note, on the same shared letterhead/
+     * running-header-footer design as every other Finance (and Cashier)
+     * report — this used to be a hand-styled HTML page relying on
+     * display:grid (which Dompdf doesn't support at all; it was only ever
+     * viewed in-browser via window.print(), never actually run through
+     * Dompdf). ->stream() (inline), not ->download(), since the "Print"
+     * button it's linked from opens this in a new tab for the browser's
+     * own PDF viewer to print from — matches the previous behavior more
+     * closely than forcing a file save.
+     */
     public function printNote(PromissoryNote $note)
     {
-        $note->load(['student:id,name', 'enrollment', 'createdBy:id,name']);
-        return view('promissory-note-print', compact('note'));
+        $note->load(['student:id,name', 'enrollment', 'createdBy:id,name,email']);
+
+        $data = array_merge($this->schoolPdfLetterhead($note->createdBy->name ?? 'Finance Staff'), [
+            'reportTitle'    => 'Promissory Note',
+            'dateRangeLabel' => 'Reference No.: ' . $note->reference_number,
+            'note'           => $note,
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.finance.promissory-note', $data),
+            $data
+        )->stream($note->reference_number . '.pdf');
     }
 
     public function destroy(PromissoryNote $note)
