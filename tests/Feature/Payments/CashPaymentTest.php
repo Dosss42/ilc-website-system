@@ -93,7 +93,8 @@ class CashPaymentTest extends TestCase
         // Confirm it shows up through the actual Audit Trail endpoint too.
         $response = $this->actingAs($cashier, 'cashier')->getJson('/cashier/audit-trail');
         $response->assertOk();
-        $this->assertTrue(collect($response->json())->contains(fn ($l) => $l['event_type'] === 'cash_payment'));
+        // The audit trail is paginated: entries are under "data".
+        $this->assertTrue(collect($response->json('data'))->contains(fn ($l) => $l['event_type'] === 'cash_payment'));
     }
 
     public function test_processing_cash_payment_requires_cashier_authentication(): void

@@ -1983,6 +1983,43 @@ class EnrollmentController extends Controller
             // Status changes to 'enrolled' only after payment is processed via Finance portal.
             $isWalkIn = !empty($studentData['is_walk_in']);
 
+            // Resolve the student account. Prefer the account this enrollment is
+            // already linked to (created at submission). Looking the student up
+            // only by the form's email used to create a second account whenever
+            // the two differed (e.g. the email was corrected before approval),
+            // leaving the student's earlier records — such as installments — on
+            // the old account.
+            $formEmail = trim($studentData['student_email'] ?? '');
+            $existingUser = $enrollment->user_id ? User::withTrashed()->find($enrollment->user_id) : null;
+            $newEmail = null;
+
+            if ($existingUser) {
+                if ($formEmail !== '' && strcasecmp($existingUser->email, $formEmail) !== 0) {
+                    $emailOwner = User::withTrashed()->where('email', $formEmail)->where('id', '!=', $existingUser->id)->first();
+                    if ($emailOwner) {
+                        // The credentials email goes to the form's address but the student logs in
+                        // with the account's email, so guessing either account would break the login.
+                        $message = "The email on this application ({$formEmail}) already belongs to another account ({$emailOwner->name}). Correct the email before approving.";
+                        if (request()->expectsJson()) {
+                            return response()->json(['success' => false, 'message' => $message], 422);
+                        }
+                        return redirect()->back()->with('error', $message);
+                    }
+                    // Keep one account per student and send the credentials where the form says.
+                    $newEmail = $formEmail;
+                }
+            } elseif ($formEmail !== '') {
+                $existingUser = User::withTrashed()->where('email', $formEmail)->first();
+            }
+
+            if (!$existingUser && $formEmail === '') {
+                $message = 'This application has no student email, so no account can be created. Add the email before approving.';
+                if (request()->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => $message], 422);
+                }
+                return redirect()->back()->with('error', $message);
+            }
+
             // Wrap all DB writes in a single transaction — faster (one commit) and atomic
             DB::beginTransaction();
 
@@ -1994,26 +2031,26 @@ class EnrollmentController extends Controller
                 'enrolled_at' => null,
             ], $paymentUpdate));
 
-            // Create student user account (or link existing one)
+            // Create student user account (or link the existing one resolved above)
             $studentData = $enrollment->student_data;
             $password = null;
             $isReEnrollment = ($studentData['student_type'] ?? '') === 'returning';
-            $existingUser = User::withTrashed()->where('email', $studentData['student_email'] ?? '')->first();
 
             if ($existingUser) {
                 if ($existingUser->trashed()) {
                     $existingUser->restore();
                 }
                 $user = $existingUser;
+                $emailUpdate = $newEmail ? ['email' => $newEmail] : [];
 
-                if ($isReEnrollment) {
+                if ($isReEnrollment && !$newEmail) {
                     // Re-enrollment: student already knows their password — just activate
                     $user->update(['role' => 'student', 'is_active' => true, 'email_verified_at' => now()]);
                     // $password stays null → no credential email sent
                 } else {
-                    // New/transferee linked to existing account — reset password and notify
+                    // New/transferee, or the login email just changed — reset password and notify
                     $password = $this->generateStudentPassword();
-                    $user->update(['password' => bcrypt($password), 'role' => 'student', 'is_active' => true, 'email_verified_at' => now()]);
+                    $user->update(array_merge($emailUpdate, ['password' => bcrypt($password), 'role' => 'student', 'is_active' => true, 'email_verified_at' => now()]));
                 }
                 $enrollment->update(['user_id' => $user->id]);
             } else {
@@ -2021,7 +2058,7 @@ class EnrollmentController extends Controller
                 $password = $this->generateStudentPassword();
                 $user = User::create([
                     'name' => trim(($studentData['first_name'] ?? '') . ' ' . ($studentData['last_name'] ?? '')),
-                    'email' => $studentData['student_email'] ?? '',
+                    'email' => $formEmail,
                     'password' => bcrypt($password),
                     'role' => 'student',
                     'is_active' => true,

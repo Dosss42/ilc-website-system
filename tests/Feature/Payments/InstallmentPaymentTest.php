@@ -30,7 +30,9 @@ class InstallmentPaymentTest extends TestCase
                 'amount' => 3000,
             ]);
 
-        $response->assertRedirect();
+        // The Installments "Pay" modal posts via AJAX, so the endpoint answers with JSON
+        // instead of redirecting (see recordWalkInPayment()).
+        $response->assertOk()->assertJson(['success' => true]);
 
         $enrollment->refresh();
         $this->assertEquals(3000, $enrollment->payment_amount);
@@ -64,7 +66,8 @@ class InstallmentPaymentTest extends TestCase
                 'amount' => 1150,
                 'reference_number' => 'GCASH-REF-1',
             ])
-            ->assertRedirect();
+            ->assertOk()
+            ->assertJson(['success' => true]);
 
         $firstInstallment->refresh();
         $this->assertEquals('paid', $firstInstallment->status);
@@ -100,8 +103,9 @@ class InstallmentPaymentTest extends TestCase
                 'amount' => 1150,
             ]);
 
-        $response->assertStatus(302);
-        $response->assertSessionHas('error');
+        // JSON callers get a 422 with the error message instead of a redirect-back.
+        $response->assertStatus(422);
+        $response->assertJson(['success' => false, 'message' => 'Invalid installment record.']);
 
         $installmentFromA->refresh();
         $this->assertEquals('pending', $installmentFromA->status);

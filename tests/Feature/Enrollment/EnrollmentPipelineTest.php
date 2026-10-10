@@ -46,6 +46,69 @@ class EnrollmentPipelineTest extends TestCase
         $this->assertTrue($student->is_active);
     }
 
+    /**
+     * Regression test — approve() used to look the student up only by the form's
+     * email; when it differed from the linked account it created a second account
+     * and moved the enrollment to it, leaving the installments on the old one.
+     */
+    public function test_approving_keeps_the_linked_account_when_the_form_email_was_changed(): void
+    {
+        Mail::fake();
+        $admin = User::factory()->admin()->create();
+        $student = User::factory()->student()->create(['email' => 'old.address.' . uniqid() . '@example.com']);
+        $newEmail = 'corrected.' . uniqid() . '@gmail.com';
+
+        $enrollment = Enrollment::factory()->create([
+            'user_id' => $student->id,
+            'status' => 'pending',
+            'total_fee' => 0,
+            'student_data' => [
+                'first_name' => 'Juan', 'last_name' => 'Dela Cruz',
+                'student_email' => $newEmail,
+                'grade_level' => 'grade1', 'student_type' => 'new',
+            ],
+        ]);
+        $usersBefore = User::count();
+
+        $this->actingAs($admin, 'web')
+            ->postJson("/admin/enrollments/{$enrollment->id}/approve")
+            ->assertOk();
+
+        $enrollment->refresh();
+        $this->assertEquals('approved', $enrollment->status);
+        $this->assertEquals($student->id, $enrollment->user_id, 'The enrollment must stay on the account it was linked to.');
+        $this->assertEquals($usersBefore, User::count(), 'No second account may be created.');
+        $this->assertEquals($newEmail, $student->fresh()->email, 'The login email should follow the corrected form email.');
+    }
+
+    public function test_approving_is_refused_when_the_form_email_belongs_to_another_account(): void
+    {
+        Mail::fake();
+        $admin = User::factory()->admin()->create();
+        $student = User::factory()->student()->create();
+        $someoneElse = User::factory()->student()->create();
+
+        $enrollment = Enrollment::factory()->create([
+            'user_id' => $student->id,
+            'status' => 'pending',
+            'total_fee' => 0,
+            'student_data' => [
+                'first_name' => 'Ana', 'last_name' => 'Reyes',
+                'student_email' => $someoneElse->email,
+                'grade_level' => 'grade1', 'student_type' => 'new',
+            ],
+        ]);
+
+        $this->actingAs($admin, 'web')
+            ->postJson("/admin/enrollments/{$enrollment->id}/approve")
+            ->assertStatus(422)
+            ->assertJson(['success' => false]);
+
+        $enrollment->refresh();
+        $this->assertEquals('pending', $enrollment->status);
+        $this->assertEquals($student->id, $enrollment->user_id);
+    }
+
     public function test_only_admin_or_superadmin_can_approve_enrollments(): void
     {
         $teacher = User::factory()->teacher()->create();
