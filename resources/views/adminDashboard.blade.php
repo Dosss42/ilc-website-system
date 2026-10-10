@@ -794,7 +794,7 @@ function previewAdminPhoto(input) {
 // Finance/fee sections are now managed by dedicated portals
 const _PORTAL_SECTIONS = ['finance','payments','installments','fees'];
 
-function showSection(name) {
+function showSection(name, opts = {}) {
     // Redirect to dedicated portals instead of showing old admin finance sections
     if (_PORTAL_SECTIONS.includes(name)) {
         _showPortalRedirectModal(name);
@@ -811,6 +811,7 @@ function showSection(name) {
         if (nav) nav.classList.toggle('active', s === name);
     });
     localStorage.setItem('currentAdminSection', name);
+    syncSectionUrl(name, opts);
     updateBreadcrumb(name);
     window.scrollTo(0, 0);
     applySectionSkeleton(name);
@@ -852,6 +853,36 @@ function showSection(name) {
     }
     return false;
 }
+
+// Keep the address bar in step with the open section (?section=<name>) so a
+// refresh, bookmark, or copied link opens the same section, and Back/Forward
+// step through the sections visited. Must run before the section loads:
+// Reports forwards window.location.search to its loader.
+//  - opts.initial:     page load — keep the existing query (deep links such as
+//                      ?section=reports&rpt_tab=financial) and add no history entry
+//  - opts.fromHistory: Back/Forward — the URL is already right; touch nothing
+//  - otherwise:        a click — start a clean ?section=<name> so one section's
+//                      filters/pagination never carry over to another
+function syncSectionUrl(name, opts) {
+    if (opts.fromHistory) return;
+    const current = new URL(window.location.href);
+    if (opts.initial) {
+        current.searchParams.set('section', name);
+        history.replaceState({ section: name }, '', current);
+        return;
+    }
+    if (current.searchParams.get('section') === name && [...current.searchParams.keys()].length === 1) return;
+    const next = new URL(current.pathname, window.location.origin);
+    next.searchParams.set('section', name);
+    history.pushState({ section: name }, '', next);
+}
+
+window.addEventListener('popstate', function (e) {
+    const name = (e.state && e.state.section)
+        || new URLSearchParams(window.location.search).get('section')
+        || 'dashboard';
+    if (sections.includes(name)) showSection(name, { fromHistory: true });
+});
 
 // ── On-demand section loading (Guidance Records) ──────────────────────
 // adminIndex() used to compute this tab's data on every single dashboard
@@ -5692,7 +5723,7 @@ function openWalkInEnrollmentModal() {
             : 'dashboard';
 
         // Show immediately (CSS hides all sections by default — no flash)
-        showSection(sectionToShow);
+        showSection(sectionToShow, { initial: true });
 
         // Reports has a second level of nesting (tab -> sub-report) that a
         // plain ?section=reports can't express — pagination links inside
