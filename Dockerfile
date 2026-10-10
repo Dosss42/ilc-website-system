@@ -33,9 +33,12 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction
 # Install Node dependencies and build Vite assets
 RUN npm install && npm run build
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
-    && chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+# Create Laravel's runtime folders. Git does not keep empty folders, and
+# storage/framework/views is gitignored, so it is missing after COPY . . —
+# without it `php artisan view:cache` fails with "View path not found".
+RUN mkdir -p storage/framework/views storage/framework/cache/data \
+        storage/framework/sessions storage/framework/testing \
+        storage/logs storage/app/public bootstrap/cache
 
 # Copy nginx config
 COPY docker/nginx.conf /etc/nginx/sites-enabled/default
@@ -48,6 +51,11 @@ COPY docker/www.conf /usr/local/etc/php-fpm.d/www.conf
 # start in entrypoint.sh, since env vars aren't available at build time)
 RUN php artisan route:cache \
     && php artisan view:cache
+
+# Set permissions after the caches are built, so the compiled views written
+# above are owned by www-data too (PHP-FPM runs as www-data)
+RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache \
+    && chmod -R 775 /var/www/storage /var/www/bootstrap/cache
 
 # Expose port 80
 EXPOSE 80
