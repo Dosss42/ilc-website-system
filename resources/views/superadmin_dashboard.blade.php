@@ -1781,7 +1781,7 @@
                         <i class="bi bi-people-fill" style="font-size:36px;color:var(--blue);display:block;margin-bottom:12px;"></i>
                         <h6 style="font-weight:700;color:var(--text);margin-bottom:6px;">User Report</h6>
                         <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Complete list of all system users by role.</p>
-                        <a href="#" class="btn-dash btn-primary" style="width:100%;justify-content:center;"><i class="bi bi-download"></i> Download</a>
+                        <a href="{{ route('superadmin.reports.user-report-pdf') }}" class="btn-dash btn-primary" style="width:100%;justify-content:center;"><i class="bi bi-download"></i> Download</a>
                     </div>
                 </div>
             </div>
@@ -1791,7 +1791,7 @@
                         <i class="bi bi-journal-text" style="font-size:36px;color:var(--gold);display:block;margin-bottom:12px;"></i>
                         <h6 style="font-weight:700;color:var(--text);margin-bottom:6px;">Audit Log Report</h6>
                         <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">All system activities and audit trail.</p>
-                        <a href="#" class="btn-dash btn-gold" style="width:100%;justify-content:center;"><i class="bi bi-download"></i> Download</a>
+                        <a href="{{ route('superadmin.reports.audit-log-report-pdf') }}" class="btn-dash btn-gold" style="width:100%;justify-content:center;"><i class="bi bi-download"></i> Download</a>
                     </div>
                 </div>
             </div>
@@ -1801,7 +1801,7 @@
                         <i class="bi bi-database-fill" style="font-size:36px;color:var(--orange);display:block;margin-bottom:12px;"></i>
                         <h6 style="font-weight:700;color:var(--text);margin-bottom:6px;">System Health Report</h6>
                         <p style="font-size:12px;color:var(--muted);margin-bottom:16px;">Database size, backups, and performance.</p>
-                        <a href="#" class="btn-dash btn-success" style="width:100%;justify-content:center;"><i class="bi bi-download"></i> Download</a>
+                        <a href="{{ route('superadmin.reports.system-health-report-pdf') }}" class="btn-dash btn-success" style="width:100%;justify-content:center;"><i class="bi bi-download"></i> Download</a>
                     </div>
                 </div>
             </div>

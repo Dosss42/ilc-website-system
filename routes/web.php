@@ -245,6 +245,14 @@ Route::middleware(['auth', 'superadmin'])->prefix('superadmin')->name('superadmi
     // System Logs
     Route::get('/logs/export', [SuperAdminController::class, 'exportLogs'])->name('logs.export');
 
+    // Reports tab PDFs — shared pdf.shared.* design (see
+    // app/Support/Traits/BuildsSchoolPdf.php).
+    Route::prefix('reports')->name('reports.')->group(function () {
+        Route::get('/user-report-pdf', [SuperAdminController::class, 'downloadUserReportPdf'])->name('user-report-pdf');
+        Route::get('/audit-log-report-pdf', [SuperAdminController::class, 'downloadAuditLogReportPdf'])->name('audit-log-report-pdf');
+        Route::get('/system-health-report-pdf', [SuperAdminController::class, 'downloadSystemHealthReportPdf'])->name('system-health-report-pdf');
+    });
+
     // Backup & Restore — throttled: both run a full mysqldump/mysql process,
     // so a compromised/misused superadmin session (or a double-click) can't
     // pile up several of these at once and exhaust DB/disk resources.

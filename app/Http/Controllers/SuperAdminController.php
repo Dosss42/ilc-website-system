@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Storage;
 
 class SuperAdminController extends Controller
 {
+    use \App\Support\Traits\BuildsSchoolPdf;
+
     /**
      * Display the superadmin dashboard with user statistics and user list.
      */
@@ -640,5 +642,125 @@ class SuperAdminController extends Controller
         if ($bytes >= 1048576) return round($bytes / 1048576, 2) . ' MB';
         if ($bytes >= 1024)    return round($bytes / 1024, 1)    . ' KB';
         return $bytes . ' B';
+    }
+
+    // ── Reports tab PDFs — these three cards used to be dead `href="#"`
+    // links with zero functionality. Same shared design (pdf.shared.*,
+    // App\Support\Traits\BuildsSchoolPdf) as every other portal's reports. ──
+
+    public function downloadUserReportPdf()
+    {
+        $users = User::orderBy('role')->orderBy('name')->get();
+
+        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Super Admin'), [
+            'reportTitle'    => 'System User Report',
+            'dateRangeLabel' => 'All Roles',
+            'users'          => $users,
+            'stats'          => [
+                'total'    => $users->count(),
+                'active'   => $users->where('is_active', true)->count(),
+                'inactive' => $users->where('is_active', false)->count(),
+            ],
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.superadmin.user-report', $pdfData),
+            $pdfData
+        )->download('user-report-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    /**
+     * Same buildLogsQuery()/filters as exportLogs()'s CSV export above —
+     * same data, same columns, just rendered as a PDF table.
+     */
+    public function downloadAuditLogReportPdf(Request $request)
+    {
+        $filters = [
+            'type'   => $request->input('log_type'),
+            'search' => $request->input('log_search'),
+            'date'   => $request->input('log_date'),
+            'role'   => $request->input('log_role'),
+        ];
+        $logs = $this->buildLogsQuery($filters)->get();
+
+        ActivityLogger::log('update', 'Audit log PDF exported (' . $logs->count() . ' rows)', 'ActivityLog');
+
+        $hasFilters = array_filter($filters);
+        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Super Admin'), [
+            'reportTitle'    => 'Audit Log Report',
+            'dateRangeLabel' => $hasFilters ? 'Filtered results' : 'All activity',
+            'logs'           => $logs,
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.superadmin.audit-log-report', $pdfData),
+            $pdfData
+        )->download('audit-log-report-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    /**
+     * Only real, currently-measurable figures — no fabricated "performance"
+     * or uptime stats (nothing in this codebase collects those). DB size
+     * via information_schema, disk space via disk_free_space()/
+     * disk_total_space() against the storage volume, backups via the same
+     * listBackups() the Backups tab already uses, record counts via plain
+     * ->count() on each model.
+     */
+    public function downloadSystemHealthReportPdf()
+    {
+        $dbName = config('database.connections.mysql.database');
+        $dbSizeBytes = 0;
+        try {
+            $row = DB::selectOne(
+                "SELECT SUM(data_length + index_length) AS size FROM information_schema.tables WHERE table_schema = ?",
+                [$dbName]
+            );
+            $dbSizeBytes = (int) ($row->size ?? 0);
+        } catch (\Throwable $e) {
+            // Leave at 0 — the report still renders with every other section intact.
+        }
+
+        $storagePath  = storage_path();
+        $diskFree     = @disk_free_space($storagePath);
+        $diskTotal    = @disk_total_space($storagePath);
+
+        $backups = $this->listBackups();
+
+        $recordCounts = [
+            'Users'          => User::count(),
+            'Enrollments'    => \App\Models\Enrollment::count(),
+            'Activity Logs'  => ActivityLog::count(),
+            'Announcements'  => Announcement::count(),
+            'News Articles'  => News::count(),
+        ];
+
+        $dbPingStart = microtime(true);
+        DB::select('SELECT 1');
+        $dbPingMs = round((microtime(true) - $dbPingStart) * 1000, 1);
+
+        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Super Admin'), [
+            'reportTitle'      => 'System Health Report',
+            'dateRangeLabel'   => 'As of ' . now()->format('F d, Y g:i A'),
+            'dbName'           => $dbName,
+            'dbSize'           => $this->formatBytes($dbSizeBytes),
+            'dbPingMs'         => $dbPingMs,
+            'diskFree'         => $diskFree !== false ? $this->formatBytes((int) $diskFree) : 'Unavailable',
+            'diskTotal'        => $diskTotal !== false ? $this->formatBytes((int) $diskTotal) : 'Unavailable',
+            'diskUsedPct'      => ($diskFree !== false && $diskTotal !== false && $diskTotal > 0)
+                ? round((1 - $diskFree / $diskTotal) * 100, 1)
+                : null,
+            'phpVersion'       => PHP_VERSION,
+            'laravelVersion'   => app()->version(),
+            'recordCounts'     => $recordCounts,
+            'backups'          => $backups,
+            'lastBackup'       => $backups[0] ?? null,
+            'backupRetention'  => config('backup.keep_days'),
+            'offsiteConfigured' => !empty(config('backup.secondary_path')) || !empty(config('backup.google_drive.enabled')),
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.superadmin.system-health-report', $pdfData),
+            $pdfData
+        )->download('system-health-report-' . now()->format('Y-m-d') . '.pdf');
     }
 }
