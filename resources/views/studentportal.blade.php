@@ -2889,7 +2889,13 @@
             </div>
             @endif
 
-            {{-- Make Payment Card --}}
+            {{-- Make Payment Card — hidden once fully paid, same gate already
+                 used for the hero/summary "Pay Now" buttons above
+                 ($payStatus/$pmtStatus !== 'paid'); this card itself had no
+                 such gate, so a fully-paid student could still reach the
+                 full Select-Plan/Submit flow via the sidebar's unconditional
+                 "Payment" link and submit another payment. --}}
+            @if($pmtStatus !== 'paid')
             <div class="content-card mb-4">
                 <div class="content-card-header">
                     <h6><i class="bi bi-credit-card me-2"></i>Make Payment</h6>
@@ -3165,7 +3171,15 @@
                     </div>
                 </div>
             </div>{{-- /Make Payment --}}
-
+            @else
+            <div class="content-card mb-4">
+                <div style="padding:40px;text-align:center;color:var(--muted);">
+                    <i class="bi bi-check-circle-fill" style="font-size:44px;display:block;margin-bottom:12px;color:#43a047;"></i>
+                    <h5 style="color:#2e7d32;margin-bottom:6px;">You're all paid up!</h5>
+                    <p style="margin:0;">No outstanding balance for this enrollment. There's nothing left to pay.</p>
+                </div>
+            </div>
+            @endif
 
         @else
             <div class="content-card">

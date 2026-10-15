@@ -501,6 +501,43 @@ class CashierController extends Controller
         return response()->json($students);
     }
 
+    // ── Refresh one already-selected student's card ───────────────────
+    // Same JSON shape as searchStudent()'s map(), but keyed to one known
+    // enrollment_id instead of a name/email search — used after an Xendit
+    // payment is confirmed via polling, so the cashier's screen can update
+    // the balance/status in place and stay on this student instead of a
+    // full page reload bouncing them back to a blank search screen.
+    public function refreshStudent(Request $request)
+    {
+        $request->validate(['enrollment_id' => 'required|exists:enrollments,id']);
+
+        $enrollment = Enrollment::find($request->enrollment_id);
+        $user       = User::find($enrollment->user_id);
+
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Student not found.'], 404);
+        }
+
+        return response()->json([
+            'success'            => true,
+            'id'                 => $user->id,
+            'name'               => $user->name,
+            'email'              => $user->email,
+            'enrollment_id'      => $enrollment->id,
+            'grade_level'        => $enrollment->grade_level,
+            'balance'            => $enrollment->remaining_balance ?? 0,
+            'payment_status'     => $enrollment->payment_status ?? 'unpaid',
+            'enrollment_status'  => $enrollment->status ?? 'pending',
+            'payment_option'     => $enrollment->payment_option ?? 'A',
+            'payment_type'       => $enrollment->payment_type ?? 'full',
+            'total_fee'          => $enrollment->total_fee ?? 0,
+            'payment_amount'     => $enrollment->payment_amount ?? 0,
+            'downpayment_amount' => $enrollment->downpayment_amount ?? 0,
+            'monthly_amount'     => $enrollment->monthly_amount ?? 0,
+            'school_year'        => $enrollment->school_year ?? '—',
+        ]);
+    }
+
     // ── Student List (all approved) ───────────────────
     public function listStudents(Request $request)
     {
@@ -810,8 +847,13 @@ class CashierController extends Controller
                         'email'       => $request->student_email ?? '',
                     ],
                     'payment_methods'      => $this->xenditMethodsFor($request->payment_method),
-                    'success_redirect_url' => route('cashier.dashboard'),
-                    'failure_redirect_url' => route('cashier.dashboard'),
+                    // This tab is on the CUSTOMER's device, not the cashier's —
+                    // it must not land on the internal (login-walled) cashier
+                    // dashboard. The cashier's own tab already updates itself
+                    // via polling (pollCashierXenditStatus), so this is just a
+                    // thank-you screen for whoever actually paid.
+                    'success_redirect_url' => route('cashier.payment-result'),
+                    'failure_redirect_url' => route('cashier.payment-result', ['outcome' => 'failed']),
                 ]);
         } catch (\Throwable $e) {
             Log::error('Xendit invoice request failed (network/connection error)', ['error' => $e->getMessage()]);

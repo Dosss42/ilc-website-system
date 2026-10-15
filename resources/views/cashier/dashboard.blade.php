@@ -3184,20 +3184,11 @@
         });
     }
 
-    function selectStudent(s) {
-        selectedStudent = s;
-        document.getElementById('selectedEnrollmentId').value       = s.enrollment_id || '';
-        document.getElementById('selectedStudentEmail').value       = s.email || '';
-        document.getElementById('selectedStudentNameHidden').value  = s.name;
-
-        // Extend the breadcrumb with the selected student's name, e.g.
-        // "Home > Process Payment > Putak Awa" — clicking the middle crumb
-        // (bcMidClick) goes back to the student list.
-        var bcExtra = document.getElementById('bc-extra');
-        var bcExtraWrap = document.getElementById('bc-extra-wrap');
-        if (bcExtra) bcExtra.textContent = s.name;
-        if (bcExtraWrap) bcExtraWrap.style.display = '';
-
+    // Just the numbers/badges on the student card — split out of
+    // selectStudent() so a post-payment refresh can update the displayed
+    // balance/status without also resetting the payment form (success
+    // banner, process button, plan card) the way a fresh selection does.
+    function updateStudentCardStats(s) {
         var fmt = function(v){ return '₱' + Number(v||0).toLocaleString('en-PH',{minimumFractionDigits:2}); };
 
         document.getElementById('studentInitial').textContent    = s.name.charAt(0).toUpperCase();
@@ -3225,6 +3216,23 @@
         badge.style.color = st[2];
 
         rebuildQuickPresets(s);
+    }
+
+    function selectStudent(s) {
+        selectedStudent = s;
+        document.getElementById('selectedEnrollmentId').value       = s.enrollment_id || '';
+        document.getElementById('selectedStudentEmail').value       = s.email || '';
+        document.getElementById('selectedStudentNameHidden').value  = s.name;
+
+        // Extend the breadcrumb with the selected student's name, e.g.
+        // "Home > Process Payment > Putak Awa" — clicking the middle crumb
+        // (bcMidClick) goes back to the student list.
+        var bcExtra = document.getElementById('bc-extra');
+        var bcExtraWrap = document.getElementById('bc-extra-wrap');
+        if (bcExtra) bcExtra.textContent = s.name;
+        if (bcExtraWrap) bcExtraWrap.style.display = '';
+
+        updateStudentCardStats(s);
 
         var slp = document.getElementById('studentListPanel');
         if (slp) slp.style.display = 'none';
@@ -3252,7 +3260,14 @@
 
     function rebuildQuickPresets(s) {
         var btns = [];
-        if (s.downpayment_amount > 0 && (s.payment_amount||0) < s.downpayment_amount) {
+        // Laravel's decimal cast (and plain uncast DECIMAL columns) serialize
+        // to JSON as STRINGS, not numbers — "10613.28" < "5500.00" compares
+        // lexicographically ('1' < '5') and comes out true, so a student who
+        // had already paid well past their downpayment kept getting offered
+        // a redundant "Downpayment" quick-amount button. Number(...) forces
+        // the real numeric comparison, same as every other amount comparison
+        // in this file already does.
+        if (Number(s.downpayment_amount) > 0 && Number(s.payment_amount||0) < Number(s.downpayment_amount)) {
             btns.push({ label: 'Downpayment', amount: s.downpayment_amount, type: 'Downpayment', color: '#1a3a6c' });
         }
         if (s.monthly_amount > 0) {
@@ -3375,12 +3390,24 @@
         if (!type)   { showToast('Please select a payment type.', 'warning'); return; }
 
         var isXendit = ['gcash','maya'].includes(method);
+        var methodLabels = { cash:'Cash', gcash:'GCash', maya:'Maya', grabpay:'GrabPay', bank:'Bank Transfer', otc:'Over-the-Counter' };
+        var name = document.getElementById('selectedStudentNameHidden').value;
+        var amountFmt = '₱' + Number(amount).toLocaleString('en-PH',{minimumFractionDigits:2});
+        var summary = name + ' — ' + amountFmt + ' (' + type + ', ' + (methodLabels[method] || method) + ')';
 
-        if (isXendit) {
-            generateXenditLink(enrollmentId, amount, method, type);
-        } else {
-            processCash(enrollmentId, amount, type);
-        }
+        showConfirm(
+            isXendit
+                ? 'Generate a ' + (methodLabels[method] || method) + ' payment link for ' + summary + '?'
+                : 'Record a cash payment of ' + summary + '? This applies immediately and cannot be undone from here.',
+            function () {
+                if (isXendit) {
+                    generateXenditLink(enrollmentId, amount, method, type);
+                } else {
+                    processCash(enrollmentId, amount, type);
+                }
+            },
+            { title: isXendit ? 'Confirm Payment Link' : 'Confirm Cash Payment', confirmLabel: isXendit ? 'Generate Link' : 'Yes, Collect Payment' }
+        );
     }
 
     function processCash(enrollmentId, amount, type) {
@@ -3421,6 +3448,11 @@
                 document.getElementById('paySuccessRef').textContent = 'Reference: ' + (data.reference || '—') + '  ·  Amount: ₱' + Number(amount).toLocaleString('en-PH',{minimumFractionDigits:2});
                 document.getElementById('paySuccessBanner').style.display = 'block';
                 btn.style.display = 'none';
+                // Pull the fresh balance/status onto the card right away —
+                // without this the cashier sees the success banner but the
+                // Balance/Amount Paid/progress bar above it still show the
+                // pre-payment numbers until they start a new payment.
+                refreshSelectedStudentCard();
                 // Auto print
                 setTimeout(function(){ if (_lastReceiptData) printOfficialReceipt(_lastReceiptData); }, 300);
             } else {
@@ -3503,8 +3535,8 @@
                     statusEl.style.display = 'block';
                     statusEl.style.background = '#dcfce7';
                     statusEl.style.color = '#166534';
-                    statusEl.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Payment confirmed! Refreshing…';
-                    setTimeout(function() { window.location.reload(); }, 1800);
+                    statusEl.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Payment confirmed! Updating balance…';
+                    setTimeout(function() { refreshSelectedStudentCard(statusEl); }, 1200);
                 } else if (d.status === 'expired' || d.status === 'failed') {
                     clearInterval(_cashierXenditPollTimer);
                     statusEl.style.display = 'block';
@@ -3529,6 +3561,39 @@
 
         tick();
         _cashierXenditPollTimer = setInterval(tick, 5000);
+    }
+
+    // Re-fetches the currently selected student's enrollment and updates
+    // just the balance/status numbers on the card — in place, instead of
+    // window.location.reload() (which used to bounce the cashier back to a
+    // blank search screen after every Xendit payment) and without calling
+    // the full selectStudent() (which would also hide the "Payment
+    // Recorded!" success banner and reset the form, since that function
+    // doubles as "start a fresh payment for this student").
+    function refreshSelectedStudentCard(statusEl) {
+        var enrollmentId = document.getElementById('selectedEnrollmentId').value;
+        if (!enrollmentId) return;
+
+        fetch('{{ route("cashier.student.refresh") }}?enrollment_id=' + encodeURIComponent(enrollmentId), {
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.success) {
+                selectedStudent = d;
+                updateStudentCardStats(d);
+                if (statusEl) {
+                    statusEl.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Payment confirmed — balance updated.';
+                }
+            } else if (statusEl) {
+                statusEl.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Payment confirmed, but the balance card could not refresh automatically — reselect the student to see it.';
+            }
+        })
+        .catch(function() {
+            if (statusEl) {
+                statusEl.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Payment confirmed, but the balance card could not refresh automatically — reselect the student to see it.';
+            }
+        });
     }
 
     function copyXenditLink() {

@@ -19,11 +19,19 @@
     }
 
     .page {
-        width: 215.9mm;
         /* No min-height: a box asked to be exactly one physical page tall
            overflows by a hair under dompdf's own rounding and pushes an
            entirely blank extra page onto every PDF. Content naturally
-           fills the page anyway. */
+           fills the page anyway.
+           No explicit width either: dompdf's table layout computes a
+           width:100% child against this box's OUTER (border-box) width
+           instead of its content width, so pinning .page to the exact
+           physical page width made every width:100% table inside it
+           (and the padding meant to inset them) overflow past the right
+           edge with zero visible margin there. Leaving width unset lets
+           the standard CSS auto-width algorithm size .page to the
+           container minus its own padding, which every descendant then
+           correctly measures percentages against. */
         margin: 0 auto;
         padding: 10mm 12mm;
     }
@@ -163,7 +171,7 @@
     /* ── PRINT ── */
     @media print {
         body { margin: 0; }
-        .page { margin: 0; padding: 8mm 10mm; width: 100%; }
+        .page { margin: 0; padding: 8mm 10mm; }
         .no-print { display: none !important; }
     }
 </style>

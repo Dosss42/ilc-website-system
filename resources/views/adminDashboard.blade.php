@@ -1330,6 +1330,16 @@ function switchRptSubReport(tab, subreport) {
     });
 }
 
+function downloadPromotionSF5() {
+    var sel = document.getElementById('rpt-sf5-section');
+    if (!sel || !sel.value) {
+        alert('Please select a section first.');
+        return;
+    }
+    var url = '{{ route("teacher.sf5") }}?section_id=' + encodeURIComponent(sel.value)
+        + '&school_year=' + encodeURIComponent('{{ $currentSchoolYear }}');
+    window.open(url, '_blank');
+}
 
 function openWalkInEnrollmentModal() {
     const modal = document.getElementById('walkInEnrollmentModal');

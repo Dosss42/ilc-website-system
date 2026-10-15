@@ -2225,7 +2225,7 @@
                         return '<option value="' + o.value + '"' + sel + '>' + o.label + '</option>';
                     }).join('');
                     const selStyle = isDraftFill ? 'border-color:#f5a623;background:#fff8ec;font-weight:700;' : '';
-                    inputHtml = '<select class="gradebook-input" style="width:100%;font-size:12px;' + selStyle + '" onchange="updateDescriptiveRemarks(this)">'
+                    inputHtml = '<select class="gradebook-input" style="width:100%;font-size:12px;' + selStyle + '" onchange="updateDescriptiveRemarks(this)" onkeydown="handleGradeEnterKey(event,this)">'
                         + '<option value="">— Select —</option>' + opts + '</select>';
                     remarks = inputVal ? (DESCRIPTIVE_LABELS[inputVal] || inputVal) : '';
                 } else {
@@ -2233,7 +2233,7 @@
                     const gradeNum   = inputVal !== '' ? parseFloat(inputVal) : NaN;
                     const gradeClass = inputVal !== '' ? (gradeNum >= 75 ? 'passed' : 'failed') : '';
                     const selStyle   = isDraftFill ? 'background:#fff8ec;border-color:#f5a623;font-weight:700;' : '';
-                    inputHtml = '<input type="number" class="gradebook-input ' + gradeClass + '" style="' + selStyle + '" value="' + inputVal + '" min="0" max="100" step="0.01" placeholder="—" oninput="updateRemarks(this)">';
+                    inputHtml = '<input type="number" class="gradebook-input ' + gradeClass + '" style="' + selStyle + '" value="' + inputVal + '" min="0" max="100" step="0.01" placeholder="—" oninput="updateRemarks(this)" onkeydown="handleGradeEnterKey(event,this)">';
                     remarks = submittedG !== '' ? (s.remarks || '') : (draftG !== null ? (parseFloat(draftG) >= 75 ? 'Passed' : 'Failed') : '');
                 }
 
@@ -2294,6 +2294,18 @@
             tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--red);">Error loading students.</td></tr>';
             console.error(err);
         });
+    }
+
+    function handleGradeEnterKey(event, field) {
+        if (event.key !== 'Enter') return;
+        event.preventDefault();
+        const row = field.closest('tr');
+        const nextRow = row && row.nextElementSibling;
+        const nextField = nextRow && nextRow.querySelector('.gradebook-input');
+        if (nextField) {
+            nextField.focus();
+            if (typeof nextField.select === 'function' && nextField.tagName === 'INPUT') nextField.select();
+        }
     }
 
     function updateRemarks(input) {

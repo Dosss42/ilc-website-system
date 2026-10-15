@@ -650,6 +650,15 @@ Route::post('/cashier/webhook/xendit', [\App\Http\Controllers\CashierController:
         \Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class,
     ]);
 
+// Where Xendit's own checkout page sends the customer's BROWSER TAB after
+// they pay a cashier-generated link — that tab is on the customer's own
+// device, not the cashier's, so it must not redirect into the (login-walled,
+// internal) cashier dashboard. Public, no auth — just a thank-you screen the
+// customer can close; the cashier's own tab updates separately via polling.
+Route::get('/cashier/payment-result', function (\Illuminate\Http\Request $request) {
+    return view('cashier.payment-result', ['outcome' => $request->query('outcome', 'success')]);
+})->name('cashier.payment-result');
+
 // Root /cashier → redirect to login (or dashboard if already authenticated)
 Route::get('/cashier', function () {
     if (\Illuminate\Support\Facades\Auth::guard('cashier')->check()) {
@@ -669,6 +678,7 @@ Route::prefix('cashier')->name('cashier.')->group(function () {
     Route::middleware([\App\Http\Middleware\CashierMiddleware::class])->group(function () {
         Route::get('/dashboard', [\App\Http\Controllers\CashierController::class, 'dashboard'])->name('dashboard');
         Route::get('/students/search', [\App\Http\Controllers\CashierController::class, 'searchStudent'])->name('students.search');
+        Route::get('/student/refresh', [\App\Http\Controllers\CashierController::class, 'refreshStudent'])->name('student.refresh');
         Route::get('/students', [\App\Http\Controllers\CashierController::class, 'listStudents'])->name('students.list');
         Route::get('/payment-options', [\App\Http\Controllers\CashierController::class, 'getPaymentOptions'])->name('payment.options');
         Route::get('/installments/{enrollmentId}', [\App\Http\Controllers\CashierController::class, 'installmentTimeline'])->name('installments.timeline');

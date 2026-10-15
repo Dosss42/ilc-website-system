@@ -1105,6 +1105,23 @@
                             <a href="{{ route('admin.reports.promotion-student-list-pdf') }}" class="btn-dash btn-primary btn-sm"><i class="bi bi-file-earmark-pdf"></i> Download PDF</a>
                         </div>
                     </div>
+                    {{-- SF5 — Report on Promotions and Level of Proficiency, per section
+                         (every student in that section). Teachers already download this
+                         from their own dashboard for their own section; this lets Admin/
+                         Super Admin pull it for ANY section without needing the teacher
+                         to do it. --}}
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--border);background:#fafbfc;">
+                        <span style="font-size:12px;font-weight:600;color:var(--muted);"><i class="bi bi-file-earmark-pdf-fill" style="color:#c0392b;"></i> SF5 for a section:</span>
+                        <select id="rpt-sf5-section" style="border:1.5px solid #d1d5db;border-radius:8px;padding:6px 10px;font-size:12.5px;min-width:220px;">
+                            <option value="">Select section&hellip;</option>
+                            @foreach($rptAllSections->where('school_year', $currentSchoolYear)->sortBy('name') as $sec)
+                                <option value="{{ $sec->id }}">{{ $sec->name }} ({{ ucfirst($sec->grade_level) }})</option>
+                            @endforeach
+                        </select>
+                        <button type="button" class="btn-dash btn-secondary btn-sm" onclick="downloadPromotionSF5()">
+                            <i class="bi bi-download"></i> Download SF5
+                        </button>
+                    </div>
                     <div style="overflow-x:auto;">
                         <table class="dash-table">
                             <thead>

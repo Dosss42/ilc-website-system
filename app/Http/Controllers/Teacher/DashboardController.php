@@ -2117,7 +2117,10 @@ class DashboardController extends Controller
             'school_year' => 'nullable|string|max:20',
         ]);
 
-        if (!$this->teacherOwnsSection($teacher->id, $request->section_id)) {
+        // Admin/superadmin can pull any section's SF5 from the Promotion
+        // report tab — same bypass printSF9() already grants them.
+        if (!in_array($teacher->role, ['admin', 'superadmin'])
+            && !$this->teacherOwnsSection($teacher->id, $request->section_id)) {
             abort(403, 'Not assigned to this section.');
         }
 
@@ -2126,6 +2129,14 @@ class DashboardController extends Controller
         $students   = $section->students;
         $schoolYear = filled($request->school_year) ? $request->school_year : $this->getCurrentSchoolYear();
         $gradeLevel = $section->grade_level ?? '';
+
+        // The "Adviser" on this form is the section's actual class adviser,
+        // not whoever clicked the button — matters now that admin/superadmin
+        // can generate this for sections they don't teach themselves.
+        $adviser = \App\Models\TeacherAssignment::where('section_id', $section->id)
+            ->where('is_advisory', true)
+            ->with('teacher')
+            ->first()?->teacher ?? $teacher;
 
         $glMap = [
             'nursery'=>'Nursery','kindergarten'=>'Kindergarten',
@@ -2206,7 +2217,7 @@ class DashboardController extends Controller
 
         $data = [
             'section'        => $section,
-            'teacher'        => $teacher,
+            'teacher'        => $adviser,
             'schoolYear'     => $schoolYear,
             'gradeLabel'     => $gradeLabel,
             'isDescriptive'  => $isDescriptive,
