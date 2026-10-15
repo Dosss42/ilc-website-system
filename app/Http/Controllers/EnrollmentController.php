@@ -834,7 +834,7 @@ class EnrollmentController extends Controller
             )
             ->orderByDesc('created_at')
             ->get()
-            ->filter(fn($s) => ($s->latestEnrollment->student_data['student_type'] ?? '') !== 'transferee')
+            ->filter(fn($s) => $this->isPromotionEligibleByType($s->id, $s->latestEnrollment->student_data ?? []))
             ->values();
 
         // Stat cards + grade chips always reflect the FULL eligible set,
@@ -1373,7 +1373,7 @@ class EnrollmentController extends Controller
                 ->whereIn('grade_level', array_keys($rptGradeLevels))
             )
             ->get()
-            ->filter(fn($s) => ($s->latestEnrollment->student_data['student_type'] ?? '') !== 'transferee');
+            ->filter(fn($s) => $this->isPromotionEligibleByType($s->id, $s->latestEnrollment->student_data ?? []));
 
         $rptPromoEligibleTotal = $rptPromoEligible->count();
         $rptPromoPending       = max(0, $rptPromoEligibleTotal - $rptPromoAll->count());
@@ -3561,6 +3561,37 @@ class EnrollmentController extends Controller
      * @return array{eligible: \Illuminate\Support\Collection, excluded: \Illuminate\Support\Collection}
      */
     /**
+     * Whether a student counts toward promotion assessment, given their
+     * student_type. Non-transferees always do. A transferee is excluded
+     * ONLY while they have no approved proof of having passed their
+     * previous grade at their former school — per DepEd policy on private
+     * schools: a school cannot withhold promotion solely because Form 137
+     * (the Permanent Record) hasn't arrived yet from the old school, as
+     * long as SF9 (this system's "report_card" document type) or an
+     * equivalent certification of completion is on file. Once that
+     * document is approved, the transferee is treated the same as any
+     * other student here — even in their very first year, not just after
+     * a second year's worth of history accumulates at this school.
+     *
+     * Previously this was a blanket "student_type !== transferee" check in
+     * three places (this page, the Reports tab's own copy, and bulk
+     * promotion) — permanently excluding every transferee from promotion
+     * forever, including ones who legitimately proved they passed
+     * elsewhere. This is the one place all three now call.
+     */
+    private function isPromotionEligibleByType(int $userId, array $studentData): bool
+    {
+        if (($studentData['student_type'] ?? '') !== 'transferee') {
+            return true;
+        }
+
+        return \App\Models\StudentDocument::where('user_id', $userId)
+            ->where('document_type', 'report_card')
+            ->where('status', 'approved')
+            ->exists();
+    }
+
+    /**
      * Grade1-Grade6 promotion policy at this school: nobody is academically
      * retained (private school, no failed students), so grades/guidance are
      * WARNINGS only — shown to the admin but never block promotion. The real
@@ -3583,7 +3614,7 @@ class EnrollmentController extends Controller
                 ->where('grade_level', $grade)
             ])
             ->get()
-            ->filter(fn($s) => ($s->enrollments->first()->student_data['student_type'] ?? '') !== 'transferee')
+            ->filter(fn($s) => $this->isPromotionEligibleByType($s->id, $s->enrollments->first()->student_data ?? []))
             ->values();
 
         $studentIds = $students->pluck('id');
