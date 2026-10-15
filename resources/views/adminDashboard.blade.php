@@ -4762,138 +4762,27 @@ function openWalkInEnrollmentModal() {
         subjectSelect.value = '';
     }
 
-    // â”€â”€ Download Schedule as PDF â”€â”€
+    // ── Download Schedule as PDF ──
+    // Real server-rendered PDF (pdf.schedule, same Finance-style
+    // letterhead/footer + day-grid design as the Teacher/Student portals'
+    // own schedule PDFs) — replaces the old client-side window.print() trick.
     function downloadScheduleAdminPDF() {
-        var grade      = document.getElementById('scheduleGradeFilter').value;
-        var sectionSel = document.getElementById('scheduleSectionFilter');
-        var termSel    = document.getElementById('scheduleTermFilter');
-        var sectionLabel = sectionSel && sectionSel.selectedIndex > 0 ? sectionSel.options[sectionSel.selectedIndex].text : 'All Sections';
-        var termLabels = { '1': '1st Term', '2': '2nd Term', '3': '3rd Term' };
-        var termLabel  = termLabels[termSel ? termSel.value : '1'] || 'Term';
-        var gradeLabels = { 'nursery':'Nursery','kindergarten':'Kindergarten','grade1':'Grade 1','grade2':'Grade 2','grade3':'Grade 3','grade4':'Grade 4','grade5':'Grade 5','grade6':'Grade 6' };
-        var gradeLabel = gradeLabels[grade] || grade || 'All Grades';
-
+        var grade = document.getElementById('scheduleGradeFilter').value;
         if (!grade) {
             showCustomAlert('warning', 'Select Grade', 'Please select a grade level first.');
             return;
         }
+        var sectionSel = document.getElementById('scheduleSectionFilter');
+        var termSel    = document.getElementById('scheduleTermFilter');
+        var sectionId  = sectionSel ? sectionSel.value : '';
+        var term       = termSel ? termSel.value : '1';
 
-        var slots    = gradeTimeSlots[grade] || gradeTimeSlots['default'];
-        var days     = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-        var blueLine = '#2471a3', blueTint = '#e8f0fb';
-        var dayColors = {
-            Monday: { line: blueLine, tint: blueTint }, Tuesday: { line: blueLine, tint: blueTint },
-            Wednesday: { line: blueLine, tint: blueTint }, Thursday: { line: blueLine, tint: blueTint },
-            Friday: { line: blueLine, tint: blueTint }
-        };
-        var schedules = _scheduleCache || [];
-        var logoUrl  = '{{ asset("images/logo.png") }}';
-        var printDate = new Date().toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' });
-
-        // Every cell — filled or empty — gets the SAME fixed height so the
-        // printed grid reads as a neat, evenly-boxed timetable regardless of
-        // how much text is in any one slot.
-        var CELL_HEIGHT = '1in';
-
-        // Build table rows
-        var theadHtml = '<tr>'
-            + '<th style="padding:9px 10px;text-align:center;border:1px solid #334155;width:80px;font-size:11px;background:#334155;color:#fff;">TIME</th>';
-        days.forEach(function(d) {
-            var c = dayColors[d];
-            theadHtml += '<th style="padding:9px 10px;text-align:center;border:1px solid ' + c.line + ';font-size:11px;background:' + c.line + ';color:#fff;">' + d.toUpperCase() + '</th>';
-        });
-        theadHtml += '</tr>';
-
-        var tbodyHtml = '';
-        slots.forEach(function(slot, idx) {
-            if (slot.isBreak) {
-                tbodyHtml += '<tr>'
-                    + '<td colspan="6" style="padding:6px 10px;background:#f5f2ea;text-align:center;font-size:10px;font-weight:700;color:#92722a;border:1px solid #ecd9a8;letter-spacing:1.5px;">'
-                    + slot.breakName.toUpperCase()
-                    + '</td></tr>';
-                return;
-            }
-
-            tbodyHtml += '<tr>';
-            tbodyHtml += '<td style="height:' + CELL_HEIGHT + ';box-sizing:border-box;padding:6px 8px;border:1px solid #e2e8f0;font-size:10px;font-weight:700;color:#475569;text-align:center;white-space:nowrap;background:#f8fafc;">' + slot.label + '</td>';
-
-            days.forEach(function(day) {
-                var c = dayColors[day];
-                var entry = schedules.find(function(s) {
-                    return s.day_of_week === day
-                        && (s.start_time || '').substring(0, 5) === slot.start
-                        && (s.end_time || '').substring(0, 5) === slot.end;
-                });
-
-                var tdOpen = '<td style="height:' + CELL_HEIGHT + ';box-sizing:border-box;padding:5px;border:1px solid #e2e8f0;vertical-align:top;overflow:hidden;">';
-
-                if (entry) {
-                    var hasConflict = !!entry.has_conflict;
-                    var lineColor = hasConflict ? '#dc2626' : c.line;
-                    var tintColor = hasConflict ? '#fef2f2' : c.tint;
-                    var subjName = entry.subject ? entry.subject.name : (entry.subject_name || '—');
-                    var subjCode = entry.subject ? (entry.subject.code || '') : '';
-                    var teacher  = entry.teacher ? entry.teacher.name : (entry.teacher_name || '—');
-                    var room     = entry.room || '';
-                    tbodyHtml += tdOpen
-                        + '<div style="background:' + tintColor + ';border-left:3px solid ' + lineColor + ';border-radius:4px;padding:6px 7px;height:100%;box-sizing:border-box;overflow:hidden;">'
-                        + (hasConflict ? '<div style="display:inline-block;font-size:8px;font-weight:800;color:#fff;background:#dc2626;padding:1px 5px;border-radius:8px;margin-bottom:3px;letter-spacing:0.3px;">CONFLICT</div>' : '')
-                        + '<div style="font-size:10.5px;font-weight:700;color:#1e293b;">' + (subjCode ? '<span style="color:' + lineColor + ';">' + subjCode + '</span> — ' : '') + subjName + '</div>'
-                        + '<div style="font-size:9.5px;color:#475569;margin-top:2px;">' + teacher + '</div>'
-                        + (room ? '<div style="font-size:9px;color:#64748b;margin-top:2px;">' + room + '</div>' : '')
-                        + '</div></td>';
-                } else {
-                    tbodyHtml += tdOpen + '</td>';
-                }
-            });
-            tbodyHtml += '</tr>';
-        });
-
-        var html = '<!DOCTYPE html><html><head>'
-            + '<meta charset="UTF-8">'
-            + '<title>Class Schedule — ' + gradeLabel + ' ' + sectionLabel + '</title>'
-            + '<style>'
-            + 'body{font-family:Arial,sans-serif;margin:0;padding:24px;color:#222;font-size:13px;}'
-            + 'table{border-collapse:collapse;width:100%;table-layout:fixed;}'
-            + '.header{text-align:center;border-bottom:3px solid #1a3a6c;padding-bottom:16px;margin-bottom:18px;}'
-            + '.header img{width:80px;height:80px;object-fit:contain;display:block;margin:0 auto 10px;}'
-            + '.school-name{font-size:22px;font-weight:700;color:#1a3a6c;letter-spacing:0.5px;}'
-            + '.school-addr{font-size:12px;color:#555;margin-top:3px;}'
-            + '.doc-title{font-size:13px;font-weight:700;color:#2471a3;margin-top:6px;text-transform:uppercase;letter-spacing:2px;}'
-            + '.divider{width:60px;height:3px;background:#1a3a6c;margin:8px auto 0;border-radius:2px;}'
-            + '.meta{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px;justify-content:center;}'
-            + '.meta-item{background:#f0f4f8;border-radius:6px;padding:5px 14px;text-align:center;}'
-            + '.meta-label{color:#888;font-size:10px;text-transform:uppercase;}'
-            + '.meta-value{font-weight:700;color:#1a3a6c;font-size:12px;}'
-            + '.footer{margin-top:20px;border-top:1px solid #ddd;padding-top:10px;display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;}'
-            + '@media print{body{padding:16px;}}'
-            + '</style></head><body>'
-            + '<div class="header">'
-            + '<img src="' + logoUrl + '" alt="ILC" onerror="this.style.display=\'none\'">'
-            + '<div class="school-name">IEMELIF LEARNING CENTER</div>'
-            + '<div class="school-addr">General Tinio, Nueva Ecija</div>'
-            + '<div class="doc-title">Class Schedule</div>'
-            + '<div class="divider"></div>'
-            + '</div>'
-            + '<div class="meta">'
-            + '<div class="meta-item"><div class="meta-label">Grade Level</div><div class="meta-value">' + gradeLabel + '</div></div>'
-            + '<div class="meta-item"><div class="meta-label">Section</div><div class="meta-value">' + sectionLabel + '</div></div>'
-            + '<div class="meta-item"><div class="meta-label">Term</div><div class="meta-value">' + termLabel + '</div></div>'
-            + '</div>'
-            + '<table><thead>' + theadHtml + '</thead><tbody>' + tbodyHtml + '</tbody></table>'
-            + '<div class="footer">'
-            + '<span>IEMELIF Learning Center &mdash; General Tinio, Nueva Ecija</span>'
-            + '<span>Printed: ' + printDate + '</span>'
-            + '</div>'
-            + '</body></html>';
-
-        var win = window.open('', '_blank', 'width=1000,height=750');
-        win.document.write(html);
-        win.document.close();
-        win.onload = function() { win.focus(); win.print(); };
+        var url = '{{ route("admin.schedules.pdf") }}?grade_level=' + encodeURIComponent(grade) + '&term=' + encodeURIComponent(term);
+        if (sectionId) url += '&section_id=' + encodeURIComponent(sectionId);
+        window.open(url, '_blank');
     }
 
-    // â”€â”€ Export Schedule â”€â”€
+    // ── Export Schedule ──
 
     function csvEscape(value) {
         const s = value === null || value === undefined ? '' : String(value);

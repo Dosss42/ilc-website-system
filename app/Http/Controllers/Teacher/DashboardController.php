@@ -25,6 +25,7 @@ use Illuminate\Support\Str;
 class DashboardController extends Controller
 {
     use ChecksTeacherOwnership;
+    use \App\Support\Traits\BuildsSchoolPdf;
 
     public function index()
     {
@@ -176,6 +177,53 @@ class DashboardController extends Controller
             'adviserSections', 'gradeLabels', 'teacherAssignments',
             'currentSchoolYear', 'draftCount', 'rejectedCount'
         ));
+    }
+
+    // ── My Schedule — PDF (replaces the old window.print() button) ──
+    // Same letterhead/footer system as Finance's reports (pdf.shared.*,
+    // via BuildsSchoolPdf) and the same day/time grid shape+colors the
+    // on-screen "Weekly Timetable" already uses (App\Support\ScheduleGridBuilder).
+    public function downloadSchedulePdf()
+    {
+        $teacher = Auth::user();
+        $currentSchoolYear = $this->getCurrentSchoolYear();
+
+        $nkAdvisorySectionIds = TeacherAssignment::where('teacher_id', $teacher->id)
+            ->where('is_advisory', true)
+            ->whereHas('section', fn($q) => $q->where('is_active', true))
+            ->with('section:id,grade_level')
+            ->get()
+            ->pluck('section')
+            ->filter(fn($s) => $s && Grade::isNurseryKinder($s->grade_level ?? ''))
+            ->pluck('id');
+
+        $schedules = Schedule::where(function ($q) use ($teacher, $nkAdvisorySectionIds) {
+                $q->where('teacher_id', $teacher->id);
+                if ($nkAdvisorySectionIds->isNotEmpty()) {
+                    $q->orWhereIn('section_id', $nkAdvisorySectionIds);
+                }
+            })
+            ->where('is_active', true)
+            // No 'teacher' relation loaded — this is the teacher's OWN
+            // schedule, so the PDF cell doesn't repeat their own name back
+            // to them, matching the on-screen table's own omission of it.
+            ->with(['section:id,name,grade_level', 'subject:id,name,code'])
+            ->orderByRaw("FIELD(day_of_week,'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday')")
+            ->orderBy('start_time')
+            ->get();
+
+        $grid = \App\Support\ScheduleGridBuilder::build($schedules);
+
+        $data = array_merge($this->schoolPdfLetterhead($teacher->name), [
+            'reportTitle'    => 'Class Schedule — ' . $teacher->name,
+            'dateRangeLabel' => 'S.Y. ' . $currentSchoolYear,
+            'timeSlots'      => $grid['timeSlots'],
+            'showDays'       => $grid['showDays'],
+        ]);
+
+        $pdf = $this->schoolPdfOptions(\Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.schedule', $data), $data);
+
+        return $pdf->download('Class-Schedule-' . str_replace(' ', '-', $teacher->name) . '.pdf');
     }
 
     // Section instances passed in here can be two independently-hydrated

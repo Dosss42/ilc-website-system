@@ -417,6 +417,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // SCHEDULE MANAGEMENT
     Route::prefix('schedules')->name('schedules.')->group(function () {
         Route::get('/', [ScheduleController::class, 'index'])->name('index');
+        Route::get('/pdf', [ScheduleController::class, 'downloadSchedulePdf'])->name('pdf');
         Route::post('/', [ScheduleController::class, 'store'])->name('store');
         Route::post('/copy-term', [ScheduleController::class, 'copyTerm'])->name('copy-term');
         Route::get('/{schedule}', [ScheduleController::class, 'show'])->name('show');
@@ -710,6 +711,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin/finance-users')->name('admin
 // ─────────────────────────────────────────
 Route::middleware(['auth', 'teacher', 'maintenance'])->prefix('teacher')->name('teacher.')->group(function () {
     Route::get('/dashboard', [\App\Http\Controllers\Teacher\DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/schedule/pdf', [\App\Http\Controllers\Teacher\DashboardController::class, 'downloadSchedulePdf'])->name('schedule.pdf');
 
     // My Students — grade management
     Route::post('/grades/load-class',  [\App\Http\Controllers\Teacher\DashboardController::class, 'loadClassRecord'])->name('grades.loadClass');
@@ -752,6 +754,7 @@ Route::middleware(['auth', 'teacher', 'maintenance'])->prefix('teacher')->name('
 Route::middleware(['auth', 'student', 'maintenance'])->prefix('student')->name('student.')->group(function () {
     Route::get('/dashboard', [StudentPortalController::class, 'dashboard'])->name('dashboard');
     Route::get('/portal', [StudentPortalController::class, 'dashboard'])->name('portal');
+    Route::get('/schedule/pdf', [StudentPortalController::class, 'downloadSchedulePdf'])->name('schedule.pdf');
     Route::get('/documents', [StudentPortalController::class, 'showDocuments'])->name('documents');
     Route::post('/documents/upload', [StudentPortalController::class, 'uploadDocument'])->name('documents.upload');
     Route::post('/documents/upload-all', [StudentPortalController::class, 'uploadAllDocuments'])->name('documents.upload.all');

@@ -23,6 +23,74 @@ use Illuminate\Support\Str;
 
 class StudentPortalController extends Controller
 {
+    use \App\Support\Traits\BuildsSchoolPdf;
+
+    // ── My Schedule — PDF (replaces the old window.open()+window.print()
+    // trick in downloadSchedulePDF()). Same section-resolution logic as
+    // Api\StudentController::getSchedule() (the AJAX endpoint the on-screen
+    // schedule tab uses), same letterhead/footer system as Finance's
+    // reports, and the same day/time grid shape+colors every schedule
+    // screen in this app shares via App\Support\ScheduleGridBuilder.
+    public function downloadSchedulePdf(Request $request)
+    {
+        $user       = Auth::user();
+        $schoolYear = $request->query('school_year');
+        $term       = (int) $request->query('term', 1);
+
+        $enrollment = $schoolYear
+            ? ($user->enrollments()->where('school_year', $schoolYear)->latest('id')->first()
+               ?? $user->latestEnrollment)
+            : $user->latestEnrollment;
+
+        $gradeLevel = $enrollment ? ($enrollment->grade_level ?? $enrollment->student_data['grade_level'] ?? null) : null;
+        $isCurrentEnrollment = $enrollment && $user->latestEnrollment && $enrollment->id === $user->latestEnrollment->id;
+        $sectionName = ($isCurrentEnrollment ? $user->current_section->name ?? null : null)
+            ?? ($enrollment ? $enrollment->section : null);
+        $currentSY = $enrollment ? $enrollment->school_year : null;
+
+        $section = null;
+        if ($sectionName) {
+            $section = Section::where('name', $sectionName)
+                ->where('is_active', true)
+                ->when($currentSY, fn($q) => $q->where('school_year', $currentSY))
+                ->first();
+        }
+        if (!$section) {
+            $section = Section::whereHas('students', fn($q) => $q->where('user_id', $user->id))
+                ->where('is_active', true)->first();
+        }
+
+        $schedules = $section
+            ? Schedule::where('section_id', $section->id)
+                ->where('is_active', true)
+                ->where('term', $term)
+                // No 'section' relation loaded — this is the student's OWN
+                // section, so the PDF cell doesn't repeat it back to them.
+                ->with(['subject:id,name,code', 'teacher:id,name'])
+                ->orderByRaw("FIELD(day_of_week,'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday')")
+                ->orderBy('start_time')
+                ->get()
+            : collect();
+
+        $grid = \App\Support\ScheduleGridBuilder::build($schedules);
+
+        $glMap = ['nursery'=>'Nursery','kindergarten'=>'Kindergarten','grade1'=>'Grade 1',
+                  'grade2'=>'Grade 2','grade3'=>'Grade 3','grade4'=>'Grade 4',
+                  'grade5'=>'Grade 5','grade6'=>'Grade 6'];
+        $gradeLabel = $glMap[$gradeLevel] ?? ($gradeLevel ?? '—');
+
+        $data = array_merge($this->schoolPdfLetterhead($user->name), [
+            'reportTitle'    => 'Class Schedule — ' . $user->name,
+            'dateRangeLabel' => $gradeLabel . ' — ' . ($section->name ?? '—') . ' · Term ' . $term . ' · S.Y. ' . ($currentSY ?? '—'),
+            'timeSlots'      => $grid['timeSlots'],
+            'showDays'       => $grid['showDays'],
+        ]);
+
+        $pdf = $this->schoolPdfOptions(\Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.schedule', $data), $data);
+
+        return $pdf->download('Class-Schedule-' . str_replace(' ', '-', $user->name) . '.pdf');
+    }
+
     /**
      * Show student portal dashboard
      */

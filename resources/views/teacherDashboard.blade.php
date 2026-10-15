@@ -615,6 +615,11 @@
     <button class="sidebar-link" id="nav-schedule" onclick="showSection('schedule')">
         <i class="bi bi-calendar3"></i> My Schedule
     </button>
+    {{-- Communication group (Announcements + Parent-Teacher Conf.) hidden
+         for now, per request — not needed yet. The underlying sections,
+         routes and controller methods are untouched; re-enable by removing
+         this comment wrapper. --}}
+    {{--
     <div class="sidebar-section-lbl">Communication</div>
     <button class="sidebar-link" id="nav-announcements" onclick="showSection('announcements'); loadAnnouncements();">
         <i class="bi bi-megaphone-fill"></i> Announcements
@@ -622,6 +627,7 @@
     <button class="sidebar-link" id="nav-ptc" onclick="showSection('ptc'); loadPtcMeetings();">
         <i class="bi bi-people-fill"></i> Parent-Teacher Conf.
     </button>
+    --}}
 
     <div class="sidebar-bottom">
         <button class="sidebar-link" id="nav-settings" onclick="showSection('settings')">
@@ -842,9 +848,9 @@
                 </h1>
                 <p>S.Y. {{ $currentSchoolYear }} &nbsp;·&nbsp; Weekly teaching timetable</p>
             </div>
-            <button onclick="window.print()" class="btn-dash btn-secondary" style="padding:9px 16px;">
-                <i class="bi bi-printer-fill"></i> Print
-            </button>
+            <a href="{{ route('teacher.schedule.pdf') }}" class="btn-dash btn-secondary" style="padding:9px 16px;text-decoration:none;">
+                <i class="bi bi-file-earmark-pdf-fill"></i> Download PDF
+            </a>
         </div>
 
         <!-- Stats Row -->
@@ -900,7 +906,7 @@
 
                     <div class="mobile-scroll-hint" style="padding:10px 20px 0;color:var(--muted);"><i class="bi bi-arrow-left-right"></i> Swipe to see more columns</div>
                     <div style="overflow-x:auto;">
-                        <table style="width:100%;border-collapse:collapse;min-width:480px;">
+                        <table id="teacherScheduleTable" style="width:100%;border-collapse:collapse;min-width:480px;">
                             <thead>
                                 <tr>
                                     <th style="background:#f8fafc;padding:10px 14px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid var(--border);white-space:nowrap;min-width:110px;">

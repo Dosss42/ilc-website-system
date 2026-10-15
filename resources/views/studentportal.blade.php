@@ -1795,9 +1795,9 @@
                         </div>
                     </div>
                     @if($schedules->count() > 0)
-                        <button onclick="downloadSchedulePDF()" style="display:inline-flex;align-items:center;gap:7px;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;">
+                        <a id="scheduleDownloadLink" href="{{ route('student.schedule.pdf', ['term' => 1]) }}" style="display:inline-flex;align-items:center;gap:7px;background:var(--blue);color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;">
                             <i class="bi bi-file-earmark-pdf-fill"></i> Download PDF
-                        </button>
+                        </a>
                     @else
                         <button disabled style="display:inline-flex;align-items:center;gap:7px;background:#e5e7eb;color:#9ca3af;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:not-allowed;">
                             <i class="bi bi-file-earmark-pdf-fill"></i> Download PDF
@@ -1889,6 +1889,13 @@
 
                 var sy       = (document.getElementById('schedSYFilter') || {}).value || '';
                 var termLabel = 'Term ' + _currentSchedTerm;
+
+                var pdfLink = document.getElementById('scheduleDownloadLink');
+                if (pdfLink) {
+                    var pdfUrl = '{{ route("student.schedule.pdf") }}?term=' + _currentSchedTerm;
+                    if (sy) pdfUrl += '&school_year=' + encodeURIComponent(sy);
+                    pdfLink.href = pdfUrl;
+                }
 
                 // Update pill labels
                 var termEl = document.getElementById('schedTermLabel');
@@ -2034,145 +2041,6 @@
                     });
                 });
                 tbody.innerHTML = html;
-            }
-
-            function downloadSchedulePDF() {
-                var logoUrl     = '{{ asset("images/logo.png") }}';
-                var studentName = '{{ addslashes($studentName) }}';
-
-                // Use AJAX-loaded data when available, fall back to Blade-rendered data
-                var src = null;
-                if (_loadedScheduleData && (_loadedScheduleData.schedule || []).length) {
-                    src = _loadedScheduleData;
-                } else if (_scheduleData && _scheduleData.rows && _scheduleData.rows.length) {
-                    // Build compatible structure from Blade data
-                    var byDay = {};
-                    _scheduleData.rows.forEach(function(r) {
-                        if (!byDay[r.day]) byDay[r.day] = [];
-                        byDay[r.day].push({ start_time: r.start, end_time: r.end, subject_name: r.subject, subject_code: r.code, room: r.room, teacher: r.teacher });
-                    });
-                    src = {
-                        grade_label: _scheduleData.grade,
-                        section: _scheduleData.section,
-                        school_year: _scheduleData.schoolYear,
-                        schedule: Object.keys(byDay).map(function(d) { return { day: d, classes: byDay[d] }; })
-                    };
-                }
-                if (!src) { showToast('No schedule data to export.', 'warning'); return; }
-
-                // Flatten all classes
-                var dayOrder  = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
-                var allCls    = [];
-                src.schedule.forEach(function(dg) {
-                    (dg.classes || []).forEach(function(cls) {
-                        allCls.push({ day: dg.day, start: cls.start_time, end: cls.end_time,
-                            subject: cls.subject_name, code: cls.subject_code,
-                            room: cls.room || '—', teacher: cls.teacher || '—' });
-                    });
-                });
-
-                // Unique time slots sorted by start
-                var seenSlots = {}, timeSlots = [];
-                allCls.forEach(function(c) {
-                    var k = c.start + '|' + c.end;
-                    if (!seenSlots[k]) { seenSlots[k] = true; timeSlots.push({ start: c.start, end: c.end }); }
-                });
-                timeSlots.sort(function(a, b) { return a.start.localeCompare(b.start); });
-
-                // Days present (in calendar order)
-                var daysPresent = dayOrder.filter(function(day) {
-                    return src.schedule.some(function(dg) { return dg.day === day && (dg.classes || []).length; });
-                });
-
-                // Grid lookup: timeKey → day → class
-                var grid = {};
-                allCls.forEach(function(c) {
-                    var k = c.start + '|' + c.end;
-                    if (!grid[k]) grid[k] = {};
-                    grid[k][c.day] = c;
-                });
-
-                // Day header colors
-                var dayBg = { Monday:'#1565c0', Tuesday:'#7b1fa2', Wednesday:'#2e7d32', Thursday:'#f57f17', Friday:'#c62828' };
-
-                // Table header
-                var colW   = Math.floor(72 / Math.max(daysPresent.length, 1));
-                var hdrCols = '<th style="width:10%;padding:9px 10px;text-align:left;background:#1a3a6c;color:#fff;font-size:11px;border:1px solid #375a8c;">Time</th>';
-                daysPresent.forEach(function(day) {
-                    var bg = dayBg[day] || '#1a3a6c';
-                    hdrCols += '<th style="width:' + colW + '%;padding:9px 10px;text-align:center;background:' + bg + ';color:#fff;font-size:11px;border:1px solid rgba(255,255,255,0.2);">' + day + '</th>';
-                });
-
-                // Table rows
-                var rowsHtml = '';
-                timeSlots.forEach(function(slot, idx) {
-                    var k  = slot.start + '|' + slot.end;
-                    var bg = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
-                    rowsHtml += '<tr style="background:' + bg + ';">';
-                    rowsHtml += '<td style="padding:8px 10px;font-size:11px;font-weight:700;color:#374151;white-space:nowrap;border:1px solid #e5e7eb;border-right:2px solid #cbd5e1;text-align:center;">'
-                        + fmtTime(slot.start) + '<br><span style="color:#9ca3af;font-weight:400;">–</span><br>' + fmtTime(slot.end) + '</td>';
-                    daysPresent.forEach(function(day) {
-                        var cls = (grid[k] || {})[day];
-                        if (cls) {
-                            var hdr = dayBg[day] || '#1a3a6c';
-                            rowsHtml += '<td style="padding:7px 8px;text-align:center;border:1px solid #e5e7eb;vertical-align:middle;">'
-                                + '<div style="font-weight:700;font-size:11px;color:#1a3a6c;">' + cls.subject + '</div>'
-                                + (cls.code ? '<div style="font-size:9px;color:#6b7280;margin-top:1px;">' + cls.code + '</div>' : '')
-                                + '<div style="font-size:9px;color:#6b7280;margin-top:3px;">📍 ' + cls.room + '</div>'
-                                + '<div style="font-size:9px;color:#374151;margin-top:1px;">👤 ' + cls.teacher + '</div>'
-                                + '</td>';
-                        } else {
-                            rowsHtml += '<td style="padding:8px;text-align:center;border:1px solid #e5e7eb;background:#fafafa;color:#d1d5db;font-size:11px;">—</td>';
-                        }
-                    });
-                    rowsHtml += '</tr>';
-                });
-
-                var term = 'Term ' + _currentSchedTerm;
-                var html = '<!DOCTYPE html><html><head>'
-                    + '<meta charset="UTF-8">'
-                    + '<title>Class Schedule – ' + studentName + '</title>'
-                    + '<style>'
-                    + 'body{font-family:Arial,sans-serif;margin:0;padding:24px;color:#222;font-size:13px;}'
-                    + '.header{text-align:center;border-bottom:3px solid #1a3a6c;padding-bottom:14px;margin-bottom:16px;}'
-                    + '.header img{width:68px;height:68px;object-fit:contain;display:block;margin:0 auto 8px;}'
-                    + '.school-name{font-size:20px;font-weight:700;color:#1a3a6c;}'
-                    + '.school-addr{font-size:11px;color:#555;margin-top:2px;}'
-                    + '.doc-title{font-size:12px;font-weight:700;color:#2471a3;margin-top:5px;text-transform:uppercase;letter-spacing:2px;}'
-                    + '.divider{width:50px;height:3px;background:#1a3a6c;margin:6px auto 0;border-radius:2px;}'
-                    + '.meta{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;justify-content:center;}'
-                    + '.meta-item{background:#f0f4f8;border-radius:6px;padding:5px 12px;text-align:center;}'
-                    + '.meta-label{color:#888;font-size:10px;text-transform:uppercase;letter-spacing:0.4px;}'
-                    + '.meta-value{font-weight:700;color:#1a3a6c;font-size:12px;}'
-                    + 'table{width:100%;border-collapse:collapse;table-layout:fixed;}'
-                    + '.footer{margin-top:18px;border-top:1px solid #ddd;padding-top:8px;font-size:10px;color:#aaa;display:flex;justify-content:space-between;}'
-                    + '@media print{body{margin:0;padding:16px;}}'
-                    + '</style></head><body>'
-                    + '<div class="header">'
-                    + '<img src="' + logoUrl + '" alt="ILC Logo" onerror="this.style.display=\'none\'">'
-                    + '<div class="school-name">IEMELIF LEARNING CENTER</div>'
-                    + '<div class="school-addr">General Tinio, Nueva Ecija</div>'
-                    + '<div class="doc-title">Class Schedule</div>'
-                    + '<div class="divider"></div>'
-                    + '</div>'
-                    + '<div class="meta">'
-                    + '<div class="meta-item"><div class="meta-label">Student</div><div class="meta-value">' + studentName + '</div></div>'
-                    + '<div class="meta-item"><div class="meta-label">Grade Level</div><div class="meta-value">' + (src.grade_label || '') + '</div></div>'
-                    + '<div class="meta-item"><div class="meta-label">Section</div><div class="meta-value">' + (src.section || '') + '</div></div>'
-                    + '<div class="meta-item"><div class="meta-label">School Year</div><div class="meta-value">S.Y. ' + (src.school_year || '') + '</div></div>'
-                    + '<div class="meta-item"><div class="meta-label">Term</div><div class="meta-value">' + term + '</div></div>'
-                    + '</div>'
-                    + '<table><thead><tr>' + hdrCols + '</tr></thead><tbody>' + rowsHtml + '</tbody></table>'
-                    + '<div class="footer">'
-                    + '<span>IEMELIF Learning Center — Official Class Schedule</span>'
-                    + '<span>Printed: ' + new Date().toLocaleDateString('en-PH', {year:'numeric',month:'long',day:'numeric'}) + '</span>'
-                    + '</div>'
-                    + '</body></html>';
-
-                var win = window.open('', '_blank', 'width=960,height=720');
-                win.document.write(html);
-                win.document.close();
-                win.onload = function() { win.focus(); win.print(); };
             }
             </script>
 

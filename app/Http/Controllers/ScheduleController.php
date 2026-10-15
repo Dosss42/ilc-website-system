@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 
 class ScheduleController extends Controller
 {
+    use \App\Support\Traits\BuildsSchoolPdf;
+
     public function index(Request $request)
     {
         $query = Schedule::with(['section', 'subject', 'teacher']);
@@ -60,6 +62,54 @@ class ScheduleController extends Controller
         $schedules = $query->get();
         $this->flagConflicts($schedules);
         return response()->json(['schedules' => $schedules]);
+    }
+
+    // ── Schedule — PDF (replaces the old window.open()+window.print() trick
+    // in downloadScheduleAdminPDF()). Same filters as index() above, same
+    // letterhead/footer system as Finance's reports, and the same day/time
+    // grid shape+colors every schedule screen in this app shares via
+    // App\Support\ScheduleGridBuilder.
+    public function downloadSchedulePdf(Request $request)
+    {
+        $query = Schedule::with(['section:id,name,grade_level', 'subject:id,name,code', 'teacher:id,name']);
+
+        if ($request->filled('section_id')) {
+            $query->where('section_id', $request->section_id);
+        }
+        if ($request->filled('grade_level')) {
+            $query->whereHas('section', fn($q) => $q->where('grade_level', $request->grade_level));
+        }
+        if ($request->filled('term')) {
+            $query->where('term', $request->term);
+        }
+
+        $schedules = $query->where('is_active', true)
+            ->orderByRaw("FIELD(day_of_week,'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday')")
+            ->orderBy('start_time')
+            ->get();
+
+        $grid = \App\Support\ScheduleGridBuilder::build($schedules);
+
+        $glMap = ['nursery'=>'Nursery','kindergarten'=>'Kindergarten','grade1'=>'Grade 1',
+                  'grade2'=>'Grade 2','grade3'=>'Grade 3','grade4'=>'Grade 4',
+                  'grade5'=>'Grade 5','grade6'=>'Grade 6'];
+        $gradeLabel = $request->filled('grade_level') ? ($glMap[$request->grade_level] ?? $request->grade_level) : 'All Grades';
+        $sectionLabel = $request->filled('section_id')
+            ? (\App\Models\Section::find($request->section_id)->name ?? 'Section')
+            : 'All Sections';
+        $term = (int) $request->input('term', 1);
+        $schoolYear = \App\Models\Setting::get('current_school_year', now()->year . '-' . (now()->year + 1));
+
+        $data = array_merge($this->schoolPdfLetterhead(\Illuminate\Support\Facades\Auth::user()->name ?? 'Admin'), [
+            'reportTitle'    => 'Class Schedule — ' . $gradeLabel,
+            'dateRangeLabel' => $gradeLabel . ' — ' . $sectionLabel . ' · Term ' . $term . ' · S.Y. ' . $schoolYear,
+            'timeSlots'      => $grid['timeSlots'],
+            'showDays'       => $grid['showDays'],
+        ]);
+
+        $pdf = $this->schoolPdfOptions(\Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.schedule', $data), $data);
+
+        return $pdf->download('Class-Schedule-' . str_replace(' ', '-', $gradeLabel) . '.pdf');
     }
 
     public function store(Request $request)
