@@ -1313,11 +1313,20 @@
                         </div>
                         <div id="onlineMethodRow" style="display:none;margin-top:10px;">
                             <div style="display:flex;gap:8px;">
-                                @foreach([['gcash','bi-phone-fill','GCash'],['maya','bi-wallet2','Maya']] as [$m,$icon,$label])
-                                <button type="button" class="online-method-opt pp-wallet-chip" data-method="{{ $m }}" onclick="selectOnlineMethod('{{ $m }}')">
-                                    <i class="bi {{ $icon }} me-1"></i>{{ $label }}
+                                <button type="button" class="online-method-opt pp-wallet-chip" data-method="gcash" onclick="selectOnlineMethod('gcash')">
+                                    <i class="bi bi-phone-fill me-1"></i>GCash
                                 </button>
-                                @endforeach
+                                {{-- Maya — locked, not wired to Xendit yet. Kept visible (not
+                                     removed) so it's clear the system was built to support more
+                                     channels, just not live; selectOnlineMethod('maya') is never
+                                     called, and generateXenditLink's own validation would also
+                                     reject 'maya' server-side even if this were bypassed. --}}
+                                <button type="button" class="online-method-opt pp-wallet-chip" disabled
+                                    title="Maya isn't available yet — use GCash or Cash."
+                                    style="opacity:.45;cursor:not-allowed;position:relative;">
+                                    <i class="bi bi-wallet2 me-1"></i>Maya
+                                    <span style="display:block;font-size:9px;font-weight:700;letter-spacing:.3px;margin-top:1px;">COMING SOON</span>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -3370,7 +3379,7 @@
         var name   = document.getElementById('selectedStudentNameHidden').value;
         var box    = document.getElementById('txnSummary');
         if (!amount || amount <= 0 || !name) { box.style.display = 'none'; return; }
-        var methodLabels = { cash:'Cash', gcash:'GCash', maya:'Maya', grabpay:'GrabPay', bank:'Bank Transfer', otc:'Over-the-Counter' };
+        var methodLabels = { cash:'Cash', gcash:'GCash' };
         document.getElementById('txnStudent').textContent = name;
         document.getElementById('txnType').textContent    = type || 'Payment';
         document.getElementById('txnMethod').textContent  = methodLabels[method] || (method ? method : 'Not selected');
@@ -3390,7 +3399,7 @@
         if (!type)   { showToast('Please select a payment type.', 'warning'); return; }
 
         var isXendit = ['gcash','maya'].includes(method);
-        var methodLabels = { cash:'Cash', gcash:'GCash', maya:'Maya', grabpay:'GrabPay', bank:'Bank Transfer', otc:'Over-the-Counter' };
+        var methodLabels = { cash:'Cash', gcash:'GCash' };
         var name = document.getElementById('selectedStudentNameHidden').value;
         var amountFmt = '₱' + Number(amount).toLocaleString('en-PH',{minimumFractionDigits:2});
         var summary = name + ' — ' + amountFmt + ' (' + type + ', ' + (methodLabels[method] || method) + ')';

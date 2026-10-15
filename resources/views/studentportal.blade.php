@@ -2998,7 +2998,7 @@
                                     </div>
                                     <div class="pay-method-info">
                                         <strong>Pay Online</strong>
-                                        <span>GCash or Maya via secure link</span>
+                                        <span>GCash via secure link</span>
                                     </div>
                                     <i class="bi bi-chevron-right text-muted" style="font-size:14px;"></i>
                                 </div>
@@ -3108,13 +3108,17 @@
                                         <div style="font-size:12px;font-weight:700;color:#1e293b;">GCash</div>
                                         <div style="font-size:10px;color:#94a3b8;margin-top:2px;">e-Wallet</div>
                                     </div>
-                                    <div class="xmethod-card" data-method="maya" onclick="selectXenditMethod('maya')"
-                                        style="border:2px solid #e8ecf1;border-radius:14px;padding:14px 8px;text-align:center;cursor:pointer;transition:all .2s;background:#fff;">
+                                    {{-- Maya — locked, not wired to Xendit yet. Kept visible rather
+                                         than removed; selectXenditMethod('maya') is never wired up,
+                                         and generateXenditLink's own validation rejects 'maya'
+                                         server-side too. --}}
+                                    <div class="xmethod-card" data-method="maya" title="Maya isn't available yet — use GCash or Cash."
+                                        style="border:2px solid #e8ecf1;border-radius:14px;padding:14px 8px;text-align:center;cursor:not-allowed;background:#f8fafc;opacity:.5;position:relative;">
                                         <div style="width:40px;height:40px;border-radius:11px;background:linear-gradient(135deg,#00b09b,#00d2a0);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;">
                                             <i class="bi bi-wallet2" style="font-size:18px;color:#fff;"></i>
                                         </div>
                                         <div style="font-size:12px;font-weight:700;color:#1e293b;">Maya</div>
-                                        <div style="font-size:10px;color:#94a3b8;margin-top:2px;">e-Wallet</div>
+                                        <div style="font-size:9px;font-weight:700;color:#94a3b8;margin-top:2px;letter-spacing:.3px;">COMING SOON</div>
                                     </div>
                                 </div>
                             </div>
@@ -3660,15 +3664,23 @@
                             </div>
                             <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;opacity:.7;margin-bottom:8px;">Select Method</div>
                             <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;max-width:200px;" id="inst-xendit-method-grid">
-                                @foreach([['gcash','bi-phone-fill','#0070ff','GCash'],['maya','bi-wallet2','#00b09b','Maya']] as [$m,$icon,$color,$label])
-                                <div class="inst-xmethod-card" data-method="{{ $m }}" onclick="selectInstXenditMethod('{{ $m }}')"
+                                <div class="inst-xmethod-card" data-method="gcash" onclick="selectInstXenditMethod('gcash')"
                                     style="border:2px solid rgba(255,255,255,0.2);border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;transition:all .2s;background:rgba(255,255,255,0.1);">
-                                    <div style="width:32px;height:32px;border-radius:8px;background:{{ $color }};margin:0 auto 5px;display:flex;align-items:center;justify-content:center;">
-                                        <i class="bi {{ $icon }}" style="font-size:15px;color:#fff;"></i>
+                                    <div style="width:32px;height:32px;border-radius:8px;background:#0070ff;margin:0 auto 5px;display:flex;align-items:center;justify-content:center;">
+                                        <i class="bi bi-phone-fill" style="font-size:15px;color:#fff;"></i>
                                     </div>
-                                    <div style="font-size:10px;font-weight:700;color:#fff;">{{ $label }}</div>
+                                    <div style="font-size:10px;font-weight:700;color:#fff;">GCash</div>
                                 </div>
-                                @endforeach
+                                {{-- Maya — locked, not wired to Xendit yet (see the main
+                                     payment-method grid above for the full explanation). --}}
+                                <div class="inst-xmethod-card" data-method="maya" title="Maya isn't available yet — use GCash or Cash."
+                                    style="border:2px solid rgba(255,255,255,0.2);border-radius:10px;padding:10px 4px;text-align:center;cursor:not-allowed;background:rgba(255,255,255,0.1);opacity:.45;">
+                                    <div style="width:32px;height:32px;border-radius:8px;background:#00b09b;margin:0 auto 5px;display:flex;align-items:center;justify-content:center;">
+                                        <i class="bi bi-wallet2" style="font-size:15px;color:#fff;"></i>
+                                    </div>
+                                    <div style="font-size:10px;font-weight:700;color:#fff;">Maya</div>
+                                    <div style="font-size:7.5px;font-weight:700;color:#fff;opacity:.7;letter-spacing:.2px;">SOON</div>
+                                </div>
                             </div>
                         </div>
                         <div id="inst-xendit-error" style="display:none;background:#fef2f2;border:1px solid #fca5a5;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px;color:#dc2626;"></div>
@@ -4894,7 +4906,7 @@
             if (cashPanel)   cashPanel.style.display   = 'none';
             if (xenditPanel) xenditPanel.style.display = 'block';
             if (methodLabel) methodLabel.textContent = 'Generate a secure online payment link';
-            if (methodSub)   methodSub.textContent   = 'Pay via GCash or Maya';
+            if (methodSub)   methodSub.textContent   = 'Pay via GCash';
         }
     }
 

@@ -26,7 +26,7 @@ class Enrollment extends Model
         'payment_type', // full, installment
         'payment_option', // A, B, C, D
         'payment_amount',
-        'payment_method', // gcash, cash, bank_transfer
+        'payment_method', // gcash, cash — maya/bank_transfer are locked, not accepted
         'payment_reference',
         'payment_updated_at',
         'payment_due_date',

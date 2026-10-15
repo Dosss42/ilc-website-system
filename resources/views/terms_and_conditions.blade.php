@@ -170,8 +170,8 @@
         <ul>
             <li>Cash (at the school's finance office)</li>
             <li>GCash</li>
-            <li>Bank transfer (details provided upon request)</li>
         </ul>
+        <p>Maya and bank transfer are not currently available.</p>
 
         <h3>5.2 Payment Deadlines and Late Fees</h3>
         <p>For students under an installment payment plan, each monthly installment is due on the date shown in the student's Payment Schedule, visible at all times in the Student Portal. If a payment is not received by the due date, the following applies automatically:</p>

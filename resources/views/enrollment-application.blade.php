@@ -2062,8 +2062,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 <ul>
                     <li>Cash (at the school's finance office)</li>
                     <li>GCash</li>
-                    <li>Bank transfer (details provided upon request)</li>
                 </ul>
+                <p>Maya and bank transfer are not currently available.</p>
                 <p><strong>5.2 Payment Deadlines and Late Fees</strong><br>For students under an installment payment plan, each monthly installment is due on the date shown in the student's Payment Schedule, visible at all times in the Student Portal. If a payment is not received by the due date, the following applies automatically:</p>
                 <ul>
                     <li><strong>1 week</strong> past the due date — a warning notice is sent by email.</li>

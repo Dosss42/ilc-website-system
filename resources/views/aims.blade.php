@@ -431,7 +431,7 @@
                     ['Who can use AIMS?', 'AIMS is available to all enrolled students, teaching staff, school administrators, finance officers, and cashiers of IEMELIF Learning Center.'],
                     ['How do I get my AIMS account?', 'Student accounts are created automatically after a successful enrollment application. Teacher and staff accounts are created by the school administrator.'],
                     ['I forgot my password. What do I do?', 'Contact the school office or your administrator to request a password reset. You may also use the "Forgot Password" option on the login page if available.'],
-                    ['Can I pay my tuition through AIMS?', 'Yes! Students can generate Xendit online payment links (GCash, Maya, bank transfer) directly from their AIMS payment portal.'],
+                    ['Can I pay my tuition through AIMS?', 'Yes! Students can pay via Cash or generate a GCash payment link directly from their AIMS payment portal. Maya and bank transfer are not currently available.'],
                     ['Is AIMS accessible on mobile?', 'Yes. AIMS is fully responsive and works on smartphones, tablets, and desktop computers through any modern web browser.'],
                 ] as [$q, $a])
                 <div class="faq-item" onclick="this.classList.toggle('open')">

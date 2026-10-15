@@ -336,7 +336,8 @@
                                 <option value="">Select Method</option>
                                 <option value="gcash">GCash</option>
                                 <option value="cash">Cash</option>
-                                <option value="bank_transfer">Bank Transfer</option>
+                                <option value="maya" disabled>Maya (Coming Soon)</option>
+                                <option value="bank_transfer" disabled>Bank Transfer (Not Available)</option>
                             </select>
                         </div>
                         <div class="mb-3">

@@ -797,8 +797,12 @@ class CashierController extends Controller
             'enrollment_id'  => 'required|exists:enrollments,id',
             'amount'         => 'required|numeric|min:1',
             'payment_type'   => 'required|string',
-            // GrabPay / bank transfer / OTC removed — out of scope for this system.
-            'payment_method' => 'required|string|in:gcash,maya',
+            // GrabPay / bank transfer / OTC removed — out of scope for this
+            // system. Maya is locked (UI shows it as "coming soon" but it's
+            // not wired to Xendit) — rejecting it here too means a direct
+            // API call can't bypass the disabled button and actually
+            // generate a Maya link.
+            'payment_method' => 'required|string|in:gcash',
             'student_name'   => 'required|string',
             'student_email'  => 'nullable|email',
         ]);
@@ -1006,10 +1010,13 @@ class CashierController extends Controller
 
     private function xenditMethodsFor(string $method): array
     {
-        // GrabPay / bank transfer / OTC removed — out of scope for this system.
+        // GrabPay / bank transfer / OTC removed — out of scope for this
+        // system. Maya is locked (not wired up yet, see generateXenditLink's
+        // validation above, which already rejects it before this is reached)
+        // — no case for it here on purpose, so an unexpected value falls
+        // through to the empty default rather than resolving to PAYMAYA.
         return match ($method) {
             'gcash' => ['GCASH'],
-            'maya'  => ['PAYMAYA'],
             default => [],
         };
     }

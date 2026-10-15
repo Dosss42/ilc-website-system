@@ -179,7 +179,6 @@
                 <ul style="margin:0; padding-left:20px;">
                     <li><strong>Cash</strong> — Pay directly at the school registrar's office</li>
                     <li><strong>GCash</strong> — Send to the official school GCash number</li>
-                    <li><strong>Bank Transfer</strong> — Deposit to the school's bank account</li>
                 </ul>
             </div>
 

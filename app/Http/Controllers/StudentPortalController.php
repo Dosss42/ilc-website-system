@@ -1148,8 +1148,11 @@ class StudentPortalController extends Controller
         $request->validate([
             'enrollment_id'     => 'required|exists:enrollments,id',
             'amount'            => 'required|numeric|min:1',
-            // GrabPay / bank transfer / OTC removed — out of scope for this system.
-            'payment_method'    => 'required|string|in:gcash,maya',
+            // GrabPay / bank transfer / OTC removed — out of scope for this
+            // system. Maya is locked (UI shows it as "coming soon" but it's
+            // not wired to Xendit) — rejected here too so a direct API call
+            // can't bypass the disabled card and actually generate a link.
+            'payment_method'    => 'required|string|in:gcash',
             'payment_type'      => 'required|string',
             'payment_option'    => 'nullable|in:A,B,C,D',
             'total_fee'         => 'nullable|numeric|min:0',
@@ -1248,10 +1251,11 @@ class StudentPortalController extends Controller
 
         $externalId = 'STU-' . $user->id . '-' . $enrollment->id . '-' . time();
 
-        // GrabPay / bank transfer / OTC removed — out of scope for this system.
+        // GrabPay / bank transfer / OTC removed — out of scope for this
+        // system. Maya is locked — no case for it here on purpose (the
+        // validation above already rejects it before this is reached).
         $allowedMethods = match ($request->payment_method) {
             'gcash' => ['GCASH'],
-            'maya'  => ['PAYMAYA'],
             default => [],
         };
 

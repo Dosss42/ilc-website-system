@@ -322,7 +322,7 @@
                         <td colspan="9" style="text-align:center;color:var(--muted);padding:60px;">
                             <i class="bi bi-credit-card-2-front" style="font-size:48px;display:block;margin-bottom:12px;opacity:0.2;"></i>
                             <div style="font-size:15px;font-weight:600;margin-bottom:4px;">No Xendit Transactions Yet</div>
-                            <div style="font-size:12px;">Online payments via GCash, Maya, GrabPay will appear here once processed.</div>
+                            <div style="font-size:12px;">Online payments via GCash will appear here once processed.</div>
                         </td>
                     </tr>
                     @endforelse

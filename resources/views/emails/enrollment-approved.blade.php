@@ -165,7 +165,7 @@
                 <ol>
                     <li>Log in to your student portal using the credentials above</li>
                     <li>Complete your profile information</li>
-                    <li>Pay the enrollment fees (GCash, Cash, or Bank Transfer)</li>
+                    <li>Pay the enrollment fees (GCash or Cash)</li>
                     <li>Submit required documents to the school office</li>
                     <li>Wait for section assignment and schedule</li>
                 </ol>
