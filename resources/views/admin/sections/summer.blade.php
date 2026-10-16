@@ -53,7 +53,7 @@
                 <select id="summer-sy-filter" onchange="loadSummerClasses()">
                     <option value="">All School Years</option>
                     @php
-                        $currentSY = now()->month >= 6 ? now()->year : now()->year - 1;
+                        $currentSY = (int) substr(\App\Models\Setting::getCurrentSchoolYear(), 0, 4);
                         for ($y = $currentSY + 1; $y >= 1994; $y--) {
                             $sy = $y . '-' . ($y + 1);
                             echo "<option value=\"$sy\">$sy</option>";

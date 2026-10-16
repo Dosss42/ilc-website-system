@@ -1487,7 +1487,7 @@
                 ->toArray();
 
             $currentSY = $enrollment->school_year ?? '';
-            $baseY = $currentSY ? (int) explode('-', $currentSY)[0] : (now()->month >= 6 ? now()->year : now()->year - 1);
+            $baseY = $currentSY ? (int) explode('-', $currentSY)[0] : (int) substr(\App\Models\Setting::getCurrentSchoolYear(), 0, 4);
 
             $futureYears = [];
             for ($fy = $baseY + 1; $fy <= $baseY + 3; $fy++) {

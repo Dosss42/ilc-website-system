@@ -260,10 +260,13 @@ class DashboardController extends Controller
 
     private function getCurrentSchoolYear(): string
     {
-        $latest = Section::where('is_active', true)->orderByDesc('school_year')->value('school_year');
-        if ($latest) return $latest;
-        $year = now()->month >= 6 ? now()->year : now()->year - 1;
-        return $year . '-' . ($year + 1);
+        // Was: check the latest active Section first, falling back straight
+        // to today's date — skipping the admin-configured current_school_year
+        // setting entirely. Setting::getCurrentSchoolYear() already checks
+        // the setting first (then latest active Section, then date), same
+        // as every other controller now delegates to — this just stopped
+        // keeping a second, divergent copy of that priority order.
+        return \App\Models\Setting::getCurrentSchoolYear();
     }
 
     // teacherOwnsSection() / teacherOwnsSubjectInSection() now live in

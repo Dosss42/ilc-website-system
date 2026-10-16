@@ -171,7 +171,7 @@
                             <div class="col-md-3">
                                 <label class="form-lbl">Enrollment Target School Year</label>
                                 @php
-                                    $baseY = now()->month >= 6 ? now()->year : now()->year - 1;
+                                    $baseY = (int) substr(\App\Models\Setting::getCurrentSchoolYear(), 0, 4);
                                     $syOptions = [];
                                     for ($i = 0; $i <= 3; $i++) {
                                         $syOptions[] = ($baseY + $i) . '-' . ($baseY + $i + 1);

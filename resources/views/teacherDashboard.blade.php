@@ -1135,7 +1135,7 @@
                             <label class="form-lbl">School Year</label>
                             <select class="form-fld" id="ms-list-sy" onchange="syncFiltersToGradeView()">
                                 @php
-                                    $baseSY = now()->month >= 6 ? now()->year : now()->year - 1;
+                                    $baseSY = (int) substr($currentSchoolYear ?? '', 0, 4) ?: (now()->month >= 6 ? now()->year : now()->year - 1);
                                     for ($y = $baseSY + 1; $y >= $baseSY - 2; $y--) {
                                         $sy = $y . '-' . ($y + 1);
                                         $selected = ($sy === $currentSchoolYear) ? 'selected' : '';
@@ -1255,7 +1255,7 @@
                         <select id="ms-sy" onchange="loadGradeView()"
                             style="border:1.5px solid #d1d5db;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;color:var(--text);background:#fff;cursor:pointer;min-width:130px;">
                             @php
-                                $baseSY = now()->month >= 6 ? now()->year : now()->year - 1;
+                                $baseSY = (int) substr($currentSchoolYear ?? '', 0, 4) ?: (now()->month >= 6 ? now()->year : now()->year - 1);
                                 for ($y = $baseSY + 1; $y >= $baseSY - 2; $y--) {
                                     $sy = $y . '-' . ($y + 1);
                                     $selected = ($sy === $currentSchoolYear) ? 'selected' : '';

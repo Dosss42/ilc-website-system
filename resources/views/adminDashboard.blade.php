@@ -3835,7 +3835,7 @@ function openWalkInEnrollmentModal() {
 
                         <select id="sc-sy" class="form-fld">
                             @php
-                                $currentSY = now()->month >= 6 ? now()->year : now()->year - 1;
+                                $currentSY = (int) substr($currentSchoolYear ?? '', 0, 4) ?: (now()->month >= 6 ? now()->year : now()->year - 1);
                                 for ($y = $currentSY + 1; $y >= 1994; $y--) {
                                     $sy = $y . '-' . ($y + 1);
                                     $selected = $y === $currentSY + 1 ? 'selected' : '';
@@ -14375,7 +14375,7 @@ function openWalkInEnrollmentModal() {
                         <label class="dash-form-label"><i class="bi bi-calendar me-1" style="color:var(--green);"></i>School Year <span class="text-danger">*</span></label>
                         <select id="sec-sy" class="dash-form-control">
                             @php
-                                $cSY = now()->month >= 6 ? now()->year : now()->year - 1;
+                                $cSY = (int) substr($currentSchoolYear ?? '', 0, 4) ?: (now()->month >= 6 ? now()->year : now()->year - 1);
                                 for ($y = $cSY + 1; $y >= 2020; $y--) {
                                     $syOpt = $y . '-' . ($y + 1);
                                     $selOpt = $y === $cSY + 1 ? 'selected' : '';
