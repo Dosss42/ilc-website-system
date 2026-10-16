@@ -3838,7 +3838,11 @@ function openWalkInEnrollmentModal() {
                                 $currentSY = (int) substr($currentSchoolYear ?? '', 0, 4) ?: (now()->month >= 6 ? now()->year : now()->year - 1);
                                 for ($y = $currentSY + 1; $y >= 1994; $y--) {
                                     $sy = $y . '-' . ($y + 1);
-                                    $selected = $y === $currentSY + 1 ? 'selected' : '';
+                                    // Defaults to the actual current school year, same as every
+                                    // other school-year picker — was current+1, which both looked
+                                    // inconsistent with the rest of the system and didn't reflect
+                                    // the admin-configured setting.
+                                    $selected = $y === $currentSY ? 'selected' : '';
                                     echo "<option value=\"$sy\" $selected>$sy</option>";
                                 }
                             @endphp
@@ -9554,7 +9558,12 @@ function openWalkInEnrollmentModal() {
 
         document.getElementById('sec-max').value = '30';
 
-        document.getElementById('sec-sy').value = document.getElementById('sec-sy').options[0].value;
+        // Explicitly the current school year, not options[0] — now that the
+        // dropdown correctly lists newest-first, options[0] is next year
+        // (2027-2028), not the current one (2026-2027), which is exactly
+        // the mismatch that was still showing up here after the dropdown
+        // itself got fixed.
+        document.getElementById('sec-sy').value = {!! json_encode($currentSchoolYear ?? '') !!} || document.getElementById('sec-sy').options[0].value;
 
         document.getElementById('sec-active').value = '1';
 
@@ -9574,7 +9583,7 @@ function openWalkInEnrollmentModal() {
 
         document.getElementById('sec-room').value = room || '';
 
-        document.getElementById('sec-sy').value = sy || document.getElementById('sec-sy').options[0].value;
+        document.getElementById('sec-sy').value = sy || {!! json_encode($currentSchoolYear ?? '') !!} || document.getElementById('sec-sy').options[0].value;
 
         document.getElementById('sec-max').value = maxStudents || 30;
 
@@ -14376,9 +14385,13 @@ function openWalkInEnrollmentModal() {
                         <select id="sec-sy" class="dash-form-control">
                             @php
                                 $cSY = (int) substr($currentSchoolYear ?? '', 0, 4) ?: (now()->month >= 6 ? now()->year : now()->year - 1);
-                                for ($y = $cSY + 1; $y >= 2020; $y--) {
+                                for ($y = $cSY + 4; $y >= 2020; $y--) {
                                     $syOpt = $y . '-' . ($y + 1);
-                                    $selOpt = $y === $cSY + 1 ? 'selected' : '';
+                                    // Defaults to the ACTUAL current school year, not current+1 —
+                                    // this previously always pre-selected next year regardless of
+                                    // what $currentSchoolYear said, which is what looked like a
+                                    // mismatch with the Settings page.
+                                    $selOpt = $y === $cSY ? 'selected' : '';
                                     echo "<option value=\"$syOpt\" $selOpt>$syOpt</option>";
                                 }
                             @endphp
