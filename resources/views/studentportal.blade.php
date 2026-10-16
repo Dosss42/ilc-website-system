@@ -1495,7 +1495,7 @@
             }
 
             $allSYOptions = collect(array_merge($enrolledYears, $futureYears))
-                ->unique()->sort()->values()->toArray();
+                ->unique()->sortDesc()->values()->toArray();
         @endphp
 
         {{-- Filter Bar: School Year + Term --}}

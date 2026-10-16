@@ -14376,7 +14376,7 @@ function openWalkInEnrollmentModal() {
                         <select id="sec-sy" class="dash-form-control">
                             @php
                                 $cSY = now()->month >= 6 ? now()->year : now()->year - 1;
-                                for ($y = 2020; $y <= $cSY + 1; $y++) {
+                                for ($y = $cSY + 1; $y >= 2020; $y--) {
                                     $syOpt = $y . '-' . ($y + 1);
                                     $selOpt = $y === $cSY + 1 ? 'selected' : '';
                                     echo "<option value=\"$syOpt\" $selOpt>$syOpt</option>";
