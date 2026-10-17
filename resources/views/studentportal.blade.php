@@ -3712,12 +3712,11 @@
             'school_year' => $enrollment->school_year ?? '',
             'account_blocked' => $enrollment->account_blocked ?? false,
         ];
-        $jsPaymentHistory = \App\Models\StudentDocument::where('enrollment_id', $enrollment->id)
-            ->where('document_type', 'payment_screenshot')
-            ->orderByDesc('created_at')
-            ->get(['id', 'description', 'status', 'created_at', 'file_path'])
-            ->toArray();
-        
+        // $jsPaymentHistory stays [] (its default above) — it used to query
+        // StudentDocument for 'payment_screenshot' uploads (the old manual
+        // GCash-proof-of-payment flow), removed now that Xendit handles
+        // online payments and Cashier handles in-person ones.
+
         // Payment installments for month-by-month tracking
         if ($paymentInstallments && $paymentInstallments->count() > 0) {
             $jsPaymentInstallments = $paymentInstallments->map(function($inst) {

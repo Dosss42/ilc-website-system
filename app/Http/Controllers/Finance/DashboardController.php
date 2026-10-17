@@ -1232,18 +1232,6 @@ class DashboardController extends Controller
      */
     public function approvePayment(Request $request, $id)
     {
-        // Always check for a pending payment screenshot first.
-        // The admin dashboard passes StudentDocument IDs, and those IDs can collide
-        // numerically with PaymentTransaction IDs, causing the wrong approval path.
-        $document = \App\Models\StudentDocument::where('id', $id)
-            ->where('document_type', 'payment_screenshot')
-            ->where('status', 'pending')
-            ->first();
-
-        if ($document) {
-            return $this->approveDocumentPayment($request, $document);
-        }
-
         $payment = PaymentTransaction::find($id);
 
         if (!$payment) {
@@ -1483,131 +1471,6 @@ class DashboardController extends Controller
                 ], 500);
             }
             return redirect()->back()->with('error', 'Payment approval failed: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Approve a payment screenshot (StudentDocument) from admin dashboard.
-     * Creates a PaymentTransaction and updates enrollment payment amounts.
-     */
-    private function approveDocumentPayment(Request $request, \App\Models\StudentDocument $document)
-    {
-        try {
-            DB::beginTransaction();
-
-            $document->update([
-                'status' => 'approved',
-                'reviewed_by' => $this->actingStaffId(),
-                'reviewed_at' => now(),
-            ]);
-
-            $enrollment = $document->enrollment;
-            $installment = $document->paymentInstallment;
-
-            if ($enrollment) {
-                if ($installment) {
-                    $amountPaid = floatval($installment->amount) + floatval($installment->late_fee ?? 0);
-                } else {
-                    // Full payment / downpayment — extract amount from description
-                    // Format: "Payment via GCash - ₱14,504.00"
-                    preg_match('/₱([\d,]+\.\d{2})/', $document->description, $matches);
-                    $amountPaid = isset($matches[1]) ? floatval(str_replace(',', '', $matches[1])) : 0;
-
-                    // Fallback: use total_fee for full payments, downpayment_amount for installments
-                    if ($amountPaid <= 0) {
-                        $effectiveType = $enrollment->payment_type
-                            ?? ($enrollment->payment_option === 'A' ? 'full' : 'installment');
-                        $amountPaid = $effectiveType === 'full'
-                            ? floatval($enrollment->total_fee ?? 0)
-                            : floatval($enrollment->downpayment_amount ?? 0);
-                    }
-                }
-                $oldPaid = floatval($enrollment->payment_amount ?? 0);
-                $totalFee = round(floatval($enrollment->total_fee ?? 0), 2);
-                $newPaid = round($oldPaid + $amountPaid, 2);
-                $remainingBalance = max(0, round($totalFee - $newPaid, 2));
-
-                // Resolve actual payment method: installment record is set during submission,
-                // fall back to parsing the document description.
-                $actualMethod = $installment?->payment_method
-                    ?? (stripos($document->description ?? '', 'via Cash') !== false ? 'cash' : 'gcash');
-
-                // Create a PaymentTransaction record
-                $paymentTransaction = PaymentTransaction::create([
-                    'enrollment_id' => $enrollment->id,
-                    'user_id' => $document->user_id,
-                    'payment_type' => $installment ? 'installment' : 'full',
-                    'payment_method' => $actualMethod,
-                    'amount' => $amountPaid,
-                    'reference_number' => null,
-                    'description' => 'Payment screenshot approved - ' . ($installment ? $installment->month_name . ' Installment' : 'Full Payment'),
-                    'status' => 'completed',
-                    'installment_month' => $installment ? $installment->month_name : null,
-                    'installment_id' => $installment ? $installment->id : null,
-                    'processed_by' => $this->actingStaffId(),
-                    'processed_at' => now(),
-                ]);
-
-                // Update installment if linked
-                if ($installment) {
-                    $installment->update([
-                        'status' => 'paid',
-                        'paid_at' => now(),
-                        'payment_method' => $actualMethod,
-                        'payment_transaction_id' => $paymentTransaction->id,
-                        'amount_paid' => $amountPaid,
-                    ]);
-
-                    // Set next installment date
-                    $nextPending = $enrollment->paymentInstallments()
-                        ->whereIn('status', ['pending', 'overdue'])
-                        ->orderBy('due_date')
-                        ->first();
-
-                    $enrollment->update([
-                        'payment_amount' => $newPaid,
-                        'remaining_balance' => $remainingBalance,
-                        'payment_status' => $remainingBalance <= 0 ? 'paid' : 'partial',
-                        'next_installment_date' => $nextPending ? $nextPending->due_date : null,
-                    ]);
-                } else {
-                    // Full payment path
-                    $enrollment->update([
-                        'payment_amount' => $newPaid,
-                        'remaining_balance' => $remainingBalance,
-                        'payment_status' => $remainingBalance <= 0 ? 'paid' : 'partial',
-                    ]);
-                }
-            }
-
-            // Update enrollment status (approved -> enrolled)
-            if ($enrollment) {
-                $this->updateEnrollmentPaymentStatus($enrollment);
-            }
-
-            DB::commit();
-
-            ActivityLogger::log(
-                'payment_approved',
-                'Approved payment screenshot for ' . ($enrollment->student_data['first_name'] ?? '') . ' ' . ($enrollment->student_data['last_name'] ?? '') . ' (₱' . number_format($amountPaid ?? 0, 2) . ')',
-                'StudentDocument',
-                $document->id
-            );
-
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Payment approved and student balance updated.',
-                ]);
-            }
-
-            return redirect()->back()->with('success', 'Payment approved and student balance updated.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            if ($request->ajax() || $request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
-            }
-            return redirect()->back()->with('error', 'Approval failed: ' . $e->getMessage());
         }
     }
 
@@ -2035,16 +1898,6 @@ class DashboardController extends Controller
      */
     public function rejectPayment(Request $request, $id)
     {
-        // Always check for a pending payment screenshot first (same ID-collision reason as approve).
-        $document = \App\Models\StudentDocument::where('id', $id)
-            ->where('document_type', 'payment_screenshot')
-            ->where('status', 'pending')
-            ->first();
-
-        if ($document) {
-            return $this->rejectDocumentPayment($request, $document);
-        }
-
         $payment = PaymentTransaction::find($id);
 
         if (!$payment) {
@@ -2092,64 +1945,11 @@ class DashboardController extends Controller
     }
 
     /**
-     * Reject a payment screenshot (StudentDocument) from admin dashboard.
-     */
-    private function rejectDocumentPayment(Request $request, \App\Models\StudentDocument $document)
-    {
-        $validated = $request->validate([
-            'reject_reason' => 'required|string|max:255',
-        ]);
-
-        $document->update([
-            'status' => 'rejected',
-            'reject_reason' => $validated['reject_reason'],
-            'reviewed_by' => $this->actingStaffId(),
-            'reviewed_at' => now(),
-        ]);
-
-        ActivityLogger::log(
-            'payment_rejected',
-            'Rejected payment screenshot #' . $document->id . ' — ' . $validated['reject_reason'],
-            'StudentDocument',
-            $document->id
-        );
-
-        if ($request->ajax() || $request->wantsJson()) {
-            return response()->json([
-                'success' => true,
-                'message' => 'Payment screenshot rejected.',
-            ]);
-        }
-
-        return redirect()->back()->with('success', 'Payment screenshot rejected.');
-    }
-
-    /**
-     * Delete a payment
-     */
-    /**
      * Delete a payment — accepts a raw ID rather than route-model-binding to
-     * PaymentTransaction. Same ID-collision caution as approvePayment()/
-     * rejectPayment(): the admin dashboard's pending-payments list mixes
-     * StudentDocument (payment_screenshot) rows and PaymentTransaction rows,
-     * and their IDs can collide numerically, so this must check both.
+     * PaymentTransaction, for consistency with approvePayment()/rejectPayment().
      */
     public function deletePayment($id)
     {
-        $document = \App\Models\StudentDocument::where('id', $id)
-            ->where('document_type', 'payment_screenshot')
-            ->first();
-
-        if ($document) {
-            // A payment screenshot is an uploaded proof-of-payment, not a
-            // recorded transaction — "delete" just discards the pending upload.
-            if ($document->status !== 'pending') {
-                return redirect()->back()->with('error', 'Only pending payment screenshots can be deleted.');
-            }
-            $document->delete();
-            return redirect()->back()->with('success', 'Payment screenshot deleted successfully.');
-        }
-
         $payment = PaymentTransaction::find($id);
         if (!$payment) {
             return redirect()->back()->with('error', 'Payment not found.');
@@ -2197,11 +1997,10 @@ class DashboardController extends Controller
     }
 
     /**
-     * View payment details — same dual-lookup as deletePayment()/approvePayment().
-     * Normalizes the differing "who reviewed it" field names (StudentDocument
-     * uses reviewedBy/reviewed_at, PaymentTransaction uses processedBy/
-     * processed_at) into two plain variables so the view doesn't need to know
-     * which model it got.
+     * View payment details. $document is named for the Blade view's own
+     * historical variable contract (it used to also handle a StudentDocument
+     * payment-screenshot lookup here) — kept as-is since the view still
+     * expects that name.
      */
     public function paymentDetails($id)
     {
@@ -2211,17 +2010,6 @@ class DashboardController extends Controller
         // The sidebar/breadcrumb need to know which one so they don't link
         // to finance.* routes an admin session can never satisfy.
         $viewerContext = Auth::guard('finance')->check() ? 'finance' : 'admin';
-
-        $document = \App\Models\StudentDocument::where('id', $id)
-            ->where('document_type', 'payment_screenshot')
-            ->first();
-
-        if ($document) {
-            $document->load(['enrollment', 'user', 'reviewedBy']);
-            $reviewerName = $document->reviewedBy->name ?? 'System';
-            $reviewedAt   = $document->reviewed_at;
-            return view('finance.payment-details', compact('document', 'reviewerName', 'reviewedAt', 'viewerContext'));
-        }
 
         $payment = PaymentTransaction::find($id);
         if (!$payment) {

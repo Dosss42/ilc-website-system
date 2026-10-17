@@ -707,8 +707,7 @@ class EnrollmentController extends Controller
                 COUNT(CASE WHEN e.payment_status = 'partial' THEN 1 END) as partial_count,
                 COUNT(CASE WHEN e.payment_status IS NULL OR e.payment_status = 'pending' THEN 1 END) as unpaid_count,
                 COUNT(*) as total_with_enrollment,
-                COALESCE(SUM(CASE WHEN e.payment_status IN ('paid', 'partial') THEN e.payment_amount ELSE 0 END), 0) as total_collected,
-                (SELECT COUNT(*) FROM student_documents WHERE document_type = 'payment_screenshot' AND status = 'pending') as pending_screenshots
+                COALESCE(SUM(CASE WHEN e.payment_status IN ('paid', 'partial') THEN e.payment_amount ELSE 0 END), 0) as total_collected
             FROM enrollments e
             WHERE e.id IN (SELECT MAX(id) FROM enrollments GROUP BY user_id)
         ");
@@ -717,7 +716,6 @@ class EnrollmentController extends Controller
         $unpaidCount = $financeSummary->unpaid_count ?? 0;
         $totalCollected = $financeSummary->total_collected ?? 0;
         $pendingPayments = $partialCount;
-        $pendingScreenshots = $financeSummary->pending_screenshots ?? 0;
 
         // ── 4 through 4c were: $paymentEnrollments, $allDocuments /
         // $paymentScreenshots, $onlinePayments (→ $financePayments),
@@ -982,7 +980,7 @@ class EnrollmentController extends Controller
 
         return view('adminDashboard', compact(
             'studentCount', 'enrollmentCount',
-            'pendingPayments', 'totalCollected', 'pendingScreenshots',
+            'pendingPayments', 'totalCollected',
             'unpaidCount', 'partialCount', 'paidCount',
             'sort', 'archivedStudentsCount',
             'sections', 'teachers', 'teachersWithSubjectsCount',
@@ -2567,10 +2565,6 @@ class EnrollmentController extends Controller
      */
     public function approveDocument(Request $request, StudentDocument $document)
     {
-        // Cheap pre-check — not authoritative for the payment-crediting path
-        // below (re-checked there under the enrollment lock). This just
-        // gives a fast, friendly response for the common already-approved
-        // case without opening a transaction for it.
         if ($document->status === 'approved') {
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => 'This document has already been approved.'], 409);
@@ -2578,184 +2572,18 @@ class EnrollmentController extends Controller
             return redirect()->back()->with('error', 'This document has already been approved.');
         }
 
-        // Non-payment documents don't touch money, so there's nothing for a
-        // double-click to double-credit — approve them the simple way.
-        if (!($document->document_type === 'payment_screenshot' && $document->enrollment_id)) {
-            $document->update([
-                'status' => 'approved',
-                'reviewed_by' => Auth::id(),
-                'reviewed_at' => now(),
-            ]);
-            ActivityLogger::log('update', "Approved {$document->document_type} for " . ($document->user->name ?? 'student #' . $document->user_id), 'StudentDocument', $document->id);
-
-            if ($request->expectsJson()) {
-                return response()->json(['success' => true, 'message' => 'Document approved successfully.']);
-            }
-            return redirect()->back()->with('success', 'Document approved successfully.');
-        }
-
-        // Payment screenshot with a linked enrollment — the whole
-        // approve-and-credit sequence must happen under the enrollment
-        // lock, with the document's status re-checked AFTER the lock is
-        // acquired. A double-click, a network retry, or two staff members
-        // approving the same document within seconds would otherwise both
-        // pass the pre-check above before either commits, and then both
-        // credit the payment amount below.
-        if (Enrollment::where('id', $document->enrollment_id)->exists()) {
-                DB::beginTransaction();
-                try {
-                    // Row-locked re-fetch — see PaymentService::lockEnrollment()
-                    // — so a concurrent approval for this same enrollment
-                    // can't compute from the same stale payment_amount.
-                    $enrollment = \App\Services\PaymentService::lockEnrollment($document->enrollment_id);
-
-                    // Authoritative re-check, now that we hold the enrollment
-                    // lock — closes the race the pre-check above can't.
-                    $document = StudentDocument::where('id', $document->id)->lockForUpdate()->first();
-                    if (!$document || $document->status === 'approved') {
-                        DB::rollBack();
-                        if ($request->expectsJson()) {
-                            return response()->json(['success' => false, 'message' => 'This document has already been approved.'], 409);
-                        }
-                        return redirect()->back()->with('error', 'This document has already been approved.');
-                    }
-
-                    $document->update([
-                        'status' => 'approved',
-                        'reviewed_by' => Auth::id(),
-                        'reviewed_at' => now(),
-                    ]);
-                    ActivityLogger::log('update', "Approved {$document->document_type} for " . ($document->user->name ?? 'student #' . $document->user_id), 'StudentDocument', $document->id);
-
-                    // Get payment amount from linked installment or calculate from document
-                    $paymentAmount = 0;
-                    $installment = $document->paymentInstallment;
-                    // An installment already marked 'paid' (e.g. credited by
-                    // a different document approved moments earlier) must
-                    // not be credited again.
-                    if ($installment && $installment->status === 'paid') {
-                        $installment = null;
-                    }
-
-                    if ($installment) {
-                        $paymentAmount = $installment->total_due;
-
-                        // Mark installment as paid
-                        $installment->update([
-                            'status' => 'paid',
-                            'paid_at' => now(),
-                            'amount_paid' => $paymentAmount,
-                        ]);
-                    } elseif ($enrollment->payment_type === 'installment') {
-                        // For installment enrollments without a linked installment
-                        $desc = $document->description ?? '';
-                        preg_match('/₱([\d,]+\.?\d*)/', $desc, $matches);
-                        $docAmount = isset($matches[1]) ? (float) str_replace(',', '', $matches[1]) : 0;
-
-                        // Check if this is a downpayment (not yet fully paid)
-                        $downpaymentAmount = (float) ($enrollment->downpayment_amount ?? 0);
-                        $alreadyPaid = (float) ($enrollment->payment_amount ?? 0);
-                        $isDownpayment = $downpaymentAmount > 0 && $alreadyPaid < $downpaymentAmount;
-
-                        if ($isDownpayment) {
-                            // Downpayment - don't link to any installment, just use the amount
-                            $paymentAmount = $docAmount > 0 ? $docAmount : $downpaymentAmount;
-                        } else {
-                            // Not a downpayment - try to find a pending installment matching the payment amount
-                            $installment = $enrollment->paymentInstallments()
-                                ->where('status', 'pending')
-                                ->whereRaw('CAST(amount AS DECIMAL(10,2)) = ?', [$docAmount])
-                                ->orderBy('due_date')
-                                ->first();
-
-                            // If no exact match, try the next pending installment
-                            if (!$installment && $docAmount > 0) {
-                                $installment = $enrollment->paymentInstallments()
-                                    ->where('status', 'pending')
-                                    ->orderBy('due_date')
-                                    ->first();
-                            }
-
-                            if ($installment) {
-                                $totalDue = (float) $installment->amount + (float) ($installment->late_fee ?? 0);
-                                $paymentAmount = $docAmount > 0 ? $docAmount : $totalDue;
-
-                                // Link document and mark installment as paid
-                                $installment->update([
-                                    'status' => 'paid',
-                                    'paid_at' => now(),
-                                    'payment_method' => (stripos($desc, 'gcash') !== false) ? 'gcash' : 'cash',
-                                    'document_id' => $document->id,
-                                    'amount_paid' => $paymentAmount,
-                                ]);
-                            } else {
-                                // Fallback: use amount from description
-                                $paymentAmount = $docAmount > 0 ? $docAmount : ((float) ($enrollment->downpayment_amount ?? 0) ?: (float) ($enrollment->monthly_amount ?? 0));
-                            }
-                        }
-                    } else {
-                        // For non-installment payments, try to get amount from description or use monthly amount
-                        $paymentAmount = $enrollment->downpayment_amount ?? $enrollment->monthly_amount ?? 0;
-                    }
-
-                    // Add payment amount to enrollment's total paid (cast to float for proper comparison)
-                    $currentPaid = (float) ($enrollment->payment_amount ?? 0);
-                    $paymentAmountFloat = (float) $paymentAmount;
-                    $newTotalPaid = $currentPaid + $paymentAmountFloat;
-                    $totalFee = (float) ($enrollment->total_fee ?? 0);
-                    $remainingBalance = max(0, $totalFee - $newTotalPaid);
-
-                    // Determine payment status based on remaining balance
-                    $paymentStatus = ($remainingBalance <= 0) ? 'paid' : 'partial';
-
-                    $updateData = [
-                        'payment_amount' => $newTotalPaid,
-                        'payment_status' => $paymentStatus,
-                        'remaining_balance' => $remainingBalance,
-                        'payment_updated_at' => now(),
-                    ];
-
-                    // Update next installment date for installment plans
-                    if ($enrollment->payment_type === 'installment') {
-                        if ($remainingBalance <= 0) {
-                            $updateData['next_installment_date'] = null;
-                        } else {
-                            $nextPending = $enrollment->paymentInstallments()
-                                ->where('status', 'pending')
-                                ->orderBy('due_date')
-                                ->first();
-                            if ($nextPending) {
-                                $updateData['next_installment_date'] = $nextPending->due_date;
-                            }
-                        }
-                    }
-
-                    // Update enrollment with new payment info
-                    $enrollment->update($updateData);
-
-                    // If enrollment is still 'approved' or 'pending', upgrade to 'enrolled'
-                    if (in_array($enrollment->status, ['approved', 'pending']) && $newTotalPaid > 0) {
-                        $enrollment->update([
-                            'status' => 'enrolled',
-                            'enrolled_at' => now(),
-                        ]);
-
-                        // Assign student to section
-                        if ($enrollment->user_id) {
-                            $user = User::find($enrollment->user_id);
-                            if ($user) {
-                                $this->assignSection($enrollment, $user);
-                            }
-                        }
-                    }
-
-                    DB::commit();
-                } catch (\Exception $e) {
-                    DB::rollBack();
-                    Log::error('Payment approval failed: ' . $e->getMessage());
-                    return redirect()->back()->with('error', 'Failed to process payment: ' . $e->getMessage());
-                }
-        }
+        // Every document type goes through this same simple path — approving
+        // a document never credits a payment. (It used to have a separate,
+        // more complex branch for 'payment_screenshot' documents that both
+        // approved the document and credited the enrollment's payment amount
+        // under a lock; removed along with the rest of that flow now that
+        // Xendit handles online payments and Cashier handles in-person ones.)
+        $document->update([
+            'status' => 'approved',
+            'reviewed_by' => Auth::id(),
+            'reviewed_at' => now(),
+        ]);
+        ActivityLogger::log('update', "Approved {$document->document_type} for " . ($document->user->name ?? 'student #' . $document->user_id), 'StudentDocument', $document->id);
 
         if ($request->expectsJson()) {
             return response()->json(['success' => true, 'message' => 'Document approved successfully.']);
@@ -2770,76 +2598,12 @@ class EnrollmentController extends Controller
     {
         $request->validate(['reject_reason' => 'required|string|max:500']);
 
-        // Reversing a previously-approved payment screenshot: approveDocument()
-        // may have credited the enrollment's payment_amount and marked an
-        // installment 'paid' (and possibly flipped the enrollment itself to
-        // 'enrolled' with a section assigned). Rejecting it after the fact
-        // must undo those financial side-effects, or the student's balance
-        // and installment/enrollment status permanently drift from reality
-        // even though the document trail says the payment was rejected.
-        if ($document->status === 'approved'
-            && $document->document_type === 'payment_screenshot'
-            && $document->enrollment_id
-        ) {
-            DB::beginTransaction();
-            try {
-                $enrollment = \App\Services\PaymentService::lockEnrollment($document->enrollment_id);
-
-                $installment = $document->paymentInstallment;
-                $creditedAmount = $installment ? (float) $installment->amount_paid : null;
-
-                if ($installment && $installment->status === 'paid') {
-                    $installment->update([
-                        'status' => $installment->due_date && $installment->due_date->isPast() ? 'overdue' : 'pending',
-                        'paid_at' => null,
-                        'amount_paid' => 0,
-                        'payment_transaction_id' => null,
-                    ]);
-                }
-
-                // Fall back to re-deriving the credited amount from the
-                // description the same way approveDocument() computed it,
-                // when there was no linked installment (full/downpayment).
-                if ($creditedAmount === null) {
-                    preg_match('/₱([\d,]+\.?\d*)/', $document->description ?? '', $matches);
-                    $creditedAmount = isset($matches[1]) ? (float) str_replace(',', '', $matches[1]) : 0;
-                }
-
-                if ($creditedAmount > 0) {
-                    $newTotalPaid = max(0, (float) ($enrollment->payment_amount ?? 0) - $creditedAmount);
-                    $totalFee = (float) ($enrollment->total_fee ?? 0);
-                    $remainingBalance = max(0, $totalFee - $newTotalPaid);
-
-                    $enrollment->update([
-                        'payment_amount' => $newTotalPaid,
-                        'payment_status' => $newTotalPaid <= 0 ? 'pending' : ($remainingBalance <= 0 ? 'paid' : 'partial'),
-                        'remaining_balance' => $remainingBalance,
-                        'payment_updated_at' => now(),
-                    ]);
-                }
-
-                $document->update([
-                    'status' => 'rejected',
-                    'reject_reason' => $request->reject_reason,
-                    'reviewed_by' => Auth::id(),
-                    'reviewed_at' => now(),
-                ]);
-
-                ActivityLogger::log('delete', "Rejected {$document->document_type} for " . ($document->user->name ?? 'student #' . $document->user_id) . " — reason: {$request->reject_reason} (reversed ₱" . number_format($creditedAmount, 2) . " credit)", 'StudentDocument', $document->id);
-
-                DB::commit();
-            } catch (\Exception $e) {
-                DB::rollBack();
-                Log::error('Document rejection reversal failed: ' . $e->getMessage());
-                return redirect()->back()->with('error', 'Failed to reject document: ' . $e->getMessage());
-            }
-
-            if ($request->expectsJson()) {
-                return response()->json(['success' => true, 'message' => 'Document rejected.']);
-            }
-            return redirect()->back()->with('success', 'Document rejected.');
-        }
-
+        // Every document type goes through this same simple path. (It used
+        // to have a separate branch reversing payment-crediting side effects
+        // for 'payment_screenshot' documents specifically — removed along
+        // with the rest of that flow now that Xendit handles online payments
+        // and Cashier handles in-person ones, so rejecting a document never
+        // needs to reverse a credited payment anymore.)
         $document->update([
             'status' => 'rejected',
             'reject_reason' => $request->reject_reason,
