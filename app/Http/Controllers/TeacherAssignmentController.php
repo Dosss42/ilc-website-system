@@ -196,7 +196,15 @@ class TeacherAssignmentController extends Controller
         $schoolYear = $request->input('school_year', $this->getCurrentSchoolYear());
         $sort = $request->input('sort', 'newest');
 
+        // This page is "Advisory Teacher Assignments" specifically — without
+        // this filter it also pulled in every regular subject-teacher row
+        // that ScheduleController::ensureTeacherAssignment() auto-creates in
+        // this same table for schedule-conflict checking (is_advisory=false),
+        // which is why the count here could read much higher than the real
+        // number of advisory assignments (e.g. 40 rows shown for 14 teachers
+        // when only 8 were actually advisory).
         $query = TeacherAssignment::with(['teacher', 'subject', 'section.students'])
+            ->where('is_advisory', true)
             ->forSchoolYear($schoolYear);
 
         // Apply sorting

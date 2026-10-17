@@ -282,6 +282,18 @@
 
                                 @foreach($recentStudents as $s)
 
+                                @php
+                                    // Grade/section live on the student's latest Enrollment,
+                                    // not on the User row — same derivation
+                                    // students-content.blade.php already uses.
+                                    $recentEnr = $s->latestEnrollment;
+                                    $recentSd = $recentEnr->student_data ?? [];
+                                    $recentGradeRaw = $recentSd['grade_level'] ?? ($recentEnr->grade_level ?? null);
+                                    $recentGradeMap = ['nursery'=>'Nursery','kindergarten'=>'Kinder','grade1'=>'Grade 1','grade2'=>'Grade 2','grade3'=>'Grade 3','grade4'=>'Grade 4','grade5'=>'Grade 5','grade6'=>'Grade 6'];
+                                    $recentGradeDisplay = $recentGradeMap[$recentGradeRaw] ?? ($recentGradeRaw ?: '-');
+                                    $recentSectionDisplay = ($recentEnr && $recentEnr->section && $recentEnr->section !== 'Unassigned') ? $recentEnr->section : '-';
+                                @endphp
+
                                 <tr>
 
                                     <td>
@@ -302,9 +314,9 @@
 
                                     </td>
 
-                                    <td>{{ $s->grade ?? '-' }}</td>
+                                    <td>{{ $recentGradeDisplay }}</td>
 
-                                    <td>{{ $s->section ?? '-' }}</td>
+                                    <td>{{ $recentSectionDisplay }}</td>
 
                                     <td><span class="status-badge {{ $s->is_active ? 'active' : 'inactive' }}">{{ $s->is_active ? 'Active' : 'Inactive' }}</span></td>
 

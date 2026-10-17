@@ -684,7 +684,12 @@ class EnrollmentController extends Controller
         // query also read it — see docs/system-improvement-plan.md item #2.
 
         // ── 2. Recent Students for Dashboard (10 per page) ──
+        // latestEnrollment eager-loaded — the dashboard.blade.php partial
+        // derives Grade/Section from it (same pattern students-content.blade.php
+        // already uses); without it every row showed "-" for both columns,
+        // since grade/section live on Enrollment, not on the User row itself.
         $recentStudents = User::where('role', 'student')
+            ->with('latestEnrollment')
             ->orderByDesc('created_at')
             ->paginate(10, ['*'], 'dashboard_page');
 

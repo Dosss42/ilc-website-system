@@ -47,8 +47,8 @@ class EnrollmentDeclined extends Mailable
                 'referenceNumber' => $this->enrollment->reference_number,
                 'gradeLevel' => $this->enrollment->grade_level_display,
                 'reason' => $this->reason,
-                'contactEmail' => 'info@iemelif-ilc.edu.ph',
-                'contactPhone' => '(046) 000-0000',
+                'contactEmail' => 'Iemelif_learningcenter@gmail.com',
+                'contactPhone' => '(63) 0951-989-9685',
             ]
         );
     }

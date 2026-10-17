@@ -174,8 +174,8 @@
             <div class="info-box">
                 <h4>Contact Information:</h4>
                 <p><strong>Office Hours:</strong> Monday to Friday, 7:00 AM - 3:00 PM</p>
-                <p><strong>Phone:</strong> (046) 000-0000</p>
-                <p><strong>Email:</strong> info@iemelif-ilc.edu.ph</p>
+                <p><strong>Phone:</strong> (63) 0951-989-9685</p>
+                <p><strong>Email:</strong> Iemelif_learningcenter@gmail.com</p>
                 <p><strong>Address:</strong> Brgy Poblacion Central, General Tinio, Nueva Ecija</p>
             </div>
         </div>

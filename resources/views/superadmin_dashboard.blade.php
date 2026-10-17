@@ -3924,7 +3924,7 @@
     }
 
     // Change Section (enrollment detail modal "Change Section" button) —
-    // same function names Admin uses, since both dashboards @include the
+    // same function names Admin uses, since both dashboards include the
     // same admin.enrollments.view-modal partial whose button calls these
     // exact names.
     function openChangeSectionModal() {
