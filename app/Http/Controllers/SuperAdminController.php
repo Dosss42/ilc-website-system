@@ -589,6 +589,10 @@ class SuperAdminController extends Controller
     public function enrollmentsData(Request $request)
     {
         $status = $request->get('status', 'all');
+        $grade  = $request->get('grade', 'all');
+        $sort   = $request->get('sort', 'newest');
+        $search = trim((string) $request->get('search', ''));
+
         $query  = \App\Models\Enrollment::select(
             'id','user_id','reference_number','status','grade_level',
             'student_data','payment_status','payment_amount','total_fee',
@@ -597,7 +601,41 @@ class SuperAdminController extends Controller
         if ($status !== 'all') {
             $query->where('status', $status);
         }
-        $page = $query->latest()->paginate(20, ['*'], 'page');
+        if ($grade !== 'all') {
+            $query->where(function ($q) use ($grade) {
+                $q->where('grade_level', $grade)
+                  ->orWhere('student_data->grade_level', $grade);
+            });
+        }
+        if ($search !== '') {
+            $term = '%' . $search . '%';
+            $query->where(function ($q) use ($term) {
+                $q->where('reference_number', 'like', $term)
+                  ->orWhere('student_data->first_name', 'like', $term)
+                  ->orWhere('student_data->middle_name', 'like', $term)
+                  ->orWhere('student_data->last_name', 'like', $term)
+                  ->orWhere('student_data->student_email', 'like', $term)
+                  ->orWhereRaw("CONCAT(JSON_UNQUOTE(JSON_EXTRACT(student_data, '$.first_name')), ' ', JSON_UNQUOTE(JSON_EXTRACT(student_data, '$.last_name'))) LIKE ?", [$term]);
+            });
+        }
+
+        switch ($sort) {
+            case 'name_asc':
+                $query->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT(student_data, '$.last_name')) ASC");
+                break;
+            case 'name_desc':
+                $query->orderByRaw("JSON_UNQUOTE(JSON_EXTRACT(student_data, '$.last_name')) DESC");
+                break;
+            case 'oldest':
+                $query->orderBy('created_at', 'asc');
+                break;
+            case 'newest':
+            default:
+                $query->orderBy('created_at', 'desc');
+                break;
+        }
+
+        $page = $query->paginate(20, ['*'], 'page');
         $enrollments = $page->getCollection()->map(function ($e) {
             $data = is_string($e->student_data)
                 ? json_decode($e->student_data, true)
@@ -626,14 +664,15 @@ class SuperAdminController extends Controller
             ->groupBy('status')->pluck('cnt', 'status');
 
         return response()->json([
-            'enrollments'  => $enrollments,
-            'counts'       => $counts,
-            'current_page' => $page->currentPage(),
-            'last_page'    => $page->lastPage(),
-            'per_page'     => $page->perPage(),
-            'total'        => $page->total(),
-            'from'         => $page->firstItem(),
-            'to'           => $page->lastItem(),
+            'enrollments'     => $enrollments,
+            'counts'          => $counts,
+            'enrollment_open' => \App\Models\Setting::get('enrollment_open', true),
+            'current_page'    => $page->currentPage(),
+            'last_page'       => $page->lastPage(),
+            'per_page'        => $page->perPage(),
+            'total'           => $page->total(),
+            'from'            => $page->firstItem(),
+            'to'              => $page->lastItem(),
         ]);
     }
 

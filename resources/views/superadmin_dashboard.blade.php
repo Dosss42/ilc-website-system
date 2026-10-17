@@ -477,6 +477,114 @@
         input[type=file].dash-input { padding:8px 13px;background:#f9fafb; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
+        /* Change Section button inside the ported enrollment-detail modal
+           has no backing JS function in Admin either — hidden here rather
+           than shipping a dead button into a new context. */
+        #btn-change-section { display: none !important; }
+
+        /* ── Walk-in Enrollment form controls (ported from public/css/adminDashboard.css,
+             which the shared admin.enrollments.walk-in-modal partial depends on but
+             is never linked on this page) ── */
+        .dash-form-label {
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            color: #4a5568 !important;
+            margin-bottom: 6px !important;
+            display: block !important;
+            letter-spacing: 0.3px;
+        }
+        .dash-form-control,
+        input.dash-form-control,
+        select.dash-form-control,
+        textarea.dash-form-control {
+            width: 100% !important;
+            border: 1.5px solid #e2e8f0 !important;
+            border-radius: 10px !important;
+            padding: 10px 14px !important;
+            font-size: 13px !important;
+            font-family: 'Open Sans', sans-serif !important;
+            background-color: #f8fafc !important;
+            color: #2d3748 !important;
+            transition: all 0.25s ease !important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            outline: none !important;
+        }
+        .dash-form-control:hover,
+        input.dash-form-control:hover,
+        select.dash-form-control:hover {
+            border-color: #cbd5e0 !important;
+            background-color: #fff !important;
+        }
+        .dash-form-control:focus,
+        input.dash-form-control:focus,
+        select.dash-form-control:focus,
+        textarea.dash-form-control:focus {
+            border-color: #1a3a6c !important;
+            box-shadow: 0 0 0 4px rgba(26,58,108,0.1) !important;
+            background-color: #fff !important;
+            outline: none !important;
+        }
+        select.dash-form-control {
+            cursor: pointer !important;
+            padding-right: 32px !important;
+        }
+        textarea.dash-form-control {
+            resize: vertical !important;
+            min-height: 70px !important;
+        }
+        .modal-content.modal-content-styled,
+        .modal-content-styled {
+            border: 0 !important;
+            border-radius: 16px !important;
+            overflow: hidden !important;
+            box-shadow: 0 25px 65px rgba(0,0,0,0.18) !important;
+        }
+        .modal-header.modal-header-styled,
+        .modal-header-styled {
+            background: linear-gradient(135deg, #1a3a6c 0%, #2a6dd6 100%) !important;
+            color: #fff !important;
+            border: 0 !important;
+            border-bottom: none !important;
+            padding: 22px 28px !important;
+            position: relative;
+        }
+        .modal-header-styled::after {
+            content: '';
+            position: absolute; bottom: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, rgba(245,166,35,0.6), transparent);
+        }
+        .modal-header-styled .modal-title {
+            font-weight: 700 !important; font-size: 17px !important;
+            display: flex !important; align-items: center !important; gap: 10px !important;
+            color: #fff !important;
+        }
+        .modal-header-styled .modal-title i { font-size: 20px; opacity: 0.9; }
+        .modal-header-styled .btn-close {
+            filter: brightness(0) invert(1) !important; opacity: 0.8;
+        }
+        .modal-header-styled .btn-close:hover { opacity: 1; }
+        .modal-body.modal-body-styled,
+        .modal-body-styled {
+            padding: 28px !important;
+            background: #fff !important;
+        }
+        .modal-footer.modal-footer-styled,
+        .modal-footer-styled {
+            border-top: 1px solid #e8ecf1 !important;
+            padding: 16px 28px !important;
+            background: #f8fafc !important;
+        }
+        .modal-footer-styled .btn-dash {
+            border-radius: 10px !important;
+            padding: 10px 22px !important;
+            font-weight: 600 !important;
+        }
+        .text-muted-alt { color: #999; }
+
         /* ── Schedule grid (ported from adminDashboard.blade.php's own
              schedule CSS, same classes/markup so the grid looks and
              behaves identically) ── */
@@ -1977,16 +2085,21 @@
                 <h1>Enrollment Management</h1>
                 <p>Review and manage student enrollment applications.</p>
             </div>
-            <div style="display:flex;gap:10px;">
-                <select id="enr-status-filter" class="form-fld" style="width:160px;" onchange="loadEnrollments()">
-                    <option value="all">All Status</option>
-                    <option value="pending">Pending</option>
-                    <option value="approved">Approved</option>
-                    <option value="enrolled">Enrolled</option>
-                    <option value="declined">Declined</option>
-                </select>
-                <button class="btn-dash btn-primary" onclick="loadEnrollments()">
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <div id="sa-enr-window-badge"
+                     style="display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:10px;font-size:13px;font-weight:700;
+                            background:#e8f8f0;color:#1a7a44;border:1.5px solid #27ae60;">
+                    <span style="width:8px;height:8px;border-radius:50%;display:inline-block;background:#27ae60;box-shadow:0 0 0 2px #a8d5b5;"></span>
+                    <span id="sa-enr-window-label">Enrollment OPEN</span>
+                </div>
+                <button class="btn-dash btn-secondary" id="sa-enr-toggle-btn" onclick="saToggleEnrollmentWindow()">
+                    <i class="bi bi-lock-fill me-1"></i><span id="sa-enr-toggle-label">Close Enrollment</span>
+                </button>
+                <button class="btn-dash btn-primary" onclick="_loaded['enrollments']=false; loadEnrollments();">
                     <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+                <button class="btn-dash btn-primary" onclick="openWalkInEnrollmentModal()">
+                    <i class="bi bi-person-plus-fill"></i> New Enrollment
                 </button>
             </div>
         </div>
@@ -1995,6 +2108,51 @@
             <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon blue"><i class="bi bi-check-circle-fill"></i></div><div><div class="stat-value" id="enr-cnt-approved">—</div><div class="stat-label">Approved</div></div></div></div>
             <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon green"><i class="bi bi-person-check-fill"></i></div><div><div class="stat-value" id="enr-cnt-enrolled">—</div><div class="stat-label">Enrolled</div></div></div></div>
             <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div><div><div class="stat-value" id="enr-cnt-declined">—</div><div class="stat-label">Declined</div></div></div></div>
+        </div>
+        <div class="content-card mb-3">
+            <div class="p-3">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input type="text" id="enr-search" class="form-fld" placeholder="Search by name, email, or reference number..."
+                                   oninput="clearTimeout(window._enrSearchTimer); window._enrSearchTimer=setTimeout(function(){ _loaded['enrollments']=false; loadEnrollments(1); }, 400);">
+                        </div>
+                    </div>
+                </div>
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <select id="enr-status-filter" class="form-fld" onchange="_loaded['enrollments']=false; loadEnrollments(1);">
+                            <option value="all">All Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="approved">Approved</option>
+                            <option value="enrolled">Enrolled</option>
+                            <option value="declined">Declined</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="enr-grade-filter" class="form-fld" onchange="_loaded['enrollments']=false; loadEnrollments(1);">
+                            <option value="all">All Grades</option>
+                            <option value="nursery">Nursery</option>
+                            <option value="kindergarten">Kindergarten</option>
+                            <option value="grade1">Grade 1</option>
+                            <option value="grade2">Grade 2</option>
+                            <option value="grade3">Grade 3</option>
+                            <option value="grade4">Grade 4</option>
+                            <option value="grade5">Grade 5</option>
+                            <option value="grade6">Grade 6</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select id="enr-sort-filter" class="form-fld" onchange="_loaded['enrollments']=false; loadEnrollments(1);">
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                            <option value="name_asc">Name (A-Z)</option>
+                            <option value="name_desc">Name (Z-A)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="content-card">
             <div class="content-card-header"><h6>Enrollment Applications</h6></div>
@@ -2014,6 +2172,64 @@
             <div id="enr-pagination" class="p-3 border-top" style="border-color:var(--border);"></div>
         </div>
     </div><!-- /section-enrollments -->
+
+    @include('admin.enrollments.view-modal')
+    @include('admin.enrollments.walk-in-modal')
+
+    <script src="/js/ph-address.js"></script>
+    <script>
+        // Walk-in enrollment address cascade (same shared library + field IDs as Admin)
+        PHAddress.initCascade({
+            region:   'walkin-region',
+            province: 'walkin-province',
+            city:     'walkin-city',
+            barangay: 'walkin-barangay',
+        });
+    </script>
+
+    <!-- Reject Document Modal (enrollment documents review) -->
+    <div class="modal fade" id="saRejectDocModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border:0;border-radius:16px;overflow:hidden;">
+                <div class="modal-header" style="background:linear-gradient(135deg,#e74c3c,#c0392b);color:#fff;border:none;">
+                    <h5 class="modal-title"><i class="bi bi-x-circle-fill me-2"></i>Reject Document</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <label class="form-lbl">Rejection Reason</label>
+                    <textarea id="sa-reject-doc-reason" class="form-fld" rows="3" placeholder="Please provide a reason for rejection..."></textarea>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn-dash btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn-dash btn-danger" onclick="saSubmitRejectDoc()"><i class="bi bi-x-lg"></i> Reject Document</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Document Viewer Modal (enrollment documents review) -->
+    <div class="modal fade" id="saDocViewerModal" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content" style="border:0;border-radius:16px;overflow:hidden;">
+                <div class="modal-header" style="background:linear-gradient(135deg,var(--blue),#2c5282);color:#fff;border:none;">
+                    <h5 class="modal-title" id="sa-docv-title">Document</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0" style="min-height:200px;">
+                    <div id="sa-docv-img-wrap" style="text-align:center;padding:24px;">
+                        <img id="sa-docv-img" src="" alt="Document" style="max-width:100%;max-height:65vh;border-radius:8px;">
+                    </div>
+                    <div id="sa-docv-pdf-wrap" style="display:none;">
+                        <iframe id="sa-docv-pdf" src="" style="width:100%;height:70vh;border:none;"></iframe>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light" style="gap:8px;">
+                    <a id="sa-docv-download" href="" download class="btn-dash btn-secondary" style="text-decoration:none;"><i class="bi bi-download"></i> Download</a>
+                    <a id="sa-docv-open" href="" target="_blank" class="btn-dash btn-primary" style="text-decoration:none;"><i class="bi bi-box-arrow-up-right"></i> Open in New Tab</a>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- ═══════════════════════════
          SECTION: TEACHERS
@@ -3516,10 +3732,14 @@
         _loaded['enrollments'] = true;
         _enrPage = page || 1;
         var status = document.getElementById('enr-status-filter')?.value || 'all';
+        var grade  = document.getElementById('enr-grade-filter')?.value || 'all';
+        var sort   = document.getElementById('enr-sort-filter')?.value || 'newest';
+        var search = document.getElementById('enr-search')?.value || '';
         var tbody = document.getElementById('enr-tbody');
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted);"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>';
         try {
-            var r = await fetch('/superadmin/enrollments-data?status=' + status + '&page=' + _enrPage, {
+            var qs = new URLSearchParams({ status: status, grade: grade, sort: sort, search: search, page: _enrPage });
+            var r = await fetch('/superadmin/enrollments-data?' + qs.toString(), {
                 headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken }
             });
             var d = await r.json();
@@ -3530,6 +3750,9 @@
                 var el = document.getElementById('enr-cnt-' + s);
                 if (el) el.textContent = counts[s] || 0;
             });
+            // Enrollment open/closed badge
+            _saEnrollmentOpen = !!d.enrollment_open;
+            saRenderEnrollmentWindowBadge();
             renderEnrollmentsTable(_enrData);
             renderPagerControls('enr-pagination', d, 'enrollment(s)', 'goToEnrollmentsPage');
         } catch(e) {
@@ -3554,10 +3777,10 @@
             var payBadge = e.payment_status === 'paid'
                 ? '<span class="status-badge enrolled">Paid</span>'
                 : '<span class="status-badge pending">Unpaid</span>';
-            var actions = '';
+            var actions = '<button class="action-btn view" title="View Application Details" onclick="saViewEnrollment(' + e.id + ')"><i class="bi bi-eye"></i></button>';
             if (e.status === 'pending') {
-                actions += '<button class="action-btn view" title="Approve" onclick="saEnrollAction(' + e.id + ',\'approve\')"><i class="bi bi-check-lg"></i></button>';
-                actions += '<button class="action-btn delete" title="Decline" onclick="saEnrollAction(' + e.id + ',\'decline\')"><i class="bi bi-x-lg"></i></button>';
+                actions += '<button class="action-btn edit" title="Approve" onclick="saApproveEnrollment(' + e.id + ')"><i class="bi bi-check-lg"></i></button>';
+                actions += '<button class="action-btn delete" title="Decline" onclick="saDeclineEnrollment(' + e.id + ')"><i class="bi bi-x-lg"></i></button>';
             }
             return '<tr>' +
                 '<td style="font-size:12px;font-weight:700;color:var(--blue);">' + (e.reference_number || '—') + '</td>' +
@@ -3566,39 +3789,820 @@
                 '<td style="font-size:12px;color:var(--muted);">' + (e.created_at || '—') + '</td>' +
                 '<td><span class="status-badge ' + statusCls + '">' + (statusLabel[e.status] || e.status) + '</span></td>' +
                 '<td>' + payBadge + '</td>' +
-                '<td>' + (actions || '<span style="font-size:11px;color:var(--muted);">—</span>') + '</td>' +
+                '<td>' + actions + '</td>' +
                 '</tr>';
         }).join('');
     }
 
-    function saEnrollAction(enrollmentId, action) {
-        var isApprove = action === 'approve';
+    function saApproveEnrollment(enrollmentId) {
         saConfirm({
-            title: isApprove ? 'Approve Enrollment' : 'Decline Enrollment',
-            msg: (isApprove ? 'Approve' : 'Decline') + ' this enrollment?',
-            icon: isApprove ? 'bi-check-circle-fill' : 'bi-x-circle-fill',
-            gradient: isApprove ? 'linear-gradient(135deg,#14532d,#16a34a)' : 'linear-gradient(135deg,#b91c1c,#dc2626)',
-            btnLabel: isApprove ? 'Approve' : 'Decline',
-            btnColor: isApprove ? '#16a34a' : '#dc2626',
-            onConfirm: function() { doSaEnrollAction(enrollmentId, action); }
+            title: 'Approve Enrollment',
+            msg: 'Approving this enrollment will create a student account and send login credentials to the student\'s email. Continue?',
+            icon: 'bi-check-circle-fill',
+            gradient: 'linear-gradient(135deg,#14532d,#16a34a)',
+            btnLabel: 'Approve',
+            btnColor: '#16a34a',
+            onConfirm: function() { doSaEnrollAction(enrollmentId, 'approve'); }
         });
     }
 
-    async function doSaEnrollAction(enrollmentId, action) {
+    async function doSaEnrollAction(enrollmentId, action, extraBody) {
         try {
             var r = await fetch('/admin/enrollments/' + enrollmentId + '/' + action, {
                 method: 'POST',
-                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                body: JSON.stringify(extraBody || {})
             });
             var d = await r.json();
             if (d.success) {
                 saToast('success', action === 'approve' ? 'Enrollment approved!' : 'Enrollment declined.');
+                var evm = document.getElementById('enrollmentViewModal');
+                var evmInst = evm && bootstrap.Modal.getInstance(evm);
+                if (evmInst) evmInst.hide();
                 _loaded['enrollments'] = false;
                 loadEnrollments();
             } else {
                 saToast('error', d.message || 'Action failed.');
             }
         } catch(e) { saToast('error', 'Network error.'); }
+    }
+
+    // ── Decline reason modal (dynamic, same pattern as other SA modals) ──
+    function saDeclineEnrollment(enrollmentId) {
+        document.getElementById('saDeclineEnrollModal')?.remove();
+        var html = '<div class="modal fade" id="saDeclineEnrollModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered">' +
+            '<div class="modal-content" style="border:0;border-radius:16px;overflow:hidden;">' +
+            '<div class="modal-header" style="background:linear-gradient(135deg,#b91c1c,#dc2626);color:#fff;border:none;"><h5 class="modal-title"><i class="bi bi-x-circle-fill me-2"></i>Decline Enrollment</h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>' +
+            '<div class="modal-body p-4">' +
+            '<label class="form-lbl">Reason for Declining</label>' +
+            '<textarea id="sa-decline-reason" class="form-fld" rows="3" placeholder="Enter reason for declining this enrollment..."></textarea>' +
+            '<label class="form-lbl mt-3">Storage Location</label>' +
+            '<select id="sa-decline-storage" class="form-fld">' +
+            '<option value="pending">Pending Review</option>' +
+            '<option value="declined_temporarily">Declined Temporarily</option>' +
+            '<option value="declined_permanently">Declined Permanently</option>' +
+            '<option value="requires_documents">Requires Additional Documents</option>' +
+            '</select>' +
+            '</div>' +
+            '<div class="modal-footer bg-light"><button type="button" class="btn-dash btn-secondary" data-bs-dismiss="modal">Cancel</button>' +
+            '<button type="button" class="btn-dash btn-danger" onclick="doSaDeclineEnrollment(' + enrollmentId + ')"><i class="bi bi-x-lg"></i> Decline Enrollment</button></div>' +
+            '</div></div></div>';
+        document.body.insertAdjacentHTML('beforeend', html);
+        new bootstrap.Modal(document.getElementById('saDeclineEnrollModal')).show();
+    }
+
+    function doSaDeclineEnrollment(enrollmentId) {
+        var reason  = document.getElementById('sa-decline-reason').value.trim();
+        var storage = document.getElementById('sa-decline-storage').value;
+        if (!reason) { saToast('error', 'Please provide a reason for declining.'); return; }
+        var modalEl = document.getElementById('saDeclineEnrollModal');
+        bootstrap.Modal.getInstance(modalEl)?.hide();
+        doSaEnrollAction(enrollmentId, 'decline', { reason: reason, storage: storage });
+    }
+
+    // ── Enrollment open/closed toggle (reuses /admin/settings/toggle-enrollment) ──
+    var _saEnrollmentOpen = true;
+
+    function saRenderEnrollmentWindowBadge() {
+        var badge = document.getElementById('sa-enr-window-badge');
+        var label = document.getElementById('sa-enr-window-label');
+        var btn   = document.getElementById('sa-enr-toggle-btn');
+        var btnLabel = document.getElementById('sa-enr-toggle-label');
+        if (!badge) return;
+        if (_saEnrollmentOpen) {
+            badge.style.background = '#e8f8f0'; badge.style.color = '#1a7a44'; badge.style.borderColor = '#27ae60';
+            badge.querySelector('span').style.background = '#27ae60';
+            label.textContent = 'Enrollment OPEN';
+            btn.className = 'btn-dash btn-secondary';
+            btn.innerHTML = '<i class="bi bi-lock-fill me-1"></i><span id="sa-enr-toggle-label">Close Enrollment</span>';
+        } else {
+            badge.style.background = '#fdecea'; badge.style.color = '#c0392b'; badge.style.borderColor = '#e74c3c';
+            badge.querySelector('span').style.background = '#e74c3c';
+            label.textContent = 'Enrollment CLOSED';
+            btn.className = 'btn-dash btn-primary';
+            btn.innerHTML = '<i class="bi bi-unlock-fill me-1"></i><span id="sa-enr-toggle-label">Open Enrollment</span>';
+        }
+    }
+
+    function saToggleEnrollmentWindow() {
+        var btn = document.getElementById('sa-enr-toggle-btn');
+        btn.disabled = true;
+        fetch('/admin/settings/toggle-enrollment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+            body: JSON.stringify({})
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            btn.disabled = false;
+            if (!d.success) { saToast('error', d.message || 'Failed to toggle enrollment.'); return; }
+            _saEnrollmentOpen = d.enrollment_open;
+            saRenderEnrollmentWindowBadge();
+            if (d.enrollment_open && d.unassessed_count > 0) {
+                saToast('warning', d.unassessed_count + ' Grade 1–6 student(s) have not been assessed yet.', 'Consider completing assessments first.');
+            } else {
+                saToast(d.enrollment_open ? 'success' : 'error', d.message);
+            }
+        })
+        .catch(function() { btn.disabled = false; saToast('error', 'Network error.'); });
+    }
+
+    // ── Enrollment detail modal (ported, reuses admin.enrollments.view-modal markup) ──
+    function evmTab(tab) {
+        ['details','documents'].forEach(function(t) {
+            var pane = document.getElementById('evm-pane-' + t);
+            var btn  = document.getElementById('evm-tab-' + t);
+            if (pane) pane.style.display = t === tab ? 'block' : 'none';
+            if (btn) {
+                btn.style.borderBottomColor = t === tab ? '#1a3a6c' : 'transparent';
+                btn.style.color             = t === tab ? '#1a3a6c' : '#64748b';
+                btn.style.fontWeight        = t === tab ? '700' : '600';
+            }
+        });
+    }
+
+    function reloadEvmDocs() {
+        var loadEl = document.getElementById('evm-docs-loading');
+        var contEl = document.getElementById('evm-docs-content');
+        if (loadEl) loadEl.style.display = 'block';
+        if (contEl) { contEl.style.display = 'none'; contEl.innerHTML = ''; }
+    }
+
+    function saFormatGradeLevel(grade) {
+        var gradeMap = { nursery:'Nursery', kindergarten:'Kindergarten', grade1:'Grade 1', grade2:'Grade 2', grade3:'Grade 3', grade4:'Grade 4', grade5:'Grade 5', grade6:'Grade 6' };
+        return gradeMap[grade] || grade || 'N/A';
+    }
+    function saFormatStudentType(type) {
+        var typeMap = { new:'New Student', transferee:'Transferee', returning:'Returning Student' };
+        return typeMap[type] || type || 'N/A';
+    }
+    function saFormatRelationship(rel) {
+        var relMap = { father:'Father', mother:'Mother', guardian:'Guardian', sibling:'Sibling', grandparent:'Grandparent', relative:'Relative' };
+        return relMap[rel] || rel || 'N/A';
+    }
+
+    function saViewEnrollment(enrollmentId) {
+        var modalEl = document.getElementById('enrollmentViewModal');
+        evmTab('details');
+        fetch('/admin/enrollments/' + enrollmentId, {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-CSRF-TOKEN': csrfToken }
+        })
+        .then(function(r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+        .then(function(data) {
+            var sd = data.student_data || {};
+            var fmt = function(d) { return d ? new Date(d).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : 'N/A'; };
+
+            document.getElementById('modal-reference-number').textContent = data.reference_number || 'N/A';
+            document.getElementById('modal-school-year').textContent       = data.school_year || 'N/A';
+
+            var typeBadge = document.getElementById('modal-type-badge');
+            var typeMap = { returning:{ label:'Re-Enroll', color:'#fbbf24' }, transferee:{ label:'Transferee', color:'#6ee7b7' }, new:{ label:'New Student', color:'#a5f3fc' } };
+            var typeInfo = typeMap[sd.student_type] || null;
+            if (typeInfo) {
+                typeBadge.textContent = typeInfo.label;
+                typeBadge.style.background = 'rgba(255,255,255,.15)';
+                typeBadge.style.color = typeInfo.color;
+                typeBadge.style.borderColor = typeInfo.color;
+                typeBadge.style.display = 'inline-block';
+            } else { typeBadge.style.display = 'none'; }
+
+            var statusColors = { enrolled:'#16a34a', approved:'#16a34a', pending:'#d97706', declined:'#dc2626', completed:'#6d28d9' };
+            var statusBg     = { enrolled:'#dcfce7', approved:'#dcfce7', pending:'#fef3c7', declined:'#fee2e2', completed:'#ede9fe' };
+            var sc = statusColors[data.status] || '#6b7280';
+            var sb = statusBg[data.status] || '#f3f4f6';
+            document.getElementById('modal-status-pill').innerHTML = '<span style="background:' + sb + ';color:' + sc + ';border:1.5px solid ' + sc + ';border-radius:20px;padding:5px 14px;font-size:12px;font-weight:700;">' + (data.status||'').replace(/^\w/, function(c){ return c.toUpperCase(); }) + '</span>';
+
+            document.getElementById('modal-student-name').textContent      = [sd.first_name||'', sd.middle_name||'', sd.last_name||''].filter(Boolean).join(' ') || 'N/A';
+            document.getElementById('modal-student-email').textContent     = sd.student_email || 'N/A';
+            document.getElementById('modal-student-phone').textContent     = sd.guardian_phone || 'N/A';
+            document.getElementById('modal-grade-level').textContent       = saFormatGradeLevel(sd.grade_level);
+            document.getElementById('modal-student-type').textContent      = saFormatStudentType(sd.student_type);
+            document.getElementById('modal-student-birthdate').textContent = sd.birthdate ? new Date(sd.birthdate).toLocaleDateString('en-PH') : 'N/A';
+
+            document.getElementById('modal-guardian-name').textContent       = sd.guardian_name || 'N/A';
+            document.getElementById('modal-relationship').textContent        = saFormatRelationship(sd.relationship);
+            document.getElementById('modal-guardian-occupation').textContent = sd.guardian_occupation || 'N/A';
+            document.getElementById('modal-guardian-email').textContent      = sd.student_email || 'N/A';
+            document.getElementById('modal-guardian-phone').textContent      = sd.guardian_phone || 'N/A';
+
+            document.getElementById('modal-street-address').textContent = sd.street_address || 'N/A';
+            document.getElementById('modal-barangay').textContent        = sd.barangay || 'N/A';
+            document.getElementById('modal-city').textContent            = sd.city || 'N/A';
+            document.getElementById('modal-province').textContent        = sd.province || 'N/A';
+            document.getElementById('modal-zip-code').textContent        = sd.zip_code || 'N/A';
+
+            document.getElementById('modal-application-date').textContent  = fmt(data.created_at);
+            document.getElementById('modal-updated-at').textContent        = fmt(data.updated_at);
+            var procMap = { pending:'Under Review', approved:'Approved - Student Account Created', declined:'Declined - See Reason in Notes' };
+            document.getElementById('modal-processing-status').textContent = procMap[data.status] || data.status || 'Unknown';
+
+            var secCard = document.getElementById('section-assignment-card');
+            if (['enrolled','approved','completed'].includes(data.status)) {
+                secCard.style.display = 'block';
+                document.getElementById('modal-current-section').textContent     = data.section || 'Not assigned';
+                document.getElementById('modal-section-grade-level').textContent = saFormatGradeLevel(sd.grade_level);
+            } else { secCard.style.display = 'none'; }
+
+            var actionButtons = document.getElementById('modal-action-buttons');
+            if (data.status === 'pending') {
+                actionButtons.innerHTML = '<button class="btn btn-success" onclick="saApproveEnrollment(' + data.id + ')"><i class="bi bi-check-circle-fill"></i> Approve</button>' +
+                    '<button class="btn btn-danger" onclick="saDeclineEnrollment(' + data.id + ')"><i class="bi bi-x-circle-fill"></i> Decline</button>' +
+                    '<button class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-arrow-left"></i> Close</button>';
+            } else {
+                actionButtons.innerHTML = '<button class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-arrow-left"></i> Close</button>';
+            }
+
+            if (data.user_id) {
+                saFetchDocs(data.user_id);
+            }
+
+            new bootstrap.Modal(modalEl).show();
+        })
+        .catch(function(error) {
+            console.error('Error loading enrollment data:', error);
+            saToast('error', 'Failed to load enrollment details.');
+        });
+    }
+
+    // ── Document review (approve/reject uploaded enrollment documents) ──
+    var SA_DOC_TYPES = [
+        { key: 'birth_certificate',  label: 'Birth Certificate',    icon: 'bi-file-earmark-person-fill' },
+        { key: 'form_137',           label: 'Form 137',             icon: 'bi-file-earmark-text-fill'   },
+        { key: 'report_card',        label: 'Grades / Report Card', icon: 'bi-file-earmark-check-fill'  },
+        { key: 'two_by_two_picture', label: '2x2 ID Picture',       icon: 'bi-person-bounding-box'      },
+    ];
+    var _saRejectDocId = null;
+
+    function saFetchDocs(userId) {
+        var loadEl = document.getElementById('evm-docs-loading');
+        var contEl = document.getElementById('evm-docs-content');
+        loadEl.style.display = 'block';
+        contEl.style.display = 'none';
+        contEl.innerHTML = '';
+        fetch('/admin/student/' + userId + '/documents-for-assess', { headers: { 'X-CSRF-TOKEN': csrfToken } })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            loadEl.style.display = 'none';
+            contEl.innerHTML = saBuildDocCards(data.documents || [], userId);
+            contEl.style.display = 'block';
+            var badge = document.getElementById('evm-doc-count');
+            if (badge) {
+                var uploaded = (data.documents || []).filter(function(d) { return SA_DOC_TYPES.some(function(t) { return t.key === d.document_type; }); });
+                badge.textContent = uploaded.length + '/4';
+                badge.style.display = 'inline-block';
+            }
+        })
+        .catch(function() { loadEl.innerHTML = '<span style="color:#c0392b;font-size:12px;">Failed to load documents.</span>'; });
+    }
+
+    function saBuildDocCards(documents, userId) {
+        var byType = {};
+        documents.forEach(function(d) { if (!byType[d.document_type]) byType[d.document_type] = d; });
+
+        var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px;">';
+
+        SA_DOC_TYPES.forEach(function(type) {
+            var doc = byType[type.key] || null;
+            var border, bg, iconBg, iconColor, badge, actions = '', viewBtn = '';
+
+            if (!doc) {
+                border = '1px dashed #d0d7de'; bg = '#fafafa'; iconBg = '#f0f0f0'; iconColor = '#bbb';
+                badge  = '<span style="font-size:11px;font-weight:700;background:#f0f0f0;color:#999;padding:3px 10px;border-radius:20px;">○ Missing</span>';
+            } else if (doc.status === 'approved') {
+                border = '1px solid #bbf7d0'; bg = '#f0fdf4'; iconBg = '#dcfce7'; iconColor = '#16a34a';
+                badge  = '<span style="font-size:11px;font-weight:700;background:#dcfce7;color:#15803d;padding:3px 10px;border-radius:20px;">✓ Approved</span>';
+            } else if (doc.status === 'rejected') {
+                border = '1px solid #fecaca'; bg = '#fff5f5'; iconBg = '#fee2e2'; iconColor = '#dc2626';
+                badge  = '<span style="font-size:11px;font-weight:700;background:#fee2e2;color:#dc2626;padding:3px 10px;border-radius:20px;">✗ Rejected</span>';
+                if (doc.reject_reason) badge += '<div style="font-size:10px;color:#dc2626;margin-top:4px;opacity:0.8;">' + doc.reject_reason + '</div>';
+            } else {
+                border = '1px solid #bfdbfe'; bg = '#eff6ff'; iconBg = '#dbeafe'; iconColor = '#1d4ed8';
+                badge  = '<span style="font-size:11px;font-weight:700;background:#dbeafe;color:#1d4ed8;padding:3px 10px;border-radius:20px;">● Pending Review</span>';
+            }
+
+            if (doc && doc.file_path) {
+                var _url  = '/storage/' + doc.file_path;
+                var _name = (doc.original_name || 'document').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+                var _lbl  = type.label.replace(/'/g,"\\'");
+                viewBtn = '<button onclick="saViewDocFile(\'' + _url + '\',\'' + _name + '\',\'' + _lbl + '\')" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#1d4ed8;background:none;border:none;padding:0;cursor:pointer;"><i class="bi bi-eye-fill"></i> View File</button>';
+            }
+
+            if (doc && doc.status === 'pending') {
+                actions = '<div style="display:flex;gap:6px;">' +
+                    '<button onclick="saApproveDocCard(' + doc.id + ',' + userId + ')" style="flex:1;padding:5px 0;background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;"><i class="bi bi-check-lg"></i> Approve</button>' +
+                    '<button onclick="saRejectDocCard(' + doc.id + ',' + userId + ')" style="flex:1;padding:5px 0;background:#fee2e2;color:#dc2626;border:1px solid #fca5a5;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;"><i class="bi bi-x-lg"></i> Reject</button>' +
+                    '</div>';
+            }
+
+            var filename = doc ? doc.original_name : null;
+            var dateStr  = (doc && doc.created_at) ? new Date(doc.created_at).toLocaleDateString('en-PH', { month:'short', day:'numeric', year:'numeric' }) : null;
+
+            html += '<div style="border:' + border + ';border-radius:12px;padding:16px;background:' + bg + ';display:flex;flex-direction:column;gap:10px;">';
+            html += '<div style="display:flex;align-items:center;gap:10px;"><div style="width:42px;height:42px;border-radius:10px;background:' + iconBg + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="bi ' + type.icon + '" style="font-size:21px;color:' + iconColor + ';"></i></div><div style="font-weight:700;font-size:13px;color:#1a3a6c;line-height:1.3;">' + type.label + '</div></div>';
+            html += '<div style="font-size:12px;color:#555;border-top:1px solid rgba(0,0,0,0.06);padding-top:8px;">';
+            if (filename) {
+                html += '<div style="display:flex;align-items:center;gap:5px;overflow:hidden;"><i class="bi bi-paperclip" style="color:#999;flex-shrink:0;font-size:13px;"></i><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="' + filename + '">' + filename + '</span></div>';
+                if (dateStr) html += '<div style="font-size:11px;color:#aaa;margin-top:3px;">' + dateStr + '</div>';
+            } else {
+                html += '<span style="color:#bbb;font-style:italic;">Not yet uploaded</span>';
+            }
+            html += '</div>';
+            html += '<div style="display:flex;flex-direction:column;gap:8px;">' + badge + actions + viewBtn + '</div>';
+            html += '</div>';
+        });
+
+        html += '</div>';
+        return html;
+    }
+
+    function saApproveDocCard(docId, userId) {
+        fetch('/admin/documents/' + docId + '/approve', {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.success) { saToast('success', 'Document approved.'); saFetchDocs(userId); }
+            else { saToast('error', d.message || 'Failed to approve.'); }
+        })
+        .catch(function() { saToast('error', 'Failed to approve document.'); });
+    }
+
+    function saRejectDocCard(docId, userId) {
+        _saRejectDocId = docId;
+        document.getElementById('sa-reject-doc-reason').value = '';
+        var modal = new bootstrap.Modal(document.getElementById('saRejectDocModal'));
+        document.getElementById('saRejectDocModal').dataset.userId = userId;
+        modal.show();
+    }
+
+    function saSubmitRejectDoc() {
+        var reason = document.getElementById('sa-reject-doc-reason').value.trim();
+        if (!reason) { saToast('error', 'Please enter a rejection reason.'); return; }
+        var userId = document.getElementById('saRejectDocModal').dataset.userId;
+        fetch('/admin/documents/' + _saRejectDocId + '/reject', {
+            method: 'POST',
+            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reject_reason: reason })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            bootstrap.Modal.getInstance(document.getElementById('saRejectDocModal')).hide();
+            if (d.success) { saToast('success', 'Document rejected.'); saFetchDocs(userId); }
+            else { saToast('error', d.message || 'Failed to reject.'); }
+        })
+        .catch(function() {
+            bootstrap.Modal.getInstance(document.getElementById('saRejectDocModal')).hide();
+            saToast('error', 'Failed to reject document.');
+        });
+    }
+
+    function saViewDocFile(url, name, docTypeLabel) {
+        var ext = url.split('?')[0].split('.').pop().toLowerCase();
+        var isImg = ['jpg','jpeg','png','gif','webp','bmp'].indexOf(ext) !== -1;
+        var isPdf = ext === 'pdf';
+
+        document.getElementById('sa-docv-title').textContent = (name || 'Document') + (docTypeLabel ? ' — ' + docTypeLabel : '');
+
+        var imgWrap = document.getElementById('sa-docv-img-wrap');
+        var pdfWrap = document.getElementById('sa-docv-pdf-wrap');
+
+        if (isImg) {
+            document.getElementById('sa-docv-img').src = url;
+            imgWrap.style.display = ''; pdfWrap.style.display = 'none';
+        } else if (isPdf) {
+            document.getElementById('sa-docv-pdf').src = url;
+            imgWrap.style.display = 'none'; pdfWrap.style.display = '';
+        } else {
+            imgWrap.innerHTML = '<div style="padding:60px 20px;text-align:center;"><i class="bi bi-file-earmark" style="font-size:64px;color:#ccc;"></i><p style="margin-top:16px;color:#666;font-size:13px;">Preview not available for this file type.</p></div>';
+            imgWrap.style.display = ''; pdfWrap.style.display = 'none';
+        }
+
+        document.getElementById('sa-docv-download').href = url;
+        document.getElementById('sa-docv-download').download = name || 'document';
+        document.getElementById('sa-docv-open').href = url;
+
+        new bootstrap.Modal(document.getElementById('saDocViewerModal')).show();
+    }
+
+    // ── Walk-in Enrollment (ported, reuses admin.enrollments.walk-in-modal markup) ──
+    async function openWalkInEnrollmentModal() {
+        document.getElementById('walkInEnrollmentForm').reset();
+        var addrReset = { 'walkin-province': 'Select Province', 'walkin-city': 'Select City/Municipality', 'walkin-barangay': 'Select Barangay' };
+        Object.entries(addrReset).forEach(function([id, label]) {
+            var el = document.getElementById(id);
+            el.innerHTML = '<option value="">' + label + '</option>';
+            el.disabled = true;
+        });
+        document.getElementById('walkin-payment-breakdown').style.display = 'none';
+
+        var reEnrollFlag = document.getElementById('walkin-reenroll');
+        if (reEnrollFlag) reEnrollFlag.value = '';
+
+        if (!window._feeTotals) {
+            await loadFeeSettings();
+        }
+
+        updateWalkinPaymentOptions();
+
+        new bootstrap.Modal(document.getElementById('walkInEnrollmentModal')).show();
+
+        setTimeout(function() { initWalkInFormNavigation(); }, 100);
+    }
+
+    function initWalkInFormNavigation() {
+        var form = document.getElementById('walkInEnrollmentForm');
+        if (!form) return;
+
+        var rows = form.querySelectorAll('.row');
+        var navigationGrid = [];
+
+        rows.forEach(function(row) {
+            var inputs = Array.from(row.querySelectorAll('input, select')).filter(function(el) { return !el.disabled && el.type !== 'hidden'; });
+            if (inputs.length > 0) navigationGrid.push(inputs);
+        });
+
+        navigationGrid.forEach(function(rowInputs, rowIndex) {
+            rowInputs.forEach(function(input, colIndex) {
+                input.removeEventListener('keydown', handleWalkInKeydown);
+                input.addEventListener('keydown', handleWalkInKeydown);
+
+                function handleWalkInKeydown(e) {
+                    var targetInput = null;
+
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (colIndex < rowInputs.length - 1) {
+                            targetInput = rowInputs[colIndex + 1];
+                        } else if (rowIndex < navigationGrid.length - 1) {
+                            targetInput = navigationGrid[rowIndex + 1][0];
+                        } else {
+                            var submitBtn = document.querySelector('#walkInEnrollmentModal .btn-primary');
+                            if (submitBtn) { submitBtn.focus(); return; }
+                        }
+                    } else if (e.key === 'ArrowRight' && !e.shiftKey) {
+                        e.preventDefault();
+                        if (colIndex < rowInputs.length - 1) targetInput = rowInputs[colIndex + 1];
+                    } else if (e.key === 'ArrowLeft' && !e.shiftKey) {
+                        e.preventDefault();
+                        if (colIndex > 0) targetInput = rowInputs[colIndex - 1];
+                    } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        if (rowIndex < navigationGrid.length - 1) {
+                            var nextRow = navigationGrid[rowIndex + 1];
+                            targetInput = nextRow[Math.min(colIndex, nextRow.length - 1)];
+                        }
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        if (rowIndex > 0) {
+                            var prevRow = navigationGrid[rowIndex - 1];
+                            targetInput = prevRow[Math.min(colIndex, prevRow.length - 1)];
+                        }
+                    }
+
+                    if (targetInput) {
+                        targetInput.focus();
+                        if (targetInput.tagName === 'SELECT') setTimeout(function() { targetInput.click(); }, 50);
+                    }
+                }
+            });
+        });
+    }
+
+    async function fetchAdminFeeCalculation(gradeLevel, paymentOption) {
+        try {
+            var response = await fetch('/api/fees/calculate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                body: JSON.stringify({ grade_level: gradeLevel, payment_option: paymentOption })
+            });
+            if (!response.ok) throw new Error('Failed to fetch fee calculation: ' + response.status);
+            var result = await response.json();
+            return result.success ? result.data : null;
+        } catch (error) {
+            console.error('Fee API error:', error);
+            return null;
+        }
+    }
+
+    function calculateAdminFeeFallback(gradeLevel, paymentOption) {
+        var t = window._feeTotals || {};
+        var tuition = t.tuition || 0;
+        var misc = t.misc || 0;
+        var insurance = t.insurance || 0;
+        var electric = t.electric || 0;
+
+        var booksMap = {
+            'nursery': t.booksNursery || 0, 'kindergarten': t.booksNursery || 0,
+            'grade1': t.booksGrade1 || 0, 'grade2': t.booksGrade1 || 0,
+            'grade3': t.booksGrade3 || 0, 'grade4': t.booksGrade4 || 0,
+            'grade5': t.booksGrade4 || 0, 'grade6': t.booksGrade4 || 0
+        };
+        var books = booksMap[gradeLevel] || 0;
+        var baseTotal = tuition + misc + books + insurance + electric;
+
+        if (baseTotal === 0) return null;
+
+        var rates = { total: baseTotal, tuition: tuition, misc: misc, books: books, insurance: insurance, electric: electric };
+        var total = 0, downpayment = 0, monthly = 0, discount = 0;
+
+        var dpBMap = {
+            'nursery': parseFloat(document.getElementById('fee-optb-dp-nursery')?.value) || 0,
+            'kindergarten': parseFloat(document.getElementById('fee-optb-dp-kinder')?.value) || 0,
+            'grade1': parseFloat(document.getElementById('fee-optb-dp-grade1')?.value) || 0,
+            'grade2': parseFloat(document.getElementById('fee-optb-dp-grade1')?.value) || 0,
+            'grade3': parseFloat(document.getElementById('fee-optb-dp-grade3')?.value) || 0,
+            'grade4': parseFloat(document.getElementById('fee-optb-dp-grade4')?.value) || 0,
+            'grade5': parseFloat(document.getElementById('fee-optb-dp-grade4')?.value) || 0,
+            'grade6': parseFloat(document.getElementById('fee-optb-dp-grade4')?.value) || 0
+        };
+        var dpCMap = {
+            'grade1': parseFloat(document.getElementById('fee-optc-dp-grade1')?.value) || 0,
+            'grade2': parseFloat(document.getElementById('fee-optc-dp-grade1')?.value) || 0,
+            'grade3': parseFloat(document.getElementById('fee-optc-dp-grade3')?.value) || 0,
+            'grade4': parseFloat(document.getElementById('fee-optc-dp-grade4')?.value) || 0,
+            'grade5': parseFloat(document.getElementById('fee-optc-dp-grade4')?.value) || 0,
+            'grade6': parseFloat(document.getElementById('fee-optc-dp-grade4')?.value) || 0
+        };
+        var dpDMap = {
+            'nursery': parseFloat(document.getElementById('fee-optd-dp-nursery')?.value) || 0,
+            'kindergarten': parseFloat(document.getElementById('fee-optd-dp-kinder')?.value) || 0
+        };
+
+        if (paymentOption === 'A') {
+            discount = parseFloat(document.getElementById('fee-opta-discount')?.value) || 0;
+            total = baseTotal - discount;
+            return { components: rates, base_total: baseTotal, discount: discount, downpayment: 0, monthly_payment: 0, months: 0, total_payable: total, option: 'A' };
+        } else if (paymentOption === 'B') {
+            downpayment = dpBMap[gradeLevel] || 0;
+            var tuitionMoB = parseFloat(document.getElementById('fee-optb-monthly-tuition')?.value) || 0;
+            var electricMoB = parseFloat(document.getElementById('fee-optb-monthly-electric')?.value) || 0;
+            monthly = tuitionMoB + electricMoB;
+            total = downpayment + (monthly * 9);
+            return { components: rates, base_total: baseTotal, discount: 0, downpayment: downpayment, monthly_payment: parseFloat(monthly.toFixed(2)), months: 9, total_payable: total, option: 'B' };
+        } else if (paymentOption === 'C') {
+            downpayment = dpCMap[gradeLevel] || 0;
+            var tuitionMoC = parseFloat(document.getElementById('fee-optc-monthly-tuition')?.value) || 0;
+            var miscMoC = parseFloat(document.getElementById('fee-optc-monthly-misc')?.value) || 0;
+            var electricMoC = parseFloat(document.getElementById('fee-optc-monthly-electric')?.value) || 0;
+            monthly = tuitionMoC + miscMoC + electricMoC;
+            total = downpayment + (monthly * 9);
+            return { components: rates, base_total: baseTotal, discount: 0, downpayment: downpayment, monthly_payment: parseFloat(monthly.toFixed(2)), months: 9, total_payable: total, option: 'C' };
+        } else if (paymentOption === 'D') {
+            downpayment = dpDMap[gradeLevel] || 0;
+            var tuitionMoD = parseFloat(document.getElementById('fee-optd-monthly-tuition')?.value) || 0;
+            var miscMoD = parseFloat(document.getElementById('fee-optd-monthly-misc')?.value) || 0;
+            var electricMoD = parseFloat(document.getElementById('fee-optd-monthly-electric')?.value) || 0;
+            monthly = tuitionMoD + miscMoD + electricMoD;
+            total = downpayment + (monthly * 9);
+            return { components: rates, base_total: baseTotal, discount: 0, downpayment: downpayment, monthly_payment: parseFloat(monthly.toFixed(2)), months: 9, total_payable: total, option: 'D' };
+        }
+        return null;
+    }
+
+    async function updateWalkinPaymentOptions() {
+        var gradeLevel = document.getElementById('walkin-grade-level').value;
+        if (!gradeLevel) return;
+
+        var results = await Promise.all([
+            fetchAdminFeeCalculation(gradeLevel, 'A').catch(function() { return null; }),
+            fetchAdminFeeCalculation(gradeLevel, 'B').catch(function() { return null; }),
+            fetchAdminFeeCalculation(gradeLevel, 'C').catch(function() { return null; }),
+            fetchAdminFeeCalculation(gradeLevel, 'D').catch(function() { return null; })
+        ]);
+        var optA = results[0], optB = results[1], optC = results[2], optD = results[3];
+
+        var feeA = optA || calculateAdminFeeFallback(gradeLevel, 'A') || {};
+        var feeB = optB || calculateAdminFeeFallback(gradeLevel, 'B') || {};
+        var feeC = optC || calculateAdminFeeFallback(gradeLevel, 'C') || {};
+        var feeD = optD || calculateAdminFeeFallback(gradeLevel, 'D') || {};
+
+        var discountedTotal = feeA.total_payable || ((feeA.base_total || 0) - (feeA.discount || 0));
+        document.getElementById('walkin-opt-a-total').textContent = '₱' + discountedTotal.toLocaleString();
+        document.getElementById('walkin-opt-b-monthly').textContent = '₱' + (feeB.monthly_payment || 0).toLocaleString() + '/mo';
+        document.getElementById('walkin-opt-c-monthly').textContent = '₱' + (feeC.monthly_payment || 0).toLocaleString() + '/mo';
+        document.getElementById('walkin-opt-d-monthly').textContent = '₱' + (feeD.monthly_payment || 0).toLocaleString() + '/mo';
+
+        var walkinGrade = (document.getElementById('walkin-grade-level')?.value || '').toLowerCase().replace(/\s/g, '');
+        var isWalkinElementary = ['grade1', 'grade2', 'grade3', 'grade4', 'grade5', 'grade6'].includes(walkinGrade);
+        var isWalkinPreElem = ['nursery', 'kindergarten'].includes(walkinGrade);
+
+        document.getElementById('walkin-opt-c-container').style.display = isWalkinElementary ? 'block' : 'none';
+        document.getElementById('walkin-opt-d-container').style.display = isWalkinPreElem ? 'block' : 'none';
+    }
+
+    function selectWalkinPaymentOption(option) {
+        document.querySelectorAll('[id^="walkin-card-opt-"]').forEach(function(card) { card.classList.remove('selected'); });
+        document.getElementById('walkin-card-opt-' + option.toLowerCase()).classList.add('selected');
+        document.getElementById('walkin-payment-option').value = option;
+        updateWalkinPaymentCalculation();
+    }
+
+    async function updateWalkinPaymentCalculation() {
+        var gradeLevel = document.getElementById('walkin-grade-level').value;
+        var paymentOption = document.getElementById('walkin-payment-option').value;
+        if (!gradeLevel || !paymentOption) return;
+
+        var feeData = await fetchAdminFeeCalculation(gradeLevel, paymentOption);
+        if (!feeData) feeData = calculateAdminFeeFallback(gradeLevel, paymentOption);
+
+        if (!feeData) {
+            saToast('error', 'Failed to calculate fees. Please try again.');
+            return;
+        }
+
+        var c = feeData.components || feeData;
+        var breakdownHTML = '';
+
+        if (paymentOption === 'A') {
+            var total = feeData.total_payable || ((feeData.base_total || 0) - (feeData.discount || 0));
+            breakdownHTML = '<div><strong>Base Total:</strong> ₱' + (feeData.base_total || 0).toLocaleString() + '</div>' +
+                '<div><strong>Discount:</strong> -₱' + (feeData.discount || 0).toLocaleString() + '</div>' +
+                '<div style="color:var(--green); font-weight:700; margin-top:4px;"><strong>Total Due:</strong> ₱' + total.toLocaleString() + '</div>';
+            document.getElementById('walkin-downpayment-amount').value = total;
+            document.getElementById('walkin-monthly-amount').value = 0;
+        } else {
+            breakdownHTML = '<div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid #e0e0e0;">' +
+                '<div style="font-weight:600; margin-bottom:4px;">Downpayment Breakdown:</div>' +
+                '<div style="display:flex; justify-content:space-between; margin-bottom:2px;"><span>Books:</span><span>₱' + (c.books || 0).toLocaleString() + '</span></div>' +
+                '<div style="display:flex; justify-content:space-between; margin-bottom:2px;"><span>Insurance:</span><span>₱' + (c.insurance || 0).toLocaleString() + '</span></div>' +
+                '<div style="display:flex; justify-content:space-between; margin-bottom:2px;"><span>Misc/Reg/PTA:</span><span>₱' + (c.misc || 0).toLocaleString() + '</span></div>' +
+                '<div style="display:flex; justify-content:space-between; font-weight:700; margin-top:4px;"><span>Total Downpayment:</span><span>₱' + (feeData.downpayment || 0).toLocaleString() + '</span></div>' +
+                '</div>' +
+                '<div><strong>Monthly:</strong> ₱' + (feeData.monthly_payment || 0).toLocaleString() + ' (' + (feeData.months || 9) + ' months, July-March)</div>' +
+                '<div style="color:var(--green); font-weight:700; margin-top:4px;"><strong>Total:</strong> ₱' + (feeData.total_payable || 0).toLocaleString() + '</div>';
+            document.getElementById('walkin-downpayment-amount').value = feeData.downpayment || 0;
+            document.getElementById('walkin-monthly-amount').value = feeData.monthly_payment || 0;
+        }
+
+        document.getElementById('walkin-total-amount').value = feeData.total_payable || 0;
+        document.getElementById('walkin-breakdown-content').innerHTML = breakdownHTML;
+        document.getElementById('walkin-payment-breakdown').style.display = 'block';
+    }
+
+    function validateWalkinGmail(input) {
+        var hint = document.getElementById('walkin-email-hint');
+        var val  = input.value.trim();
+
+        var walkinTypos = {
+            'gmial.com':'gmail.com','gmal.com':'gmail.com','gamil.com':'gmail.com',
+            'gnail.com':'gmail.com','gmaill.com':'gmail.com','gmail.co':'gmail.com',
+            'gmai.com':'gmail.com','gmali.com':'gmail.com',
+        };
+        var rfcRe = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+
+        if (!val) {
+            input.classList.remove('is-invalid', 'is-valid');
+            if (hint) { hint.textContent = 'Must be a Gmail address — credentials will be sent here after approval.'; hint.style.color = ''; }
+            return;
+        }
+
+        if (!rfcRe.test(val)) {
+            input.classList.add('is-invalid'); input.classList.remove('is-valid');
+            if (hint) { hint.textContent = 'Invalid email format.'; hint.style.color = '#dc3545'; }
+            return;
+        }
+
+        var domain = val.split('@')[1].toLowerCase();
+
+        if (walkinTypos[domain]) {
+            var fix = val.split('@')[0] + '@gmail.com';
+            input.classList.add('is-invalid'); input.classList.remove('is-valid');
+            if (hint) {
+                hint.innerHTML = 'Did you mean <strong>' + fix + '</strong>? ' +
+                    '<a href="#" style="color:#d97706;font-weight:700;" onclick="document.getElementById(\'walkin-guardian-email\').value=\'' +
+                    fix + '\';validateWalkinGmail(document.getElementById(\'walkin-guardian-email\'));return false;">Use this</a>';
+                hint.style.color = '#d97706';
+            }
+            return;
+        }
+
+        if (domain !== 'gmail.com') {
+            input.classList.add('is-invalid'); input.classList.remove('is-valid');
+            if (hint) { hint.textContent = 'Only Gmail addresses accepted (e.g. yourname@gmail.com).'; hint.style.color = '#dc3545'; }
+            return;
+        }
+
+        input.classList.remove('is-invalid'); input.classList.add('is-valid');
+        if (hint) { hint.textContent = '✓ Valid Gmail address'; hint.style.color = '#28a745'; }
+    }
+
+    async function loadFeeSettings() {
+        if (window._feeTotals) return;
+        var getVal = function(id) { return parseFloat(document.getElementById(id)?.value) || 0; };
+        window._feeTotals = {
+            tuition: getVal('fee-tuition'), misc: getVal('fee-misc'), insurance: getVal('fee-insurance'),
+            electric: getVal('fee-electric'), booksNursery: getVal('fee-books-nursery'),
+            booksKindergarten: getVal('fee-books-kindergarten'), booksGrade1: getVal('fee-books-grade1'),
+            booksGrade3: getVal('fee-books-grade3'), booksGrade4: getVal('fee-books-grade4')
+        };
+    }
+
+    function submitWalkInEnrollment(confirmed) {
+        if (!confirmed) {
+            saConfirm({
+                title: 'Submit Enrollment',
+                msg: 'Are you sure you want to submit this enrollment?',
+                icon: 'bi-person-plus-fill',
+                gradient: 'linear-gradient(135deg,#27ae60,#1e8449)',
+                btnLabel: 'Submit',
+                btnColor: '#16a34a',
+                onConfirm: function() { submitWalkInEnrollment(true); }
+            });
+            return;
+        }
+
+        var emailInput = document.getElementById('walkin-guardian-email');
+        if (!emailInput.value || !/^[^\s@]+@gmail\.com$/i.test(emailInput.value)) {
+            emailInput.classList.add('is-invalid');
+            emailInput.focus();
+            var hint = document.getElementById('walkin-email-hint');
+            if (hint) { hint.textContent = 'Only Gmail addresses accepted (@gmail.com)'; hint.style.color = '#dc3545'; }
+            saToast('error', 'Please enter a valid Gmail address for the guardian email.');
+            return;
+        }
+
+        var phoneInput = document.getElementById('walkin-guardian-phone');
+        if (!phoneInput.value || !/^9[0-9]{9}$/.test(phoneInput.value)) {
+            phoneInput.classList.add('is-invalid');
+            phoneInput.focus();
+            saToast('error', 'Please enter a valid 10-digit phone number starting with 9 (after +63).');
+            return;
+        }
+
+        var formData = {
+            first_name: document.getElementById('walkin-first-name').value,
+            last_name: document.getElementById('walkin-last-name').value,
+            middle_name: document.getElementById('walkin-middle-name').value,
+            suffix: document.getElementById('walkin-suffix').value,
+            gender: document.getElementById('walkin-gender').value,
+            birthdate: document.getElementById('walkin-birthdate').value,
+            place_of_birth: document.getElementById('walkin-place-of-birth').value,
+            nationality: document.getElementById('walkin-nationality').value,
+            grade_level: document.getElementById('walkin-grade-level').value,
+            student_type: document.getElementById('walkin-student-type').value,
+            last_school: document.getElementById('walkin-last-school').value,
+            region: document.getElementById('walkin-region').value,
+            province: document.getElementById('walkin-province').value,
+            city: document.getElementById('walkin-city').value,
+            barangay: document.getElementById('walkin-barangay').value,
+            street_address: document.getElementById('walkin-street-address').value,
+            zip_code: document.getElementById('walkin-zip-code').value,
+            mother_name: document.getElementById('walkin-mother-name').value,
+            mother_age: document.getElementById('walkin-mother-age').value,
+            father_name: document.getElementById('walkin-father-name').value,
+            father_age: document.getElementById('walkin-father-age').value,
+            religious_affiliation: document.getElementById('walkin-religious-affiliation').value,
+            guardian_name: document.getElementById('walkin-guardian-name').value,
+            relationship: document.getElementById('walkin-relationship').value,
+            guardian_occupation: document.getElementById('walkin-guardian-occupation').value,
+            guardian_phone: '+63' + document.getElementById('walkin-guardian-phone').value,
+            guardian_email: document.getElementById('walkin-guardian-email').value,
+            blood_type: document.getElementById('walkin-blood-type').value,
+            allergies: document.getElementById('walkin-allergies').value,
+            medical_conditions: document.getElementById('walkin-medical-conditions').value,
+            payment_option: document.getElementById('walkin-payment-option').value,
+            downpayment_amount: document.getElementById('walkin-downpayment-amount').value,
+            monthly_amount: document.getElementById('walkin-monthly-amount').value,
+            total_amount: document.getElementById('walkin-total-amount').value,
+            reenroll_student_id: document.getElementById('walkin-reenroll').value
+        };
+
+        var required = ['first_name', 'last_name', 'gender', 'birthdate', 'place_of_birth', 'grade_level', 'student_type', 'region', 'province', 'city', 'barangay', 'street_address', 'mother_name', 'mother_age', 'father_name', 'father_age', 'religious_affiliation', 'guardian_name', 'relationship', 'guardian_phone', 'guardian_email', 'payment_option'];
+        for (var i = 0; i < required.length; i++) {
+            if (!formData[required[i]]) {
+                saToast('error', 'Please fill in all required fields.');
+                return;
+            }
+        }
+
+        var btn = document.querySelector('#walkInEnrollmentModal .btn-primary');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Submitting...';
+
+        fetch('/admin/enrollments/walk-in', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+            body: JSON.stringify(formData)
+        })
+        .then(function(r) { if (!r.ok) throw r; return r.json(); })
+        .then(function(d) {
+            bootstrap.Modal.getInstance(document.getElementById('walkInEnrollmentModal')).hide();
+            var isReEnroll = document.getElementById('walkin-reenroll') && document.getElementById('walkin-reenroll').value;
+            var msg = isReEnroll
+                ? 'Re-enrollment submitted successfully. Reference number: ' + d.reference_number
+                : 'Walk-in enrollment submitted. Reference number: ' + d.reference_number;
+            saToast('success', msg);
+            _loaded['enrollments'] = false;
+            loadEnrollments();
+        })
+        .catch(async function(err) {
+            var msg = 'Failed to submit enrollment.';
+            try { var e = await err.json(); msg = e.message || e.error || Object.values(e.errors || {}).flat().join(', '); } catch(x) {}
+            saToast('error', msg);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Submit Enrollment';
+        });
     }
 
     // ══════════════════════════════════════════════════════════
