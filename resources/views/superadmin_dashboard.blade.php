@@ -475,6 +475,7 @@
         .dash-input:focus { border-color:var(--blue); }
         select.dash-input { cursor:pointer; }
         input[type=file].dash-input { padding:8px 13px;background:#f9fafb; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -2071,9 +2072,14 @@
                 <h1>Section Management</h1>
                 <p>Manage class sections, teacher assignments, and student lists.</p>
             </div>
-            <button class="btn-dash btn-secondary" onclick="loadSectionsMgmt()">
-                <i class="bi bi-arrow-clockwise"></i> Refresh
-            </button>
+            <div style="display:flex;gap:10px;">
+                <button class="btn-dash btn-primary" onclick="openSectionModal()">
+                    <i class="bi bi-plus-lg"></i> Add Section
+                </button>
+                <button class="btn-dash btn-secondary" onclick="loadSectionsMgmt()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
         </div>
         <div class="content-card">
             <div class="content-card-header">
@@ -3537,8 +3543,10 @@
                 '<td style="font-size:12px;color:var(--muted);">' + (t.email || '—') + '</td>' +
                 '<td><span class="status-badge ' + (isActive ? 'active' : 'inactive') + '">' + (isActive ? 'Active' : 'Inactive') + '</span></td>' +
                 '<td>' +
+                '<button class="action-btn edit" title="Edit" onclick="openEditTeacherModal(' + t.id + ')"><i class="bi bi-pencil-fill"></i></button>' +
                 '<button class="action-btn lock" title="Reset Password" onclick="saResetTeacherPwd(' + t.id + ',\'' + (t.name || '').replace(/'/g, "\\'") + '\')"><i class="bi bi-key-fill"></i></button>' +
                 '<button class="action-btn ' + (isActive ? 'delete' : 'view') + '" title="' + (isActive ? 'Deactivate' : 'Activate') + '" onclick="saToggleTeacher(' + t.id + ',' + (isActive ? 'true' : 'false') + ')"><i class="bi bi-' + (isActive ? 'person-dash-fill' : 'person-check-fill') + '"></i></button>' +
+                '<button class="action-btn delete" title="Delete" onclick="saDeleteTeacher(' + t.id + ',\'' + (t.name || '').replace(/'/g, "\\'") + '\')"><i class="bi bi-trash3-fill"></i></button>' +
                 '</td>' +
                 '</tr>';
         }).join('');
@@ -3657,13 +3665,177 @@
     }
 
     // Add Teacher Modal trigger (reuses existing createUserModal but pre-selects teacher role)
+    // Dedicated Add/Edit Teacher modal — was reusing the generic "create
+    // user" form (role preset to teacher) which posts to
+    // /superadmin/users (SuperAdminController::storeUser), a different
+    // path than Admin's own Add Teacher flow. That meant a teacher created
+    // here needed a manually-typed password and got no welcome email,
+    // unlike TeacherController::store()'s auto-generated password + emailed
+    // credentials (App\Mail\TeacherAccountCreated). Posting to the same
+    // /admin/teachers endpoint Admin already uses fixes both — same
+    // validation, same auto-password+email behavior, no new backend needed
+    // (AdminMiddleware already allows superadmin on every /admin/* route).
+    var _emailRfc = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
+    var _teacherCommonTypos = {
+        'gmial.com':'gmail.com','gmal.com':'gmail.com','gmail.co':'gmail.com',
+        'gamil.com':'gmail.com','gmaill.com':'gmail.com','gnail.com':'gmail.com',
+        'yahooo.com':'yahoo.com','yaho.com':'yahoo.com','yahoomail.com':'yahoo.com',
+        'hotmial.com':'hotmail.com','hotmal.com':'hotmail.com','outlok.com':'outlook.com',
+    };
+    var _teacherEmailDebounce = null;
+
+    function _teacherModalHtml() {
+        return '<div class="modal fade" id="teacherModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content" style="border:0;border-radius:16px;overflow:hidden;">' +
+            '<div style="background:linear-gradient(135deg,#6a1b9a,#7b1fa2);padding:20px 24px;"><div style="display:flex;align-items:center;gap:12px;"><div style="width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;"><i class="bi bi-person-badge-fill" style="color:#fff;font-size:18px;"></i></div><div style="font-size:16px;font-weight:800;color:#fff;" id="teacherModalTitle">Add Teacher</div></div><button type="button" data-bs-dismiss="modal" style="position:absolute;top:14px;right:16px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;"><i class="bi bi-x-lg"></i></button></div>' +
+            '<div style="padding:20px 24px;background:#fff;">' +
+            '<input type="hidden" id="teacher-id">' +
+            '<div class="mb-3"><label class="form-lbl">Full Name *</label><input type="text" id="teacher-name" class="form-fld" placeholder="e.g. Juan Dela Cruz"></div>' +
+            '<div class="mb-3"><label class="form-lbl">Email Address *</label><div style="position:relative;"><input type="email" id="teacher-email" class="form-fld" placeholder="e.g. teacher@gmail.com" oninput="validateTeacherEmailField(this)" style="padding-right:38px;"><span id="teacher-email-icon" style="position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:16px;display:none;"></span></div><div id="teacher-email-msg" style="font-size:11px;margin-top:5px;display:none;"></div></div>' +
+            '<div class="mb-3" id="teacher-autogen-info" style="display:none;"><div style="background:#e8f8f0;border:1px solid #b8e6c8;border-radius:8px;padding:14px 16px;display:flex;align-items:center;gap:10px;"><i class="bi bi-shield-lock-fill" style="font-size:20px;color:#28a745;"></i><div><div style="font-weight:700;font-size:13px;color:#155724;">Password Auto-Generated</div><div style="font-size:12px;color:#3c763d;">A secure password will be generated and sent to the teacher\'s email automatically.</div></div></div></div>' +
+            '<div class="mb-3" id="teacher-password-group" style="display:none;"><label class="form-lbl">New Password</label><input type="password" id="teacher-password" class="form-fld" placeholder="Leave blank to keep current"><small style="color:#64748b;font-size:11px;">Leave blank to keep current password.</small></div>' +
+            '<div><label class="form-lbl">Status</label><select id="teacher-active" class="form-fld"><option value="1">Active</option><option value="0">Inactive</option></select></div>' +
+            '</div><div style="padding:12px 24px;background:#f8faff;border-top:1.5px solid #e2e8f0;display:flex;gap:10px;justify-content:flex-end;">' +
+            '<button type="button" data-bs-dismiss="modal" style="padding:9px 18px;background:#fff;color:#64748b;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cancel</button>' +
+            '<button type="button" onclick="saveTeacher()" style="padding:9px 20px;background:linear-gradient(135deg,#6a1b9a,#7b1fa2);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;"><i class="bi bi-floppy-fill me-1"></i>Save Teacher</button>' +
+            '</div></div></div></div>';
+    }
+
+    function _resetTeacherEmailUI() {
+        var emailEl = document.getElementById('teacher-email');
+        var icon = document.getElementById('teacher-email-icon');
+        var msg = document.getElementById('teacher-email-msg');
+        if (emailEl) emailEl.style.borderColor = '';
+        if (icon) { icon.style.display = 'none'; icon.innerHTML = ''; }
+        if (msg) { msg.style.display = 'none'; msg.innerHTML = ''; }
+    }
+
+    function setTeacherEmailState(input, state, message) {
+        var icon = document.getElementById('teacher-email-icon');
+        var msg = document.getElementById('teacher-email-msg');
+        var map = {
+            ok:    { color:'#16a34a', border:'#86efac', ico:'<i class="bi bi-check-circle-fill" style="color:#16a34a;"></i>' },
+            warn:  { color:'#d97706', border:'#fcd34d', ico:'<i class="bi bi-exclamation-triangle-fill" style="color:#d97706;"></i>' },
+            error: { color:'#dc2626', border:'#fca5a5', ico:'<i class="bi bi-x-circle-fill" style="color:#dc2626;"></i>' },
+        };
+        var s = map[state] || map.error;
+        icon.style.display = ''; icon.innerHTML = s.ico;
+        msg.style.display = ''; msg.innerHTML = '<span style="color:' + s.color + ';">' + message + '</span>';
+        input.style.borderColor = s.border;
+    }
+
+    function validateTeacherEmailField(input) {
+        clearTimeout(_teacherEmailDebounce);
+        var icon = document.getElementById('teacher-email-icon');
+        var msg = document.getElementById('teacher-email-msg');
+        var val = input.value.trim();
+        if (!val) { icon.style.display = 'none'; msg.style.display = 'none'; input.style.borderColor = ''; return; }
+        icon.style.display = '';
+        icon.innerHTML = '<i class="bi bi-arrow-repeat" style="color:#999;animation:spin 1s linear infinite;"></i>';
+        msg.style.display = 'none';
+        _teacherEmailDebounce = setTimeout(function() {
+            if (!_emailRfc.test(val)) { setTeacherEmailState(input, 'error', 'Invalid email format. Please enter a valid email address.'); return; }
+            var domain = val.split('@')[1].toLowerCase();
+            if (_teacherCommonTypos[domain]) {
+                var suggested = val.split('@')[0] + '@' + _teacherCommonTypos[domain];
+                setTeacherEmailState(input, 'warn', 'Did you mean <strong>' + suggested + '</strong>? '
+                    + '<a href="#" onclick="document.getElementById(\'teacher-email\').value=\'' + suggested + '\';validateTeacherEmailField(document.getElementById(\'teacher-email\'));return false;" style="color:#d97706;font-weight:700;">Use this</a>');
+                return;
+            }
+            var blocked = ['mailinator.com','guerrillamail.com','tempmail.com','throwam.com','yopmail.com','maildrop.cc'];
+            if (blocked.includes(domain)) { setTeacherEmailState(input, 'error', 'Disposable email addresses are not allowed.'); return; }
+            setTeacherEmailState(input, 'ok', 'Email format looks good.');
+        }, 600);
+    }
+
     function openAddTeacherModal() {
-        if (document.getElementById('createUserModal')) {
-            document.getElementById('createUserForm')?.reset();
-            var roleEl = document.getElementById('user-role');
-            if (roleEl) roleEl.value = 'teacher';
-            createUserModal.show();
+        var existing = document.getElementById('teacherModal');
+        if (existing) existing.remove();
+        document.body.insertAdjacentHTML('beforeend', _teacherModalHtml());
+        document.getElementById('teacherModalTitle').textContent = 'Add Teacher';
+        document.getElementById('teacher-id').value = '';
+        document.getElementById('teacher-name').value = '';
+        document.getElementById('teacher-email').value = '';
+        document.getElementById('teacher-password').value = '';
+        document.getElementById('teacher-autogen-info').style.display = 'block';
+        document.getElementById('teacher-password-group').style.display = 'none';
+        document.getElementById('teacher-active').value = '1';
+        _resetTeacherEmailUI();
+        new bootstrap.Modal(document.getElementById('teacherModal')).show();
+    }
+
+    function openEditTeacherModal(teacherId) {
+        var t = _teachersData.find(function(x) { return x.id == teacherId; });
+        if (!t) return;
+        var existing = document.getElementById('teacherModal');
+        if (existing) existing.remove();
+        document.body.insertAdjacentHTML('beforeend', _teacherModalHtml());
+        document.getElementById('teacherModalTitle').textContent = 'Edit Teacher';
+        document.getElementById('teacher-id').value = t.id;
+        document.getElementById('teacher-name').value = t.name || '';
+        document.getElementById('teacher-email').value = t.email || '';
+        document.getElementById('teacher-password').value = '';
+        document.getElementById('teacher-autogen-info').style.display = 'none';
+        document.getElementById('teacher-password-group').style.display = 'block';
+        document.getElementById('teacher-active').value = (t.is_active || t.is_active === 1) ? '1' : '0';
+        _resetTeacherEmailUI();
+        new bootstrap.Modal(document.getElementById('teacherModal')).show();
+    }
+
+    async function saveTeacher() {
+        var id     = document.getElementById('teacher-id').value;
+        var name   = document.getElementById('teacher-name').value.trim();
+        var email  = document.getElementById('teacher-email').value.trim();
+        var active = document.getElementById('teacher-active').value === '1';
+        if (!name || name.length < 2) { saToast('warning', "Please enter the teacher's full name."); return; }
+        if (!email || !_emailRfc.test(email)) { saToast('warning', 'Please enter a valid email address.'); return; }
+
+        var body = { name: name, email: email, is_active: active };
+        if (id) {
+            var pw = document.getElementById('teacher-password').value;
+            if (pw) body.password = pw;
         }
+
+        var method = id ? 'PUT' : 'POST';
+        var url    = '/admin/teachers' + (id ? '/' + id : '');
+        try {
+            var r = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            var d = await r.json();
+            if (r.ok) {
+                saToast('success', id ? 'Teacher updated!' : 'Teacher created! Login credentials sent to their email.');
+                bootstrap.Modal.getInstance(document.getElementById('teacherModal'))?.hide();
+                _loaded['teachers'] = false; loadTeachers();
+            } else {
+                var msg = d.errors ? Object.values(d.errors).flat().join(', ') : (d.message || 'Error saving teacher.');
+                saToast('error', msg);
+            }
+        } catch(e) { saToast('error', 'Network error.'); }
+    }
+
+    function saDeleteTeacher(teacherId, teacherName) {
+        saConfirm({
+            title: 'Delete Teacher',
+            msg: 'Delete teacher "' + teacherName + '"? This cannot be undone.',
+            icon: 'bi-trash3-fill',
+            gradient: 'linear-gradient(135deg,#b91c1c,#dc2626)',
+            btnLabel: 'Delete',
+            btnColor: '#dc2626',
+            onConfirm: function() { doSaDeleteTeacher(teacherId); }
+        });
+    }
+
+    async function doSaDeleteTeacher(teacherId) {
+        try {
+            var r = await fetch('/admin/teachers/' + teacherId, {
+                method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
+            });
+            var d = await r.json();
+            if (r.ok) { saToast('success', 'Teacher deleted.'); _loaded['teachers'] = false; loadTeachers(); }
+            else saToast('error', d.message || 'Error deleting teacher.');
+        } catch(e) { saToast('error', 'Network error.'); }
     }
 
     // ══════════════════════════════════════════════════════════
@@ -3723,6 +3895,7 @@
             '<div class="mb-3"><label class="form-lbl">Subject Name *</label><input type="text" id="subj-name" class="form-fld" placeholder="e.g. Mathematics"></div>' +
             '<div class="mb-3"><label class="form-lbl">Subject Code *</label><input type="text" id="subj-code" class="form-fld" placeholder="e.g. MATH-G1"></div>' +
             '<div class="mb-3"><label class="form-lbl">Grade Level *</label><select id="subj-grade" class="form-fld"><option value="">Select…</option><option value="nursery">Nursery</option><option value="kindergarten">Kindergarten</option><option value="grade1">Grade 1</option><option value="grade2">Grade 2</option><option value="grade3">Grade 3</option><option value="grade4">Grade 4</option><option value="grade5">Grade 5</option><option value="grade6">Grade 6</option></select></div>' +
+            '<div class="mb-3"><label class="form-lbl">Description</label><textarea id="subj-description" class="form-fld" rows="2" placeholder="Optional notes about this subject"></textarea></div>' +
             '<div><label class="form-check" style="display:flex;align-items:center;gap:8px;cursor:pointer;"><input type="checkbox" id="subj-active" class="form-check-input" checked><span class="form-check-label" style="font-size:13px;">Active</span></label></div>' +
             '</div><div style="padding:12px 24px;background:#f8faff;border-top:1.5px solid #e2e8f0;display:flex;gap:10px;justify-content:flex-end;">' +
             '<button type="button" data-bs-dismiss="modal" style="padding:9px 18px;background:#fff;color:#64748b;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cancel</button>' +
@@ -3736,6 +3909,7 @@
         document.getElementById('subj-name').value = '';
         document.getElementById('subj-code').value = '';
         document.getElementById('subj-grade').value = '';
+        document.getElementById('subj-description').value = '';
         document.getElementById('subj-active').checked = true;
         new bootstrap.Modal(document.getElementById('subjectModal')).show();
     }
@@ -3749,14 +3923,16 @@
         document.getElementById('subj-name').value  = s.name  || '';
         document.getElementById('subj-code').value  = s.code  || '';
         document.getElementById('subj-grade').value = s.grade_level || '';
+        document.getElementById('subj-description').value = s.description || '';
         document.getElementById('subj-active').checked = !!(s.is_active || s.is_active === 1);
     }
 
     async function saveSubject() {
-        var name    = document.getElementById('subj-name').value.trim();
-        var code    = document.getElementById('subj-code').value.trim();
-        var grade   = document.getElementById('subj-grade').value;
-        var active  = document.getElementById('subj-active').checked;
+        var name        = document.getElementById('subj-name').value.trim();
+        var code        = document.getElementById('subj-code').value.trim();
+        var grade       = document.getElementById('subj-grade').value;
+        var description = document.getElementById('subj-description').value.trim();
+        var active      = document.getElementById('subj-active').checked;
         if (!name || !code || !grade) { saToast('warning', 'All fields are required.'); return; }
 
         var method = _editSubjectId ? 'PUT' : 'POST';
@@ -3765,7 +3941,7 @@
             var r = await fetch(url, {
                 method: method,
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-                body: JSON.stringify({ name: name, code: code, grade_level: grade, is_active: active })
+                body: JSON.stringify({ name: name, code: code, grade_level: grade, description: description, is_active: active })
             });
             var d = await r.json();
             if (r.ok) {
@@ -3806,6 +3982,7 @@
     // SECTIONS PANEL
     // ══════════════════════════════════════════════════════════
     var _sectionsPage = 1;
+    var _sectionsData = [];
 
     async function loadSectionsMgmt(page) {
         _loaded['sections-mgmt'] = true;
@@ -3818,6 +3995,7 @@
             var r = await fetch(url, { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
             var d = await r.json();
             var rows = d.sections || [];
+            _sectionsData = rows;
             if (!rows.length) {
                 tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--muted);"><i class="bi bi-diagram-3" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3;"></i>No sections found.</td></tr>';
                 document.getElementById('sections-pagination').innerHTML = '';
@@ -3832,7 +4010,11 @@
                     '<td><span class="status-badge active">' + gl + '</span></td>' +
                     '<td>' + teacherName + '</td>' +
                     '<td><span style="font-size:13px;font-weight:700;color:var(--blue);">' + studentCount + '</span><span style="font-size:11px;color:var(--muted);"> students</span></td>' +
-                    '<td><button class="action-btn view" title="View section in Admin" onclick="window.open(\'/admin/dashboard?section=sections\',\'_blank\')"><i class="bi bi-arrow-up-right-square"></i></button></td>' +
+                    '<td>' +
+                    '<button class="action-btn edit" title="Edit" onclick="editSaSection(' + s.id + ')"><i class="bi bi-pencil-fill"></i></button>' +
+                    '<button class="action-btn delete" title="Delete" onclick="saDeleteSection(' + s.id + ',\'' + (s.name || '').replace(/'/g, "\\'") + '\')"><i class="bi bi-trash3-fill"></i></button>' +
+                    '<button class="action-btn view" title="View section in Admin" onclick="window.open(\'/admin/dashboard?section=sections\',\'_blank\')"><i class="bi bi-arrow-up-right-square"></i></button>' +
+                    '</td>' +
                     '</tr>';
             }).join('');
             renderPagerControls('sections-pagination', d, 'section(s)', 'goToSectionsPage');
@@ -3842,6 +4024,131 @@
     }
 
     function goToSectionsPage(p) { loadSectionsMgmt(p); }
+
+    // Add/Edit Section — ported from Admin's own sectionModal
+    // (adminDashboard.blade.php openSectionModal/editSection/
+    // saveSectionRecord) onto the same /admin/sections endpoints
+    // (SectionController), which already accept a superadmin session.
+    // Deliberately NOT porting Admin's "auto-create standard subjects for
+    // this grade" convenience step on new-section creation — that depends
+    // on a large shared lookup table (adminDashboard.blade.php's
+    // `standardSubjects`) and is a nice-to-have, not core parity; can be
+    // added later if wanted.
+    function _sectionSchoolYearOptions() {
+        var cSY = {!! json_encode((int) substr($currentSchoolYear ?? '', 0, 4)) !!} || (new Date().getMonth() >= 5 ? new Date().getFullYear() : new Date().getFullYear() - 1);
+        var html = '';
+        for (var y = cSY + 4; y >= 2020; y--) {
+            var sy = y + '-' + (y + 1);
+            html += '<option value="' + sy + '"' + (y === cSY ? ' selected' : '') + '>' + sy + '</option>';
+        }
+        return html;
+    }
+
+    function _sectionModalHtml() {
+        return '<div class="modal fade" id="saSectionModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered" style="max-width:560px;"><div class="modal-content" style="border:0;border-radius:16px;overflow:hidden;">' +
+            '<div style="background:linear-gradient(135deg,#1b7a3e,#2e7d32);padding:20px 24px;"><div style="display:flex;align-items:center;gap:12px;"><div style="width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;"><i class="bi bi-diagram-3-fill" style="color:#fff;font-size:18px;"></i></div><div style="font-size:16px;font-weight:800;color:#fff;" id="saSectionModalTitle">Add Section</div></div><button type="button" data-bs-dismiss="modal" style="position:absolute;top:14px;right:16px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;"><i class="bi bi-x-lg"></i></button></div>' +
+            '<div style="padding:20px 24px;background:#fff;">' +
+            '<input type="hidden" id="sa-sec-id">' +
+            '<div class="row g-3 mb-3"><div class="col-md-6"><label class="form-lbl">Section Name *</label><input type="text" id="sa-sec-name" class="form-fld" placeholder="e.g. Section A"></div>' +
+            '<div class="col-md-6"><label class="form-lbl">Grade Level *</label><select id="sa-sec-grade" class="form-fld"><option value="">— Select grade —</option><option value="nursery">Nursery</option><option value="kindergarten">Kindergarten</option><option value="grade1">Grade 1</option><option value="grade2">Grade 2</option><option value="grade3">Grade 3</option><option value="grade4">Grade 4</option><option value="grade5">Grade 5</option><option value="grade6">Grade 6</option></select></div></div>' +
+            '<div class="row g-3 mb-3"><div class="col-md-6"><label class="form-lbl">Room Number</label><input type="text" id="sa-sec-room" class="form-fld" placeholder="e.g. Room 101"></div>' +
+            '<div class="col-md-6"><label class="form-lbl">Max Students *</label><input type="number" id="sa-sec-max" class="form-fld" min="1" max="200" value="30"></div></div>' +
+            '<div class="row g-3"><div class="col-md-6"><label class="form-lbl">School Year *</label><select id="sa-sec-sy" class="form-fld">' + _sectionSchoolYearOptions() + '</select></div>' +
+            '<div class="col-md-6"><label class="form-lbl">Status</label><select id="sa-sec-active" class="form-fld"><option value="1">Active</option><option value="0">Inactive</option></select></div></div>' +
+            '</div><div style="padding:12px 24px;background:#f8faff;border-top:1.5px solid #e2e8f0;display:flex;gap:10px;justify-content:flex-end;">' +
+            '<button type="button" data-bs-dismiss="modal" style="padding:9px 18px;background:#fff;color:#64748b;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cancel</button>' +
+            '<button type="button" onclick="saveSaSection()" style="padding:9px 20px;background:linear-gradient(135deg,#1b7a3e,#2e7d32);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;"><i class="bi bi-floppy-fill me-1"></i>Save Section</button>' +
+            '</div></div></div></div>';
+    }
+
+    function openSectionModal() {
+        var existing = document.getElementById('saSectionModal');
+        if (existing) existing.remove();
+        document.body.insertAdjacentHTML('beforeend', _sectionModalHtml());
+        document.getElementById('saSectionModalTitle').textContent = 'Add Section';
+        document.getElementById('sa-sec-id').value = '';
+        document.getElementById('sa-sec-name').value = '';
+        document.getElementById('sa-sec-grade').value = '';
+        document.getElementById('sa-sec-room').value = '';
+        document.getElementById('sa-sec-max').value = '30';
+        document.getElementById('sa-sec-active').value = '1';
+        new bootstrap.Modal(document.getElementById('saSectionModal')).show();
+    }
+
+    function editSaSection(sectionId) {
+        var s = _sectionsData.find(function(x) { return x.id == sectionId; });
+        if (!s) return;
+        var existing = document.getElementById('saSectionModal');
+        if (existing) existing.remove();
+        document.body.insertAdjacentHTML('beforeend', _sectionModalHtml());
+        document.getElementById('saSectionModalTitle').textContent = 'Edit Section';
+        document.getElementById('sa-sec-id').value = s.id;
+        document.getElementById('sa-sec-name').value = s.name || '';
+        document.getElementById('sa-sec-grade').value = s.grade_level || '';
+        document.getElementById('sa-sec-room').value = s.room_number || '';
+        document.getElementById('sa-sec-max').value = s.max_students || 30;
+        if (s.school_year) document.getElementById('sa-sec-sy').value = s.school_year;
+        document.getElementById('sa-sec-active').value = (s.is_active || s.is_active === 1) ? '1' : '0';
+        new bootstrap.Modal(document.getElementById('saSectionModal')).show();
+    }
+
+    async function saveSaSection() {
+        var id = document.getElementById('sa-sec-id').value;
+        var name = document.getElementById('sa-sec-name').value.trim();
+        var grade = document.getElementById('sa-sec-grade').value;
+        if (!name || !grade) { saToast('warning', 'Section name and grade level are required.'); return; }
+
+        var body = {
+            name: name,
+            grade_level: grade,
+            room_number: document.getElementById('sa-sec-room').value,
+            school_year: document.getElementById('sa-sec-sy').value,
+            max_students: parseInt(document.getElementById('sa-sec-max').value) || 30,
+            is_active: document.getElementById('sa-sec-active').value === '1',
+        };
+
+        var method = id ? 'PUT' : 'POST';
+        var url = '/admin/sections' + (id ? '/' + id : '');
+        try {
+            var r = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            var d = await r.json();
+            if (r.ok) {
+                saToast('success', id ? 'Section updated!' : 'Section created!');
+                bootstrap.Modal.getInstance(document.getElementById('saSectionModal'))?.hide();
+                _loaded['sections-mgmt'] = false; loadSectionsMgmt();
+            } else {
+                var msg = d.errors ? Object.values(d.errors).flat().join(', ') : (d.message || 'Error saving section.');
+                saToast('error', msg);
+            }
+        } catch(e) { saToast('error', 'Network error.'); }
+    }
+
+    function saDeleteSection(sectionId, sectionName) {
+        saConfirm({
+            title: 'Delete Section',
+            msg: 'Delete section "' + sectionName + '"? This will also remove all associated schedules and student enrollments.',
+            icon: 'bi-trash3-fill',
+            gradient: 'linear-gradient(135deg,#b91c1c,#dc2626)',
+            btnLabel: 'Delete',
+            btnColor: '#dc2626',
+            onConfirm: function() { doSaDeleteSection(sectionId); }
+        });
+    }
+
+    async function doSaDeleteSection(sectionId) {
+        try {
+            var r = await fetch('/admin/sections/' + sectionId, {
+                method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
+            });
+            var d = await r.json();
+            if (r.ok) { saToast('success', 'Section deleted.'); _loaded['sections-mgmt'] = false; loadSectionsMgmt(); }
+            else saToast('error', d.message || 'Error deleting section.');
+        } catch(e) { saToast('error', 'Network error.'); }
+    }
 
     // ══════════════════════════════════════════════════════════
     // SCHEDULES PANEL
