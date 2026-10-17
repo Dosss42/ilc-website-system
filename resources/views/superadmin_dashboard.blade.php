@@ -476,6 +476,49 @@
         select.dash-input { cursor:pointer; }
         input[type=file].dash-input { padding:8px 13px;background:#f9fafb; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        /* ── Schedule grid (ported from adminDashboard.blade.php's own
+             schedule CSS, same classes/markup so the grid looks and
+             behaves identically) ── */
+        .sched-filter-card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px 20px; margin-bottom: 20px; }
+        .sched-filter-title { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 12px; }
+        .sched-toolbar { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; }
+        .sched-field-group { display: flex; flex-direction: column; gap: 6px; }
+        .sched-field-group label { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+        .sched-toolbar .form-fld { min-width: 168px; width: auto; }
+        .sched-toolbar .btn-dash { flex-shrink: 0; }
+        .sched-empty-card { background: var(--white); border: 1px solid var(--border); border-radius: 14px; padding: 56px 24px; text-align: center; }
+        .sched-empty-icon { width: 72px; height: 72px; border-radius: 50%; background: var(--blue-pale); display: flex; align-items: center; justify-content: center; margin: 0 auto 18px; }
+        .sched-empty-icon i { font-size: 32px; color: var(--blue); }
+        .sched-quickpick { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 560px; margin: 22px auto 0; }
+        .sched-quickpick-btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 20px; border: 1.5px solid var(--border); background: var(--white); color: var(--text); font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+        .sched-quickpick-btn:hover { border-color: var(--blue); background: var(--blue-pale); color: var(--blue); transform: translateY(-1px); }
+        .sched-quickpick-btn i { font-size: 11px; opacity: 0.7; }
+        .schedule-grid-table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; font-size: 13px; border-radius: 14px; overflow: hidden; box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 24px rgba(15,23,42,0.06); }
+        .schedule-grid-table th { padding: 14px 12px; text-align: center; font-weight: 700; border: none; color: #fff; font-size: 13px; letter-spacing: 0.3px; }
+        .schedule-grid-table th:first-child { background: #334155; }
+        .schedule-grid-table th.day-mon, .schedule-grid-table th.day-tue, .schedule-grid-table th.day-wed, .schedule-grid-table th.day-thu, .schedule-grid-table th.day-fri { background: linear-gradient(135deg, #1a3a6c 0%, #2471a3 100%); }
+        .schedule-grid-table td { padding: 8px; border: none; border-right: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; vertical-align: top; min-height: 76px; height: 76px; background: #fff; transition: background-color 0.15s ease; }
+        .schedule-grid-table td:last-child { border-right: none; }
+        .schedule-grid-table tr:last-child td { border-bottom: none; }
+        .schedule-grid-table .time-cell { background: #f8fafc; font-weight: 700; text-align: center; vertical-align: middle; font-size: 11.5px; color: #475569; border-right: 2px solid #e2e8f0; }
+        .schedule-grid-table .break-cell { background: repeating-linear-gradient(135deg, #fbfaf7, #fbfaf7 10px, #f5f2ea 10px, #f5f2ea 20px); text-align: center; vertical-align: middle; font-weight: 700; color: #92722a; letter-spacing: 1.5px; font-size: 11px; border-bottom: 2px solid #ecd9a8; }
+        .schedule-cell { cursor: pointer; position: relative; }
+        .schedule-cell:hover { background: #f8fafc; }
+        .sched-conflict-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 9.5px; font-weight: 800; color: #fff; background: #dc2626; padding: 2px 7px; border-radius: 20px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.3px; }
+        .schedule-cell-content { padding: 8px 9px; border-radius: 8px; height: 100%; box-sizing: border-box; overflow: hidden; border-left: 3px solid var(--blue); background: var(--blue-pale); transition: transform 0.12s ease, box-shadow 0.12s ease; }
+        .schedule-cell-content:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15,23,42,0.1); }
+        .schedule-cell-content.has-conflict { background: #fef2f2; border-left: 3px solid #dc2626; }
+        .schedule-cell-content .subj-row { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; }
+        .schedule-cell-content .subj-code-pill { flex-shrink: 0; font-size: 9px; font-weight: 800; color: #fff; background: var(--blue); padding: 1px 6px; border-radius: 5px; letter-spacing: 0.2px; }
+        .schedule-cell-content.has-conflict .subj-code-pill { background: #dc2626; }
+        .schedule-cell-content .subject { font-weight: 700; color: #1e293b; font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .schedule-cell-content .teacher { font-size: 10.5px; color: #475569; margin-top: 3px; display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .schedule-cell-content .teacher .teacher-icon { font-size: 10px; flex-shrink: 0; color: var(--blue); }
+        .schedule-cell-content .room { font-size: 10px; color: #64748b; margin-top: 3px; display: flex; align-items: center; gap: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .schedule-cell-content .room i { font-size: 9px; flex-shrink: 0; }
+        .schedule-cell-empty { height: 100%; min-height: 60px; border: 1.5px dashed #dde3ec; border-radius: 8px; color: #b7c0cc; font-size: 11.5px; display: flex; align-items: center; justify-content: center; font-weight: 600; letter-spacing: 0.3px; transition: all 0.15s ease; }
+        .schedule-cell:hover .schedule-cell-empty { border-color: var(--blue); color: var(--blue); background: var(--blue-pale); }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -2119,45 +2162,99 @@
         <div class="section-header">
             <div>
                 <h1>Schedule Management</h1>
-                <p>View and manage class schedules per section.</p>
+                <p>Manage class schedules by grade level and section.</p>
             </div>
-            <button class="btn-dash btn-secondary" onclick="loadSchedules()">
-                <i class="bi bi-arrow-clockwise"></i> Refresh
-            </button>
-        </div>
-        <div class="row g-3 mb-3">
-            <div class="col-md-4">
-                <select id="sched-section-filter" class="form-fld" onchange="loadSchedules()">
-                    <option value="">All Sections</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <select id="sched-day-filter" class="form-fld" onchange="loadSchedules()">
-                    <option value="">All Days</option>
-                    <option value="Monday">Monday</option>
-                    <option value="Tuesday">Tuesday</option>
-                    <option value="Wednesday">Wednesday</option>
-                    <option value="Thursday">Thursday</option>
-                    <option value="Friday">Friday</option>
-                </select>
+            <div style="display:flex;gap:10px;">
+                <button class="btn-dash btn-secondary" onclick="openCopyTermModal()">
+                    <i class="bi bi-copy"></i> Copy Term
+                </button>
+                <button class="btn-dash btn-primary" onclick="openScheduleModal()">
+                    <i class="bi bi-plus-lg"></i> Add Schedule
+                </button>
             </div>
         </div>
-        <div class="content-card">
-            <div class="content-card-header"><h6>Class Schedules</h6></div>
+
+        {{-- Schedule Filters --}}
+        <div class="sched-filter-card">
+            <div class="sched-filter-title">Filters</div>
+            <div class="sched-toolbar">
+                <div class="sched-field-group">
+                    <label for="scheduleGradeFilter">Grade Level</label>
+                    <select class="form-fld" id="scheduleGradeFilter">
+                        <option value="">— Select Grade —</option>
+                        <option value="nursery">Nursery</option>
+                        <option value="kindergarten">Kindergarten</option>
+                        <option value="grade1">Grade 1</option>
+                        <option value="grade2">Grade 2</option>
+                        <option value="grade3">Grade 3</option>
+                        <option value="grade4">Grade 4</option>
+                        <option value="grade5">Grade 5</option>
+                        <option value="grade6">Grade 6</option>
+                    </select>
+                </div>
+                <div class="sched-field-group">
+                    <label for="scheduleSectionFilter">Section</label>
+                    <select class="form-fld" id="scheduleSectionFilter" onchange="loadScheduleGrid()">
+                        <option value="">All Sections</option>
+                    </select>
+                </div>
+                <div class="sched-field-group">
+                    <label for="scheduleTermFilter">Term</label>
+                    <select class="form-fld" id="scheduleTermFilter" onchange="loadScheduleGrid()">
+                        <option value="1">1st Term</option>
+                        <option value="2">2nd Term</option>
+                        <option value="3">3rd Term</option>
+                    </select>
+                </div>
+                <button class="btn-dash btn-primary" onclick="loadScheduleGrid()">
+                    <i class="bi bi-search"></i> Load
+                </button>
+            </div>
+        </div>
+
+        {{-- Empty State --}}
+        <div id="scheduleEmptyState" class="sched-empty-card">
+            <div class="sched-empty-icon"><i class="bi bi-calendar-week"></i></div>
+            <div style="font-size:16px; font-weight:700; color:var(--text); margin-bottom:4px;">Select a grade level to view schedules</div>
+            <div style="font-size:13px; color:var(--muted);">Choose a grade above, or jump straight to one below.</div>
+            <div class="sched-quickpick">
+                <button type="button" class="sched-quickpick-btn" onclick="quickSelectScheduleGrade('nursery')"><i class="bi bi-lightning-fill"></i> Nursery</button>
+                <button type="button" class="sched-quickpick-btn" onclick="quickSelectScheduleGrade('kindergarten')"><i class="bi bi-lightning-fill"></i> Kindergarten</button>
+                <button type="button" class="sched-quickpick-btn" onclick="quickSelectScheduleGrade('grade1')"><i class="bi bi-lightning-fill"></i> Grade 1</button>
+                <button type="button" class="sched-quickpick-btn" onclick="quickSelectScheduleGrade('grade2')"><i class="bi bi-lightning-fill"></i> Grade 2</button>
+                <button type="button" class="sched-quickpick-btn" onclick="quickSelectScheduleGrade('grade3')"><i class="bi bi-lightning-fill"></i> Grade 3</button>
+                <button type="button" class="sched-quickpick-btn" onclick="quickSelectScheduleGrade('grade4')"><i class="bi bi-lightning-fill"></i> Grade 4</button>
+                <button type="button" class="sched-quickpick-btn" onclick="quickSelectScheduleGrade('grade5')"><i class="bi bi-lightning-fill"></i> Grade 5</button>
+                <button type="button" class="sched-quickpick-btn" onclick="quickSelectScheduleGrade('grade6')"><i class="bi bi-lightning-fill"></i> Grade 6</button>
+            </div>
+        </div>
+
+        {{-- Schedule Grid --}}
+        <div id="scheduleGridContainer" class="content-card" style="display:none;">
+            <div class="content-card-header">
+                <h6 id="scheduleInfoText">Schedule</h6>
+                <a href="#" id="saSchedulePdfLink" target="_blank" class="btn-dash btn-primary" style="display:inline-flex;align-items:center;gap:7px;text-decoration:none;">
+                    <i class="bi bi-file-earmark-pdf-fill"></i> Download PDF
+                </a>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 16px 12px;font-size:11.5px;color:#64748b;">
+                <i class="bi bi-exclamation-triangle-fill" style="color:#dc2626;font-size:11px;"></i>Red = schedule conflict
+            </div>
             <div style="overflow-x:auto;">
-                <table class="dash-table">
-                    <thead><tr>
-                        <th>Section</th><th>Subject</th><th>Teacher</th>
-                        <th>Day</th><th>Time</th><th>Room</th>
-                    </tr></thead>
-                    <tbody id="schedules-tbody">
-                        <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted);">
-                            <span class="spinner-border spinner-border-sm me-2"></span>Loading…
-                        </td></tr>
-                    </tbody>
+                <table class="schedule-grid-table">
+                    <thead>
+                        <tr>
+                            <th style="width:100px;min-width:100px;">Time</th>
+                            <th class="day-mon" style="width:calc((100% - 100px) / 5);min-width:120px;">Monday</th>
+                            <th class="day-tue" style="width:calc((100% - 100px) / 5);min-width:120px;">Tuesday</th>
+                            <th class="day-wed" style="width:calc((100% - 100px) / 5);min-width:120px;">Wednesday</th>
+                            <th class="day-thu" style="width:calc((100% - 100px) / 5);min-width:120px;">Thursday</th>
+                            <th class="day-fri" style="width:calc((100% - 100px) / 5);min-width:120px;">Friday</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scheduleGridBody"></tbody>
                 </table>
             </div>
-            <div id="schedules-pagination" class="p-3 border-top" style="border-color:var(--border);"></div>
         </div>
     </div><!-- /section-schedules -->
 
@@ -2716,7 +2813,7 @@
             if (name === 'teachers')      loadTeachers();
             if (name === 'subjects')      loadSubjects();
             if (name === 'sections-mgmt') loadSectionsMgmt();
-            if (name === 'schedules')     loadSchedules();
+            if (name === 'schedules')     loadScheduleGrid();
             if (name === 'sys-settings')  loadSysSettings();
         }
         if (name === 'reports') setTimeout(initSaReportsCharts, 80);
@@ -4013,7 +4110,6 @@
                     '<td>' +
                     '<button class="action-btn edit" title="Edit" onclick="editSaSection(' + s.id + ')"><i class="bi bi-pencil-fill"></i></button>' +
                     '<button class="action-btn delete" title="Delete" onclick="saDeleteSection(' + s.id + ',\'' + (s.name || '').replace(/'/g, "\\'") + '\')"><i class="bi bi-trash3-fill"></i></button>' +
-                    '<button class="action-btn view" title="View section in Admin" onclick="window.open(\'/admin/dashboard?section=sections\',\'_blank\')"><i class="bi bi-arrow-up-right-square"></i></button>' +
                     '</td>' +
                     '</tr>';
             }).join('');
@@ -4151,90 +4247,434 @@
     }
 
     // ══════════════════════════════════════════════════════════
-    // SCHEDULES PANEL
-    // ══════════════════════════════════════════════════════════
-    var _schedulesData = [];
+    // SCHEDULES PANEL — full weekly grid, ported from Admin's own
+    // schedule management (adminDashboard.blade.php: loadScheduleGrid/
+    // buildScheduleGrid/openScheduleModal/saveSchedule/deleteSchedule/
+    // Copy Term), hitting the exact same /admin/schedules* endpoints
+    // (ScheduleController), which already accept a superadmin session.
+    //
+    // Deliberately simplified vs. Admin's version, to keep this portable
+    // without duplicating several large page-wide datasets Admin preloads
+    // (sectionsList/teachersList/teacherAssignments): the Add/Edit modal's
+    // Section/Subject/Teacher dropdowns are populated with on-demand
+    // fetches instead, hitting the same endpoints with the same filters.
+    // Also NOT ported: drag-and-drop rescheduling, the Schedule Template
+    // Generator, CSV export, and the pre-save conflict-confirmation modal
+    // (conflicts are still fully detected and shown — just as a warning
+    // toast after saving, using the same has_conflict/conflict_reasons the
+    // server already returns, rather than a separate pre-save dialog).
+    // All of these are optional follow-ups, not core CRUD parity.
+    const schedTimeSlots = [
+        { label: '7:00-8:00 AM', start: '07:00', end: '08:00', isBreak: false },
+        { label: '8:00-9:00 AM', start: '08:00', end: '09:00', isBreak: false },
+        { label: '9:00-9:20 AM', start: '09:00', end: '09:20', isBreak: true, breakName: 'Health Break' },
+        { label: '9:20-10:20 AM', start: '09:20', end: '10:20', isBreak: false },
+        { label: '10:20-11:20 AM', start: '10:20', end: '11:20', isBreak: false },
+        { label: '11:20-12:00 PM', start: '11:20', end: '12:00', isBreak: true, breakName: 'Lunch Break' },
+        { label: '12:00-1:00 PM', start: '12:00', end: '13:00', isBreak: false },
+        { label: '1:00-2:00 PM', start: '13:00', end: '14:00', isBreak: false, breakName: 'Aral Program' },
+    ];
+    const schedGradeTimeSlots = {
+        'nursery': schedTimeSlots.slice(0, 4),
+        'kindergarten': schedTimeSlots.slice(0, 4),
+        'default': schedTimeSlots,
+    };
+    const schedTermInfo = {
+        '1': { name: 'Term 1' }, '2': { name: 'Term 2' }, '3': { name: 'Term 3' },
+    };
+    var _saScheduleCache = [];
 
-    var _schedulesPage = 1;
-    var _schedulesMeta = null;
+    function quickSelectScheduleGrade(grade) {
+        document.getElementById('scheduleGradeFilter').value = grade;
+        loadScheduleGrid();
+    }
 
-    async function loadSchedules(page) {
-        _loaded['schedules'] = true;
-        _schedulesPage = page || 1;
-        // Populate section dropdown if empty — needs the FULL list, so this
-        // fetch is deliberately left unpaginated.
-        var secSel = document.getElementById('sched-section-filter');
-        if (secSel && secSel.options.length <= 1) {
+    async function loadScheduleGrid() {
+        var grade = document.getElementById('scheduleGradeFilter').value;
+        var term = document.getElementById('scheduleTermFilter').value;
+        var sectionId = document.getElementById('scheduleSectionFilter').value;
+
+        // Populate the section filter for this grade, if not already done for it.
+        var secSel = document.getElementById('scheduleSectionFilter');
+        if (grade && secSel.dataset.loadedGrade !== grade) {
+            secSel.innerHTML = '<option value="">All Sections</option>';
             try {
-                var sr = await fetch('/admin/sections', { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
+                var sr = await fetch('/admin/sections?grade_level=' + encodeURIComponent(grade), { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
                 var sd = await sr.json();
                 (sd.sections || []).forEach(function(sec) {
                     var opt = document.createElement('option');
-                    opt.value = sec.id; opt.textContent = sec.name + ' (' + (sec.grade_level || '') + ')';
+                    opt.value = sec.id; opt.textContent = sec.name;
                     secSel.appendChild(opt);
                 });
+                secSel.dataset.loadedGrade = grade;
             } catch(e) {}
         }
 
-        var sectionId = document.getElementById('sched-section-filter')?.value || '';
-        var dayFilter = document.getElementById('sched-day-filter')?.value || '';
-        var tbody = document.getElementById('schedules-tbody');
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted);"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>';
+        if (!grade) {
+            document.getElementById('scheduleGridContainer').style.display = 'none';
+            document.getElementById('scheduleEmptyState').style.display = 'block';
+            return;
+        }
+        document.getElementById('scheduleGridContainer').style.display = 'block';
+        document.getElementById('scheduleEmptyState').style.display = 'none';
+
+        var gradeLabel = grade.charAt(0).toUpperCase() + grade.slice(1).replace('grade', 'Grade ');
+        var sectionLabel = sectionId ? secSel.selectedOptions[0].textContent : 'All Sections';
+        var termLabel = (schedTermInfo[term] || {}).name || ('Term ' + term);
+        document.getElementById('scheduleInfoText').textContent = gradeLabel + ' - ' + sectionLabel + ' (' + termLabel + ')';
+
+        var pdfUrl = '{{ route("admin.schedules.pdf") }}?grade_level=' + encodeURIComponent(grade) + '&term=' + encodeURIComponent(term);
+        if (sectionId) pdfUrl += '&section_id=' + encodeURIComponent(sectionId);
+        document.getElementById('saSchedulePdfLink').href = pdfUrl;
+
+        var tbody = document.getElementById('scheduleGridBody');
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;"><i class="bi bi-hourglass-split" style="font-size:24px;color:var(--muted);"></i><div style="font-size:12px;color:var(--muted);margin-top:8px;">Loading schedules...</div></td></tr>';
+
+        var fetchUrl = '/admin/schedules?grade_level=' + grade + '&term=' + term + (sectionId ? '&section_id=' + sectionId : '');
         try {
-            var url = '/admin/schedules?paginated=1&page=' + _schedulesPage
-                + (sectionId ? '&section_id=' + sectionId : '')
-                + (dayFilter ? '&day_of_week=' + dayFilter : '');
-            var r = await fetch(url, { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
-            var d = await r.json();
-            _schedulesData = d.schedules || [];
-            _schedulesMeta = d;
-            renderSchedulesTable();
+            var r = await fetch(fetchUrl, { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
+            var data = await r.json();
+            var schedules = Array.isArray(data) ? data : (data.schedules || data.data || []);
+            _saScheduleCache = schedules;
+            buildSaScheduleGrid(grade, term, sectionId, schedules);
         } catch(e) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--red);">Failed to load schedules.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--red);">Failed to load schedules.</td></tr>';
         }
     }
 
-    function goToSchedulesPage(p) { loadSchedules(p); }
+    function buildSaScheduleGrid(grade, term, sectionId, schedules) {
+        var slots = schedGradeTimeSlots[grade] || schedGradeTimeSlots['default'];
+        var tbody = document.getElementById('scheduleGridBody');
+        tbody.innerHTML = '';
+        var days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
-    // Renders the current (already server-filtered/paginated) page of
-    // schedules — day/section filtering happens server-side in
-    // loadSchedules() now, so pagination and filters always agree on what
-    // "Showing X to Y of Z" actually means.
-    function renderSchedulesTable() {
-        var rows = _schedulesData;
-        var tbody = document.getElementById('schedules-tbody');
-        if (!rows.length) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted);"><i class="bi bi-calendar-x" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3;"></i>No schedules found.</td></tr>';
-            document.getElementById('schedules-pagination').innerHTML = '';
+        slots.forEach(function(slot) {
+            var row = document.createElement('tr');
+            var timeCell = document.createElement('td');
+            timeCell.className = slot.isBreak ? 'break-cell' : 'time-cell';
+            timeCell.textContent = slot.isBreak ? slot.breakName : slot.label;
+            if (slot.isBreak) {
+                timeCell.colSpan = 6;
+                row.appendChild(timeCell);
+                tbody.appendChild(row);
+                return;
+            }
+            row.appendChild(timeCell);
+
+            days.forEach(function(day) {
+                var cell = document.createElement('td');
+                cell.className = 'schedule-cell';
+                var entry = schedules.find(function(s) {
+                    return s.day_of_week === day && (s.start_time || '').substring(0,5) === slot.start && (s.end_time || '').substring(0,5) === slot.end;
+                });
+
+                if (entry) {
+                    var subjName = entry.subject ? entry.subject.name : (entry.subject_name || 'N/A');
+                    var subjCode = entry.subject ? entry.subject.code : '';
+                    var teacherName = entry.teacher ? entry.teacher.name : (entry.teacher_name || '');
+                    var roomVal = entry.room || '';
+                    var hasConflict = !!entry.has_conflict;
+                    var reasons = entry.conflict_reasons || [];
+                    var warnBadge = hasConflict ? '<div class="sched-conflict-badge" title="' + reasons.map(function(r){return r.replace(/"/g,'&quot;');}).join(' | ') + '"><i class="bi bi-exclamation-triangle-fill"></i> Conflict</div>' : '';
+                    cell.innerHTML = '<div class="schedule-cell-content' + (hasConflict ? ' has-conflict' : '') + '">' + warnBadge +
+                        '<div class="subj-row">' + (subjCode ? '<span class="subj-code-pill">' + subjCode + '</span>' : '') + '<div class="subject">' + subjName + '</div></div>' +
+                        '<div class="teacher"><i class="bi bi-person-fill teacher-icon"></i> ' + (teacherName || '—') + '</div>' +
+                        (roomVal ? '<div class="room"><i class="bi bi-geo-alt-fill"></i>' + roomVal + '</div>' : '') + '</div>';
+                    cell.querySelector('.schedule-cell-content').onclick = function() { openEditScheduleModal(entry, day, slot, grade, sectionId, term); };
+                } else {
+                    cell.innerHTML = '<div class="schedule-cell-empty"><i class="bi bi-plus-lg me-1"></i>Add</div>';
+                    cell.onclick = function() { openScheduleModalForCell(day, slot, grade, sectionId, term); };
+                }
+                row.appendChild(cell);
+            });
+            tbody.appendChild(row);
+        });
+    }
+
+    function _scheduleModalHtml() {
+        var dayBtns = ['Mon','Tue','Wed','Thu','Fri'].map(function(short, i) {
+            var full = ['Monday','Tuesday','Wednesday','Thursday','Friday'][i];
+            return '<button type="button" class="sa-sched-day-btn" data-day="' + full + '" onclick="setSaSchedDay(\'' + full + '\')" style="padding:7px 12px;border:2px solid #e2e8f0;border-radius:8px;background:#fff;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted);">' + short + '</button>';
+        }).join('');
+        return '<div class="modal fade" id="saScheduleModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content" style="border:0;border-radius:16px;overflow:hidden;">' +
+            '<div style="background:linear-gradient(135deg,#4a1d8a,#6f42c1);padding:18px 24px;"><div style="display:flex;align-items:center;gap:12px;"><div style="width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;"><i class="bi bi-calendar3-week-fill" style="color:#fff;font-size:18px;"></i></div><div style="font-size:16px;font-weight:800;color:#fff;" id="saScheduleModalTitle">Add Schedule</div></div><button type="button" data-bs-dismiss="modal" style="position:absolute;top:14px;right:16px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;"><i class="bi bi-x-lg"></i></button></div>' +
+            '<div style="padding:20px 24px;background:#fff;">' +
+            '<input type="hidden" id="sa-sched-id">' +
+            '<div class="row g-3 mb-3"><div class="col-md-6"><label class="form-lbl">Grade Level *</label><select id="sa-sched-grade" class="form-fld" onchange="onSaScheduleGradeChange(this.value)"><option value="">— Select Grade —</option><option value="nursery">Nursery</option><option value="kindergarten">Kindergarten</option><option value="grade1">Grade 1</option><option value="grade2">Grade 2</option><option value="grade3">Grade 3</option><option value="grade4">Grade 4</option><option value="grade5">Grade 5</option><option value="grade6">Grade 6</option></select></div>' +
+            '<div class="col-md-6"><label class="form-lbl">Section *</label><select id="sa-sched-section" class="form-fld" onchange="onSaScheduleSectionChange(this.value)"><option value="">— Select Grade First —</option></select></div></div>' +
+            '<div class="mb-3"><label class="form-lbl">Subject *</label><select id="sa-sched-subject" class="form-fld"><option value="">— Select Grade First —</option></select></div>' +
+            '<div class="mb-3"><label class="form-lbl">Teacher (optional)</label><select id="sa-sched-teacher" class="form-fld"><option value="">— None / TBA —</option></select></div>' +
+            '<div class="row g-3 mb-3"><div class="col-md-7"><label class="form-lbl">Day of Week *</label><div style="display:flex;gap:6px;flex-wrap:wrap;" id="sa-sched-day-btns">' + dayBtns + '</div><input type="hidden" id="sa-sched-day"></div>' +
+            '<div class="col-md-5"><label class="form-lbl">Term *</label><select id="sa-sched-term" class="form-fld"><option value="">— Select Term —</option><option value="1">1st Term</option><option value="2">2nd Term</option><option value="3">3rd Term</option></select></div></div>' +
+            '<div class="row g-3 mb-3"><div class="col-md-4"><label class="form-lbl">Start Time *</label><input type="time" id="sa-sched-start" class="form-fld" value="07:30"></div>' +
+            '<div class="col-md-4"><label class="form-lbl">End Time *</label><input type="time" id="sa-sched-end" class="form-fld" value="08:30"></div>' +
+            '<div class="col-md-4"><label class="form-lbl">Room</label><input type="text" id="sa-sched-room" class="form-fld" placeholder="e.g. Room 101"></div></div>' +
+            '<div><label class="form-lbl">Status</label><select id="sa-sched-active" class="form-fld"><option value="1">Active</option><option value="0">Inactive</option></select></div>' +
+            '</div><div style="padding:12px 24px;background:#f8faff;border-top:1.5px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;">' +
+            '<button type="button" id="sa-sched-delete-btn" style="display:none;padding:9px 16px;background:#fff0f0;color:#dc2626;border:1px solid #fbc8c8;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;" onclick="deleteSaSchedule()"><i class="bi bi-trash me-1"></i>Delete</button>' +
+            '<div style="display:flex;gap:10px;margin-left:auto;"><button type="button" data-bs-dismiss="modal" style="padding:9px 18px;background:#fff;color:#64748b;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cancel</button>' +
+            '<button type="button" onclick="saveSaSchedule()" style="padding:9px 20px;background:linear-gradient(135deg,#4a1d8a,#6f42c1);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;"><i class="bi bi-floppy-fill me-1"></i>Save Schedule</button></div>' +
+            '</div></div></div></div>';
+    }
+
+    function setSaSchedDay(day) {
+        document.querySelectorAll('.sa-sched-day-btn').forEach(function(b) {
+            var active = b.dataset.day === day;
+            b.style.borderColor = active ? '#6f42c1' : '#e2e8f0';
+            b.style.background = active ? '#f3eeff' : '#fff';
+            b.style.color = active ? '#6f42c1' : 'var(--muted)';
+        });
+        document.getElementById('sa-sched-day').value = day;
+    }
+
+    async function _populateSaScheduleSections(grade, selectedSectionId) {
+        var secSel = document.getElementById('sa-sched-section');
+        secSel.innerHTML = '<option value="">Loading…</option>';
+        try {
+            var r = await fetch('/admin/sections?grade_level=' + encodeURIComponent(grade), { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
+            var d = await r.json();
+            var sections = d.sections || [];
+            secSel.innerHTML = '<option value="">— Select Section —</option>';
+            sections.forEach(function(s) {
+                var o = document.createElement('option');
+                o.value = s.id; o.textContent = s.name;
+                if (String(s.id) === String(selectedSectionId)) o.selected = true;
+                secSel.appendChild(o);
+            });
+        } catch(e) { secSel.innerHTML = '<option value="">— Failed to load —</option>'; }
+    }
+
+    async function _populateSaScheduleSubjects(grade, selectedSubjectId) {
+        var subjSel = document.getElementById('sa-sched-subject');
+        subjSel.innerHTML = '<option value="">Loading…</option>';
+        try {
+            var r = await fetch('/admin/subjects?grade_level=' + encodeURIComponent(grade) + '&is_active=1', { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
+            var d = await r.json();
+            var subjects = d.subjects || [];
+            subjSel.innerHTML = '<option value="">— Select Subject —</option>';
+            subjects.forEach(function(s) {
+                var o = document.createElement('option');
+                o.value = s.id; o.textContent = s.name + ' (' + s.code + ')';
+                if (String(s.id) === String(selectedSubjectId)) o.selected = true;
+                subjSel.appendChild(o);
+            });
+        } catch(e) { subjSel.innerHTML = '<option value="">— Failed to load —</option>'; }
+    }
+
+    async function _populateSaScheduleTeachers(selectedTeacherId) {
+        var teacherSel = document.getElementById('sa-sched-teacher');
+        teacherSel.innerHTML = '<option value="">— None / TBA —</option>';
+        try {
+            var r = await fetch('/admin/teachers', { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
+            var d = await r.json();
+            (d.teachers || []).forEach(function(t) {
+                var o = document.createElement('option');
+                o.value = t.id; o.textContent = t.name;
+                if (String(t.id) === String(selectedTeacherId)) o.selected = true;
+                teacherSel.appendChild(o);
+            });
+        } catch(e) {}
+    }
+
+    function onSaScheduleGradeChange(grade) {
+        if (!grade) return;
+        document.getElementById('sa-sched-section').innerHTML = '<option value="">— Select Grade First —</option>';
+        document.getElementById('sa-sched-subject').innerHTML = '<option value="">— Select Grade First —</option>';
+        _populateSaScheduleSections(grade, '');
+        _populateSaScheduleSubjects(grade, '');
+    }
+
+    function onSaScheduleSectionChange(sectionId) { /* room/teacher stay as-is — section is just for filtering here */ }
+
+    function openScheduleModal() {
+        var existing = document.getElementById('saScheduleModal');
+        if (existing) existing.remove();
+        document.body.insertAdjacentHTML('beforeend', _scheduleModalHtml());
+        document.getElementById('saScheduleModalTitle').textContent = 'Add Schedule';
+        document.getElementById('sa-sched-id').value = '';
+        setSaSchedDay('');
+        document.getElementById('sa-sched-term').value = '';
+        document.getElementById('sa-sched-start').value = '07:30';
+        document.getElementById('sa-sched-end').value = '08:30';
+        document.getElementById('sa-sched-room').value = '';
+        document.getElementById('sa-sched-active').value = '1';
+        document.getElementById('sa-sched-delete-btn').style.display = 'none';
+        _populateSaScheduleTeachers('');
+        new bootstrap.Modal(document.getElementById('saScheduleModal')).show();
+    }
+
+    function openScheduleModalForCell(day, slot, grade, sectionId, term) {
+        openScheduleModal();
+        document.getElementById('sa-sched-grade').value = grade || '';
+        if (grade) { _populateSaScheduleSections(grade, sectionId || ''); _populateSaScheduleSubjects(grade, ''); }
+        setSaSchedDay(day);
+        document.getElementById('sa-sched-term').value = term;
+        document.getElementById('sa-sched-start').value = slot.start;
+        document.getElementById('sa-sched-end').value = slot.end;
+    }
+
+    function openEditScheduleModal(entry, day, slot, grade, sectionId, term) {
+        var existing = document.getElementById('saScheduleModal');
+        if (existing) existing.remove();
+        document.body.insertAdjacentHTML('beforeend', _scheduleModalHtml());
+        document.getElementById('saScheduleModalTitle').textContent = 'Edit Schedule';
+        document.getElementById('sa-sched-id').value = entry.id;
+        document.getElementById('sa-sched-grade').value = grade || '';
+        setSaSchedDay(entry.day_of_week || day);
+        document.getElementById('sa-sched-term').value = entry.term || term;
+        document.getElementById('sa-sched-start').value = (entry.start_time || '').substring(0,5) || slot.start;
+        document.getElementById('sa-sched-end').value = (entry.end_time || '').substring(0,5) || slot.end;
+        document.getElementById('sa-sched-room').value = entry.room || '';
+        document.getElementById('sa-sched-active').value = entry.is_active ? '1' : '0';
+        document.getElementById('sa-sched-delete-btn').style.display = '';
+        _populateSaScheduleSections(grade || '', entry.section_id || sectionId || '');
+        _populateSaScheduleSubjects(grade || '', entry.subject_id || '');
+        _populateSaScheduleTeachers(entry.teacher_id || '');
+        new bootstrap.Modal(document.getElementById('saScheduleModal')).show();
+    }
+
+    async function saveSaSchedule() {
+        var id = document.getElementById('sa-sched-id').value;
+        var sectionId = document.getElementById('sa-sched-section').value;
+        var subjectId = document.getElementById('sa-sched-subject').value;
+        var dayOfWeek = document.getElementById('sa-sched-day').value;
+        var termVal = document.getElementById('sa-sched-term').value;
+        if (!sectionId || !subjectId || !dayOfWeek || !termVal) { saToast('warning', 'Section, Subject, Day, and Term are required.'); return; }
+
+        var body = {
+            section_id: sectionId, subject_id: subjectId,
+            teacher_id: document.getElementById('sa-sched-teacher').value || null,
+            day_of_week: dayOfWeek, term: termVal,
+            start_time: document.getElementById('sa-sched-start').value,
+            end_time: document.getElementById('sa-sched-end').value,
+            room: document.getElementById('sa-sched-room').value,
+            is_active: document.getElementById('sa-sched-active').value === '1',
+        };
+
+        var method = id ? 'PUT' : 'POST';
+        var url = '/admin/schedules' + (id ? '/' + id : '');
+        try {
+            var r = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            var d = await r.json();
+            if (r.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('saScheduleModal'))?.hide();
+                var reasons = d.conflict_reasons || [];
+                if (d.has_conflict || reasons.length) {
+                    saToast('warning', (id ? 'Schedule updated' : 'Schedule created') + ', but it overlaps with another entry: ' + reasons.join('; '));
+                } else {
+                    saToast('success', id ? 'Schedule updated!' : 'Schedule created!');
+                }
+                loadScheduleGrid();
+            } else {
+                var msg = d.errors ? Object.values(d.errors).flat().join(', ') : (d.message || 'Error saving schedule.');
+                saToast('error', msg);
+            }
+        } catch(e) { saToast('error', 'Network error.'); }
+    }
+
+    function deleteSaSchedule() {
+        var id = document.getElementById('sa-sched-id').value;
+        if (!id) return;
+        saConfirm({
+            title: 'Delete Schedule',
+            msg: 'Delete this schedule entry?',
+            icon: 'bi-trash3-fill',
+            gradient: 'linear-gradient(135deg,#b91c1c,#dc2626)',
+            btnLabel: 'Delete',
+            btnColor: '#dc2626',
+            onConfirm: async function() {
+                try {
+                    var r = await fetch('/admin/schedules/' + id, { method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' } });
+                    if (r.ok) {
+                        bootstrap.Modal.getInstance(document.getElementById('saScheduleModal'))?.hide();
+                        saToast('success', 'Schedule entry deleted.');
+                        loadScheduleGrid();
+                    } else { saToast('error', 'Failed to delete schedule.'); }
+                } catch(e) { saToast('error', 'Network error.'); }
+            }
+        });
+    }
+
+    // ── Copy Term Schedule ──
+    function openCopyTermModal() {
+        var html = '<div class="modal fade" id="saCopyTermModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content" style="border:0;border-radius:16px;overflow:hidden;">' +
+            '<div style="background:linear-gradient(135deg,#4a1d8a,#6f42c1);padding:18px 24px;"><div style="display:flex;align-items:center;gap:12px;"><div style="width:38px;height:38px;border-radius:10px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;"><i class="bi bi-copy" style="color:#fff;font-size:16px;"></i></div><div style="font-size:16px;font-weight:800;color:#fff;">Copy Term Schedule</div></div><button type="button" data-bs-dismiss="modal" style="position:absolute;top:14px;right:16px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;"><i class="bi bi-x-lg"></i></button></div>' +
+            '<div style="padding:20px 24px;background:#fff;">' +
+            '<div style="font-size:12.5px;color:var(--muted);background:#f8f9fa;border-radius:8px;padding:12px 14px;margin-bottom:18px;"><i class="bi bi-info-circle me-1"></i>Duplicates every schedule block from the source term into the target term. Blocks that would create a conflict are skipped and listed, not silently overwritten.</div>' +
+            '<div class="row g-3 mb-3"><div class="col-md-6"><label class="form-lbl">Copy From *</label><select id="sa-copyterm-source" class="form-fld"><option value="1">1st Term</option><option value="2">2nd Term</option><option value="3">3rd Term</option></select></div>' +
+            '<div class="col-md-6"><label class="form-lbl">Copy To *</label><select id="sa-copyterm-target" class="form-fld"><option value="1">1st Term</option><option value="2" selected>2nd Term</option><option value="3">3rd Term</option></select></div></div>' +
+            '<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:4px;"><input type="checkbox" id="sa-copyterm-replace" style="margin-top:3px;"><label for="sa-copyterm-replace" style="font-size:13px;">Clear the target term\'s existing schedule first<div style="font-size:11px;color:var(--muted);">Leave unchecked to add alongside whatever\'s already in the target term.</div></label></div>' +
+            '<div id="sa-copyterm-result" style="display:none;margin-top:16px;"></div>' +
+            '</div><div style="padding:12px 24px;background:#f8faff;border-top:1.5px solid #e2e8f0;display:flex;gap:10px;justify-content:flex-end;">' +
+            '<button type="button" data-bs-dismiss="modal" style="padding:9px 18px;background:#fff;color:#64748b;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cancel</button>' +
+            '<button type="button" id="sa-copyterm-submit-btn" onclick="submitSaCopyTerm()" style="padding:9px 20px;background:linear-gradient(135deg,#4a1d8a,#6f42c1);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;"><i class="bi bi-copy me-1"></i>Copy Schedule</button>' +
+            '</div></div></div></div>';
+        var existing = document.getElementById('saCopyTermModal');
+        if (existing) existing.remove();
+        document.body.insertAdjacentHTML('beforeend', html);
+        new bootstrap.Modal(document.getElementById('saCopyTermModal')).show();
+    }
+
+    function submitSaCopyTerm() {
+        var sourceTerm = document.getElementById('sa-copyterm-source').value;
+        var targetTerm = document.getElementById('sa-copyterm-target').value;
+        var replace = document.getElementById('sa-copyterm-replace').checked;
+        var resultEl = document.getElementById('sa-copyterm-result');
+
+        if (sourceTerm === targetTerm) {
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = '<div style="background:#fff3e0;color:#e65100;padding:10px 14px;border-radius:8px;font-size:12.5px;"><i class="bi bi-exclamation-triangle me-1"></i>Source and target term must be different.</div>';
             return;
         }
-        var dayColors = { Monday:'#e8f0fb', Tuesday:'#e8f8f0', Wednesday:'#fff8ec', Thursday:'#f3e8fb', Friday:'#fdecea' };
-        tbody.innerHTML = rows.map(function(s) {
-            var sectionName = s.section ? s.section.name : '—';
-            var subjectName = s.subject ? s.subject.name : '—';
-            var teacherName = s.teacher ? s.teacher.name : '<span style="color:var(--muted);">—</span>';
-            var day = s.day_of_week || '—';
-            var dayBg = dayColors[day] || '#f0f4f8';
-            var timeStr = (s.start_time ? s.start_time.substring(0,5) : '—') + ' – ' + (s.end_time ? s.end_time.substring(0,5) : '—');
-            var hasConflict = !!s.has_conflict;
-            var reasons = s.conflict_reasons || [];
-            var rowStyle = hasConflict ? ' style="background:#fdecea;border-left:3px solid #e74c3c;"' : '';
-            var rowTitle = hasConflict ? ' title="Schedule conflict:\n' + reasons.join('\n').replace(/"/g, '&quot;') + '"' : '';
-            var conflictBadge = hasConflict
-                ? '<span style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:800;color:#fff;background:#e74c3c;padding:2px 6px;border-radius:20px;text-transform:uppercase;letter-spacing:.3px;margin-left:6px;"><i class="bi bi-exclamation-triangle-fill"></i> Conflict</span>'
-                : '';
-            return '<tr' + rowStyle + rowTitle + '>' +
-                '<td style="font-weight:600;">' + sectionName + conflictBadge + '</td>' +
-                '<td>' + subjectName + '</td>' +
-                '<td>' + teacherName + '</td>' +
-                '<td><span style="background:' + dayBg + ';padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;">' + day + '</span></td>' +
-                '<td style="font-size:12px;font-weight:600;white-space:nowrap;">' + timeStr + '</td>' +
-                '<td style="font-size:12px;color:var(--muted);">' + (s.room || '—') + '</td>' +
-                '</tr>';
-        }).join('');
-        // Day filter narrows the current page only — pagination reflects
-        // the server-side page, not the filtered subset shown.
-        if (_schedulesMeta) renderPagerControls('schedules-pagination', _schedulesMeta, 'schedule(s)', 'goToSchedulesPage');
+        if (replace) {
+            saConfirm({
+                title: 'Overwrite Target Term', msg: 'This will delete the existing schedule for the target term before copying. Continue?',
+                icon: 'bi-exclamation-triangle-fill', gradient: 'linear-gradient(135deg,#b91c1c,#dc2626)',
+                btnLabel: 'Continue', btnColor: '#dc2626',
+                onConfirm: function() { _doSaCopyTerm(sourceTerm, targetTerm, replace, resultEl); }
+            });
+            return;
+        }
+        _doSaCopyTerm(sourceTerm, targetTerm, replace, resultEl);
+    }
+
+    async function _doSaCopyTerm(sourceTerm, targetTerm, replace, resultEl) {
+        var btn = document.getElementById('sa-copyterm-submit-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Copying…';
+        resultEl.style.display = 'none';
+        try {
+            var r = await fetch('{{ route("admin.schedules.copy-term") }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                body: JSON.stringify({ source_term: sourceTerm, target_term: targetTerm, replace_target: replace }),
+            });
+            var data = await r.json();
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-copy me-1"></i>Copy Schedule';
+            if (!r.ok || !data.success) {
+                resultEl.style.display = 'block';
+                resultEl.innerHTML = '<div style="background:#ffebee;color:#c62828;padding:10px 14px;border-radius:8px;font-size:12.5px;"><i class="bi bi-x-circle me-1"></i>' + (data.message || 'Failed to copy schedule.') + '</div>';
+                return;
+            }
+            var html = '<div style="background:#e8f5e9;color:#1b5e20;padding:10px 14px;border-radius:8px;font-size:12.5px;margin-bottom:' + (data.skipped.length ? '10px' : '0') + ';"><i class="bi bi-check-circle me-1"></i>Copied ' + data.copied + ' of ' + data.total + ' schedule block(s).</div>';
+            if (data.skipped.length) {
+                html += '<div style="background:#fff3e0;color:#e65100;padding:10px 14px;border-radius:8px;font-size:12px;"><div style="font-weight:700;margin-bottom:6px;"><i class="bi bi-exclamation-triangle me-1"></i>' + data.skipped.length + ' skipped due to conflicts:</div><ul style="margin:0;padding-left:18px;">' +
+                    data.skipped.map(function(s) { return '<li>' + s.section + ' — ' + s.subject + ' (' + s.day + ' ' + s.time + '): ' + s.reasons.join('; ') + '</li>'; }).join('') + '</ul></div>';
+            }
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = html;
+            if (document.getElementById('scheduleTermFilter').value === targetTerm) loadScheduleGrid();
+        } catch(e) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-copy me-1"></i>Copy Schedule';
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = '<div style="background:#ffebee;color:#c62828;padding:10px 14px;border-radius:8px;font-size:12.5px;"><i class="bi bi-x-circle me-1"></i>Network error. Please try again.</div>';
+        }
     }
 
     // ══════════════════════════════════════════════════════════
