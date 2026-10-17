@@ -477,11 +477,6 @@
         input[type=file].dash-input { padding:8px 13px;background:#f9fafb; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-        /* Change Section button inside the ported enrollment-detail modal
-           has no backing JS function in Admin either — hidden here rather
-           than shipping a dead button into a new context. */
-        #btn-change-section { display: none !important; }
-
         /* ── Walk-in Enrollment form controls (ported from public/css/adminDashboard.css,
              which the shared admin.enrollments.walk-in-modal partial depends on but
              is never linked on this page) ── */
@@ -3928,6 +3923,76 @@
         if (contEl) { contEl.style.display = 'none'; contEl.innerHTML = ''; }
     }
 
+    // Change Section (enrollment detail modal "Change Section" button) —
+    // same function names Admin uses, since both dashboards @include the
+    // same admin.enrollments.view-modal partial whose button calls these
+    // exact names.
+    function openChangeSectionModal() {
+        var data = window._currentEnrollmentData;
+        if (!data) { saToast('error', 'No enrollment loaded.'); return; }
+        var gradeLevel = (data.student_data || {}).grade_level;
+
+        var select = document.getElementById('new-section-select');
+        select.innerHTML = '<option value="">Loading sections…</option>';
+        document.getElementById('change-section-enrollment-id').value = data.id;
+
+        fetch('/admin/sections?grade_level=' + encodeURIComponent(gradeLevel || ''), {
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            var sections = d.sections || [];
+            if (!sections.length) {
+                select.innerHTML = '<option value="">No sections available for this grade level</option>';
+                return;
+            }
+            select.innerHTML = '<option value="">-- Select Section --</option>' +
+                sections.map(function(s) {
+                    var current = data.section && s.name === data.section ? ' (current)' : '';
+                    return '<option value="' + s.id + '">' + s.name + current + '</option>';
+                }).join('');
+        })
+        .catch(function() {
+            select.innerHTML = '<option value="">Failed to load sections</option>';
+        });
+
+        new bootstrap.Modal(document.getElementById('changeSectionModal')).show();
+    }
+
+    function saveSectionChange() {
+        var enrollmentId = document.getElementById('change-section-enrollment-id').value;
+        var sectionId    = document.getElementById('new-section-select').value;
+        if (!sectionId) { saToast('error', 'Please select a section.'); return; }
+
+        var btn = document.querySelector('#changeSectionModal .btn-primary');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+
+        fetch('/admin/enrollments/' + enrollmentId + '/change-section', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+            body: JSON.stringify({ section_id: sectionId })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check"></i> Save Changes';
+            if (d.success) {
+                bootstrap.Modal.getInstance(document.getElementById('changeSectionModal')).hide();
+                saToast('success', d.message || 'Section changed successfully.');
+                saViewEnrollment(enrollmentId);
+                _loaded['enrollments'] = false;
+            } else {
+                saToast('error', d.message || 'Failed to change section.');
+            }
+        })
+        .catch(function() {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check"></i> Save Changes';
+            saToast('error', 'Network error while changing section.');
+        });
+    }
+
     function saFormatGradeLevel(grade) {
         var gradeMap = { nursery:'Nursery', kindergarten:'Kindergarten', grade1:'Grade 1', grade2:'Grade 2', grade3:'Grade 3', grade4:'Grade 4', grade5:'Grade 5', grade6:'Grade 6' };
         return gradeMap[grade] || grade || 'N/A';
@@ -3951,6 +4016,10 @@
         .then(function(data) {
             var sd = data.student_data || {};
             var fmt = function(d) { return d ? new Date(d).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : 'N/A'; };
+
+            // Cached for openChangeSectionModal() — it needs the raw
+            // grade_level, which isn't otherwise stored anywhere in the DOM.
+            window._currentEnrollmentData = data;
 
             document.getElementById('modal-reference-number').textContent = data.reference_number || 'N/A';
             document.getElementById('modal-school-year').textContent       = data.school_year || 'N/A';
@@ -4081,10 +4150,14 @@
             }
 
             if (doc && doc.file_path) {
-                var _url  = '/storage/' + doc.file_path;
+                // /documents/{id}/view instead of a raw /storage/ link — the 'local' disk
+                // requires a signed URL to serve (config/filesystems.php 'serve'=>true), which
+                // a plain /storage/ path doesn't have and the framework correctly 403s.
+                var _url  = '/documents/' + doc.id + '/view';
                 var _name = (doc.original_name || 'document').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
                 var _lbl  = type.label.replace(/'/g,"\\'");
-                viewBtn = '<button onclick="saViewDocFile(\'' + _url + '\',\'' + _name + '\',\'' + _lbl + '\')" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#1d4ed8;background:none;border:none;padding:0;cursor:pointer;"><i class="bi bi-eye-fill"></i> View File</button>';
+                var _ext  = (doc.original_name || '').split('.').pop().toLowerCase();
+                viewBtn = '<button onclick="saViewDocFile(\'' + _url + '\',\'' + _name + '\',\'' + _lbl + '\',\'' + _ext + '\')" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#1d4ed8;background:none;border:none;padding:0;cursor:pointer;"><i class="bi bi-eye-fill"></i> View File</button>';
             }
 
             if (doc && doc.status === 'pending') {
@@ -4157,8 +4230,10 @@
         });
     }
 
-    function saViewDocFile(url, name, docTypeLabel) {
-        var ext = url.split('?')[0].split('.').pop().toLowerCase();
+    function saViewDocFile(url, name, docTypeLabel, ext) {
+        // ext is passed explicitly now — the URL no longer carries a file
+        // extension (it's /documents/{id}/view, not a raw /storage/ path).
+        ext = (ext || url.split('?')[0].split('.').pop()).toLowerCase();
         var isImg = ['jpg','jpeg','png','gif','webp','bmp'].indexOf(ext) !== -1;
         var isPdf = ext === 'pdf';
 

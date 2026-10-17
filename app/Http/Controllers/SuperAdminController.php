@@ -202,6 +202,16 @@ class SuperAdminController extends Controller
             return response()->json(['success' => false, 'message' => 'You cannot delete your own account.'], 403);
         }
 
+        // User uses SoftDeletes, so delete() below is an UPDATE, not a real
+        // row removal — the nullOnDelete() foreign keys on these tables never
+        // fire on a soft delete, leaving them pointing at a now-deleted
+        // teacher. Null them out explicitly first, same as TeacherController::destroy().
+        if ($user->role === 'teacher') {
+            \App\Models\Section::where('teacher_id', $user->id)->update(['teacher_id' => null]);
+            \App\Models\Schedule::where('teacher_id', $user->id)->update(['teacher_id' => null]);
+            \App\Models\Subject::where('teacher_id', $user->id)->update(['teacher_id' => null]);
+        }
+
         ActivityLogger::log('delete', 'User deleted: ' . $user->name . ' (' . $user->role . ')', 'User', $user->id);
         $user->delete();
 

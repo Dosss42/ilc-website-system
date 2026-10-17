@@ -598,72 +598,49 @@ class CashierController extends Controller
 
     // ── Payment plan helpers ──────────────────────────
 
-    private function paymentRates(): array
-    {
-        return [
-            'nursery'      => ['total'=>16005,'tuition'=>7505,'misc'=>2800,'books'=>3550,'insurance'=>150,'electric'=>2000],
-            'kindergarten' => ['total'=>16005,'tuition'=>7505,'misc'=>2800,'books'=>3550,'insurance'=>150,'electric'=>2000],
-            'grade1'       => ['total'=>17005,'tuition'=>7505,'misc'=>2800,'books'=>4550,'insurance'=>150,'electric'=>2000],
-            'grade2'       => ['total'=>17005,'tuition'=>7505,'misc'=>2800,'books'=>4550,'insurance'=>150,'electric'=>2000],
-            'grade3'       => ['total'=>17505,'tuition'=>7505,'misc'=>2800,'books'=>5050,'insurance'=>150,'electric'=>2000],
-            'grade4'       => ['total'=>18005,'tuition'=>7505,'misc'=>2800,'books'=>5550,'insurance'=>150,'electric'=>2000],
-            'grade5'       => ['total'=>18005,'tuition'=>7505,'misc'=>2800,'books'=>5550,'insurance'=>150,'electric'=>2000],
-            'grade6'       => ['total'=>18005,'tuition'=>7505,'misc'=>2800,'books'=>5550,'insurance'=>150,'electric'=>2000],
-        ];
-    }
-
+    /**
+     * Delegates to the shared App\Services\FeeCalculator (the same source
+     * every other quoting path — online enrollment, walk-in, Finance — uses)
+     * instead of a hardcoded table. This used to be an independent copy of
+     * the fee numbers, so changing anything on the Fee Settings page never
+     * affected what Cashier quoted or charged — see FeeCalculator's own
+     * docblock for the history of this exact bug class.
+     */
     private function buildBreakdown(string $grade, string $option): array
     {
-        $rates = $this->paymentRates()[$grade] ?? $this->paymentRates()['grade1'];
-        $b = [
-            'tuition_fee'  => $rates['tuition'],
-            'misc_reg_pta' => $rates['misc'],
-            'books'        => $rates['books'],
-            'insurance'    => $rates['insurance'],
-            'electric_bill'=> $rates['electric'],
-            'base_total'   => $rates['total'],
-        ];
+        // Option C is only offered for Grade 1-6, Option D only for
+        // Nursery/Kindergarten — FeeCalculator itself doesn't encode this
+        // availability rule (it just returns 0 for an unconfigured
+        // downpayment), so it stays here as an explicit allow-list.
+        $optionCGrades = ['grade1', 'grade2', 'grade3', 'grade4', 'grade5', 'grade6'];
+        $optionDGrades = ['nursery', 'kindergarten'];
 
-        $bDownB = ['nursery'=>6500,'kindergarten'=>6500,'grade1'=>7500,'grade2'=>7500,
-                   'grade3'=>8000,'grade4'=>8500,'grade5'=>8500,'grade6'=>8500];
-        $bDownC = ['grade1'=>5500,'grade2'=>5500,'grade3'=>6000,'grade4'=>6500,'grade5'=>6500,'grade6'=>6500];
-        $bDownD = ['nursery'=>4505,'kindergarten'=>4505];
-
-        switch ($option) {
-            case 'A':
-                $b['discount']     = 1501;
-                $b['total_due']    = $rates['total'] - 1501;
-                $b['payment_type'] = 'full';
-                $b['downpayment']  = 0;
-                $b['monthly_amount'] = 0;
-                break;
-            case 'B':
-                $b['downpayment']       = $bDownB[$grade] ?? 6500;
-                $b['monthly_amount']    = 1056.10;
-                $b['duration_months']   = 9;
-                $b['total_due']         = $b['downpayment'] + (1056.10 * 9);
-                $b['payment_type']      = 'installment';
-                break;
-            case 'C':
-                if (!isset($bDownC[$grade])) return [];  // not available for this grade
-                $b['downpayment']       = $bDownC[$grade];
-                $b['monthly_amount']    = 1278.32;
-                $b['duration_months']   = 9;
-                $b['total_due']         = $b['downpayment'] + (1278.32 * 9);
-                $b['payment_type']      = 'installment';
-                break;
-            case 'D':
-                if (!isset($bDownD[$grade])) return [];  // not available for this grade
-                $b['downpayment']       = $bDownD[$grade];
-                $b['monthly_amount']    = 1278.32;
-                $b['duration_months']   = 9;
-                $b['total_due']         = $b['downpayment'] + (1278.32 * 9);
-                $b['payment_type']      = 'installment';
-                break;
-            default:
-                return [];
+        if (!in_array($option, ['A', 'B', 'C', 'D'])) {
+            return [];
         }
-        return $b;
+        if ($option === 'C' && !in_array($grade, $optionCGrades)) {
+            return [];
+        }
+        if ($option === 'D' && !in_array($grade, $optionDGrades)) {
+            return [];
+        }
+
+        $calc = \App\Services\FeeCalculator::calculate($grade, $option);
+
+        return [
+            'tuition_fee'     => $calc['tuition'],
+            'misc_reg_pta'    => $calc['misc'],
+            'books'           => $calc['books'],
+            'insurance'       => $calc['insurance'],
+            'electric_bill'   => $calc['electric'],
+            'base_total'      => $calc['base_total'],
+            'discount'        => $calc['discount'] ?? 0,
+            'total_due'       => $calc['total_due'],
+            'payment_type'    => $calc['payment_type'],
+            'downpayment'     => $calc['downpayment'] ?? 0,
+            'monthly_amount'  => $calc['monthly_amount'] ?? 0,
+            'duration_months' => $calc['duration_months'] ?? 0,
+        ];
     }
 
     public function getPaymentOptions(Request $request)
@@ -748,38 +725,75 @@ class CashierController extends Controller
             'notes'         => 'nullable|string|max:500',
         ]);
 
-        $enrollment = Enrollment::findOrFail($request->enrollment_id);
-        $reference  = 'CASH-' . strtoupper(substr(md5(uniqid()), 0, 8));
+        $amount    = (float) $request->amount;
+        $reference = 'CASH-' . strtoupper(substr(md5(uniqid()), 0, 8));
 
-        $transaction = PaymentTransaction::create([
-            'enrollment_id'    => $enrollment->id,
-            'user_id'          => $enrollment->user_id,
-            'payment_type'     => 'walkin',
-            'payment_method'   => 'cash',
-            'amount'           => $request->amount,
-            'reference_number' => $reference,
-            'description'      => $request->payment_type . ($request->notes ? ' — ' . $request->notes : ''),
-            'status'           => 'completed',
-            'processed_by'     => Auth::guard('cashier')->id(),
-            'processed_at'     => now(),
-        ]);
+        DB::beginTransaction();
+        try {
+            // Row-locked re-fetch — see PaymentService::lockEnrollment() — this
+            // method previously had no transaction at all, so two cash payments
+            // for the same enrollment could both compute from the same stale
+            // payment_amount.
+            $enrollment = \App\Services\PaymentService::lockEnrollment($request->enrollment_id);
 
-        $enrollment->decrement('remaining_balance', $request->amount);
-        $enrollment->increment('payment_amount', $request->amount);
-        $enrollment->refresh();
+            // Double-click / retried-request guard — a cash payment is recorded
+            // as already 'completed' immediately, so a double-click here
+            // creates two independent, fully-credited transactions for the
+            // same handover of cash. Treat an identical amount+method for this
+            // enrollment in the last 15 seconds as the same click landing
+            // twice, not two payments. Same pattern as
+            // Finance\DashboardController::recordWalkInPayment().
+            $recentDuplicate = PaymentTransaction::where('enrollment_id', $enrollment->id)
+                ->where('payment_method', 'cash')
+                ->where('amount', $amount)
+                ->where('created_at', '>=', now()->subSeconds(15))
+                ->exists();
+            if ($recentDuplicate) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'A matching cash payment was just recorded for this student — please check Payment History before submitting again.',
+                ], 422);
+            }
 
-        if ($enrollment->payment_type === 'installment' || in_array($enrollment->payment_option, ['B', 'C', 'D'])) {
-            \App\Services\PaymentService::reconcileInstallmentStatuses($enrollment);
+            $transaction = PaymentTransaction::create([
+                'enrollment_id'    => $enrollment->id,
+                'user_id'          => $enrollment->user_id,
+                'payment_type'     => 'walkin',
+                'payment_method'   => 'cash',
+                'amount'           => $amount,
+                'reference_number' => $reference,
+                'description'      => $request->payment_type . ($request->notes ? ' — ' . $request->notes : ''),
+                'status'           => 'completed',
+                'processed_by'     => Auth::guard('cashier')->id(),
+                'processed_at'     => now(),
+            ]);
+
+            $enrollment->decrement('remaining_balance', $amount);
+            $enrollment->increment('payment_amount', $amount);
+            $enrollment->refresh();
+
+            if ($enrollment->payment_type === 'installment' || in_array($enrollment->payment_option, ['B', 'C', 'D'])) {
+                \App\Services\PaymentService::reconcileInstallmentStatuses($enrollment);
+            }
+
+            \App\Services\PaymentService::advanceEnrollmentAfterPayment($enrollment->fresh());
+
+            ActivityLogger::log(
+                'cash_payment',
+                'Recorded cash payment of ₱' . number_format($amount, 2) . ' (Ref: ' . $reference . ')',
+                'PaymentTransaction',
+                $transaction->id
+            );
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Cash payment failed: ' . $e->getMessage(),
+            ], 500);
         }
-
-        \App\Services\PaymentService::advanceEnrollmentAfterPayment($enrollment->fresh());
-
-        ActivityLogger::log(
-            'cash_payment',
-            'Recorded cash payment of ₱' . number_format($request->amount, 2) . ' (Ref: ' . $reference . ')',
-            'PaymentTransaction',
-            $transaction->id
-        );
 
         return response()->json([
             'success'     => true,

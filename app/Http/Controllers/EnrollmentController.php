@@ -1927,7 +1927,44 @@ class EnrollmentController extends Controller
     {
         // Return JSON for AJAX requests
         if (request()->wantsJson() || request()->ajax()) {
-            return response()->json($enrollment);
+            $data = $enrollment->toArray();
+            $studentData = $data['student_data'] ?? [];
+
+            // Overlay the normalized profile/address/guardian tables onto the
+            // submission-time JSON snapshot — ProfileController writes student
+            // self-service edits only to these normalized tables, never back
+            // to student_data, so without this the admin's enrollment view
+            // keeps showing whatever the student originally submitted even
+            // after they've since updated their address/guardian info. Only
+            // overwrites a field when the normalized record actually has a
+            // value, so nothing here is ever blanked out.
+            if ($enrollment->user_id) {
+                $user = User::find($enrollment->user_id);
+                if ($user) {
+                    if ($profile = $user->profile) {
+                        if ($profile->first_name)  $studentData['first_name']  = $profile->first_name;
+                        if ($profile->last_name)   $studentData['last_name']   = $profile->last_name;
+                        if ($profile->middle_name) $studentData['middle_name'] = $profile->middle_name;
+                        if ($profile->birthdate)   $studentData['birthdate']   = $profile->birthdate;
+                    }
+                    if ($address = $user->address) {
+                        if ($address->street_address) $studentData['street_address'] = $address->street_address;
+                        if ($address->barangay)        $studentData['barangay']       = $address->barangay;
+                        if ($address->city)            $studentData['city']           = $address->city;
+                        if ($address->province)        $studentData['province']       = $address->province;
+                        if ($address->zip_code)         $studentData['zip_code']      = $address->zip_code;
+                    }
+                    if ($guardian = $user->guardian) {
+                        if ($guardian->name)         $studentData['guardian_name']       = $guardian->name;
+                        if ($guardian->relationship) $studentData['relationship']        = strtolower($guardian->relationship);
+                        if ($guardian->contact)      $studentData['guardian_phone']      = $guardian->contact;
+                        if ($guardian->occupation)   $studentData['guardian_occupation'] = $guardian->occupation;
+                    }
+                }
+            }
+
+            $data['student_data'] = $studentData;
+            return response()->json($data);
         }
 
         return view('adminDashboard', compact('enrollment'));
@@ -2022,6 +2059,22 @@ class EnrollmentController extends Controller
 
             // Wrap all DB writes in a single transaction — faster (one commit) and atomic
             DB::beginTransaction();
+
+            // Row-locked re-check — closes the race the pre-check above can't:
+            // two near-simultaneous approve clicks (or a double-click) would
+            // otherwise both pass that check before either commits, each
+            // generating a different password and sending a different
+            // "approved" email for the same enrollment. Same pattern as
+            // approveDocument() below.
+            $locked = Enrollment::where('id', $enrollment->id)->lockForUpdate()->first();
+            if (!$locked || $locked->status !== 'pending') {
+                DB::rollBack();
+                $message = "This enrollment is already " . ($locked->status ?? 'unknown') . " and can no longer be approved through this action.";
+                if (request()->expectsJson()) {
+                    return response()->json(['success' => false, 'message' => $message], 409);
+                }
+                return redirect()->back()->with('error', $message);
+            }
 
             // Update enrollment status + payment fields
             $enrollment->update(array_merge([
@@ -2341,58 +2394,64 @@ class EnrollmentController extends Controller
                 'section_id' => 'required|exists:sections,id',
             ]);
 
-            $section = \App\Models\Section::find($validated['section_id']);
-            
-            if (!$section) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Section not found.'
-                ], 404);
-            }
+            // Same lock-then-recheck shape as SectionController::addStudent()
+            // — without it, two near-simultaneous section changes targeting
+            // the same destination section could both pass the capacity
+            // check below before either commits, pushing it over max_students.
+            return DB::transaction(function () use ($validated, $enrollment) {
+                $section = \App\Models\Section::where('id', $validated['section_id'])->lockForUpdate()->first();
 
-            // Check if section matches enrollment grade level
-            if ($section->grade_level !== $enrollment->grade_level) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Section grade level does not match enrollment grade level.'
-                ], 400);
-            }
+                if (!$section) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Section not found.'
+                    ], 404);
+                }
 
-            // Check if section has available capacity (live count, not the
-            // denormalized column — see Section::getLiveEnrollmentCountAttribute())
-            if ($section->live_enrollment_count >= $section->max_students) {
-                return response()->json([
-                    'success' => false,
-                    'message' => "Section {$section->name} is already full ({$section->max_students} students max)."
-                ], 422);
-            }
+                // Check if section matches enrollment grade level
+                if ($section->grade_level !== $enrollment->grade_level) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Section grade level does not match enrollment grade level.'
+                    ], 400);
+                }
 
-            // Update enrollment section
-            $enrollment->update([
-                'section' => $section->name,
-            ]);
+                // Check if section has available capacity (live count, not the
+                // denormalized column — see Section::getLiveEnrollmentCountAttribute())
+                if ($section->live_enrollment_count >= $section->max_students) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Section {$section->name} is already full ({$section->max_students} students max)."
+                    ], 422);
+                }
 
-            // Update section_student pivot table
-            $user = $enrollment->user;
-            if ($user) {
-                // Remove from old section
-                DB::table('section_student')
-                    ->where('user_id', $user->id)
-                    ->delete();
-
-                // Add to new section
-                DB::table('section_student')->insert([
-                    'section_id' => $section->id,
-                    'user_id' => $user->id,
-                    'created_at' => now(),
-                    'updated_at' => now(),
+                // Update enrollment section
+                $enrollment->update([
+                    'section' => $section->name,
                 ]);
-            }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Section changed successfully.'
-            ]);
+                // Update section_student pivot table
+                $user = $enrollment->user;
+                if ($user) {
+                    // Remove from old section
+                    DB::table('section_student')
+                        ->where('user_id', $user->id)
+                        ->delete();
+
+                    // Add to new section
+                    DB::table('section_student')->insert([
+                        'section_id' => $section->id,
+                        'user_id' => $user->id,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Section changed successfully.'
+                ]);
+            });
 
         } catch (\Exception $e) {
             Log::error('Section change error: ' . $e->getMessage());

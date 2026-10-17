@@ -113,6 +113,15 @@ class TeacherController extends Controller
     {
         $name = $teacher->name;
         $email = $teacher->email;
+
+        // User uses SoftDeletes, so delete() below is an UPDATE, not a real
+        // row removal — the nullOnDelete() foreign keys on these three
+        // tables never fire on a soft delete, leaving them pointing at a
+        // now-deleted account. Null them out explicitly first.
+        \App\Models\Section::where('teacher_id', $teacher->id)->update(['teacher_id' => null]);
+        \App\Models\Schedule::where('teacher_id', $teacher->id)->update(['teacher_id' => null]);
+        \App\Models\Subject::where('teacher_id', $teacher->id)->update(['teacher_id' => null]);
+
         $teacher->delete();
         ActivityLogger::log('delete', "Deleted teacher {$name} ({$email})", 'User', $teacher->id);
         return response()->json(['message' => 'Teacher deleted successfully.']);

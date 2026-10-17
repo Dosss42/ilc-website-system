@@ -5569,6 +5569,11 @@ function openWalkInEnrollmentModal() {
             const sd = data.student_data || {};
             const fmt = (d) => d ? new Date(d).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : 'N/A';
 
+            // Cached for openChangeSectionModal() — it needs the raw
+            // grade_level, which isn't otherwise stored anywhere in the DOM
+            // (only the human-formatted label is rendered).
+            window._currentEnrollmentData = data;
+
             // Header
             document.getElementById('modal-reference-number').textContent = data.reference_number || 'N/A';
             document.getElementById('modal-school-year').textContent       = data.school_year || 'N/A';
@@ -5690,7 +5695,75 @@ function openWalkInEnrollmentModal() {
         });
     }
 
-    
+    // Change Section (enrollment detail modal "Change Section" button) —
+    // previously dangling: the button called these two functions but
+    // neither was ever defined anywhere in this file.
+    function openChangeSectionModal() {
+        var data = window._currentEnrollmentData;
+        if (!data) { showCustomAlert('error', 'Error', 'No enrollment loaded.'); return; }
+        var gradeLevel = (data.student_data || {}).grade_level;
+
+        var select = document.getElementById('new-section-select');
+        select.innerHTML = '<option value="">Loading sections…</option>';
+        document.getElementById('change-section-enrollment-id').value = data.id;
+
+        fetch('/admin/sections?grade_level=' + encodeURIComponent(gradeLevel || ''), {
+            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            var sections = d.sections || [];
+            if (!sections.length) {
+                select.innerHTML = '<option value="">No sections available for this grade level</option>';
+                return;
+            }
+            select.innerHTML = '<option value="">-- Select Section --</option>' +
+                sections.map(function(s) {
+                    var current = data.section && s.name === data.section ? ' (current)' : '';
+                    return '<option value="' + s.id + '">' + s.name + current + '</option>';
+                }).join('');
+        })
+        .catch(function() {
+            select.innerHTML = '<option value="">Failed to load sections</option>';
+        });
+
+        new bootstrap.Modal(document.getElementById('changeSectionModal')).show();
+    }
+
+    function saveSectionChange() {
+        var enrollmentId = document.getElementById('change-section-enrollment-id').value;
+        var sectionId    = document.getElementById('new-section-select').value;
+        if (!sectionId) { showCustomAlert('warning', 'Warning', 'Please select a section.'); return; }
+
+        var btn = document.querySelector('#changeSectionModal .btn-primary');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+
+        fetch('/admin/enrollments/' + enrollmentId + '/change-section', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+            body: JSON.stringify({ section_id: sectionId })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check"></i> Save Changes';
+            if (d.success) {
+                bootstrap.Modal.getInstance(document.getElementById('changeSectionModal')).hide();
+                showCustomAlert('success', 'Success!', d.message || 'Section changed successfully.');
+                viewEnrollmentModal(enrollmentId);
+            } else {
+                showCustomAlert('error', 'Error', d.message || 'Failed to change section.');
+            }
+        })
+        .catch(function() {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check"></i> Save Changes';
+            showCustomAlert('error', 'Error', 'Network error while changing section.');
+        });
+    }
+
+
 
     // Helper functions for formatting data
 
@@ -12734,10 +12807,16 @@ function openWalkInEnrollmentModal() {
             }
 
             if (doc && doc.file_path) {
-                var _url  = '/storage/' + doc.file_path;
+                // /documents/{id}/view (Finance\DashboardController::viewDocument) instead of a
+                // raw /storage/ link — the 'local' disk requires a signed URL to serve
+                // (config/filesystems.php 'serve'=>true), which a plain /storage/ path
+                // doesn't have and the framework correctly 403s. This route already does
+                // its own admin/superadmin/finance/cashier auth check.
+                var _url  = '/documents/' + doc.id + '/view';
                 var _name = (doc.original_name || 'document').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
                 var _lbl  = type.label.replace(/'/g,"\\'");
-                viewBtn = '<button onclick="viewDocFile(\'' + _url + '\',\'' + _name + '\',\'' + _lbl + '\')"'
+                var _ext  = (doc.original_name || '').split('.').pop().toLowerCase();
+                viewBtn = '<button onclick="viewDocFile(\'' + _url + '\',\'' + _name + '\',\'' + _lbl + '\',\'' + _ext + '\')"'
                     + ' style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:#1d4ed8;background:none;border:none;padding:0;cursor:pointer;">'
                     + '<i class="bi bi-eye-fill"></i> View File</button>';
             }
@@ -12848,8 +12927,11 @@ function openWalkInEnrollmentModal() {
     function reloadSmDocs() { loadSmDocuments(); }
     function reloadSvDocs() { if (_svStudentId) loadSvDocuments(_svStudentId); }
 
-    function viewDocFile(url, name, docTypeLabel) {
-        var ext = url.split('?')[0].split('.').pop().toLowerCase();
+    function viewDocFile(url, name, docTypeLabel, ext) {
+        // ext is passed explicitly now — the URL no longer carries a file
+        // extension (it's /documents/{id}/view, not a raw /storage/ path), so
+        // falling back to parsing it off the URL would always miss.
+        ext = (ext || url.split('?')[0].split('.').pop()).toLowerCase();
         var isImg = ['jpg','jpeg','png','gif','webp','bmp'].indexOf(ext) !== -1;
         var isPdf = ext === 'pdf';
 

@@ -248,6 +248,17 @@ class SectionController extends Controller
 
     public function destroy(Section $section)
     {
+        // Block deletion while students are actively enrolled — otherwise the
+        // section_student pivot rows cascade-delete silently (unassigning
+        // every student) while enrollments.section (a plain string, not a
+        // foreign key) keeps showing this section's name forever.
+        if ($section->live_enrollment_count > 0) {
+            return response()->json([
+                'success' => false,
+                'message' => "Cannot delete \"{$section->name}\" — it has {$section->live_enrollment_count} enrolled student(s). Reassign them first.",
+            ], 422);
+        }
+
         $sectionName = $section->name;
         $gradeLevel  = $section->grade_level;
         // Remove related teacher assignments before deleting section

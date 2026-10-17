@@ -977,8 +977,8 @@ class DashboardController extends Controller
             $feeSettings = FeeSetting::create([
                 'tuition' => 7505,
                 'misc' => 2800,
-                'insurance' => 300,
-                'electric' => 600,
+                'insurance' => 150,
+                'electric' => 2000,
             ]);
         }
 
