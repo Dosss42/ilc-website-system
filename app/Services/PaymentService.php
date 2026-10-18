@@ -850,4 +850,35 @@ class PaymentService
             return 'pending';
         });
     }
+
+    /**
+     * Sum of remaining_balance across a student's OTHER enrollments — the
+     * "prior year(s)" debt that goes invisible once a student is promoted,
+     * since Cashier/Finance otherwise only ever show whichever enrollment
+     * is current. See docs/SCHOOL-YEAR-VISIBILITY-PHASED-PLAN.md Phase 4.
+     * 'declined'/'cancelled' are excluded — neither represents a real debt
+     * (a cancelled row is an undone promotion artifact, see
+     * EnrollmentController::undoPromotion()).
+     *
+     * @return array{amount: float, school_year: ?string} school_year is a
+     *   comma-joined list when more than one prior year still has a balance.
+     */
+    public static function priorOutstandingBalance(int $studentId, ?int $excludeEnrollmentId = null): array
+    {
+        $rows = Enrollment::where('user_id', $studentId)
+            ->when($excludeEnrollmentId, fn ($q) => $q->where('id', '!=', $excludeEnrollmentId))
+            ->whereNotIn('status', ['declined', 'cancelled'])
+            ->where('remaining_balance', '>', 0)
+            ->orderByDesc('school_year')
+            ->get(['school_year', 'remaining_balance']);
+
+        if ($rows->isEmpty()) {
+            return ['amount' => 0.0, 'school_year' => null];
+        }
+
+        return [
+            'amount'      => (float) $rows->sum('remaining_balance'),
+            'school_year' => $rows->pluck('school_year')->unique()->implode(', '),
+        ];
+    }
 }

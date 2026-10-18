@@ -320,7 +320,10 @@ class EnrollmentController extends Controller
             // Prevent duplicate enrollment for the same school year
             $existingEnrollment = Enrollment::where('user_id', $user->id)
                 ->where('school_year', $schoolYear)
-                ->whereNotIn('status', ['declined'])
+                // 'cancelled' = an undone promotion (see undoPromotion()) —
+                // doesn't represent a real claim on that school year either,
+                // same reasoning as excluding 'declined'.
+                ->whereNotIn('status', ['declined', 'cancelled'])
                 ->first();
 
             if ($existingEnrollment) {
@@ -588,7 +591,10 @@ class EnrollmentController extends Controller
             $schoolYear = Setting::get('current_school_year') ?: $this->getCurrentSchoolYear();
             $existingWalkIn = Enrollment::where('user_id', $user->id)
                 ->where('school_year', $schoolYear)
-                ->whereNotIn('status', ['declined'])
+                // 'cancelled' = an undone promotion (see undoPromotion()) —
+                // doesn't represent a real claim on that school year either,
+                // same reasoning as excluding 'declined'.
+                ->whereNotIn('status', ['declined', 'cancelled'])
                 ->first();
 
             if ($existingWalkIn) {
@@ -3038,7 +3044,10 @@ class EnrollmentController extends Controller
                 // some reason becomes permanently unpromotable.
                 $existingEnrollment = Enrollment::where('user_id', $studentId)
                     ->where('school_year', $toSchoolYear)
-                    ->whereNotIn('status', ['declined'])
+                    // 'cancelled' = an undone promotion (see undoPromotion()) —
+                // doesn't represent a real claim on that school year either,
+                // same reasoning as excluding 'declined'.
+                ->whereNotIn('status', ['declined', 'cancelled'])
                     ->first();
 
                 if ($existingEnrollment) {
@@ -3061,6 +3070,9 @@ class EnrollmentController extends Controller
 
                 // Get latest enrollment
                 $latestEnrollment = $user->latestEnrollment;
+                // Captured before update() below overwrites it in memory —
+                // undoPromotion() needs this to restore the old status.
+                $fromStatus = $latestEnrollment?->status;
 
                 // Update existing enrollment status to completed
                 if ($latestEnrollment) {
@@ -3124,6 +3136,9 @@ class EnrollmentController extends Controller
                     'to_school_year' => $toSchoolYear,
                     'from_section_id' => $oldSection ? $oldSection->id : null,
                     'to_section_id' => $defaultSection ? $defaultSection->id : null,
+                    'from_status' => $fromStatus,
+                    'enrollment_id' => $newEnrollment->id,
+                    'previous_enrollment_id' => $latestEnrollment?->id,
                     'promoted_by' => Auth::id(),
                     'promoted_at' => now(),
                     'status' => 'completed',
@@ -3176,7 +3191,7 @@ class EnrollmentController extends Controller
      */
     public function promotionHistory(Request $request)
     {
-        $query = Promotion::with(['student:id,name,lrn', 'fromSection:id,name', 'toSection:id,name', 'promotedBy:id,name'])
+        $query = Promotion::with(['student:id,name,lrn', 'fromSection:id,name', 'toSection:id,name', 'promotedBy:id,name', 'enrollment:id,status'])
             ->orderByDesc('promoted_at');
 
         if ($request->has('school_year')) {
@@ -3192,10 +3207,120 @@ class EnrollmentController extends Controller
         $perPage = $request->get('per_page', 20);
         $promotions = $query->paginate($perPage);
 
+        // can_undo mirrors undoPromotion()'s own guard exactly, so the
+        // button only ever appears when the action would actually succeed —
+        // computed here (one extra query per row, bounded by per_page) rather
+        // than trusted to the frontend.
+        $promotions->getCollection()->transform(function ($p) {
+            $p->can_undo = $p->status === 'completed'
+                && $p->enrollment
+                && $p->enrollment->status === 'pending'
+                && !\App\Models\PaymentTransaction::where('enrollment_id', $p->enrollment_id)->exists();
+            return $p;
+        });
+
         return response()->json([
             'success' => true,
             'data' => $promotions,
         ]);
+    }
+
+    /**
+     * Reverse a promotion — only while the new enrollment it created is
+     * still completely untouched (still 'pending', no payment recorded
+     * against it). See docs/SCHOOL-YEAR-VISIBILITY-PHASED-PLAN.md Phase 1:
+     * once the new enrollment has been approved or paid against, reversing
+     * it cleanly would mean unwinding whatever else happened to it too,
+     * which this deliberately does not attempt — that stays a manual fix.
+     */
+    public function undoPromotion(Promotion $promotion)
+    {
+        if ($promotion->status !== 'completed') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This promotion is already "' . $promotion->status . '" and cannot be undone.',
+            ], 422);
+        }
+
+        if (!$promotion->enrollment_id || !$promotion->previous_enrollment_id || !$promotion->from_status) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This promotion record predates the Undo feature and is missing the data needed to reverse it safely. Undo it manually instead.',
+            ], 422);
+        }
+
+        $newEnrollment = Enrollment::find($promotion->enrollment_id);
+        if (!$newEnrollment) {
+            return response()->json(['success' => false, 'message' => 'The enrollment this promotion created no longer exists.'], 422);
+        }
+
+        if ($newEnrollment->status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This student\'s new enrollment is already "' . $newEnrollment->status . '" — too far along to undo automatically. Reverse it manually instead.',
+            ], 422);
+        }
+
+        if (\App\Models\PaymentTransaction::where('enrollment_id', $newEnrollment->id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This student already has a payment recorded against the new enrollment — undo it manually instead.',
+            ], 422);
+        }
+
+        $oldEnrollment = Enrollment::find($promotion->previous_enrollment_id);
+
+        DB::beginTransaction();
+        try {
+            // Cancel the new enrollment — not hard-deleted. Enrollment has
+            // no SoftDeletes trait, so a real delete would leave no record
+            // this ever happened; 'cancelled' is excluded everywhere the
+            // app looks for "this student's current enrollment" (User::
+            // latestEnrollment, the duplicate-enrollment checks, the
+            // student portal's own enrollment resolver).
+            $newEnrollment->update(['status' => 'cancelled']);
+
+            if ($newEnrollment->section) {
+                $newSection = Section::where('name', $newEnrollment->section)
+                    ->where('grade_level', $newEnrollment->grade_level)
+                    ->where('school_year', $newEnrollment->school_year)
+                    ->first();
+                $newSection?->students()->detach($promotion->student_id);
+            }
+
+            if ($oldEnrollment) {
+                $oldEnrollment->update([
+                    'status' => $promotion->from_status,
+                    'completed_at' => null,
+                ]);
+
+                if ($promotion->from_section_id) {
+                    Section::find($promotion->from_section_id)?->students()->attach($promotion->student_id);
+                }
+            }
+
+            $promotion->update([
+                'status' => 'reversed',
+                'undone_at' => now(),
+                'undone_by' => Auth::id(),
+            ]);
+
+            $studentName = $promotion->student?->name ?? ('student #' . $promotion->student_id);
+            ActivityLogger::log(
+                'update',
+                "Undid promotion for {$studentName}: {$promotion->from_grade} ({$promotion->from_school_year}) → {$promotion->to_grade} ({$promotion->to_school_year})",
+                'Promotion',
+                $promotion->id
+            );
+
+            DB::commit();
+
+            return response()->json(['success' => true, 'message' => 'Promotion undone — ' . $studentName . ' is back on their ' . $promotion->from_school_year . ' enrollment.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Undo promotion failed for promotion #{$promotion->id}: " . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Failed to undo promotion: ' . $e->getMessage()], 500);
+        }
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -3290,9 +3415,11 @@ class EnrollmentController extends Controller
         // Check if already has enrollment for next year — a declined row
         // doesn't count (see massPromote()'s matching fix for the same
         // reasoning; this method is also reused by bulkPromote()/autoAdvance()).
+        // 'cancelled' (an undone promotion — see undoPromotion()) doesn't
+        // count either, so re-promoting after an undo isn't blocked.
         $existingNext = Enrollment::where('user_id', $user->id)
             ->where('school_year', $validated['to_school_year'])
-            ->whereNotIn('status', ['declined'])
+            ->whereNotIn('status', ['declined', 'cancelled'])
             ->first();
 
         if ($existingNext) {
@@ -3319,6 +3446,10 @@ class EnrollmentController extends Controller
                     ->sortBy('students_count')
                     ->first();
             }
+
+            // Captured before the update() below overwrites it in memory —
+            // undoPromotion() needs to know what to restore this back to.
+            $fromStatus = $currentEnrollment->status;
 
             // Mark old enrollment as completed
             $currentEnrollment->update(['status' => 'completed', 'completed_at' => now()]);
@@ -3368,6 +3499,9 @@ class EnrollmentController extends Controller
                 'to_school_year'   => $toSchoolYear,
                 'from_section_id'  => $oldSection?->id,
                 'to_section_id'    => $toSection?->id,
+                'from_status'      => $fromStatus,
+                'enrollment_id'    => $newEnrollment->id,
+                'previous_enrollment_id' => $currentEnrollment->id,
                 'promoted_by'      => Auth::id(),
                 'promoted_at'      => now(),
                 'status'           => 'completed',
@@ -3824,7 +3958,7 @@ class EnrollmentController extends Controller
     public function getStudentGradesForAssess(User $user)
     {
         $enrollment = $user->enrollments()
-            ->whereNotIn('status', ['declined'])
+            ->whereNotIn('status', ['declined', 'cancelled'])
             ->orderByRaw("school_year DESC")
             ->latest('id')
             ->first();

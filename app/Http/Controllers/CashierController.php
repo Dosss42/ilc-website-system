@@ -468,17 +468,26 @@ class CashierController extends Controller
                 $query->where('name', 'like', "%{$q}%")
                       ->orWhere('email', 'like', "%{$q}%");
             })
+            // Previously only 'approved'/'enrolled' — a student mid-promotion
+            // falls through the gap between those two statuses entirely (old
+            // enrollment marked 'completed', new one starts 'pending' until
+            // approved), making them briefly unfindable here with no
+            // indication why. 'declined' (never a real student to collect
+            // from) and 'cancelled' (an undone promotion artifact — see
+            // EnrollmentController::undoPromotion()) are the only statuses
+            // that genuinely shouldn't surface here.
             ->whereHas('enrollments', function ($qe) {
-                $qe->whereIn('status', ['approved','enrolled']);
+                $qe->whereNotIn('status', ['declined', 'cancelled']);
             })
             ->with(['enrollments' => function ($qe) {
-                $qe->whereIn('status', ['approved','enrolled'])->latest();
+                $qe->whereNotIn('status', ['declined', 'cancelled'])->latest();
             }])
             ->orderByDesc('created_at')
             ->limit(10)
             ->get()
             ->map(function (User $user) {
                 $enrollment = $user->enrollments->first();
+                $prior = \App\Services\PaymentService::priorOutstandingBalance($user->id, $enrollment?->id);
                 return [
                     'id'                 => $user->id,
                     'name'               => $user->name,
@@ -495,6 +504,12 @@ class CashierController extends Controller
                     'downpayment_amount' => $enrollment?->downpayment_amount ?? 0,
                     'monthly_amount'     => $enrollment?->monthly_amount ?? 0,
                     'school_year'        => $enrollment?->school_year ?? '—',
+                    // Phase 4 — a balance left on a DIFFERENT enrollment
+                    // (almost always a prior school year), invisible unless
+                    // surfaced explicitly: this screen only otherwise shows
+                    // whichever enrollment is current.
+                    'prior_balance'            => $prior['amount'],
+                    'prior_balance_school_year'=> $prior['school_year'],
                 ];
             });
 
@@ -518,6 +533,11 @@ class CashierController extends Controller
             return response()->json(['success' => false, 'message' => 'Student not found.'], 404);
         }
 
+        // Included so updateStudentCardStats() (shared with searchStudent()/
+        // listStudents()) doesn't wipe the prior-balance warning back off
+        // after a post-payment refresh just because this field was missing.
+        $prior = \App\Services\PaymentService::priorOutstandingBalance($user->id, $enrollment->id);
+
         return response()->json([
             'success'            => true,
             'id'                 => $user->id,
@@ -535,6 +555,8 @@ class CashierController extends Controller
             'downpayment_amount' => $enrollment->downpayment_amount ?? 0,
             'monthly_amount'     => $enrollment->monthly_amount ?? 0,
             'school_year'        => $enrollment->school_year ?? '—',
+            'prior_balance'             => $prior['amount'],
+            'prior_balance_school_year' => $prior['school_year'],
         ]);
     }
 
@@ -543,27 +565,29 @@ class CashierController extends Controller
     {
         $search = trim($request->get('q', ''));
 
+        // Same fix as searchStudent() (docs/SCHOOL-YEAR-VISIBILITY-PHASED-PLAN.md
+        // Phase 2) — this is actually the MORE heavily-used of the two (the
+        // default "browse students" table, not just the name-search box), so
+        // a student mid-promotion (old enrollment 'completed', new one still
+        // 'pending' until approved) was invisible here too, for the same reason.
+        $activeStatuses = fn ($qe) => $qe->whereNotIn('status', ['declined', 'cancelled']);
+
         $query = User::where('role', 'student')
-            ->whereHas('enrollments', function ($qe) {
-                $qe->whereIn('status', ['approved','enrolled']);
-            })
+            ->whereHas('enrollments', $activeStatuses)
             // Newest-enrolled first, not alphabetical — a student who just
             // got approved should show up at the top of this list without
             // the cashier having to search for them by name.
-            ->withMax(['enrollments as latest_enrollment_at' => function ($qe) {
-                $qe->whereIn('status', ['approved','enrolled']);
-            }], 'created_at')
-            ->with(['enrollments' => function ($qe) {
-                $qe->whereIn('status', ['approved','enrolled'])->latest();
+            ->withMax(['enrollments as latest_enrollment_at' => $activeStatuses], 'created_at')
+            ->with(['enrollments' => function ($qe) use ($activeStatuses) {
+                $activeStatuses($qe)->latest();
             }]);
 
         if ($search !== '') {
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search, $activeStatuses) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhereHas('enrollments', function ($qe) use ($search) {
-                      $qe->whereIn('status', ['approved','enrolled'])
-                         ->where('reference_number', 'like', "%{$search}%");
+                  ->orWhereHas('enrollments', function ($qe) use ($search, $activeStatuses) {
+                      $activeStatuses($qe)->where('reference_number', 'like', "%{$search}%");
                   });
             });
         }
@@ -572,6 +596,7 @@ class CashierController extends Controller
             ->paginate((int) $request->get('per_page', 20))
             ->through(function (User $user) {
                 $e = $user->enrollments->first();
+                $prior = \App\Services\PaymentService::priorOutstandingBalance($user->id, $e?->id);
                 return [
                     'id'                 => $user->id,
                     'name'               => $user->name,
@@ -590,6 +615,8 @@ class CashierController extends Controller
                     'balance'            => $e?->remaining_balance ?? 0,
                     'downpayment_amount' => $e?->downpayment_amount ?? 0,
                     'monthly_amount'     => $e?->monthly_amount ?? 0,
+                    'prior_balance'             => $prior['amount'],
+                    'prior_balance_school_year' => $prior['school_year'],
                 ];
             });
 

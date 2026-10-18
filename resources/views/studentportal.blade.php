@@ -2646,6 +2646,28 @@
                 </div>
             </div>
 
+            {{-- Payment History (all years) — separate from the Payment Details
+                 modal's history, which only ever shows the current enrollment.
+                 This lets a promoted student look back at a prior year's
+                 transactions, same as Grades/Schedule already let them switch
+                 years. See docs/SCHOOL-YEAR-VISIBILITY-PHASED-PLAN.md Phase 5. --}}
+            <div class="content-card mb-4">
+                <div class="content-card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                    <h6 style="margin:0;"><i class="bi bi-clock-history me-2" style="color:var(--gold);"></i>Payment History</h6>
+                    <select id="paymentHistorySYFilter" onchange="loadPaymentHistoryForYear()"
+                        style="border:1.5px solid #d1d5db;border-radius:8px;padding:6px 10px;font-size:12.5px;font-weight:600;color:var(--text);background:#fff;cursor:pointer;min-width:120px;">
+                        @foreach($allSYOptions as $syOpt)
+                            <option value="{{ $syOpt }}" {{ $syOpt === $currentSY ? 'selected' : '' }}>{{ $syOpt }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div style="padding:16px 20px;" id="paymentHistoryStandaloneList">
+                    <div style="text-align:center;padding:20px;color:#999;">
+                        <div class="spinner-border spinner-border-sm me-2"></div> Loading…
+                    </div>
+                </div>
+            </div>
+
             {{-- Exam Permit status — only relevant for installment plans --}}
             @if($examPermitStatus)
             @php
@@ -3958,7 +3980,77 @@
         if (name === 'schedule') {
             loadSchedule();
         }
+        if (name === 'payment') {
+            loadPaymentHistoryForYear();
+        }
         return false;
+    }
+
+    // ── Payment History (all years) — standalone panel, separate from the
+    // Payment Details modal's history (which stays tied to whichever
+    // enrollment is current, by design). See docs/
+    // SCHOOL-YEAR-VISIBILITY-PHASED-PLAN.md Phase 5.
+    function loadPaymentHistoryForYear() {
+        var sel  = document.getElementById('paymentHistorySYFilter');
+        var year = sel ? sel.value : '';
+        var box  = document.getElementById('paymentHistoryStandaloneList');
+        if (!box) return;
+        box.innerHTML = '<div style="text-align:center;padding:20px;color:#999;"><div class="spinner-border spinner-border-sm me-2"></div> Loading…</div>';
+
+        var url = '/api/student/payment-history' + (year ? '?school_year=' + encodeURIComponent(year) : '');
+        fetch(url, {
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function(res) {
+            renderPaymentHistoryStandalone((res.data && res.data.transactions) || []);
+        })
+        .catch(function(err) {
+            console.error('Payment history load error:', err);
+            box.innerHTML = '<div style="text-align:center;padding:20px;color:#dc2626;"><i class="bi bi-exclamation-triangle"></i> Failed to load payment history.</div>';
+        });
+    }
+
+    function renderPaymentHistoryStandalone(rows) {
+        var box = document.getElementById('paymentHistoryStandaloneList');
+        if (!box) return;
+        var fmt = function(v){ return '₱' + Number(v||0).toLocaleString('en-PH', {minimumFractionDigits:2}); };
+
+        if (!rows.length) {
+            box.innerHTML = '<div style="text-align:center;padding:20px;color:#999;"><i class="bi bi-inbox" style="font-size:22px;display:block;margin-bottom:6px;"></i>No payment records for this school year.</div>';
+            return;
+        }
+
+        var html = '';
+        rows.forEach(function(p) {
+            var date = p.created_at ? new Date(p.created_at) : null;
+            var methodLabel = p.payment_method === 'gcash' ? 'GCash' : (p.payment_method === 'cash' ? 'Cash' : (p.payment_method || '—'));
+            var statusPill = p.status === 'completed'
+                ? '<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#c8e6c9;color:#2e7d32;font-weight:600;">Paid</span>'
+                : (p.status === 'pending'
+                    ? '<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#ffe0b2;color:#e65100;font-weight:600;">Awaiting Payment</span>'
+                    : '<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#e0e0e0;color:#616161;font-weight:600;">' + (p.status === 'expired' ? 'Expired' : (p.status || '—')) + '</span>');
+            var completeLink = (p.status === 'pending' && p.xendit_invoice_url)
+                ? '<a href="' + p.xendit_invoice_url + '" target="_blank" style="font-size:11px;color:var(--blue);font-weight:600;text-decoration:none;">Complete</a>'
+                : '';
+            html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f0f0f0;font-size:13px;">'
+                + '<div>'
+                +   '<div style="font-weight:600;">' + (p.description || 'Payment') + '</div>'
+                +   '<div style="font-size:11px;color:#888;">' + methodLabel
+                        + (p.reference_number ? ' · Ref: ' + p.reference_number : '')
+                        + (date ? ' · ' + date.toLocaleDateString('en-PH', {month:'short', day:'numeric', year:'numeric'}) + ' at ' + date.toLocaleTimeString('en-PH', {hour:'2-digit', minute:'2-digit'}) : '')
+                    + '</div>'
+                + '</div>'
+                + '<div style="display:flex;align-items:center;gap:8px;">'
+                +   '<span style="font-weight:700;">' + fmt(p.amount) + '</span>'
+                +   statusPill
+                +   completeLink
+                + '</div>'
+                + '</div>';
+        });
+        box.innerHTML = html;
     }
 
     // ── Load Grades from API ──

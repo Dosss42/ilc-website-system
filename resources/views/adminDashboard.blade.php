@@ -1823,6 +1823,13 @@ function openWalkInEnrollmentModal() {
                         <p style="font-size:13px;color:#555;margin-bottom:16px;">
                             Review the student's grades and balance above, then choose an action for the next school year.
                         </p>
+                        {{-- Balance info already lives on its own tab, but an admin could
+                             go straight to Decision without clicking there — this repeats
+                             the warning right where the actual choice gets made, so it
+                             can't be missed. --}}
+                        <div id="sm-decision-balance-warning" style="display:none;margin-bottom:16px;padding:10px 14px;background:#fff3e0;border:1px solid #ffc107;border-radius:8px;font-size:12.5px;color:#854d0e;">
+                            <i class="bi bi-exclamation-triangle-fill me-1"></i><span id="sm-decision-balance-text"></span>
+                        </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
                             <label style="border:2px solid #ddd;border-radius:10px;padding:14px;cursor:pointer;transition:all 0.2s;" id="sm-opt-promote" onclick="smSelectDecision('promote')">
                                 <input type="radio" name="sm-decision" value="promote" style="margin-right:8px;">
@@ -12718,6 +12725,19 @@ function openWalkInEnrollmentModal() {
             ${balance > 0 ? '<div style="margin-top:12px;padding:10px 14px;background:#fff3e0;border-radius:8px;font-size:12px;color:#854d0e;"><i class="bi bi-info-circle me-1"></i>Student has an outstanding balance. You may still promote them — admin discretion applies. The balance will carry over or must be settled before the new school year begins.</div>' : ''}
         `;
 
+        // Same warning, repeated on the Decision tab itself (see docs/
+        // SCHOOL-YEAR-VISIBILITY-PHASED-PLAN.md Phase 3) — the Balance tab
+        // already covers this, but it's a separate tab an admin could skip
+        // on the way to Decision.
+        const decisionWarning = document.getElementById('sm-decision-balance-warning');
+        if (balance > 0) {
+            document.getElementById('sm-decision-balance-text').textContent =
+                'This student has an unpaid balance of ' + fmt(balance) + ' for ' + (fromSY || 'this school year') + '. You can still promote them, but confirm this is intentional.';
+            decisionWarning.style.display = '';
+        } else {
+            decisionWarning.style.display = 'none';
+        }
+
         new bootstrap.Modal(document.getElementById('smAssessModal')).show();
         loadSmGrades();
     }
@@ -13385,6 +13405,38 @@ function openWalkInEnrollmentModal() {
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-check2 me-1"></i> Confirm Promotion';
         });
+    }
+
+    // ── Undo Promotion ── (see docs/SCHOOL-YEAR-VISIBILITY-PHASED-PLAN.md
+    // Phase 1 — only offered for a promotion whose new enrollment is still
+    // untouched; the backend re-checks this independently, this button
+    // only shows when the server already told us it would succeed)
+    function undoPromotion(promotionId, studentName) {
+        showPromoteConfirm(
+            'Undo this promotion for ' + studentName + '? They will be restored to their previous enrollment, and the new one will be cancelled.',
+            function() {
+                fetch('/admin/promotions/' + promotionId + '/undo', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken
+                    }
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        showAdminToast(data.message, 'success');
+                        setTimeout(() => location.reload(), 900);
+                    } else {
+                        showAdminToast(data.message || 'Could not undo this promotion.', 'error');
+                    }
+                })
+                .catch(err => {
+                    showAdminToast('Network error: ' + (err.message || 'Unknown'), 'error');
+                });
+            }
+        );
     }
 
     // ── Auto-Advance (Nursery/Kindergarten — no checks) ──

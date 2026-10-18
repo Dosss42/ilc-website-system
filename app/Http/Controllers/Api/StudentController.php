@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Grade;
+use App\Models\PaymentTransaction;
 use App\Models\Schedule;
 use App\Models\Section;
 use App\Models\Subject;
@@ -314,4 +315,60 @@ class StudentController extends Controller
         ]);
     }
 
+    /**
+     * Payment history for ONE specific school year — previously the student
+     * portal only ever showed the current/latest enrollment's transactions
+     * (whatever $jsPaymentHistory was seeded with on page load), so a
+     * promoted student had no way to look back at a prior year's payments
+     * themselves. See docs/SCHOOL-YEAR-VISIBILITY-PHASED-PLAN.md Phase 5.
+     * Same JSON shape as the Blade-seeded $jsPaymentHistory array, so the
+     * existing render function needs no changes — just a new fetch.
+     */
+    public function getPaymentHistory(Request $request)
+    {
+        $user       = Auth::user();
+        $schoolYear = $request->query('school_year');
+
+        // 'declined'/'cancelled' excluded — neither is a real enrollment a
+        // payment could legitimately belong to (see EnrollmentController::
+        // undoPromotion() for what 'cancelled' means).
+        $enrollment = $schoolYear
+            ? $user->enrollments()
+                ->where('school_year', $schoolYear)
+                ->whereNotIn('status', ['declined', 'cancelled'])
+                ->latest('id')
+                ->first()
+            : $user->latestEnrollment;
+
+        if (!$enrollment) {
+            return response()->json([
+                'success' => true,
+                'data'    => ['transactions' => [], 'school_year' => $schoolYear, 'enrollment_id' => null],
+            ]);
+        }
+
+        $transactions = PaymentTransaction::where('enrollment_id', $enrollment->id)
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn ($t) => [
+                'id'                 => $t->id,
+                'amount'             => (float) $t->amount,
+                'payment_method'     => $t->payment_method,
+                'payment_type'       => $t->payment_type,
+                'description'        => $t->description,
+                'reference_number'   => $t->reference_number,
+                'status'             => $t->status,
+                'created_at'         => $t->created_at?->toIso8601String(),
+                'xendit_invoice_url' => $t->xendit_invoice_url,
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'data'    => [
+                'transactions'   => $transactions,
+                'school_year'    => $enrollment->school_year,
+                'enrollment_id'  => $enrollment->id,
+            ],
+        ]);
+    }
 }

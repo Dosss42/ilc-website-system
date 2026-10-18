@@ -135,7 +135,7 @@
         .pagination .page-item .page-link { display: inline-flex !important; align-items: center; justify-content: center; min-width: 32px; height: 32px; padding: 6px 10px; margin: 0 2px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--ink); font-weight: 500; text-decoration: none; transition: all 0.2s; }
         .pagination .page-item .page-link:hover { background: var(--blue-pale); border-color: var(--blue); color: var(--blue); }
         .pagination .page-item.active .page-link { background: var(--blue); border-color: var(--blue); color: #fff; }
-        .pagination .page-item.disabled .page-link { opacity: 0.5; cursor: not-allowed; background: #f8f9fa; }
+        .pagination .page-item.disabled .page-link { opacity: 0.5; cursor: not-allowed; background: #f8f9fa; pointer-events: none; }
         .pagination .page-item:first-child .page-link,
         .pagination .page-item:last-child .page-link { font-weight: 600; font-size: 12px !important; padding: 6px 14px !important; min-width: auto !important; height: auto !important; border-radius: 6px !important; }
         .pagination-info { text-align: center; font-size: 12px; color: var(--muted); margin-top: 10px; }
@@ -1198,6 +1198,12 @@
                             style="background:none;border:1px solid var(--pp-line);color:var(--pp-soft);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:11px;line-height:1;flex-shrink:0;font-family:inherit;">
                             <i class="bi bi-arrow-left-circle me-1"></i>Change
                         </button>
+                    </div>
+                    {{-- Prior-year balance warning (docs/SCHOOL-YEAR-VISIBILITY-PHASED-PLAN.md
+                         Phase 4) — a balance left on a DIFFERENT enrollment, otherwise
+                         invisible once a student is promoted into a new one. --}}
+                    <div id="studentPriorBalanceWarning" style="display:none;margin-top:10px;padding:8px 10px;background:#fdecea;border:1px solid #f5b7b1;border-radius:8px;font-size:11.5px;color:#922b21;">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i><span id="studentPriorBalanceText"></span>
                     </div>
                     <div class="pp-dashed" style="margin-top:12px;padding-top:12px;">
                         <div style="display:flex;justify-content:space-between;align-items:baseline;">
@@ -2463,9 +2469,31 @@
         // entirely when there's nothing to page through.
         var html = '<nav><ul class="pagination">';
         html += '<li class="page-item ' + (page <= 1 ? 'disabled' : '') + '"><a class="page-link" href="javascript:void(0)" onclick="' + onPageChangeFnName + '(' + (page - 1) + ')">Previous</a></li>';
+
+        // Windowed page numbers — always show page 1 and the last page, plus
+        // a small window around the current page, with "…" for any gap.
+        // This used to render EVERY page as its own button in one unwrapped,
+        // centered flex row; with enough records (e.g. 863 transactions at
+        // 20/page = 44 buttons) that row became far wider than the screen,
+        // and centering pushed page 1 and "Previous" out of view on the left
+        // with no way back — looked broken because, for any list long enough
+        // to matter, it effectively was.
+        var windowSize = 2;
+        var shown = [];
         for (var i = 1; i <= last; i++) {
-            html += '<li class="page-item ' + (i === page ? 'active' : '') + '"><a class="page-link" href="javascript:void(0)" onclick="' + onPageChangeFnName + '(' + i + ')">' + i + '</a></li>';
+            if (i === 1 || i === last || (i >= page - windowSize && i <= page + windowSize)) {
+                shown.push(i);
+            }
         }
+        var prevShown = null;
+        shown.forEach(function(i) {
+            if (prevShown !== null && i - prevShown > 1) {
+                html += '<li class="page-item disabled"><span class="page-link" style="cursor:default;">…</span></li>';
+            }
+            html += '<li class="page-item ' + (i === page ? 'active' : '') + '"><a class="page-link" href="javascript:void(0)" onclick="' + onPageChangeFnName + '(' + i + ')">' + i + '</a></li>';
+            prevShown = i;
+        });
+
         html += '<li class="page-item ' + (page >= last ? 'disabled' : '') + '"><a class="page-link" href="javascript:void(0)" onclick="' + onPageChangeFnName + '(' + (page + 1) + ')">Next</a></li>';
         html += '</ul></nav>';
         html += '<div class="pagination-info">Showing ' + meta.from + ' to ' + meta.to + ' of ' + meta.total + ' ' + (itemLabel || 'records') + '</div>';
@@ -2525,9 +2553,13 @@
             var balText  = totalFee === 0
                          ? '<span style="font-size:11px;color:#94a3b8;">Fee not set</span>'
                          : '₱' + bal.toLocaleString('en-PH', {minimumFractionDigits:2});
+            var priorBal = parseFloat(s.prior_balance) || 0;
+            var priorBadge = priorBal > 0
+                ? '<div style="font-size:10.5px;color:#c0392b;font-weight:600;margin-top:2px;" title="Still owed on a different school year\'s enrollment"><i class="bi bi-exclamation-triangle-fill"></i> Also owes ₱' + priorBal.toLocaleString('en-PH', {minimumFractionDigits:2}) + ' (' + s.prior_balance_school_year + ')</div>'
+                : '';
             return '<tr style="cursor:pointer;" onclick="selectStudentFromList(' + enc + ')">'
                 + '<td><span style="font-family:monospace;font-size:11.5px;background:#f8faff;padding:3px 8px;border-radius:6px;color:#475569;">' + (s.reference_no || '—') + '</span></td>'
-                + '<td><div style="font-weight:700;color:#1e293b;">' + s.name + '</div><div style="font-size:11px;color:#94a3b8;">' + s.email + '</div></td>'
+                + '<td><div style="font-weight:700;color:#1e293b;">' + s.name + '</div><div style="font-size:11px;color:#94a3b8;">' + s.email + '</div>' + priorBadge + '</td>'
                 + '<td style="font-weight:600;">' + grade + '</td>'
                 + '<td>' + (s.section && s.section !== '—' ? s.section : '<span style="color:#cbd5e1;">—</span>') + '</td>'
                 + '<td style="font-size:12px;color:#64748b;">' + (s.school_year || '—') + '</td>'
@@ -3209,6 +3241,18 @@
         document.getElementById('studentGrade').innerHTML        = '<i class="bi bi-mortarboard-fill" style="font-size:10px;"></i> Grade ' + (s.grade_level||'—');
         document.getElementById('studentSchoolYear').textContent = 'S.Y. ' + (s.school_year||'—');
         document.getElementById('studentBalance').textContent    = fmt(s.balance);
+
+        var priorWarn = document.getElementById('studentPriorBalanceWarning');
+        var priorBal  = parseFloat(s.prior_balance) || 0;
+        if (priorWarn) {
+            if (priorBal > 0) {
+                document.getElementById('studentPriorBalanceText').textContent =
+                    'Also owes ' + fmt(priorBal) + ' from a different school year (' + s.prior_balance_school_year + ').';
+                priorWarn.style.display = '';
+            } else {
+                priorWarn.style.display = 'none';
+            }
+        }
 
         // Card top: amount paid + progress bar
         document.getElementById('cardAmountPaid').textContent = fmt(s.payment_amount);

@@ -425,6 +425,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // MASS PROMOTION (kept for legacy, hidden from UI)
     Route::post('/students/mass-promote', [EnrollmentController::class, 'massPromote'])->name('students.mass-promote');
     Route::get('/students/promotion-history', [EnrollmentController::class, 'promotionHistory'])->name('students.promotion-history');
+    Route::post('/promotions/{promotion}/undo', [EnrollmentController::class, 'undoPromotion'])->name('promotions.undo');
 
     // SCHEDULE MANAGEMENT
     Route::prefix('schedules')->name('schedules.')->group(function () {

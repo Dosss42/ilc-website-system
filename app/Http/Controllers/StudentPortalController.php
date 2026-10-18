@@ -138,7 +138,14 @@ class StudentPortalController extends Controller
 
         // Prefer the newest school year first, then the most-advanced status within that year.
         // This ensures a just-approved re-enrollment for 2027-2028 takes over from 2026-2027 enrolled.
+        // 'cancelled' (an undone promotion — see EnrollmentController::
+        // undoPromotion()) is excluded outright, not just deprioritized: it
+        // isn't in the FIELD() list below, so MySQL's FIELD() would return 0
+        // for it and ORDER BY ... ASC would sort it FIRST, ahead of every
+        // real status — the opposite of what's intended. A student should
+        // never land on a cancelled artifact as "their" enrollment.
         $enrollment = $user->enrollments()
+            ->where('status', '!=', 'cancelled')
             ->orderByRaw("school_year DESC")
             ->orderByRaw("FIELD(status, 'enrolled', 'approved', 'pending', 'declined') ASC")
             ->latest('id')
@@ -146,6 +153,7 @@ class StudentPortalController extends Controller
 
         if (!$enrollment) {
             $enrollment = Enrollment::where('student_data->student_email', $user->email)
+                ->where('status', '!=', 'cancelled')
                 ->orderByRaw("school_year DESC")
                 ->orderByRaw("FIELD(status, 'enrolled', 'approved', 'pending', 'declined') ASC")
                 ->latest('id')

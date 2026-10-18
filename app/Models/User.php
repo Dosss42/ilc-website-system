@@ -102,7 +102,11 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function latestEnrollment(): \Illuminate\Database\Eloquent\Relations\HasOne
     {
-        return $this->hasOne(Enrollment::class)->latestOfMany();
+        // 'cancelled' = an undone promotion (see EnrollmentController::
+        // undoPromotion()) — excluded so it's never picked up as "the"
+        // enrollment across Cashier/Finance/the student portal, all of
+        // which rely on this relation.
+        return $this->hasOne(Enrollment::class)->where('status', '!=', 'cancelled')->latestOfMany();
     }
 
     public function promotions(): \Illuminate\Database\Eloquent\Relations\HasMany

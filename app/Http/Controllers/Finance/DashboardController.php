@@ -928,6 +928,11 @@ class DashboardController extends Controller
 
         $allStudents = $query->get()->map(function ($user) {
             $enrollment = $user->enrollments->first();
+            // Phase 4 (docs/SCHOOL-YEAR-VISIBILITY-PHASED-PLAN.md) — a balance
+            // left on a different (almost always prior-year) enrollment,
+            // otherwise invisible since this list only ever shows whichever
+            // enrollment is current.
+            $prior = \App\Services\PaymentService::priorOutstandingBalance($user->id, $enrollment?->id);
             return (object) [
                 'user'           => $user,
                 'enrollment'     => $enrollment,
@@ -941,6 +946,8 @@ class DashboardController extends Controller
                 'payment_status' => $enrollment?->payment_status ?? 'pending',
                 'enrollment_id'  => $enrollment?->id,
                 'is_cash'        => $enrollment?->payment_option === 'A' || ($enrollment?->payment_type === 'full' && !in_array($enrollment?->payment_option, ['B','C','D'])),
+                'prior_balance'             => $prior['amount'],
+                'prior_balance_school_year' => $prior['school_year'],
             ];
         });
 

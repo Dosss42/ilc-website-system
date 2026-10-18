@@ -38,6 +38,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // routes instead — and was removed rather than left as dead surface.
     Route::get('/student/grades', [StudentController::class, 'getGrades']);
     Route::get('/student/schedule', [StudentController::class, 'getSchedule']);
+    Route::get('/student/payment-history', [StudentController::class, 'getPaymentHistory']);
 });
 
 // Fee management routes (accessible via session auth for admin dashboard)

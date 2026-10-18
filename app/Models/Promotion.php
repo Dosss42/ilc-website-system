@@ -30,15 +30,21 @@ class Promotion extends Model
         'to_school_year',
         'from_section_id',
         'to_section_id',
+        'from_status',
+        'enrollment_id',
+        'previous_enrollment_id',
         'promoted_by',
         'promoted_at',
         'status',
         'error_message',
         'remarks',
+        'undone_at',
+        'undone_by',
     ];
 
     protected $casts = [
         'promoted_at' => 'datetime',
+        'undone_at'   => 'datetime',
     ];
 
     public function student()
@@ -51,6 +57,11 @@ class Promotion extends Model
         return $this->belongsTo(User::class, 'promoted_by');
     }
 
+    public function undoneBy()
+    {
+        return $this->belongsTo(User::class, 'undone_by');
+    }
+
     public function fromSection()
     {
         return $this->belongsTo(Section::class, 'from_section_id');
@@ -59,5 +70,15 @@ class Promotion extends Model
     public function toSection()
     {
         return $this->belongsTo(Section::class, 'to_section_id');
+    }
+
+    public function enrollment()
+    {
+        return $this->belongsTo(Enrollment::class, 'enrollment_id');
+    }
+
+    public function previousEnrollment()
+    {
+        return $this->belongsTo(Enrollment::class, 'previous_enrollment_id');
     }
 }

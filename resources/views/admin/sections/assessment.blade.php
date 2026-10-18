@@ -271,11 +271,12 @@
                             <th>Remarks</th>
                             <th>Assessed By</th>
                             <th>Date</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @php
-                            $allPromos = \App\Models\Promotion::with(['student','promotedBy'])
+                            $allPromos = \App\Models\Promotion::with(['student','promotedBy', 'enrollment'])
                                 ->orderByDesc('promoted_at')
                                 ->paginate(15, ['*'], 'promo_history_page');
                         @endphp
@@ -284,22 +285,43 @@
                             $pResult = $promo->to_grade === 'graduated' ? 'Graduated'
                                      : ($promo->from_grade === $promo->to_grade ? 'Retained' : 'Promoted');
                             $pColor  = match($pResult) { 'Promoted'=>'#28a745','Retained'=>'#e67e00','Graduated'=>'#1a3a6c',default=>'#666' };
+                            // Mirrors undoPromotion()'s own guard exactly, so this
+                            // button only ever shows when the action would actually
+                            // succeed — computed here, not trusted to the frontend.
+                            $canUndo = $promo->status === 'completed'
+                                && $promo->enrollment
+                                && $promo->enrollment->status === 'pending'
+                                && !\App\Models\PaymentTransaction::where('enrollment_id', $promo->enrollment_id)->exists();
                         @endphp
                         <tr>
                             <td style="font-weight:600;">{{ $promo->student->name ?? '—' }}</td>
                             <td><span class="grade-chip">{{ $glMap[$promo->from_grade] ?? ucfirst($promo->from_grade) }}</span></td>
                             <td>
                                 <span style="font-weight:700;color:{{ $pColor }};">{{ $pResult }}</span>
+                                @if($promo->status === 'reversed')
+                                    <div style="font-size:10px;color:#c0392b;font-weight:600;">Undone</div>
+                                @endif
                             </td>
                             <td><span class="grade-chip">{{ $glMap[$promo->to_grade] ?? ucfirst($promo->to_grade) }}</span></td>
                             <td style="font-size:12px;">{{ $promo->from_school_year }} → {{ $promo->to_school_year }}</td>
                             <td style="font-size:12px;color:var(--muted);max-width:200px;">{{ $promo->remarks ?? '—' }}</td>
                             <td style="font-size:12px;color:var(--muted);">{{ $promo->promotedBy->name ?? 'System' }}</td>
                             <td style="font-size:12px;color:var(--muted);white-space:nowrap;">{{ $promo->promoted_at?->format('M d, Y') ?? '—' }}</td>
+                            <td style="white-space:nowrap;">
+                                @if($canUndo)
+                                    <button type="button" class="btn-dash btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="undoPromotion({{ $promo->id }}, '{{ addslashes($promo->student->name ?? 'this student') }}')">
+                                        <i class="bi bi-arrow-counterclockwise"></i> Undo
+                                    </button>
+                                @elseif($promo->status === 'reversed')
+                                    <span style="font-size:11px;color:var(--muted);" title="Undone {{ $promo->undone_at?->format('M d, Y g:i A') }} by {{ $promo->undoneBy->name ?? '—' }}">—</span>
+                                @else
+                                    <span style="font-size:11px;color:var(--muted);" title="Already approved or has a payment on it — undo it manually instead.">—</span>
+                                @endif
+                            </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="8" style="text-align:center;padding:30px;color:var(--muted);">No assessment history yet.</td>
+                            <td colspan="9" style="text-align:center;padding:30px;color:var(--muted);">No assessment history yet.</td>
                         </tr>
                         @endforelse
                     </tbody>

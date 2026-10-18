@@ -182,6 +182,11 @@
                     <td>
                         <div style="font-weight:600;color:var(--text);">{{ $s->user->name }}</div>
                         <div style="font-size:11px;color:var(--muted);">{{ $s->user->email }}</div>
+                        @if(($s->prior_balance ?? 0) > 0)
+                            <div style="font-size:10.5px;color:#c0392b;font-weight:600;margin-top:2px;" title="Still owed on a different school year's enrollment">
+                                <i class="bi bi-exclamation-triangle-fill"></i> Also owes ₱{{ number_format($s->prior_balance, 2) }} ({{ $s->prior_balance_school_year }})
+                            </div>
+                        @endif
                     </td>
                     <td><span class="grade-chip">{{ ucfirst($s->grade_level) }}</span></td>
                     <td style="font-size:12px;color:var(--muted);">{{ $s->school_year }}</td>
