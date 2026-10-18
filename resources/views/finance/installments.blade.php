@@ -91,48 +91,59 @@
 </div>
 @endif
 
-{{-- Filter Panel --}}
+{{-- Filter Panel — a real GET form, not a client-side row-hider. It used to
+     only hide/show whichever 15 rows were already on the current page, so
+     searching for a student who wasn't on page 1 always showed "0 found"
+     even though they existed elsewhere in the full list. Submitting these
+     as real query params lets the server filter + paginate the actual
+     matching set, same as the pagination links below already do. --}}
 <div class="content-card mb-4">
     <div class="content-card-header">
         <h6><i class="bi bi-funnel me-2" style="color:var(--gold);"></i>Filter Installments</h6>
     </div>
-    <div style="padding:16px 20px; display:flex; flex-wrap:wrap; gap:12px; align-items:end;">
-        <div style="flex:1; min-width:140px;">
-            <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">School Year</label>
-            <select id="instFilterYear" class="form-select" style="font-size:13px; padding:8px 12px;" onchange="filterInstallments()">
-                <option value="all">All Years</option>
-                @foreach($schoolYears as $year)
-                    <option value="{{ $year }}">{{ $year }}</option>
-                @endforeach
-            </select>
+    <form method="GET" action="{{ route('finance.installments.index') }}">
+        <input type="hidden" name="sort" value="{{ $sort }}">
+        <div style="padding:16px 20px; display:flex; flex-wrap:wrap; gap:12px; align-items:end;">
+            <div style="flex:1; min-width:140px;">
+                <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">School Year</label>
+                <select name="school_year" class="form-select" style="font-size:13px; padding:8px 12px;" onchange="this.form.submit()">
+                    <option value="all" {{ request('school_year', 'all') === 'all' ? 'selected' : '' }}>All Years</option>
+                    @foreach($schoolYears as $year)
+                        <option value="{{ $year }}" {{ request('school_year') === $year ? 'selected' : '' }}>{{ $year }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div style="flex:1; min-width:140px;">
+                <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">Payment Status</label>
+                <select name="payment_status" class="form-select" style="font-size:13px; padding:8px 12px;" onchange="this.form.submit()">
+                    <option value="all" {{ request('payment_status', 'all') === 'all' ? 'selected' : '' }}>All Status</option>
+                    <option value="paid" {{ request('payment_status') === 'paid' ? 'selected' : '' }}>Paid</option>
+                    <option value="partial" {{ request('payment_status') === 'partial' ? 'selected' : '' }}>Partial</option>
+                    <option value="pending" {{ request('payment_status') === 'pending' ? 'selected' : '' }}>Pending</option>
+                </select>
+            </div>
+            <div style="flex:1; min-width:140px;">
+                <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">Overdue Status</label>
+                <select name="overdue" class="form-select" style="font-size:13px; padding:8px 12px;" onchange="this.form.submit()">
+                    <option value="all" {{ request('overdue', 'all') === 'all' ? 'selected' : '' }}>All Students</option>
+                    <option value="yes" {{ request('overdue') === 'yes' ? 'selected' : '' }}>Overdue</option>
+                    <option value="no" {{ request('overdue') === 'no' ? 'selected' : '' }}>Not Overdue</option>
+                </select>
+            </div>
+            <div style="flex:1; min-width:180px;">
+                <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">Search Student</label>
+                <input type="text" name="search" class="form-control" placeholder="Search by name or email..." style="font-size:13px; padding:8px 12px;" value="{{ request('search') }}">
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button type="submit" class="btn-dash btn-primary" style="padding:8px 16px; font-size:13px;">
+                    <i class="bi bi-search"></i> Search
+                </button>
+                <a href="{{ route('finance.installments.index') }}" class="btn-dash btn-secondary" style="padding:8px 16px; font-size:13px; text-decoration:none;">
+                    <i class="bi bi-arrow-counterclockwise"></i> Reset
+                </a>
+            </div>
         </div>
-        <div style="flex:1; min-width:140px;">
-            <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">Payment Status</label>
-            <select id="instFilterStatus" class="form-select" style="font-size:13px; padding:8px 12px;" onchange="filterInstallments()">
-                <option value="all">All Status</option>
-                <option value="paid">Paid</option>
-                <option value="partial">Partial</option>
-                <option value="pending">Pending</option>
-            </select>
-        </div>
-        <div style="flex:1; min-width:140px;">
-            <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">Overdue Status</label>
-            <select id="instFilterOverdue" class="form-select" style="font-size:13px; padding:8px 12px;" onchange="filterInstallments()">
-                <option value="all">All Students</option>
-                <option value="yes">Overdue</option>
-                <option value="no">Not Overdue</option>
-            </select>
-        </div>
-        <div style="flex:1; min-width:180px;">
-            <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">Search Student</label>
-            <input type="text" id="instFilterSearch" class="form-control" placeholder="Search by name or email..." style="font-size:13px; padding:8px 12px;" oninput="filterInstallments()">
-        </div>
-        <div>
-            <button type="button" class="btn-dash btn-secondary" onclick="resetInstallmentFilters()" style="padding:8px 16px; font-size:13px;">
-                <i class="bi bi-arrow-counterclockwise"></i> Reset
-            </button>
-        </div>
-    </div>
+    </form>
 </div>
 
 {{-- Installments Table --}}
@@ -429,48 +440,6 @@
 
 @section('scripts')
 <script>
-// ── Client-side filter ──
-function filterInstallments() {
-    const year    = document.getElementById('instFilterYear').value.toLowerCase();
-    const status  = document.getElementById('instFilterStatus').value.toLowerCase();
-    const overdue = document.getElementById('instFilterOverdue').value.toLowerCase();
-    const search  = document.getElementById('instFilterSearch').value.toLowerCase();
-    const rows    = document.querySelectorAll('#installmentsTable tbody tr[data-student]');
-    let visible   = 0;
-
-    rows.forEach(row => {
-        const rowYear    = (row.dataset.year    || '').toLowerCase();
-        const rowStatus  = (row.dataset.status  || '').toLowerCase();
-        const rowOverdue = (row.dataset.overdue || '').toLowerCase();
-        const rowStudent = (row.dataset.student || '').toLowerCase();
-
-        const matchYear    = year    === 'all' || rowYear    === year;
-        const matchStatus  = status  === 'all' || rowStatus  === status;
-        const matchOverdue = overdue === 'all' || rowOverdue === overdue;
-        const matchSearch  = !search || rowStudent.includes(search);
-
-        if (matchYear && matchStatus && matchOverdue && matchSearch) {
-            row.style.display = '';
-            visible++;
-        } else {
-            row.style.display = 'none';
-        }
-    });
-
-    const countEl = document.getElementById('instRowCount');
-    if (countEl) countEl.textContent = visible + ' student(s) found';
-
-    const emptyRow = document.getElementById('instEmptyRow');
-    if (emptyRow) emptyRow.style.display = visible === 0 ? '' : 'none';
-}
-
-function resetInstallmentFilters() {
-    document.getElementById('instFilterYear').value    = 'all';
-    document.getElementById('instFilterStatus').value  = 'all';
-    document.getElementById('instFilterOverdue').value = 'all';
-    document.getElementById('instFilterSearch').value  = '';
-    filterInstallments();
-}
 
 // ── Progress bars ──
 document.querySelectorAll('.installment-progress-bar').forEach(function(bar) {

@@ -382,6 +382,22 @@ class DashboardController extends Controller
             });
         }
 
+        // Filter by overdue status — same definition as the "Overdue" stat
+        // card above (getInstallmentOverview()): next_installment_date in
+        // the past and not yet fully paid.
+        $overdueFilter = $request->input('overdue');
+        $today = now()->toDateString();
+        if ($overdueFilter === 'yes') {
+            $query->where('next_installment_date', '<', $today)
+                  ->where('payment_status', '!=', 'paid');
+        } elseif ($overdueFilter === 'no') {
+            $query->where(function ($q) use ($today) {
+                $q->whereNull('next_installment_date')
+                  ->orWhere('next_installment_date', '>=', $today)
+                  ->orWhere('payment_status', 'paid');
+            });
+        }
+
         // Apply sorting
         switch ($sort) {
             case 'name_asc':
@@ -485,24 +501,33 @@ class DashboardController extends Controller
             }
         }
 
-        // Filter by overdue after calculating
-        if ($request->has('overdue') && $request->overdue === 'yes') {
-            $enrollments = $enrollments->filter(function ($e) {
-                return $e->is_overdue;
-            });
-        }
+        // Stats — real aggregate queries against the FULL matching dataset for
+        // this school year (same base filter as $query above, year only; not
+        // scoped to whatever status/search/overdue the staff currently has
+        // typed in), independent of pagination. These used to be computed
+        // from $enrollments — the already-paginated 15-row page — which
+        // silently capped every stat at the page size (e.g. "9 Overdue" could
+        // never exceed 15 even with far more overdue students on later pages)
+        // instead of reflecting the true totals across all matching students.
+        $statsBase = fn () => Enrollment::where(function ($q) {
+                $q->where('payment_type', 'installment')
+                    ->orWhereIn('payment_option', ['B', 'C', 'D']);
+            })->where('school_year', $yearFilter && $yearFilter !== 'all' ? $yearFilter : $this->formatSchoolYear());
 
-        // Stats (from loaded collection for accuracy on paginated + filtered results)
         $instStats = [
-            'total_students' => $enrollments->count(),
-            'overdue'        => $enrollments->where('is_overdue', true)->count(),
-            'fully_paid'     => $enrollments->where('payment_status', 'paid')->count(),
-            'partial'        => $enrollments->where('payment_status', 'partial')->count(),
-            'total_late_fees' => $enrollments->sum('total_late_fees'),
+            'total_students'  => $statsBase()->count(),
+            'overdue'         => $statsBase()->where('next_installment_date', '<', $today)->where('payment_status', '!=', 'paid')->count(),
+            'fully_paid'      => $statsBase()->where('payment_status', 'paid')->count(),
+            'partial'         => $statsBase()->where('payment_status', 'partial')->count(),
         ];
 
+        $totalLateFeesAll = \App\Models\PaymentInstallment::whereHas('enrollment', function ($q) use ($yearFilter, $today) {
+            $q->where(function ($qq) {
+                $qq->where('payment_type', 'installment')->orWhereIn('payment_option', ['B', 'C', 'D']);
+            })->where('school_year', $yearFilter && $yearFilter !== 'all' ? $yearFilter : $this->formatSchoolYear());
+        })->sum('late_fee');
+
         $installmentEnrollments = $enrollments;
-        $totalLateFeesAll = $instStats['total_late_fees'] ?? 0;
 
         return view('finance.installments', compact('installmentEnrollments', 'sort', 'schoolYears', 'instStats', 'totalLateFeesAll'));
     }
@@ -1500,6 +1525,26 @@ class DashboardController extends Controller
             // from the same stale payment_amount.
             $enrollment = PaymentService::lockEnrollment($enrollment->id);
 
+            // No fee plan assessed yet — same gap as CashierController::
+            // processCash(): requiredEnrollmentThreshold() falls back to "any
+            // payment > 0 counts" when it can't compute a real threshold,
+            // which let a token cash/GCash amount flip an unassessed
+            // enrollment straight to 'enrolled'. Block here instead. Checking
+            // the threshold itself (not just payment_option) also catches an
+            // option being set but total_fee still 0.
+            if (PaymentService::requiredEnrollmentThreshold($enrollment) <= 0) {
+                DB::rollBack();
+                return $this->walkInError($request, 'This student has not been assessed yet — no fee plan is set. Please complete the enrollment assessment before accepting payment.');
+            }
+
+            // Already fully paid — same gap as CashierController::processCash():
+            // nothing left to collect, so don't accept more and drive
+            // remaining_balance negative / payment_amount past total_fee.
+            if ((float) ($enrollment->remaining_balance ?? 0) <= 0 && $enrollment->payment_status === 'paid') {
+                DB::rollBack();
+                return $this->walkInError($request, 'This student is already fully paid — remaining balance is ₱0.00. No further payment is needed.');
+            }
+
             // Double-click / retried-request guard — a cash walk-in payment
             // is recorded as already 'completed' immediately (unlike the
             // Xendit-link flow, there's no 'pending' state to reuse), so a
@@ -1726,6 +1771,23 @@ class DashboardController extends Controller
             if (floatval($enrollment->total_fee ?? 0) <= 0 && $breakdownTotal > 0) {
                 $enrollment->update(['total_fee' => $breakdownTotal]);
                 $enrollment->refresh();
+            }
+
+            // No fee plan assessed yet — same gap as recordWalkInPayment()/
+            // processCash(): checked AFTER the breakdown-persist step above so
+            // a submission that's establishing the plan right now (by sending
+            // a breakdown total) isn't rejected for the very state it's about
+            // to fix; one with no breakdown and no pre-existing plan is.
+            if (PaymentService::requiredEnrollmentThreshold($enrollment) <= 0) {
+                DB::rollBack();
+                return redirect()->back()->with('error', 'This student has not been assessed yet — no fee plan is set. Please complete the enrollment assessment before accepting payment.');
+            }
+
+            // Already fully paid — same gap as the other payment-recording
+            // endpoints: nothing left to collect, so don't accept more.
+            if ((float) ($enrollment->remaining_balance ?? 0) <= 0 && $enrollment->payment_status === 'paid') {
+                DB::rollBack();
+                return redirect()->back()->with('error', 'This student is already fully paid — remaining balance is ₱0.00. No further payment is needed.');
             }
 
             // Create PaymentTransaction record (completed since it's admin payment)

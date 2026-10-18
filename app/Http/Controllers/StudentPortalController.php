@@ -1254,6 +1254,19 @@ class StudentPortalController extends Controller
                         ->where('user_id', $user->id)
                         ->firstOrFail();
 
+        // Already fully paid — checked explicitly, not just inferred from the
+        // absence of a pending installment below: a stale pending/overdue
+        // PaymentInstallment row left over from before the balance was
+        // settled (e.g. the plan later changed, or it was paid off in one
+        // lump sum) would otherwise still compute a real $expectedAmount and
+        // let a fully-paid student generate another payment link.
+        if ((float) ($enrollment->remaining_balance ?? 0) <= 0 && $enrollment->payment_status === 'paid') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This enrollment is already fully paid — remaining balance is ₱0.00. No further payment is needed.',
+            ], 422);
+        }
+
         // ── Determine the authoritative fee plan server-side ──────────────
         // total_fee / downpayment_amount / monthly_amount / amount used to
         // be trusted directly from the request, which let a student set

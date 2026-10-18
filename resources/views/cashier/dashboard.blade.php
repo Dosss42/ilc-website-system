@@ -2665,7 +2665,11 @@
         fetch(_dailyUrl+'?date='+encodeURIComponent(date), { credentials:'same-origin', headers:{'Accept':'application/json','X-CSRF-TOKEN':_csrfToken} })
         .then(function(r){ return r.json(); })
         .then(function(d){
-            _dailyRows = d.rows || [];
+            // d.rows is the raw Laravel paginator object ({current_page,
+            // data, total, ...}), not a plain array — its .length is always
+            // undefined, which made the empty-state check below fire no
+            // matter how many transactions actually came back.
+            _dailyRows = (d.rows && d.rows.data) || [];
             document.getElementById('drTotal').textContent  = '₱'+d.total;
             document.getElementById('drCash').textContent   = '₱'+d.cash;
             document.getElementById('drOnline').textContent = '₱'+d.online;

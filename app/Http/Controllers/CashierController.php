@@ -695,6 +695,21 @@ class CashierController extends Controller
         ]);
 
         $enrollment = Enrollment::findOrFail($request->enrollment_id);
+
+        // Once money has been paid against the current plan, switching plans
+        // here would recompute remaining_balance against a different total
+        // without touching the installment rows already generated for the
+        // old one — they'd keep the old amounts/due dates while the
+        // enrollment now reports a different monthly_amount/downpayment,
+        // silently going out of sync. Lock the plan as soon as there's a
+        // real payment; staff needing to correct a wrong plan after that
+        // point should handle it manually rather than through this endpoint.
+        if ((float) ($enrollment->payment_amount ?? 0) > 0) {
+            return response()->json([
+                'error' => 'This student already has a payment recorded, so the plan can no longer be changed here — it would leave the existing payment and installment schedule out of sync with the new plan.',
+            ], 422);
+        }
+
         $bd = $this->buildBreakdown($enrollment->grade_level, $request->payment_option);
 
         if (empty($bd)) {
@@ -735,6 +750,34 @@ class CashierController extends Controller
             // for the same enrollment could both compute from the same stale
             // payment_amount.
             $enrollment = \App\Services\PaymentService::lockEnrollment($request->enrollment_id);
+
+            // No fee plan assessed yet — PaymentService::requiredEnrollmentThreshold()
+            // falls back to "any payment > 0 counts" when it can't compute a
+            // real threshold (no downpayment_amount AND no total_fee), which
+            // let a single peso of cash flip an unassessed enrollment straight
+            // to 'enrolled'. Block cash here instead of letting that fallback
+            // fire — there's no real amount due to check the cash against yet.
+            // Checking the threshold itself (not just payment_option) also
+            // catches the rarer case of an option being set but total_fee
+            // still 0 — any input that would trip the same fallback.
+            if (\App\Services\PaymentService::requiredEnrollmentThreshold($enrollment) <= 0) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This student has not been assessed yet — no fee plan is set. Please complete the enrollment assessment before accepting payment.',
+                ], 422);
+            }
+
+            // Already fully paid — nothing left to collect. Without this,
+            // cash kept being accepted past the real balance, driving
+            // remaining_balance negative and payment_amount past total_fee.
+            if ((float) ($enrollment->remaining_balance ?? 0) <= 0 && $enrollment->payment_status === 'paid') {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This student is already fully paid — remaining balance is ₱0.00. No further payment is needed.',
+                ], 422);
+            }
 
             // Double-click / retried-request guard — a cash payment is recorded
             // as already 'completed' immediately, so a double-click here
@@ -826,6 +869,29 @@ class CashierController extends Controller
             return response()->json(['success' => false, 'message' => 'Xendit API key is not configured.'], 500);
         }
 
+        $enrollment = Enrollment::findOrFail($request->enrollment_id);
+
+        // No fee plan assessed yet — same gap as processCash(): once this
+        // link is paid, completeXenditPayment() -> advanceEnrollmentAfterPayment()
+        // falls back to "any payment > 0 counts" when there's no real
+        // threshold to check against, flipping an unassessed enrollment
+        // straight to 'enrolled'. Block generating the link here instead.
+        if (\App\Services\PaymentService::requiredEnrollmentThreshold($enrollment) <= 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This student has not been assessed yet — no fee plan is set. Please complete the enrollment assessment before generating a payment link.',
+            ], 422);
+        }
+
+        // Already fully paid — same reasoning as processCash(): nothing left
+        // to collect, so don't generate a link that would only overpay.
+        if ((float) ($enrollment->remaining_balance ?? 0) <= 0 && $enrollment->payment_status === 'paid') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This student is already fully paid — remaining balance is ₱0.00. No further payment is needed.',
+            ], 422);
+        }
+
         // Guard against duplicate pending links — clicking "Generate Payment
         // Link" twice (or leaving one abandoned and generating another) used
         // to create a second, unrelated PaymentTransaction row every time.
@@ -893,7 +959,7 @@ class CashierController extends Controller
 
         $transaction = PaymentTransaction::create([
             'enrollment_id'      => $request->enrollment_id,
-            'user_id'            => Enrollment::find($request->enrollment_id)->user_id,
+            'user_id'            => $enrollment->user_id,
             'payment_type'       => 'online',
             'payment_method'     => $request->payment_method,
             'amount'             => $request->amount,

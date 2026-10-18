@@ -3712,10 +3712,26 @@
             'school_year' => $enrollment->school_year ?? '',
             'account_blocked' => $enrollment->account_blocked ?? false,
         ];
-        // $jsPaymentHistory stays [] (its default above) — it used to query
-        // StudentDocument for 'payment_screenshot' uploads (the old manual
-        // GCash-proof-of-payment flow), removed now that Xendit handles
-        // online payments and Cashier handles in-person ones.
+        // Real payment records — Cashier (cash), Finance (walk-in cash/GCash)
+        // and the student's own Xendit payments all write to PaymentTransaction
+        // now, so that's the single source of truth here instead of the old
+        // StudentDocument 'payment_screenshot' uploads this used to read.
+        $jsPaymentHistory = \App\Models\PaymentTransaction::where('enrollment_id', $enrollment->id)
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(function ($t) {
+                return [
+                    'id'                 => $t->id,
+                    'amount'             => (float) $t->amount,
+                    'payment_method'     => $t->payment_method,
+                    'payment_type'       => $t->payment_type,
+                    'description'        => $t->description,
+                    'reference_number'   => $t->reference_number,
+                    'status'             => $t->status,
+                    'created_at'         => $t->created_at ? $t->created_at->toIso8601String() : null,
+                    'xendit_invoice_url' => $t->xendit_invoice_url,
+                ];
+            })->toArray();
 
         // Payment installments for month-by-month tracking
         if ($paymentInstallments && $paymentInstallments->count() > 0) {
@@ -5179,9 +5195,20 @@
                 const makePaymentCard = document.querySelector('#section-payment .content-card');
                 if (makePaymentCard && !document.getElementById('installment-notice')) {
                     const dpAmount = enrollmentData.downpayment_amount || 0;
-                    const hasPendingPayment = paymentHistory.some(p => p.status === 'pending');
-                    const dpBtnHTML = hasPendingPayment
-                        ? '<div style="background:#fff3e0; border-radius:8px; padding:12px; text-align:center; color:#e65100; font-weight:600; font-size:13px;"><i class="bi bi-hourglass-split me-1"></i>Payment pending admin approval. Please wait for confirmation.</div>'
+                    // 'pending' only ever means an un-paid Xendit invoice link
+                    // (cash is always recorded as 'completed' immediately) —
+                    // block generating a second link while one is still open,
+                    // but let the student jump straight back into it instead
+                    // of a dead-end "wait for approval" message (there's no
+                    // approval step anymore; it's just an unfinished checkout).
+                    const pendingTx = paymentHistory.find(p => p.status === 'pending');
+                    const dpBtnHTML = pendingTx
+                        ? ('<div style="background:#fff3e0; border-radius:8px; padding:12px; text-align:center; color:#e65100; font-size:13px;">'
+                            + '<div style="font-weight:600;margin-bottom:8px;"><i class="bi bi-hourglass-split me-1"></i>You have a payment link awaiting completion.</div>'
+                            + (pendingTx.xendit_invoice_url
+                                ? `<a href="${pendingTx.xendit_invoice_url}" target="_blank" class="btn btn-sm" style="background:#ff9800;color:#fff;font-weight:600;">Complete Payment</a>`
+                                : 'Check Payment History below for details.')
+                            + '</div>')
                         : `<button onclick="payDownpayment(${dpAmount})" class="btn btn-lg w-100" style="background: linear-gradient(135deg, #ff9800, #f57c00); color: #fff; border: none; font-weight: 700; padding: 14px;"><i class="bi bi-cash-coin me-2"></i>Pay Downpayment Now - ₱${dpAmount.toLocaleString('en-PH', {minimumFractionDigits: 2})}</button>`;
                     const noticeHTML = `
                         <div id="installment-notice" class="alert alert-info mb-4" style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); border: 1px solid #64b5f6; border-radius: 10px; padding: 20px;">
@@ -5220,7 +5247,7 @@
                 // Installment plan - downpayment already paid, show monthly payment
                 const makePaymentCard = document.querySelector('#section-payment .content-card');
                 if (makePaymentCard && !document.getElementById('installment-notice')) {
-                    const hasPendingPayment = paymentHistory.some(p => p.status === 'pending');
+                    const pendingTx = paymentHistory.find(p => p.status === 'pending');
                     // The earliest unpaid installment — paySpecificInstallment() is the
                     // correct, currently-maintained function for opening the payment
                     // modal (it only touches fields that still exist there, and sets
@@ -5237,8 +5264,13 @@
                     const nextInstallment = (paymentInstallments || [])
                         .filter(i => i.status === 'pending' || i.status === 'overdue')
                         .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))[0];
-                    const monthlyBtnHTML = hasPendingPayment
-                        ? '<div style="background:#fff3e0; border-radius:8px; padding:12px; text-align:center; color:#e65100; font-weight:600; font-size:13px;"><i class="bi bi-hourglass-split me-1"></i>Payment pending admin approval. Please wait for confirmation.</div>'
+                    const monthlyBtnHTML = pendingTx
+                        ? ('<div style="background:#fff3e0; border-radius:8px; padding:12px; text-align:center; color:#e65100; font-size:13px;">'
+                            + '<div style="font-weight:600;margin-bottom:8px;"><i class="bi bi-hourglass-split me-1"></i>You have a payment link awaiting completion.</div>'
+                            + (pendingTx.xendit_invoice_url
+                                ? `<a href="${pendingTx.xendit_invoice_url}" target="_blank" class="btn btn-sm" style="background:#ff9800;color:#fff;font-weight:600;">Complete Payment</a>`
+                                : 'Check Payment History below for details.')
+                            + '</div>')
                         : nextInstallment
                             ? `<button onclick="paySpecificInstallment(${nextInstallment.id}, ${nextInstallment.total_due}, '${nextInstallment.month_name}', '${nextInstallment.due_date}')" class="btn btn-lg w-100" style="background: linear-gradient(135deg, #28a745, #218838); color: #fff; border: none; font-weight: 700; padding: 14px;"><i class="bi bi-credit-card me-2"></i>Pay Monthly Installment Now</button>`
                             : '';
@@ -5458,7 +5490,7 @@
                 const dpBg    = dpPaid ? '#e8f5e9' : (dpPendingApproval ? '#e3f2fd' : '#fff3e0');
                 const dpBadgeBg = dpPaid ? '#c8e6c9' : (dpPendingApproval ? '#bbdefb' : '#ffe0b2');
                 const dpBadgeColor = dpPaid ? '#2e7d32' : (dpPendingApproval ? '#1565c0' : '#e65100');
-                const dpLabel = dpPaid ? 'Paid' : (dpPendingApproval ? '<i class="bi bi-hourglass-split"></i> Pending Approval' : 'Unpaid');
+                const dpLabel = dpPaid ? 'Paid' : (dpPendingApproval ? '<i class="bi bi-hourglass-split"></i> Awaiting Payment' : 'Unpaid');
                 instHTML += `<div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; margin-bottom:4px; border-radius:8px; background:${dpBg}; font-size:13px;">
                     <div>
                         <div style="font-weight:700;">Downpayment</div>
@@ -5568,26 +5600,31 @@
             instSection.style.display = 'none';
         }
 
-        // 4. Payment History
+        // 4. Payment History — real PaymentTransaction rows (cash via Cashier,
+        // walk-in cash/GCash via Finance, online via Xendit), not the old
+        // 'payment_screenshot' upload records this used to show.
         let histHTML = '';
         if (paymentHistory.length > 0) {
             paymentHistory.forEach(p => {
-                const date = new Date(p.created_at);
-                const statusPill = p.status === 'approved'
-                    ? '<span style="font-size:10px; padding:2px 8px; border-radius:10px; background:#c8e6c9; color:#2e7d32; font-weight:600;">Approved</span>'
-                    : (p.status === 'rejected'
-                        ? '<span style="font-size:10px; padding:2px 8px; border-radius:10px; background:#ffcdd2; color:#c62828; font-weight:600;">Rejected</span>'
-                        : '<span style="font-size:10px; padding:2px 8px; border-radius:10px; background:#ffe0b2; color:#e65100; font-weight:600;">Pending</span>');
+                const date = p.created_at ? new Date(p.created_at) : null;
+                const methodLabel = p.payment_method === 'gcash' ? 'GCash' : (p.payment_method === 'cash' ? 'Cash' : (p.payment_method || '—'));
+                const statusPill = p.status === 'completed'
+                    ? '<span style="font-size:10px; padding:2px 8px; border-radius:10px; background:#c8e6c9; color:#2e7d32; font-weight:600;">Paid</span>'
+                    : (p.status === 'pending'
+                        ? '<span style="font-size:10px; padding:2px 8px; border-radius:10px; background:#ffe0b2; color:#e65100; font-weight:600;">Awaiting Payment</span>'
+                        : '<span style="font-size:10px; padding:2px 8px; border-radius:10px; background:#e0e0e0; color:#616161; font-weight:600;">' + (p.status === 'expired' ? 'Expired' : (p.status || '—')) + '</span>');
+                const completeLink = (p.status === 'pending' && p.xendit_invoice_url)
+                    ? `<a href="${p.xendit_invoice_url}" target="_blank" style="font-size:11px; color:var(--blue); font-weight:600; text-decoration:none;">Complete</a>`
+                    : '';
                 histHTML += `<div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f0f0f0; font-size:13px;">
                     <div>
                         <div style="font-weight:600;">${p.description || 'Payment'}</div>
-                        <div style="font-size:11px; color:#888;">${date.toLocaleDateString('en-PH', {month:'short', day:'numeric', year:'numeric'})} at ${date.toLocaleTimeString('en-PH', {hour:'2-digit', minute:'2-digit'})}</div>
+                        <div style="font-size:11px; color:#888;">${methodLabel}${p.reference_number ? ' · Ref: ' + p.reference_number : ''}${date ? ' · ' + date.toLocaleDateString('en-PH', {month:'short', day:'numeric', year:'numeric'}) + ' at ' + date.toLocaleTimeString('en-PH', {hour:'2-digit', minute:'2-digit'}) : ''}</div>
                     </div>
                     <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-weight:700;">${fmt(p.amount)}</span>
                         ${statusPill}
-                        <a href="/storage/${p.file_path}" target="_blank" style="width:28px; height:28px; border-radius:6px; background:#e3f2fd; display:flex; align-items:center; justify-content:center; color:var(--blue); text-decoration:none; font-size:12px;" title="View">
-                            <i class="bi bi-eye"></i>
-                        </a>
+                        ${completeLink}
                     </div>
                 </div>`;
             });

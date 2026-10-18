@@ -97,6 +97,63 @@ class CashPaymentTest extends TestCase
         $this->assertTrue(collect($response->json('data'))->contains(fn ($l) => $l['event_type'] === 'cash_payment'));
     }
 
+    public function test_cash_payment_is_refused_when_no_fee_plan_is_set(): void
+    {
+        $cashier = User::factory()->cashier()->create();
+        $enrollment = Enrollment::factory()->create([
+            'status' => 'approved',
+            'payment_option' => null,
+            'total_fee' => 0,
+            'downpayment_amount' => 0,
+            'payment_amount' => 0,
+            'remaining_balance' => 0,
+        ]);
+
+        $response = $this->actingAs($cashier, 'cashier')
+            ->postJson('/cashier/payment/cash', [
+                'enrollment_id' => $enrollment->id,
+                'amount' => 100,
+                'payment_type' => 'Downpayment',
+            ]);
+
+        $response->assertStatus(422);
+        $response->assertJson(['success' => false]);
+
+        $enrollment->refresh();
+        $this->assertNotEquals('enrolled', $enrollment->status);
+        $this->assertDatabaseMissing('payment_transactions', [
+            'enrollment_id' => $enrollment->id,
+        ]);
+    }
+
+    public function test_cash_payment_is_refused_when_an_option_is_set_but_total_fee_is_zero(): void
+    {
+        // Guards against the no-fee-plan check regressing back to only
+        // looking at payment_option — an option chosen with no real total
+        // (total_fee still 0) must be refused too, not just a fully blank plan.
+        $cashier = User::factory()->cashier()->create();
+        $enrollment = Enrollment::factory()->create([
+            'status' => 'approved',
+            'payment_option' => 'A',
+            'total_fee' => 0,
+            'downpayment_amount' => 0,
+            'payment_amount' => 0,
+            'remaining_balance' => 0,
+        ]);
+
+        $response = $this->actingAs($cashier, 'cashier')
+            ->postJson('/cashier/payment/cash', [
+                'enrollment_id' => $enrollment->id,
+                'amount' => 100,
+                'payment_type' => 'Downpayment',
+            ]);
+
+        $response->assertStatus(422);
+        $this->assertDatabaseMissing('payment_transactions', [
+            'enrollment_id' => $enrollment->id,
+        ]);
+    }
+
     public function test_processing_cash_payment_requires_cashier_authentication(): void
     {
         $enrollment = Enrollment::factory()->create();
