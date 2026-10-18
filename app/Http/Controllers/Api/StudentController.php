@@ -242,8 +242,17 @@ class StudentController extends Controller
             })->where('is_active', true)->first();
         }
 
-        $schedules     = [];
-        $totalSubjects = 0;
+        // All active subjects for this grade level — same "show every subject,
+        // blank out what isn't set yet" approach as getGrades() above. Without
+        // this, a subject with no Schedule row (no day/time/room/teacher
+        // assigned yet) was simply invisible instead of showing up blank.
+        $allSubjects = Subject::where('is_active', true)
+            ->where('grade_level', $gradeLevel)
+            ->orderBy('name')
+            ->get(['id', 'name', 'code']);
+
+        $schedules           = [];
+        $scheduledSubjectIds = [];
 
         if ($section) {
             $rawSchedules = Schedule::where('section_id', $section->id)
@@ -254,9 +263,9 @@ class StudentController extends Controller
                 ->orderBy('start_time')
                 ->get();
 
-            $totalSubjects = $rawSchedules->count();
-            $grouped       = $rawSchedules->groupBy('day_of_week');
-            $dayOrder      = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+            $scheduledSubjectIds = $rawSchedules->pluck('subject_id')->filter()->unique()->all();
+            $grouped             = $rawSchedules->groupBy('day_of_week');
+            $dayOrder            = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 
             foreach ($dayOrder as $day) {
                 if (!isset($grouped[$day])) continue;
@@ -273,6 +282,24 @@ class StudentController extends Controller
             }
         }
 
+        // Subjects that exist for this grade level but have no schedule slot
+        // yet — listed under their own group instead of being dropped, so
+        // they still show (with blank time/room and no teacher assigned).
+        $unscheduled = $allSubjects->whereNotIn('id', $scheduledSubjectIds)->values();
+        if ($unscheduled->isNotEmpty()) {
+            $schedules[] = [
+                'day'     => 'Unscheduled',
+                'classes' => $unscheduled->map(fn($sub) => [
+                    'start_time'   => null,
+                    'end_time'     => null,
+                    'subject_name' => $sub->name,
+                    'subject_code' => $sub->code ?? '',
+                    'room'         => '',
+                    'teacher'      => '—',
+                ])->values()->toArray(),
+            ];
+        }
+
         return response()->json([
             'success' => true,
             'data'    => [
@@ -281,7 +308,7 @@ class StudentController extends Controller
                 'section'        => $section ? $section->name : ($sectionName ?: 'Not yet assigned'),
                 'school_year'    => $currentSY,
                 'term'           => $term,
-                'total_subjects' => $totalSubjects,
+                'total_subjects' => $allSubjects->count(),
                 'schedule'       => $schedules,
             ],
         ]);

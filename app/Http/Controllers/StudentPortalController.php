@@ -74,6 +74,18 @@ class StudentPortalController extends Controller
 
         $grid = \App\Support\ScheduleGridBuilder::build($schedules);
 
+        // Same "show every subject, even unscheduled" fix as the on-screen
+        // tab (Api\StudentController::getSchedule) — the grid above can only
+        // show subjects that have an actual day/time slot, so anything still
+        // missing one is listed separately below it instead of silently
+        // vanishing from the PDF.
+        $scheduledSubjectIds = $schedules->pluck('subject_id')->filter()->unique()->all();
+        $unscheduledSubjects = \App\Models\Subject::where('is_active', true)
+            ->where('grade_level', $gradeLevel)
+            ->whereNotIn('id', $scheduledSubjectIds)
+            ->orderBy('name')
+            ->get(['name', 'code']);
+
         $glMap = ['nursery'=>'Nursery','kindergarten'=>'Kindergarten','grade1'=>'Grade 1',
                   'grade2'=>'Grade 2','grade3'=>'Grade 3','grade4'=>'Grade 4',
                   'grade5'=>'Grade 5','grade6'=>'Grade 6'];
@@ -84,6 +96,7 @@ class StudentPortalController extends Controller
             'dateRangeLabel' => $gradeLabel . ' — ' . ($section->name ?? '—') . ' · Term ' . $term . ' · S.Y. ' . ($currentSY ?? '—'),
             'timeSlots'      => $grid['timeSlots'],
             'showDays'       => $grid['showDays'],
+            'unscheduledSubjects' => $unscheduledSubjects,
         ]);
 
         $pdf = $this->schoolPdfOptions(\Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.schedule', $data), $data);

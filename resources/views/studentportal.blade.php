@@ -1578,9 +1578,6 @@
                         S.Y. {{ $currentSY ?: '—' }}
                     </div>
                 </div>
-                <a href="#" onclick="window.print();return false;" style="font-size:13px;color:var(--blue);text-decoration:none;">
-                    <i class="bi bi-printer-fill me-1"></i> Print
-                </a>
             </div>
 
             {{-- Legend --}}
@@ -1601,6 +1598,9 @@
                     </div>
                 </div>
             </div>
+
+            {{-- Term status — explains why grades are blank; the subject table below always shows regardless --}}
+            <div id="gradesStatusBanner" style="display:none;margin:14px 16px 0;padding:10px 16px;background:#f8f9fa;border:1px solid #e5e7eb;border-radius:10px;font-size:12.5px;"></div>
 
             <div class="mobile-scroll-hint"><i class="bi bi-arrow-left-right"></i> Swipe to see more columns</div>
             <div style="overflow-x:auto;">
@@ -4040,26 +4040,27 @@
 
             const pendingCount = res.pending_count || 0;
 
-            // Show "pending approval" banner when teacher submitted but admin hasn't approved yet
-            if (!hasGrades && pendingCount > 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:48px 20px;">'
-                    + '<i class="bi bi-hourglass-split" style="font-size:40px;display:block;margin-bottom:12px;color:#f59e0b;opacity:0.8;"></i>'
-                    + '<div style="font-weight:700;font-size:14px;color:#92400e;margin-bottom:6px;">Grades Pending Admin Approval</div>'
-                    + '<div style="font-size:12px;color:#94a3b8;">Your teacher has submitted grades for <strong>' + termLabel + '</strong>'
-                    + (syLabel ? ', S.Y. ' + syLabel : '') + '.<br>They are currently being reviewed by the administrator.</div>'
-                    + '</td></tr>';
-                return;
-            }
-
-            // Show "no grades yet" banner when teacher hasn't submitted for this term/year
-            if (!hasGrades) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:48px 20px;">'
-                    + '<i class="bi bi-clipboard-x" style="font-size:40px;display:block;margin-bottom:12px;color:#c9d3e0;"></i>'
-                    + '<div style="font-weight:700;font-size:14px;color:#64748b;margin-bottom:6px;">No grades submitted yet</div>'
-                    + '<div style="font-size:12px;color:#94a3b8;">Grades for <strong>' + termLabel + '</strong>'
-                    + (syLabel ? ', S.Y. ' + syLabel : '') + ' have not been encoded by your teacher yet.</div>'
-                    + '</td></tr>';
-                return;
+            // The subject list itself (fetched above) always has an entry per
+            // subject already, blank grade and all — so it's rendered below
+            // regardless of hasGrades. This banner only adds context above the
+            // table about WHY the grades are blank; it no longer replaces the
+            // table outright, so the subject/teacher list stays visible either way.
+            var statusBannerEl = document.getElementById('gradesStatusBanner');
+            if (statusBannerEl) {
+                if (!hasGrades && pendingCount > 0) {
+                    statusBannerEl.style.display = 'block';
+                    statusBannerEl.innerHTML = '<i class="bi bi-hourglass-split" style="color:#f59e0b;margin-right:6px;"></i>'
+                        + '<strong style="color:#92400e;">Grades Pending Admin Approval</strong> — '
+                        + 'your teacher has submitted grades for <strong>' + termLabel + '</strong>'
+                        + (syLabel ? ', S.Y. ' + syLabel : '') + '; they are being reviewed by the administrator.';
+                } else if (!hasGrades) {
+                    statusBannerEl.style.display = 'block';
+                    statusBannerEl.innerHTML = '<i class="bi bi-clipboard-x" style="color:#94a3b8;margin-right:6px;"></i>'
+                        + '<strong style="color:#64748b;">No grades submitted yet</strong> for <strong>' + termLabel + '</strong>'
+                        + (syLabel ? ', S.Y. ' + syLabel : '') + ' — subjects are listed below, grades will appear once encoded.';
+                } else {
+                    statusBannerEl.style.display = 'none';
+                }
             }
 
             var isDesc = res.data.is_descriptive || false;

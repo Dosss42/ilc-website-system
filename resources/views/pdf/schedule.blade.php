@@ -79,6 +79,18 @@
         </tbody>
     </table>
 
+    @if(!empty($unscheduledSubjects) && count($unscheduledSubjects))
+        <div style="margin-top:4px;font-size:9px;font-weight:bold;color:#555;">Not Yet Scheduled</div>
+        <table style="width:100%;border-collapse:collapse;margin-top:4px;">
+            @foreach($unscheduledSubjects as $sub)
+                <tr>
+                    <td style="border:1px solid #ddd;padding:4px 6px;font-size:8.5px;width:70%;">{{ $sub->name }}</td>
+                    <td style="border:1px solid #ddd;padding:4px 6px;font-size:8.5px;color:#888;">{{ $sub->code ?? '—' }}</td>
+                </tr>
+            @endforeach
+        </table>
+    @endif
+
     @include('pdf.shared._bottom')
 </body>
 </html>
