@@ -1272,12 +1272,20 @@ document.addEventListener('keydown', function(e) {
     // Capitalize first letter of each word
     function capitalizeFirst(input) {
         if (!input.value) return;
-        
+
+        // "N/A" is a common literal answer on optional fields (no middle
+        // name, no allergies, deceased parent, etc.) - it must be saved
+        // exactly as "N/A", not mangled into "N/a" by per-word capitalization.
+        if (/^n\/?a\.?$/i.test(input.value.trim())) {
+            input.value = 'N/A';
+            return;
+        }
+
         const words = input.value.toLowerCase().split(' ');
-        const capitalizedWords = words.map(word => 
+        const capitalizedWords = words.map(word =>
             word.charAt(0).toUpperCase() + word.slice(1)
         );
-        
+
         input.value = capitalizedWords.join(' ');
     }
 
@@ -1737,7 +1745,17 @@ document.addEventListener('keydown', function(e) {
 
                 // Build a 2D grid of inputs (row -> [inputs in left-to-right order])
                 rows.forEach(row => {
-                    const inputs = Array.from(row.querySelectorAll('input, select')).filter(el => !el.disabled);
+                    // Not filtering out disabled elements here on purpose: the
+                    // Province/City/Barangay selects start disabled until a
+                    // parent is picked, and this grid is only built once on
+                    // page load. Excluding them at that point would permanently
+                    // remove them from every row's navigation order - space/
+                    // arrow keys on Region would then have nowhere to go,
+                    // which is exactly the "doesn't move to the next field"
+                    // bug this is fixing. A disabled select can't be focused
+                    // anyway, so keeping it in the list is harmless until it
+                    // becomes enabled.
+                    const inputs = Array.from(row.querySelectorAll('input, select'));
                     if (inputs.length > 0) {
                         navigationGrid.push(inputs);
                     }
@@ -1773,6 +1791,18 @@ document.addEventListener('keydown', function(e) {
                                     }, 100);
                                     return;
                                 }
+                            } else if (e.key === ' ' && input.tagName === 'SELECT') {
+                                // Native <select> behavior for Space is to move
+                                // the highlighted option down (like ArrowDown),
+                                // not advance to the next field - that reads as
+                                // "it only goes down" instead of moving right.
+                                // Only selects are special-cased here; text
+                                // inputs (e.g. Street Address) still need a
+                                // literal space character to type normally.
+                                e.preventDefault();
+                                if (colIndex < rowInputs.length - 1) {
+                                    targetInput = rowInputs[colIndex + 1];
+                                }
                             } else if (e.key === 'ArrowRight' && !e.shiftKey) {
                                 e.preventDefault();
                                 if (colIndex < rowInputs.length - 1) {
@@ -1799,7 +1829,7 @@ document.addEventListener('keydown', function(e) {
                                 }
                             }
 
-                            if (targetInput) {
+                            if (targetInput && !targetInput.disabled) {
                                 targetInput.focus();
                                 // For select elements, open dropdown on focus
                                 if (targetInput.tagName === 'SELECT') {

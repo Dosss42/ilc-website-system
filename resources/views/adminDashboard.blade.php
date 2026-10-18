@@ -7488,7 +7488,14 @@ function openWalkInEnrollmentModal() {
 
         // Build a 2D grid of inputs (row -> [inputs in left-to-right order])
         rows.forEach(row => {
-            const inputs = Array.from(row.querySelectorAll('input, select')).filter(el => !el.disabled && el.type !== 'hidden');
+            // Not filtering out disabled elements here on purpose: Province/
+            // City/Barangay start disabled until a parent is picked, and this
+            // grid is only built once per modal open. Excluding them at that
+            // point would permanently remove them from the navigation order -
+            // pressing space/arrows on Region would then have nowhere to go.
+            // A disabled select can't be focused anyway, so keeping it listed
+            // is harmless until the cascade logic enables it.
+            const inputs = Array.from(row.querySelectorAll('input, select')).filter(el => el.type !== 'hidden');
             if (inputs.length > 0) {
                 navigationGrid.push(inputs);
             }
@@ -7521,6 +7528,15 @@ function openWalkInEnrollmentModal() {
                                 return;
                             }
                         }
+                    } else if (e.key === ' ' && input.tagName === 'SELECT') {
+                        // Native <select> behavior for Space moves the
+                        // highlighted option down instead of advancing to the
+                        // next field - only selects are special-cased here,
+                        // so text inputs still get a literal space character.
+                        e.preventDefault();
+                        if (colIndex < rowInputs.length - 1) {
+                            targetInput = rowInputs[colIndex + 1];
+                        }
                     } else if (e.key === 'ArrowRight' && !e.shiftKey) {
                         e.preventDefault();
                         if (colIndex < rowInputs.length - 1) {
@@ -7547,7 +7563,7 @@ function openWalkInEnrollmentModal() {
                         }
                     }
 
-                    if (targetInput) {
+                    if (targetInput && !targetInput.disabled) {
                         targetInput.focus();
                         // For select elements, try to open dropdown
                         if (targetInput.tagName === 'SELECT') {

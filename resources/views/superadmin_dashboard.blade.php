@@ -4345,7 +4345,14 @@
         var navigationGrid = [];
 
         rows.forEach(function(row) {
-            var inputs = Array.from(row.querySelectorAll('input, select')).filter(function(el) { return !el.disabled && el.type !== 'hidden'; });
+            // Not filtering out disabled elements here on purpose: Province/
+            // City/Barangay start disabled until a parent is picked, and this
+            // grid is only built once per modal open. Excluding them at that
+            // point would permanently remove them from the navigation order -
+            // pressing space/arrows on Region would then have nowhere to go.
+            // A disabled select can't be focused anyway, so keeping it listed
+            // is harmless until the cascade logic enables it.
+            var inputs = Array.from(row.querySelectorAll('input, select')).filter(function(el) { return el.type !== 'hidden'; });
             if (inputs.length > 0) navigationGrid.push(inputs);
         });
 
@@ -4367,6 +4374,13 @@
                             var submitBtn = document.querySelector('#walkInEnrollmentModal .btn-primary');
                             if (submitBtn) { submitBtn.focus(); return; }
                         }
+                    } else if (e.key === ' ' && input.tagName === 'SELECT') {
+                        // Native <select> behavior for Space moves the
+                        // highlighted option down instead of advancing to the
+                        // next field - only selects are special-cased here,
+                        // so text inputs still get a literal space character.
+                        e.preventDefault();
+                        if (colIndex < rowInputs.length - 1) targetInput = rowInputs[colIndex + 1];
                     } else if (e.key === 'ArrowRight' && !e.shiftKey) {
                         e.preventDefault();
                         if (colIndex < rowInputs.length - 1) targetInput = rowInputs[colIndex + 1];
@@ -4387,7 +4401,7 @@
                         }
                     }
 
-                    if (targetInput) {
+                    if (targetInput && !targetInput.disabled) {
                         targetInput.focus();
                         if (targetInput.tagName === 'SELECT') setTimeout(function() { targetInput.click(); }, 50);
                     }
