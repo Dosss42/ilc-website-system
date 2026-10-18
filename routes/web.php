@@ -247,6 +247,13 @@ Route::middleware(['auth', 'superadmin'])->prefix('superadmin')->name('superadmi
         Route::post('/{user}/reset-password', [SuperAdminController::class, 'resetPassword'])->name('reset-password');
     });
 
+    // ARCHIVES (all roles) — view/restore any archived user; permanent
+    // delete is handled by reusing the existing student/teacher force-delete
+    // routes directly from the Archives page JS, not a route here (see
+    // SuperAdminController::restoreUser()'s docblock for why).
+    Route::get('/archived-users', [SuperAdminController::class, 'archivedUsers'])->name('archived-users');
+    Route::post('/archived-users/{id}/restore', [SuperAdminController::class, 'restoreUser'])->name('archived-users.restore');
+
     // System Logs
     Route::get('/logs/export', [SuperAdminController::class, 'exportLogs'])->name('logs.export');
 
@@ -439,6 +446,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::get('/{teacher}', [TeacherController::class, 'show'])->name('show');
         Route::put('/{teacher}', [TeacherController::class, 'update'])->name('update');
         Route::delete('/{teacher}', [TeacherController::class, 'destroy'])->name('destroy');
+        Route::post('/{id}/restore', [TeacherController::class, 'restore'])->name('restore');
+        Route::delete('/{id}/force', [TeacherController::class, 'forceDelete'])->name('force-delete');
     });
 
     // TEACHER ASSIGNMENT MANAGEMENT

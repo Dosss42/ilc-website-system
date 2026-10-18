@@ -1,9 +1,24 @@
         <div class="section-header">
             <div>
                 <h1><i class="bi bi-archive-fill" style="color:#b45309; margin-right:8px;"></i>Archives</h1>
-                <p>Archived students are preserved here. Restore them to return them to Student Management, or permanently delete to remove all records.</p>
+                <p>Archived students and teachers are preserved here. Restore them to return them to active use, or permanently delete to remove all records.</p>
             </div>
         </div>
+
+        {{-- Tab switcher --}}
+        <div style="display:flex; gap:8px; margin-bottom:20px; border-bottom:1.5px solid var(--border);">
+            <button type="button" id="archive-tab-students" onclick="switchArchiveTab('students')"
+                style="padding:10px 18px; border:none; background:none; font-weight:700; font-size:13px; cursor:pointer; border-bottom:3px solid #b45309; color:#b45309;">
+                <i class="bi bi-people-fill me-1"></i> Students ({{ isset($archivedStudents) ? $archivedStudents->total() : 0 }})
+            </button>
+            <button type="button" id="archive-tab-teachers" onclick="switchArchiveTab('teachers')"
+                style="padding:10px 18px; border:none; background:none; font-weight:700; font-size:13px; cursor:pointer; border-bottom:3px solid transparent; color:#64748b;">
+                <i class="bi bi-person-badge-fill me-1"></i> Teachers ({{ isset($archivedTeachers) ? $archivedTeachers->total() : 0 }})
+            </button>
+        </div>
+
+        {{-- ═══ STUDENTS PANEL ═══ --}}
+        <div id="archive-panel-students">
 
         {{-- Summary cards --}}
         <div class="row g-3 mb-4">
@@ -191,3 +206,148 @@
                 </div>
             @endif
         </div>
+        </div>{{-- /archive-panel-students --}}
+
+        {{-- ═══ TEACHERS PANEL ═══ --}}
+        <div id="archive-panel-teachers" style="display:none;">
+
+        <div class="row g-3 mb-4">
+            <div class="col-md-4 col-sm-6">
+                <div class="stat-card">
+                    <div class="stat-icon amber"><i class="bi bi-archive-fill"></i></div>
+                    <div>
+                        <div class="stat-value" style="color:#b45309;">{{ isset($archivedTeachers) ? $archivedTeachers->total() : 0 }}</div>
+                        <div class="stat-label">Total Archived</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-8 col-sm-12" style="display:flex; align-items:center;">
+                <div style="background:#fff8e1; border:1px solid #fde68a; border-radius:10px; padding:12px 16px; font-size:13px; color:#92400e; width:100%;">
+                    <i class="bi bi-info-circle-fill me-2" style="color:#b45309;"></i>
+                    Archived teachers keep all records intact.
+                    Use <strong>Restore</strong> to return them to Teacher Management,
+                    or <strong>Permanently Delete</strong> to remove all data forever.
+                </div>
+            </div>
+        </div>
+
+        <div class="content-card mb-4">
+            <div class="p-3">
+                <div style="position:relative; max-width:400px;">
+                    <i class="bi bi-search" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#aaa;font-size:13px;"></i>
+                    <input type="text" id="archive-teacher-search-input" class="form-fld" placeholder="Search name or email…" style="padding-left:32px;" oninput="filterArchiveTeacherRows()">
+                </div>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <div class="content-card-header">
+                <h6><i class="bi bi-person-badge me-2" style="color:#b45309;"></i>Archived Teachers</h6>
+            </div>
+
+            @if(!isset($archivedTeachers) || $archivedTeachers->isEmpty())
+                <div style="text-align:center; padding:60px 24px; color:#aaa;">
+                    <div style="width:72px;height:72px;background:#fff8e1;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+                        <i class="bi bi-archive" style="font-size:32px; color:#f5c842;"></i>
+                    </div>
+                    <div style="font-size:16px; font-weight:700; color:#555; margin-bottom:8px;">No Archived Teachers</div>
+                    <div style="font-size:13px; color:#999; max-width:360px; margin:0 auto;">
+                        When you archive a teacher from Teacher Management, they will appear here.
+                        Their records are safely preserved and can be restored at any time.
+                    </div>
+                    <button class="btn-dash btn-secondary mt-3" onclick="showSection('teachers')">
+                        <i class="bi bi-person-badge-fill"></i> Go to Teacher Management
+                    </button>
+                </div>
+            @else
+                <div style="overflow-x:auto;" id="archive-teacher-table-wrap">
+                    <table class="dash-table" style="min-width:600px;" id="archive-teacher-table">
+                        <thead>
+                            <tr>
+                                <th style="min-width:200px;">Teacher</th>
+                                <th style="min-width:140px;">Last Known Assignments</th>
+                                <th style="min-width:120px; white-space:nowrap;">Archived On</th>
+                                <th style="min-width:120px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="archive-teacher-tbody">
+                            @foreach($archivedTeachers as $arcT)
+                            <tr data-search="{{ strtolower($arcT->name . ' ' . $arcT->email) }}">
+                                <td>
+                                    <div class="user-row-name">
+                                        <div class="user-row-avatar" style="background:#fff8e1;color:#b45309;">
+                                            {{ strtoupper(substr($arcT->name, 0, 2)) }}
+                                        </div>
+                                        <div>
+                                            <div style="font-weight:600; color:var(--text);">{{ $arcT->name }}</div>
+                                            <div style="font-size:11px; color:var(--muted);">{{ $arcT->email }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="font-size:12px; color:var(--muted);">
+                                    {{ $arcT->teacher_assignments_count }} assignment(s)
+                                </td>
+                                <td style="white-space:nowrap;">
+                                    <div style="font-size:12px; color:#92400e; font-weight:600;">
+                                        {{ $arcT->deleted_at->format('M d, Y') }}
+                                    </div>
+                                    <div style="font-size:10px; color:#bbb;">{{ $arcT->deleted_at->diffForHumans() }}</div>
+                                </td>
+                                <td style="white-space:nowrap;">
+                                    <a href="#" class="action-btn js-teacher-restore"
+                                       data-id="{{ $arcT->id }}" data-name="{{ addslashes($arcT->name) }}"
+                                       title="Restore Teacher" style="background:#e8f8f0;color:#1a6b2d;">
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                    </a>
+                                    <a href="#" class="action-btn js-teacher-force-delete"
+                                       data-id="{{ $arcT->id }}" data-name="{{ addslashes($arcT->name) }}"
+                                       title="Permanently Delete" style="background:#fdecea;color:#c0392b;">
+                                        <i class="bi bi-trash3-fill"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                    <div id="archive-teacher-no-results" style="display:none; text-align:center; padding:40px; color:#aaa;">
+                        <i class="bi bi-search" style="font-size:32px; display:block; margin-bottom:10px; opacity:0.4;"></i>
+                        No archived teachers match your search.
+                    </div>
+                </div>
+                <div class="p-3 border-top" style="border-color:var(--border);">
+                    {{ $archivedTeachers->appends(['section' => 'archives'])->links() }}
+                    <div class="pagination-info">
+                        Showing {{ $archivedTeachers->firstItem() }} to {{ $archivedTeachers->lastItem() }} of {{ $archivedTeachers->total() }} archived teacher(s)
+                    </div>
+                </div>
+            @endif
+        </div>
+        </div>{{-- /archive-panel-teachers --}}
+
+        <script>
+            function switchArchiveTab(tab) {
+                var panels = { students: document.getElementById('archive-panel-students'), teachers: document.getElementById('archive-panel-teachers') };
+                var tabs   = { students: document.getElementById('archive-tab-students'), teachers: document.getElementById('archive-tab-teachers') };
+                Object.keys(panels).forEach(function(key) {
+                    if (panels[key]) panels[key].style.display = (key === tab) ? '' : 'none';
+                    if (tabs[key]) {
+                        tabs[key].style.borderBottomColor = (key === tab) ? '#b45309' : 'transparent';
+                        tabs[key].style.color = (key === tab) ? '#b45309' : '#64748b';
+                    }
+                });
+            }
+
+            function filterArchiveTeacherRows() {
+                var term = (document.getElementById('archive-teacher-search-input')?.value || '').toLowerCase().trim();
+                var rows = document.querySelectorAll('#archive-teacher-tbody tr');
+                var visibleCount = 0;
+                rows.forEach(function(row) {
+                    var matches = !term || (row.dataset.search || '').includes(term);
+                    row.style.display = matches ? '' : 'none';
+                    if (matches) visibleCount++;
+                });
+                var noResults = document.getElementById('archive-teacher-no-results');
+                var tableWrap = document.getElementById('archive-teacher-table-wrap');
+                if (noResults) noResults.style.display = (visibleCount === 0 && rows.length > 0) ? '' : 'none';
+            }
+        </script>

@@ -261,7 +261,7 @@
                                     onclick="showSection('schedules'); setTimeout(() => openScheduleModal(), 200);">
                                     <i class="bi bi-calendar-plus-fill"></i>
                                 </button>
-                                <button class="action-btn delete js-teacher-delete" title="Delete Teacher" data-id="{{ $t->id }}">
+                                <button class="action-btn delete js-teacher-delete" title="Archive Teacher" data-id="{{ $t->id }}" data-name="{{ addslashes($t->name) }}">
                                     <i class="bi bi-trash-fill"></i>
                                 </button>
                             </td>

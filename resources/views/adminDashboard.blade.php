@@ -1607,10 +1607,11 @@ function openWalkInEnrollmentModal() {
     <div class="sidebar-section-lbl">settings</div>
     <div class="sidebar-divider"></div>
 
+    @php $archivedTotalCount = ($archivedStudentsCount ?? 0) + ($archivedTeachersCount ?? 0); @endphp
     <button class="sidebar-link" id="nav-archives" onclick="showSection('archives')">
         <i class="bi bi-archive-fill"></i> Archives
-        @if(($archivedStudentsCount ?? 0) > 0)
-            <span class="sidebar-badge" style="background:#b45309;">{{ $archivedStudentsCount }}</span>
+        @if($archivedTotalCount > 0)
+            <span class="sidebar-badge" style="background:#b45309;">{{ $archivedTotalCount }}</span>
         @endif
     </button>
 
@@ -7338,32 +7339,85 @@ function openWalkInEnrollmentModal() {
 
     }
 
-    function deleteTeacher(id) {
+    function deleteTeacher(id, name) {
+        showPasswordConfirm(
+            'Archive "' + (name || 'this teacher') + '"? Their records will be preserved and can be restored from the Archives tab. Enter your password to confirm.',
+            function(password) {
+                fetch(`/admin/teachers/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ password })
+                })
+                .then(async r => {
+                    const d = await r.json();
+                    if (!r.ok) {
+                        _pwConfirmShowError(d.message || 'Incorrect password.');
+                        return;
+                    }
+                    _pwConfirmClose();
+                    if (d.success) {
+                        showCustomAlert('success', 'Archived!', d.message);
+                        setTimeout(() => reloadWithSection(), 1200);
+                    } else {
+                        showCustomAlert('error', 'Error', d.message || 'Archive failed.');
+                    }
+                })
+                .catch(() => _pwConfirmShowError('Network error — failed to reach the server. Please try again.'));
+            }
+        );
+    }
 
-        showDeleteConfirm('Delete this teacher? This cannot be undone.', function() {
+    // Restore an archived teacher
+    function restoreTeacher(id, name) {
+        showDeleteConfirm(
+            'Restore "' + (name || 'this teacher') + '" back to active teachers?',
+            function() {
+                fetch(`/admin/teachers/${id}/restore`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
+                })
+                .then(r => { if (!r.ok) throw new Error('Failed'); return r.json(); })
+                .then(d => {
+                    if (d.success) {
+                        showCustomAlert('success', 'Restored!', d.message);
+                        setTimeout(() => reloadWithSection(), 1200);
+                    } else {
+                        showCustomAlert('error', 'Error', d.message || 'Restore failed.');
+                    }
+                })
+                .catch(() => showCustomAlert('error', 'Error', 'Failed to restore teacher.'));
+            }
+        );
+    }
 
-            fetch(`/admin/teachers/${id}`, {
-                method: 'DELETE',
-                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                credentials: 'same-origin'
-            })
-            .then(r => {
-                if (!r.ok) throw new Error('HTTP ' + r.status);
-                return r.json();
-            })
-
-            .then(d => {
-
-                showCustomAlert('success', 'Deleted!', 'Teacher deleted.');
-
-                setTimeout(() => reloadWithSection(), 1000);
-
-            })
-
-            .catch(() => showCustomAlert('error', 'Error', 'Failed to delete teacher.'));
-
-        });
-
+    // Permanently delete an archived teacher — cannot be undone
+    function forceDeleteTeacher(id, name) {
+        showPasswordConfirm(
+            '⚠️ PERMANENTLY DELETE "' + (name || 'this teacher') + '"? All records will be removed forever. This cannot be undone. Enter your password to confirm.',
+            function(password) {
+                fetch(`/admin/teachers/${id}/force`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                })
+                .then(async r => {
+                    const d = await r.json();
+                    if (!r.ok) {
+                        _pwConfirmShowError(d.message || 'Incorrect password.');
+                        return;
+                    }
+                    _pwConfirmClose();
+                    if (d.success) {
+                        showCustomAlert('success', 'Deleted!', d.message);
+                        setTimeout(() => reloadWithSection(), 1200);
+                    } else {
+                        showCustomAlert('error', 'Error', d.message || 'Delete failed.');
+                    }
+                })
+                .catch(() => _pwConfirmShowError('Network error — failed to reach the server. Please try again.'));
+            }
+        );
     }
 
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -11969,7 +12023,17 @@ function openWalkInEnrollmentModal() {
 
         else if (btn.classList.contains('js-teacher-delete')) {
             e.preventDefault();
-            deleteTeacher(id);
+            deleteTeacher(id, btn.dataset.name);
+        }
+
+        else if (btn.classList.contains('js-teacher-restore')) {
+            e.preventDefault();
+            restoreTeacher(id, btn.dataset.name);
+        }
+
+        else if (btn.classList.contains('js-teacher-force-delete')) {
+            e.preventDefault();
+            forceDeleteTeacher(id, btn.dataset.name);
         }
 
         // Subject actions

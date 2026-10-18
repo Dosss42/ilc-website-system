@@ -56,6 +56,9 @@ class SuperAdminController extends Controller
             'total_students' => $allUsers->where('role', 'student')->count(),
             'active_users'   => $allUsers->where('is_active', true)->count(),
             'inactive_users' => $allUsers->where('is_active', false)->count(),
+            // $allUsers (User::get()) excludes soft-deleted rows by default —
+            // needs its own query. Powers the sidebar "Archives" badge.
+            'archived_users' => User::onlyTrashed()->count(),
         ];
 
         $logs    = $this->getSystemLogs([
@@ -216,6 +219,53 @@ class SuperAdminController extends Controller
         $user->delete();
 
         return response()->json(['success' => true, 'message' => 'User deleted successfully.']);
+    }
+
+    /**
+     * List archived (soft-deleted) users of any role — powers Super Admin's
+     * Archives page. View/restore is safe for every role (no FK fires on a
+     * soft delete or a restore); permanent delete is intentionally NOT
+     * offered here for every role — see restoreUser()'s docblock and the
+     * Archives page's own JS for why only students/teachers get that option.
+     */
+    public function archivedUsers(Request $request)
+    {
+        $query = User::onlyTrashed()->orderByDesc('deleted_at');
+
+        if ($request->filled('role') && $request->input('role') !== 'all') {
+            $query->where('role', $request->input('role'));
+        }
+
+        $page = $query->paginate(15, ['*'], 'archive_page');
+
+        return response()->json([
+            'success'      => true,
+            'users'        => $page->items(),
+            'current_page' => $page->currentPage(),
+            'last_page'    => $page->lastPage(),
+            'per_page'     => $page->perPage(),
+            'total'        => $page->total(),
+            'from'         => $page->firstItem(),
+            'to'           => $page->lastItem(),
+        ]);
+    }
+
+    /**
+     * Restore an archived user of any role. Safe generically — unlike
+     * permanent delete, nothing in the schema reacts to a restore, so this
+     * doesn't need the same per-role caution as force-deleting an account
+     * (grepped every FK pointing at users.id: promissory_notes.created_by
+     * cascade-deletes on a real DELETE, which is exactly why permanent
+     * delete from the Archives page is only wired up for students/teachers,
+     * reusing their own already-vetted force-delete endpoints, rather than
+     * a generic one here).
+     */
+    public function restoreUser($id)
+    {
+        $user = User::onlyTrashed()->findOrFail($id);
+        $user->restore();
+        ActivityLogger::log('update', "Restored {$user->role} {$user->name} ({$user->email}) from archive", 'User', $user->id);
+        return response()->json(['success' => true, 'message' => ucfirst($user->role) . ' restored successfully.']);
     }
 
     /**

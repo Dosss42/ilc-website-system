@@ -6,8 +6,11 @@ use App\Models\User;
 use App\Mail\TeacherAccountCreated;
 use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 class TeacherController extends Controller
 {
@@ -109,8 +112,20 @@ class TeacherController extends Controller
         return response()->json($teacher);
     }
 
-    public function destroy(User $teacher)
+    /**
+     * Archive a teacher — soft delete, not permanent. Password-confirmed for
+     * Admin, same gate as EnrollmentController::deleteStudent() — Super Admin
+     * uses its own saConfirm() dialog instead (no password field anywhere
+     * else in that dashboard either, including its own generic user-delete),
+     * so the check is skipped for that role to match.
+     */
+    public function destroy(Request $request, User $teacher)
     {
+        if (Auth::user()->role !== 'superadmin' && !Hash::check((string) $request->input('password'), Auth::user()->password)) {
+            ActivityLogger::log('denied', "Wrong password entered while trying to archive teacher {$teacher->name}", 'User', $teacher->id);
+            return response()->json(['success' => false, 'message' => 'Incorrect password. Please try again.'], 422);
+        }
+
         $name = $teacher->name;
         $email = $teacher->email;
 
@@ -123,7 +138,45 @@ class TeacherController extends Controller
         \App\Models\Subject::where('teacher_id', $teacher->id)->update(['teacher_id' => null]);
 
         $teacher->delete();
-        ActivityLogger::log('delete', "Deleted teacher {$name} ({$email})", 'User', $teacher->id);
-        return response()->json(['message' => 'Teacher deleted successfully.']);
+        ActivityLogger::log('delete', "Archived teacher {$name} ({$email})", 'User', $teacher->id);
+        return response()->json(['success' => true, 'message' => 'Teacher archived successfully. You can restore them from the Archives tab.']);
+    }
+
+    /**
+     * Restore an archived teacher.
+     */
+    public function restore($id)
+    {
+        $teacher = User::withTrashed()->findOrFail($id);
+        $teacher->restore();
+        ActivityLogger::log('update', "Restored teacher {$teacher->name} ({$teacher->email}) from archive", 'User', $teacher->id);
+        return response()->json(['success' => true, 'message' => 'Teacher restored successfully.']);
+    }
+
+    /**
+     * Permanently delete an archived teacher — removes the account and
+     * profile photo. Cannot be undone. teacher_assignments rows cascade-delete
+     * at the DB level (ON DELETE CASCADE); sections/schedules/subjects.teacher_id
+     * null themselves via their own FK — no manual cleanup needed for either.
+     */
+    public function forceDelete(Request $request, $id)
+    {
+        $teacher = User::withTrashed()->find($id);
+        if (Auth::user()->role !== 'superadmin' && !Hash::check((string) $request->input('password'), Auth::user()->password)) {
+            ActivityLogger::log('denied', "Wrong password entered while trying to PERMANENTLY delete teacher " . ($teacher->name ?? "#{$id}"), 'User', $id);
+            return response()->json(['success' => false, 'message' => 'Incorrect password. Please try again.'], 422);
+        }
+
+        $teacher = User::withTrashed()->findOrFail($id);
+        $name = $teacher->name;
+        $email = $teacher->email;
+
+        if ($teacher->profile_photo && Storage::disk('public')->exists($teacher->profile_photo)) {
+            Storage::disk('public')->delete($teacher->profile_photo);
+        }
+
+        $teacher->forceDelete();
+        ActivityLogger::log('delete', "PERMANENTLY deleted teacher {$name} ({$email})", 'User', $id);
+        return response()->json(['success' => true, 'message' => 'Teacher permanently deleted.']);
     }
 }

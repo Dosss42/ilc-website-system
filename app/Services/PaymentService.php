@@ -547,31 +547,33 @@ class PaymentService
             ->filter(fn($i) => $i->due_date && $i->due_date->lt($today) && $i->status !== 'paid')
             ->count();
 
+        // Enrollment::promissoryNotes() is ordered newest-first, and only the
+        // LATEST note represents the family's current standing — an old
+        // broken note must not keep holding the account forever once a new
+        // note has been issued to replace it (that's the whole point of the
+        // "needs a *new* Promissory Note to lift" policy above). Scanning the
+        // full history for any broken note, instead of just the latest one,
+        // was the original bug here: a new note never actually lifted the hold.
         $notes = $enrollment->promissoryNotes;
+        $latestNote = $notes->first();
 
-        $brokenNote = $notes->first(function ($note) {
-            return $note->status === 'broken'
-                || ($note->status === 'pending' && $note->is_overdue);
-        });
-
-        if ($brokenNote) {
+        if ($latestNote && ($latestNote->status === 'broken' || ($latestNote->status === 'pending' && $latestNote->is_overdue))) {
             return [
                 'held'           => true,
                 'reason'         => 'broken_promise',
                 'overdue_months' => $overdueMonths,
-                'note'           => $brokenNote,
+                'note'           => $latestNote,
             ];
         }
 
-        $activeNote = $notes->first(function ($note) {
-            if ($note->status === 'pending') {
-                return $note->promise_date && Carbon::today()->lte($note->promise_date);
+        $activeNote = null;
+        if ($latestNote) {
+            if ($latestNote->status === 'pending' && $latestNote->promise_date && Carbon::today()->lte($latestNote->promise_date)) {
+                $activeNote = $latestNote;
+            } elseif ($latestNote->status === 'extended' && $latestNote->extended_date && Carbon::today()->lte($latestNote->extended_date)) {
+                $activeNote = $latestNote;
             }
-            if ($note->status === 'extended') {
-                return $note->extended_date && Carbon::today()->lte($note->extended_date);
-            }
-            return false;
-        });
+        }
 
         if ($overdueMonths >= self::EXAM_PERMIT_HOLD_MONTHS && !$activeNote) {
             return [

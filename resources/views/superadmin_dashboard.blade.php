@@ -761,6 +761,10 @@
     <button class="sidebar-link {{ $section === 'sys-settings' ? 'active' : '' }}" id="nav-sys-settings" onclick="showSection('sys-settings')">
         <i class="bi bi-sliders"></i> System Settings
     </button>
+    <button class="sidebar-link {{ $section === 'archives' ? 'active' : '' }}" id="nav-archives" onclick="showSection('archives')">
+        <i class="bi bi-archive-fill"></i> Archives
+        <span class="sidebar-badge" id="nav-archives-badge" style="background:#b45309;{{ ($stats['archived_users'] ?? 0) > 0 ? '' : 'display:none;' }}">{{ $stats['archived_users'] ?? 0 }}</span>
+    </button>
 
     <div class="sidebar-section-lbl">Overview</div>
     <button class="sidebar-link {{ $section === 'reports' ? 'active' : '' }}" id="nav-reports" onclick="showSection('reports')">
@@ -2239,7 +2243,7 @@
                 <button class="btn-dash btn-primary" onclick="openAddTeacherModal()">
                     <i class="bi bi-person-plus-fill"></i> Add Teacher
                 </button>
-                <button class="btn-dash btn-secondary" onclick="loadTeachers()">
+                <button class="btn-dash btn-secondary" onclick="_loaded['teachers']=false; loadTeachers();">
                     <i class="bi bi-arrow-clockwise"></i> Refresh
                 </button>
             </div>
@@ -2585,6 +2589,53 @@
             </div>
         </div>
     </div><!-- /section-sys-settings -->
+
+    <!-- ═══════════════════════════
+         SECTION: ARCHIVES
+    ═══════════════════════════ -->
+    <div id="section-archives" class="dash-section" style="display:none;">
+        <div class="section-header">
+            <div>
+                <h1>Archives</h1>
+                <p>Archived accounts of every role are preserved here. Restore them to return them to active use.</p>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;">
+                <select id="archive-role-filter" class="form-fld" style="width:160px;" onchange="loadArchivedUsers(1)">
+                    <option value="all">All Roles</option>
+                    <option value="student">Students</option>
+                    <option value="teacher">Teachers</option>
+                    <option value="admin">Admins</option>
+                    <option value="finance">Finance</option>
+                    <option value="cashier">Cashiers</option>
+                </select>
+                <button class="btn-dash btn-primary" onclick="loadArchivedUsers()">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+        </div>
+        <div class="content-card">
+            <div class="content-card-header"><h6>Archived Accounts</h6></div>
+            <div style="padding:12px 20px;background:#fff8e1;border-bottom:1px solid #fde68a;font-size:12.5px;color:#92400e;">
+                <i class="bi bi-info-circle-fill me-1"></i>
+                Permanently Delete is only available for Students and Teachers here — other roles
+                can have records (like promissory notes) tied to them that aren't safe to remove
+                automatically, so those are restore-only for now.
+            </div>
+            <div style="overflow-x:auto;">
+                <table class="dash-table">
+                    <thead><tr>
+                        <th>Account</th><th>Role</th><th>Archived On</th><th>Actions</th>
+                    </tr></thead>
+                    <tbody id="archive-tbody">
+                        <tr><td colspan="4" style="text-align:center;padding:40px;color:var(--muted);">
+                            <span class="spinner-border spinner-border-sm me-2"></span>Loading…
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="archive-pagination" class="p-3 border-top" style="border-color:var(--border);"></div>
+        </div>
+    </div><!-- /section-archives -->
 
 </div><!-- /dash-main -->
 
@@ -2974,7 +3025,7 @@
     const sections = [
         'dashboard','users','roles','logs','backup','reports','settings',
         'enrollments','teachers','subjects','sections-mgmt','schedules','sys-settings',
-        'announcements','news'
+        'announcements','news','archives'
     ];
 
     // Track which sections have been loaded (avoid duplicate fetches)
@@ -2986,7 +3037,7 @@
         logs: 'Activity Logs', backup: 'Backup & Restore', reports: 'Reports', settings: 'Settings',
         enrollments: 'Enrollment Oversight', teachers: 'Teacher Management', subjects: 'Subject Management',
         'sections-mgmt': 'Section Management', schedules: 'Schedule Management', 'sys-settings': 'System Settings',
-        announcements: 'Announcements', news: 'News Management',
+        announcements: 'Announcements', news: 'News Management', archives: 'Archives',
     };
     function updateBreadcrumb(name) {
         const el = document.getElementById('bc-current');
@@ -3026,6 +3077,7 @@
             if (name === 'sections-mgmt') loadSectionsMgmt();
             if (name === 'schedules')     loadScheduleGrid();
             if (name === 'sys-settings')  loadSysSettings();
+            if (name === 'archives')      loadArchivedUsers();
         }
         if (name === 'reports') setTimeout(initSaReportsCharts, 80);
         return false;
@@ -4993,11 +5045,11 @@
 
     function saDeleteTeacher(teacherId, teacherName) {
         saConfirm({
-            title: 'Delete Teacher',
-            msg: 'Delete teacher "' + teacherName + '"? This cannot be undone.',
-            icon: 'bi-trash3-fill',
+            title: 'Archive Teacher',
+            msg: 'Archive teacher "' + teacherName + '"? Their records will be preserved and can be restored from the Archived Teachers view.',
+            icon: 'bi-archive-fill',
             gradient: 'linear-gradient(135deg,#b91c1c,#dc2626)',
-            btnLabel: 'Delete',
+            btnLabel: 'Archive',
             btnColor: '#dc2626',
             onConfirm: function() { doSaDeleteTeacher(teacherId); }
         });
@@ -5009,9 +5061,151 @@
                 method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
             });
             var d = await r.json();
-            if (r.ok) { saToast('success', 'Teacher deleted.'); _loaded['teachers'] = false; loadTeachers(); }
-            else saToast('error', d.message || 'Error deleting teacher.');
+            if (r.ok && d.success) {
+                saToast('success', d.message || 'Teacher archived.');
+                saAdjustArchivedBadge(1);
+                _loaded['teachers'] = false;
+                loadTeachers();
+            }
+            else saToast('error', d.message || 'Error archiving teacher.');
         } catch(e) { saToast('error', 'Network error.'); }
+    }
+
+    // Sidebar "Archives" badge is rendered once at page load — archiving or
+    // restoring a user from anywhere in this dashboard refreshes that panel
+    // in place (no full page reload), so the badge needs the same live nudge
+    // or it goes stale. Shared by Teacher Management's archive button and
+    // the Archives page's own restore/force-delete actions below.
+    function saAdjustArchivedBadge(delta) {
+        var badge = document.getElementById('nav-archives-badge');
+        if (!badge) return;
+        var next = Math.max(0, (parseInt(badge.textContent, 10) || 0) + delta);
+        badge.textContent = next;
+        badge.style.display = next > 0 ? '' : 'none';
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // ARCHIVES PANEL (all roles)
+    // ══════════════════════════════════════════════════════════
+    var _archivePage = 1;
+
+    async function loadArchivedUsers(page) {
+        _archivePage = page || 1;
+        var role = document.getElementById('archive-role-filter')?.value || 'all';
+        var tbody = document.getElementById('archive-tbody');
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--muted);"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>';
+        try {
+            var r = await fetch('/superadmin/archived-users?role=' + role + '&page=' + _archivePage, {
+                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken }
+            });
+            var d = await r.json();
+            renderArchivedUsersTable(d.users || []);
+            renderPagerControls('archive-pagination', d, 'archived account(s)', 'goToArchivePage');
+        } catch(e) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--red);">Failed to load archived accounts.</td></tr>';
+        }
+    }
+
+    function goToArchivePage(p) { loadArchivedUsers(p); }
+
+    var ARCHIVE_ROLE_LABELS = {
+        superadmin: 'Super Admin', admin: 'Admin', finance: 'Finance',
+        cashier: 'Cashier', teacher: 'Teacher', student: 'Student'
+    };
+
+    function renderArchivedUsersTable(rows) {
+        var tbody = document.getElementById('archive-tbody');
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--muted);"><i class="bi bi-archive" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3;"></i>No archived accounts found.</td></tr>';
+            return;
+        }
+        tbody.innerHTML = rows.map(function(u) {
+            var initials = (u.name || 'U').substring(0, 2).toUpperCase();
+            var archivedOn = u.deleted_at ? new Date(u.deleted_at).toLocaleDateString('en-PH', { month:'short', day:'numeric', year:'numeric' }) : '—';
+            var safeName = (u.name || '').replace(/'/g, "\\'");
+            var roleLabel = ARCHIVE_ROLE_LABELS[u.role] || u.role;
+
+            var permDeleteBtn = '<span style="color:var(--muted);font-size:11px;" title="Not available for this role">—</span>';
+            if (u.role === 'student') {
+                permDeleteBtn = '<button class="action-btn delete" title="Permanently Delete" onclick="saForceDeleteArchivedStudent(' + u.id + ',\'' + safeName + '\')"><i class="bi bi-trash3-fill"></i></button>';
+            } else if (u.role === 'teacher') {
+                permDeleteBtn = '<button class="action-btn delete" title="Permanently Delete" onclick="saForceDeleteArchivedTeacher(' + u.id + ',\'' + safeName + '\')"><i class="bi bi-trash3-fill"></i></button>';
+            }
+
+            return '<tr>' +
+                '<td><div class="user-row-name"><div class="user-row-avatar" style="background:#fff8e1;color:#b45309;">' + initials + '</div><div><div style="font-size:13px;font-weight:600;">' + (u.name || '—') + '</div><div style="font-size:11px;color:var(--muted);">' + (u.email || '—') + '</div></div></div></td>' +
+                '<td><span class="status-badge active">' + roleLabel + '</span></td>' +
+                '<td style="font-size:12px;color:var(--muted);">' + archivedOn + '</td>' +
+                '<td style="display:flex;gap:6px;align-items:center;">' +
+                '<button class="action-btn view" title="Restore" onclick="saRestoreUser(' + u.id + ',\'' + safeName + '\',\'' + roleLabel + '\')"><i class="bi bi-arrow-counterclockwise"></i></button>' +
+                permDeleteBtn +
+                '</td>' +
+                '</tr>';
+        }).join('');
+    }
+
+    function saRestoreUser(id, name, roleLabel) {
+        saConfirm({
+            title: 'Restore ' + roleLabel,
+            msg: 'Restore "' + name + '" back to active ' + roleLabel.toLowerCase() + 's?',
+            icon: 'bi-arrow-counterclockwise',
+            gradient: 'linear-gradient(135deg,#14532d,#16a34a)',
+            btnLabel: 'Restore',
+            btnColor: '#16a34a',
+            onConfirm: async function() {
+                try {
+                    var r = await fetch('/superadmin/archived-users/' + id + '/restore', {
+                        method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
+                    });
+                    var d = await r.json();
+                    if (d.success) { saToast('success', d.message || 'Restored.'); saAdjustArchivedBadge(-1); loadArchivedUsers(_archivePage); }
+                    else saToast('error', d.message || 'Restore failed.');
+                } catch(e) { saToast('error', 'Network error.'); }
+            }
+        });
+    }
+
+    function saForceDeleteArchivedStudent(id, name) {
+        saConfirm({
+            title: 'Permanently Delete Student',
+            msg: '⚠️ PERMANENTLY DELETE "' + name + '"? All records, documents, and files will be removed forever. This cannot be undone.',
+            icon: 'bi-exclamation-triangle-fill',
+            gradient: 'linear-gradient(135deg,#7f1d1d,#b91c1c)',
+            btnLabel: 'Delete Forever',
+            btnColor: '#b91c1c',
+            onConfirm: async function() {
+                try {
+                    var r = await fetch('/admin/students/' + id + '/force', {
+                        method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                        body: JSON.stringify({})
+                    });
+                    var d = await r.json();
+                    if (d.success) { saToast('success', d.message || 'Student permanently deleted.'); saAdjustArchivedBadge(-1); loadArchivedUsers(_archivePage); }
+                    else saToast('error', d.message || 'Delete failed.');
+                } catch(e) { saToast('error', 'Network error.'); }
+            }
+        });
+    }
+
+    function saForceDeleteArchivedTeacher(id, name) {
+        saConfirm({
+            title: 'Permanently Delete Teacher',
+            msg: '⚠️ PERMANENTLY DELETE "' + name + '"? All records will be removed forever. This cannot be undone.',
+            icon: 'bi-exclamation-triangle-fill',
+            gradient: 'linear-gradient(135deg,#7f1d1d,#b91c1c)',
+            btnLabel: 'Delete Forever',
+            btnColor: '#b91c1c',
+            onConfirm: async function() {
+                try {
+                    var r = await fetch('/admin/teachers/' + id + '/force', {
+                        method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
+                    });
+                    var d = await r.json();
+                    if (d.success) { saToast('success', d.message || 'Teacher permanently deleted.'); saAdjustArchivedBadge(-1); loadArchivedUsers(_archivePage); }
+                    else saToast('error', d.message || 'Delete failed.');
+                } catch(e) { saToast('error', 'Network error.'); }
+            }
+        });
     }
 
     // ══════════════════════════════════════════════════════════

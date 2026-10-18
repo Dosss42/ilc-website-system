@@ -52,7 +52,7 @@
 
                     <div>
 
-                        <div class="stat-value">{{ ($teachers ?? collect())->count() }}</div>
+                        <div class="stat-value">{{ $teachersCount ?? ($teachers ?? collect())->count() }}</div>
 
                         <div class="stat-label">Total Teachers</div>
 

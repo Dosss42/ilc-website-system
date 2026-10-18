@@ -700,10 +700,12 @@ class EnrollmentController extends Controller
         // UI within the admin dashboard (see _PORTAL_SECTIONS in
         // showSection()), so nothing else needs it.
 
-        // Archived students (soft-deleted) — the full paginated/eager-loaded
-        // list moved to sectionArchives(), loaded on-demand. Only a cheap
-        // count stays here, for the sidebar badge shown on every page.
+        // Archived students/teachers (soft-deleted) — the full paginated/
+        // eager-loaded lists moved to sectionArchives(), loaded on-demand.
+        // Only cheap counts stay here, for the sidebar "Archives" badge
+        // shown on every page.
         $archivedStudentsCount = User::onlyTrashed()->where('role', 'student')->count();
+        $archivedTeachersCount = User::onlyTrashed()->where('role', 'teacher')->count();
 
         // ── 3. Finance aggregates – single raw query instead of 6 separate ones ──
         $financeSummary = DB::selectOne("
@@ -774,6 +776,12 @@ class EnrollmentController extends Controller
             ->orderBy('start_time')
             ->get();
         $teachers  = User::where('role', 'teacher')->select('id', 'name', 'email', 'is_active', 'created_at')->orderByDesc('created_at')->paginate(15, ['*'], 'teacher_page');
+        // Real count, not $teachers->count() — that only ever reflects one
+        // page's worth of rows (currently happens to be correct only because
+        // the real total is under the 15-per-page size; same
+        // counts-from-a-paginated-list bug already fixed for Student
+        // Management, missed here).
+        $teachersCount = User::where('role', 'teacher')->count();
 
         // Complete (non-paginated) subject/teacher lists — $teachers above
         // is paginated for the Teacher Management table and only ever
@@ -987,8 +995,8 @@ class EnrollmentController extends Controller
             'studentCount', 'enrollmentCount',
             'pendingPayments', 'totalCollected',
             'unpaidCount', 'partialCount', 'paidCount',
-            'sort', 'archivedStudentsCount',
-            'sections', 'teachers', 'teachersWithSubjectsCount',
+            'sort', 'archivedStudentsCount', 'archivedTeachersCount',
+            'sections', 'teachers', 'teachersCount', 'teachersWithSubjectsCount',
             'allActiveSubjects', 'allActiveTeachers',
             'summerTotalCount', 'summerOngoingCount', 'summerCompletedCount',
             'feeSettings', 'recentStudents', 'allSchedules',
@@ -1839,7 +1847,13 @@ class EnrollmentController extends Controller
             ->orderByDesc('deleted_at')
             ->paginate(15, ['*'], 'archive_page');
 
-        return view('admin.sections.archives-content', compact('archivedStudents'));
+        $archivedTeachers = User::onlyTrashed()
+            ->where('role', 'teacher')
+            ->withCount('teacherAssignments')
+            ->orderByDesc('deleted_at')
+            ->paginate(15, ['*'], 'archive_teacher_page');
+
+        return view('admin.sections.archives-content', compact('archivedStudents', 'archivedTeachers'));
     }
 
     /**
@@ -2915,7 +2929,11 @@ class EnrollmentController extends Controller
     public function forceDeleteStudent(Request $request, $id)
     {
         $targetUser = User::withTrashed()->find($id);
-        if (!\Illuminate\Support\Facades\Hash::check((string) $request->input('password'), Auth::user()->password)) {
+        // Super Admin's Archives page confirms destructively via its own
+        // saConfirm() dialog (no password field anywhere in that dashboard,
+        // same reasoning as TeacherController::destroy()/forceDelete()) —
+        // skip the password gate for that role, keep it for Admin.
+        if (Auth::user()->role !== 'superadmin' && !\Illuminate\Support\Facades\Hash::check((string) $request->input('password'), Auth::user()->password)) {
             ActivityLogger::log('denied', "Wrong password entered while trying to PERMANENTLY delete student " . ($targetUser->name ?? "#{$id}"), 'User', $id);
             return response()->json(['success' => false, 'message' => 'Incorrect password. Please try again.'], 422);
         }

@@ -41,19 +41,36 @@ class PromissoryNoteController extends Controller
 
         $enrollment = Enrollment::findOrFail($validated['enrollment_id']);
 
-        $note = PromissoryNote::create([
-            'reference_number' => PromissoryNote::generateReference(),
-            'enrollment_id'    => $enrollment->id,
-            'student_id'       => $enrollment->user_id,
-            'created_by'       => $this->actingStaffId(),
-            'amount_overdue'   => $validated['amount_overdue'],
-            'amount_promised'  => $validated['amount_promised'],
-            'promise_date'     => $validated['promise_date'],
-            'date_issued'      => Carbon::today(),
-            'parent_guardian'  => $validated['parent_guardian'],
-            'remarks'          => $validated['remarks'],
-            'status'           => 'pending',
-        ]);
+        // generateReference() reads-then-increments without a lock, so two
+        // staff submitting at the same instant could compute the same
+        // reference_number; the column's unique constraint stops the dupe
+        // from being saved, but without a retry that just surfaces as an
+        // uncaught 500 instead of the second submitter simply getting the
+        // next number.
+        $attempts = 0;
+        do {
+            try {
+                $note = PromissoryNote::create([
+                    'reference_number' => PromissoryNote::generateReference(),
+                    'enrollment_id'    => $enrollment->id,
+                    'student_id'       => $enrollment->user_id,
+                    'created_by'       => $this->actingStaffId(),
+                    'amount_overdue'   => $validated['amount_overdue'],
+                    'amount_promised'  => $validated['amount_promised'],
+                    'promise_date'     => $validated['promise_date'],
+                    'date_issued'      => Carbon::today(),
+                    'parent_guardian'  => $validated['parent_guardian'],
+                    'remarks'          => $validated['remarks'],
+                    'status'           => 'pending',
+                ]);
+                break;
+            } catch (\Illuminate\Database\QueryException $e) {
+                $attempts++;
+                if ($attempts >= 3 || !str_contains($e->getMessage(), 'reference_number')) {
+                    throw $e;
+                }
+            }
+        } while (true);
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -75,11 +92,16 @@ class PromissoryNoteController extends Controller
             'remarks'       => 'nullable|string|max:1000',
         ]);
 
-        // 'fulfilled' and 'broken' are terminal — without this, a note could
-        // be flipped fulfilled -> pending -> fulfilled repeatedly (re-setting
-        // fulfilled_at each time with no record of the reversal) or moved
-        // from broken back to pending with no trace it was ever broken.
-        if (in_array($note->status, ['fulfilled', 'broken']) && $request->status !== $note->status) {
+        // 'fulfilled' is fully terminal. 'broken' can only still move to
+        // 'fulfilled' (a parent settling the balance after the promise date
+        // already passed). Blocking same-status resubmission too — not just
+        // a *different* status — matters because the old check let a
+        // resubmitted "fulfilled" fall through and silently re-stamp
+        // fulfilled_at to the new request time, with no record it happened.
+        if (
+            $note->status === 'fulfilled'
+            || ($note->status === 'broken' && $request->status !== 'fulfilled')
+        ) {
             $msg = 'This promissory note is already marked "' . ucfirst($note->status) . '" and cannot be changed further.';
             if ($request->expectsJson()) {
                 return response()->json(['success' => false, 'message' => $msg], 422);
@@ -165,6 +187,7 @@ class PromissoryNoteController extends Controller
 
     public function destroy(PromissoryNote $note)
     {
+        \App\Services\ActivityLogger::log('delete', "Deleted promissory note {$note->reference_number}", 'PromissoryNote', $note->id);
         $note->delete();
 
         if (request()->expectsJson()) {

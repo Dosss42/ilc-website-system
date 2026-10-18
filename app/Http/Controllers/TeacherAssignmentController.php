@@ -16,7 +16,9 @@ class TeacherAssignmentController extends Controller
         $schoolYear = $request->get('school_year', $this->getCurrentSchoolYear());
         $sort = $request->get('sort', 'newest'); // default: newest first
 
+        // Same is_advisory filter as getAssignments() below — see its comment.
         $query = TeacherAssignment::with(['teacher', 'subject', 'section'])
+            ->where('is_advisory', true)
             ->forSchoolYear($schoolYear);
 
         // Apply sorting
