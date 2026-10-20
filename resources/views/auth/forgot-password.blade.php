@@ -73,6 +73,14 @@
         .alert-danger-box { background: #fef2f2; border: 1.5px solid #fecaca; color: #b91c1c; }
         .alert-success-box { background: #f0fdf4; border: 1.5px solid #bbf7d0; color: #15803d; }
         .helper-text { font-size: 12px; color: #6b7280; line-height: 1.6; margin-bottom: 22px; }
+        .notice-box {
+            display: flex; align-items: flex-start; gap: 10px;
+            background: #fffbeb; border: 1.5px solid #fde68a; border-radius: 10px;
+            padding: 12px 14px; margin-top: 18px;
+            font-size: 12px; color: #92400e; line-height: 1.55;
+        }
+        .notice-box i { font-size: 16px; color: #d97706; flex-shrink: 0; margin-top: 1px; }
+        .notice-box strong { color: #78350f; }
     </style>
 </head>
 <body>
@@ -126,6 +134,14 @@
                 <i class="bi bi-send-fill"></i> Send Reset Link
             </button>
         </form>
+
+        <div class="notice-box">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <div>
+                Check your <strong>inbox</strong> and <strong>Spam</strong> folder for the reset email.
+                The link is only valid for <strong>{{ config('auth.passwords.users.expire') }} minutes</strong>.
+            </div>
+        </div>
 
         <div class="switch-text">
             Remembered your password?

@@ -27,7 +27,7 @@
                                style="display:inline-block;background:linear-gradient(135deg,#1a3a6c,#2471a3);color:#fff;font-weight:700;font-size:14px;padding:14px 32px;border-radius:10px;text-decoration:none;letter-spacing:.3px;">
                                 Reset Password
                             </a>
-                            <div style="font-size:12px;color:#94a3b8;margin-top:14px;">This link expires in <strong>60 minutes</strong></div>
+                            <div style="font-size:12px;color:#94a3b8;margin-top:14px;">This link expires in <strong>{{ config('auth.passwords.users.expire') }} minutes</strong></div>
                         </div>
                         <div style="background:#fff8f0;border:1px solid #fed7aa;border-radius:8px;padding:14px 16px;margin-bottom:24px;">
                             <div style="font-size:13px;color:#92400e;display:flex;align-items:flex-start;gap:8px;">

@@ -253,6 +253,7 @@ Route::middleware(['auth', 'superadmin'])->prefix('superadmin')->name('superadmi
     // SuperAdminController::restoreUser()'s docblock for why).
     Route::get('/archived-users', [SuperAdminController::class, 'archivedUsers'])->name('archived-users');
     Route::post('/archived-users/{id}/restore', [SuperAdminController::class, 'restoreUser'])->name('archived-users.restore');
+    Route::delete('/archived-users/{id}/force', [SuperAdminController::class, 'forceDeleteUser'])->name('archived-users.force-delete');
 
     // System Logs
     Route::get('/logs/export', [SuperAdminController::class, 'exportLogs'])->name('logs.export');

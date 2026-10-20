@@ -1802,7 +1802,8 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-lbl">New Password <span style="color:var(--red);">*</span></label>
-                                <input type="password" id="tch-new-pwd" class="form-fld" placeholder="At least 8 characters" minlength="8">
+                                <input type="password" id="tch-new-pwd" class="form-fld" placeholder="At least 8 characters" minlength="8"
+                                       data-pw-personal="{{ Auth::user()->name }} {{ Auth::user()->email }}">
                             </div>
                             <div class="mb-3">
                                 <label class="form-lbl">Confirm New Password <span style="color:var(--red);">*</span></label>
@@ -1885,6 +1886,7 @@
                         document.getElementById('tch-cur-pwd').value = '';
                         document.getElementById('tch-new-pwd').value = '';
                         document.getElementById('tch-confirm-pwd').value = '';
+                        PwStrength.refresh('tch-new-pwd');
                     }
                     </script>
                 </div>
@@ -1895,6 +1897,10 @@
 </div><!-- /dash-main -->
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/password-strength.js"></script>
+<script>
+    PwStrength.attach('tch-new-pwd', 'tch-confirm-pwd', { tips: true, forSelf: true });
+</script>
 <script>
     const sections = ['dashboard','schedule','students','attendance','announcements','ptc','settings'];
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';

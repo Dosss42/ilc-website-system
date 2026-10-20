@@ -388,7 +388,8 @@
                 <label class="form-label">New Password</label>
                 <div class="input-icon-wrap">
                     <i class="bi bi-key"></i>
-                    <input type="password" name="new_password" class="form-control @error('new_password') is-invalid @enderror" required>
+                    <input type="password" name="new_password" id="fin-own-password" class="form-control @error('new_password') is-invalid @enderror" required
+                           data-pw-personal="{{ $user->name }} {{ $user->email }}">
                 </div>
                 @error('new_password')
                     <div class="invalid-feedback">{{ $message }}</div>
@@ -399,7 +400,7 @@
                 <label class="form-label">Confirm New Password</label>
                 <div class="input-icon-wrap">
                     <i class="bi bi-key-fill"></i>
-                    <input type="password" name="new_password_confirmation" class="form-control" required>
+                    <input type="password" name="new_password_confirmation" id="fin-own-password-confirm" class="form-control" required>
                 </div>
             </div>
 
@@ -417,3 +418,10 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script src="/js/password-strength.js"></script>
+<script>
+    PwStrength.attach('fin-own-password', 'fin-own-password-confirm', { tips: true, forSelf: true });
+</script>
+@endpush

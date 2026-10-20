@@ -2096,14 +2096,15 @@
                             <label class="form-lbl">New Password <span style="color:#dc2626;">*</span></label>
                             <div class="input-icon-wrap">
                                 <i class="bi bi-key"></i>
-                                <input type="password" name="new_password" class="form-fld has-icon" placeholder="At least 8 characters" required minlength="8">
+                                <input type="password" name="new_password" id="cash-own-password" class="form-fld has-icon" placeholder="At least 8 characters" required minlength="8"
+                                       data-pw-personal="{{ optional(Auth::guard('cashier')->user())->name }} {{ optional(Auth::guard('cashier')->user())->email }}">
                             </div>
                         </div>
                         <div class="col-12">
                             <label class="form-lbl">Confirm New Password <span style="color:#dc2626;">*</span></label>
                             <div class="input-icon-wrap">
                                 <i class="bi bi-key-fill"></i>
-                                <input type="password" name="new_password_confirmation" class="form-fld has-icon" placeholder="Re-enter new password" required>
+                                <input type="password" name="new_password_confirmation" id="cash-own-password-confirm" class="form-fld has-icon" placeholder="Re-enter new password" required>
                             </div>
                         </div>
                     </div>
@@ -2125,6 +2126,10 @@
 {{-- Old process payment modal removed — using section-process full page instead --}}
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/password-strength.js"></script>
+<script>
+    PwStrength.attach('cash-own-password', 'cash-own-password-confirm', { tips: true, forSelf: true });
+</script>
 <script>
     // ── Toast notifications ── replaces plain alert() popups everywhere in
     // this file with a styled, non-blocking toast (same look as the Admin/

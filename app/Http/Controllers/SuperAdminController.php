@@ -222,11 +222,7 @@ class SuperAdminController extends Controller
     }
 
     /**
-     * List archived (soft-deleted) users of any role — powers Super Admin's
-     * Archives page. View/restore is safe for every role (no FK fires on a
-     * soft delete or a restore); permanent delete is intentionally NOT
-     * offered here for every role — see restoreUser()'s docblock and the
-     * Archives page's own JS for why only students/teachers get that option.
+     * List archived (soft-deleted) users of any role — powers Super Admin's Archives page.
      */
     public function archivedUsers(Request $request)
     {
@@ -251,14 +247,7 @@ class SuperAdminController extends Controller
     }
 
     /**
-     * Restore an archived user of any role. Safe generically — unlike
-     * permanent delete, nothing in the schema reacts to a restore, so this
-     * doesn't need the same per-role caution as force-deleting an account
-     * (grepped every FK pointing at users.id: promissory_notes.created_by
-     * cascade-deletes on a real DELETE, which is exactly why permanent
-     * delete from the Archives page is only wired up for students/teachers,
-     * reusing their own already-vetted force-delete endpoints, rather than
-     * a generic one here).
+     * Restore an archived user of any role — nothing in the schema reacts to a restore.
      */
     public function restoreUser($id)
     {
@@ -266,6 +255,50 @@ class SuperAdminController extends Controller
         $user->restore();
         ActivityLogger::log('update', "Restored {$user->role} {$user->name} ({$user->email}) from archive", 'User', $user->id);
         return response()->json(['success' => true, 'message' => ucfirst($user->role) . ' restored successfully.']);
+    }
+
+    /**
+     * Permanently delete an archived staff account (admin/finance/cashier/superadmin).
+     * Refused while any cascade-on-delete record still points at the account,
+     * since the DB would silently delete those records along with it.
+     */
+    public function forceDeleteUser($id)
+    {
+        $user = User::onlyTrashed()->findOrFail($id);
+
+        if ($user->id === Auth::id()) {
+            return response()->json(['success' => false, 'message' => 'You cannot permanently delete your own account.'], 403);
+        }
+
+        // Students and teachers have their own force-delete endpoints that also clean up files.
+        if (in_array($user->role, ['student', 'teacher'])) {
+            return response()->json(['success' => false, 'message' => 'Use the ' . $user->role . ' permanent delete for this account.'], 422);
+        }
+
+        $linked = array_filter([
+            'promissory note(s) they created'        => DB::table('promissory_notes')->where('created_by', $user->id)->count(),
+            'guidance record(s) they handled'        => DB::table('guidance_records')->where('counselor_id', $user->id)->count(),
+            'grade(s) they recorded'                 => DB::table('grades')->where('teacher_id', $user->id)->count(),
+            'attendance record(s) they took'         => DB::table('attendances')->where('teacher_id', $user->id)->count(),
+            'parent-teacher conference(s)'           => DB::table('parent_teacher_conferences')->where('teacher_id', $user->id)->count(),
+            'payment record(s) under this account'   => DB::table('payment_transactions')->where('user_id', $user->id)->count(),
+            'enrollment record(s) under this account'=> DB::table('enrollments')->where('user_id', $user->id)->count(),
+        ]);
+
+        if ($linked) {
+            $list = collect($linked)->map(fn ($n, $label) => "{$n} {$label}")->implode(', ');
+            return response()->json([
+                'success' => false,
+                'message' => "Can't permanently delete {$user->name}: this account is linked to {$list}, which would be deleted along with it. Keep it archived instead.",
+            ], 422);
+        }
+
+        $label = "{$user->role} {$user->name} ({$user->email})";
+        $userId = $user->id;
+        $user->forceDelete();
+        ActivityLogger::log('delete', "Permanently deleted {$label}", 'User', $userId);
+
+        return response()->json(['success' => true, 'message' => ucfirst($user->role) . ' permanently deleted.']);
     }
 
     /**

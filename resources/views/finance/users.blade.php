@@ -182,7 +182,7 @@
                         <div class="col-md-4">
                             <div class="mb-3">
                                 <label class="form-label" style="font-size: 13px; font-weight: 600;">Password</label>
-                                <input type="password" name="password" class="form-control" required minlength="8">
+                                <input type="password" name="password" id="fin-new-user-password" class="form-control" required minlength="8">
                             </div>
                         </div>
                     </div>
@@ -267,7 +267,16 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/js/password-strength.js"></script>
     <script>
+        PwStrength.attach('fin-new-user-password', null, {
+            tips: true,
+            personal: function () {
+                var f = document.getElementById('fin-new-user-password').form;
+                return f.elements['name'].value + ' ' + f.elements['email'].value;
+            }
+        });
+
         // ── Confirmation modal ── replaces native confirm() popup with a
         // styled, on-brand dialog (same look across every portal now).
         function showConfirm(message, onConfirm, opts) {

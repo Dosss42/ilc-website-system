@@ -7249,6 +7249,7 @@ function openWalkInEnrollmentModal() {
         document.getElementById('teacher-password-group').style.display = 'block';
         document.getElementById('teacher-active').value = active ? '1' : '0';
         _resetTeacherEmailUI();
+        PwStrength.refresh('teacher-password');
 
         new bootstrap.Modal(document.getElementById('teacherModal')).show();
 
@@ -14405,7 +14406,17 @@ function openWalkInEnrollmentModal() {
 </div>
 
 <script src="/js/ph-address.js"></script>
+<script src="/js/password-strength.js"></script>
 <script>
+    PwStrength.attach('admin-own-password', 'admin-own-password-confirm', { tips: true, forSelf: true });
+    // Edit Teacher: optional ("leave blank to keep current"), so the meter stays hidden until they type.
+    PwStrength.attach('teacher-password', null, {
+        hideWhenEmpty: true,
+        personal: function () {
+            return (document.getElementById('teacher-name') || {}).value + ' ' + (document.getElementById('teacher-email') || {}).value;
+        }
+    });
+
     // Walk-in enrollment address cascade
     PHAddress.initCascade({
         region:   'walkin-region',

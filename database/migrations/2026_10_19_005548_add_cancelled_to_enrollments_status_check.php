@@ -14,7 +14,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        DB::statement('ALTER TABLE enrollments DROP CONSTRAINT chk_enrollments_status');
+        // IF EXISTS: phpMyAdmin dumps omit CHECK constraints, so a DB restored from one won't have it.
+        DB::statement('ALTER TABLE enrollments DROP CONSTRAINT IF EXISTS chk_enrollments_status');
 
         DB::statement("
             ALTER TABLE enrollments

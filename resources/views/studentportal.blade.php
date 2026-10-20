@@ -469,6 +469,21 @@
 
         /* ── Upload Submitted Card ── */
         .doc-uploaded-list { display: flex; flex-direction: column; gap: 8px; }
+
+        /* Form fields (Settings → Change Password, OTP). Defined only in adminDashboard.css before, which this page never loads. */
+        .dash-form-label {
+            display: block; margin-bottom: 6px;
+            font-size: 12px; font-weight: 600; color: #4a5568; letter-spacing: 0.3px;
+        }
+        .dash-form-control {
+            display: block; width: 100%;
+            border: 1.5px solid #e2e8f0; border-radius: 10px;
+            padding: 10px 14px; font-size: 13px; font-family: 'Open Sans', sans-serif;
+            background: #fafbfc; color: #2d3748;
+            transition: border-color .2s, box-shadow .2s, background-color .2s;
+        }
+        .dash-form-control:hover { border-color: #cbd5e0; background: #fff; }
+        .dash-form-control:focus { border-color: #1a3a6c; box-shadow: 0 0 0 4px rgba(26,58,108,0.1); background: #fff; outline: none; }
     </style>
 </head>
 <body>
@@ -3363,7 +3378,8 @@
                             </div>
                             <div class="mb-3">
                                 <label class="dash-form-label">New Password <span style="color:var(--red);">*</span></label>
-                                <input type="password" id="stu-new-pwd" class="dash-form-control" placeholder="At least 8 characters" minlength="8">
+                                <input type="password" id="stu-new-pwd" class="dash-form-control" placeholder="At least 8 characters" minlength="8"
+                                       data-pw-personal="{{ Auth::user()->name }} {{ Auth::user()->email }}">
                             </div>
                             <div class="mb-3">
                                 <label class="dash-form-label">Confirm New Password <span style="color:var(--red);">*</span></label>
@@ -3446,6 +3462,7 @@
                         document.getElementById('stu-cur-pwd').value = '';
                         document.getElementById('stu-new-pwd').value = '';
                         document.getElementById('stu-confirm-pwd').value = '';
+                        PwStrength.refresh('stu-new-pwd');
                     }
                     </script>
                 </div>
@@ -3787,6 +3804,10 @@
 @endphp
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/password-strength.js"></script>
+<script>
+    PwStrength.attach('stu-new-pwd', 'stu-confirm-pwd', { tips: true, forSelf: true });
+</script>
 <script>
     const studentGradeLevel = '{{ $gradeLevelForJS }}';
     const enrollmentData = @json($jsEnrollmentData);

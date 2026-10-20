@@ -372,11 +372,12 @@
                                         </div>
                                         <div class="mb-3">
                                             <label class="form-lbl">New Password <span style="color:var(--red);">*</span></label>
-                                            <input type="password" name="password" class="form-fld" placeholder="At least 8 characters" required minlength="8">
+                                            <input type="password" name="password" id="admin-own-password" class="form-fld" placeholder="At least 8 characters" required minlength="8"
+                                                   data-pw-personal="{{ Auth::user()->name }} {{ Auth::user()->email }}">
                                         </div>
                                         <div class="mb-3">
                                             <label class="form-lbl">Confirm New Password <span style="color:var(--red);">*</span></label>
-                                            <input type="password" name="password_confirmation" class="form-fld" placeholder="Re-enter new password" required>
+                                            <input type="password" name="password_confirmation" id="admin-own-password-confirm" class="form-fld" placeholder="Re-enter new password" required>
                                         </div>
                                         <button type="submit" class="btn-dash btn-primary">
                                             <i class="bi bi-lock-fill me-1"></i> Update Password

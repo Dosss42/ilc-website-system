@@ -624,6 +624,7 @@
         .schedule-cell:hover .schedule-cell-empty { border-color: var(--blue); color: var(--blue); background: var(--blue-pale); }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/js/password-strength.js"></script>
 </head>
 <body>
 
@@ -2059,11 +2060,12 @@
                             </div>
                             <div class="mb-3">
                                 <label class="form-lbl">New Password <span style="color:var(--red);">*</span></label>
-                                <input type="password" name="password" class="form-fld" placeholder="At least 8 characters" required minlength="8">
+                                <input type="password" name="password" id="sa-own-password" class="form-fld" placeholder="At least 8 characters" required minlength="8"
+                                       data-pw-personal="{{ Auth::user()->name }} {{ Auth::user()->email }}">
                             </div>
                             <div class="mb-3">
                                 <label class="form-lbl">Confirm New Password <span style="color:var(--red);">*</span></label>
-                                <input type="password" name="password_confirmation" class="form-fld" placeholder="Re-enter new password" required>
+                                <input type="password" name="password_confirmation" id="sa-own-password-confirm" class="form-fld" placeholder="Re-enter new password" required>
                             </div>
                             <button type="submit" class="btn-dash btn-primary">
                                 <i class="bi bi-lock-fill"></i> Update Password
@@ -2617,9 +2619,9 @@
             <div class="content-card-header"><h6>Archived Accounts</h6></div>
             <div style="padding:12px 20px;background:#fff8e1;border-bottom:1px solid #fde68a;font-size:12.5px;color:#92400e;">
                 <i class="bi bi-info-circle-fill me-1"></i>
-                Permanently Delete is only available for Students and Teachers here — other roles
-                can have records (like promissory notes) tied to them that aren't safe to remove
-                automatically, so those are restore-only for now.
+                Staff accounts (Admin, Finance, Cashier) can only be permanently deleted if no records
+                depend on them — e.g. an account that created promissory notes or guidance records
+                stays archived, so those records are never deleted along with it.
             </div>
             <div style="overflow-x:auto;">
                 <table class="dash-table">
@@ -3227,6 +3229,22 @@
         if (newsModalEl) editNewsModal         = new bootstrap.Modal(newsModalEl);
     });
 
+    // Password strength meter — shared implementation in public/js/password-strength.js
+    var _resetPwUserName = '';
+    document.addEventListener('DOMContentLoaded', function () {
+        PwStrength.attach('sa-own-password', 'sa-own-password-confirm', { tips: true, forSelf: true });
+        PwStrength.attach('user-password', 'user-password-confirm', {
+            tips: true,
+            personal: function () {
+                return (document.getElementById('user-name') || {}).value + ' ' + (document.getElementById('user-email') || {}).value;
+            }
+        });
+        PwStrength.attach('reset-password', 'reset-password-confirm', {
+            tips: true,
+            personal: function () { return _resetPwUserName; }
+        });
+    });
+
     // Password visibility toggle
     function togglePwdVis(inputId, eyeId) {
         var input = document.getElementById(inputId);
@@ -3291,6 +3309,7 @@
         ['cu-eye1','cu-eye2'].forEach(function(id) {
             var el = document.getElementById(id); if (el) el.className = 'bi bi-eye-fill';
         });
+        PwStrength.refresh('user-password');
         createUserModal.show();
     }
 
@@ -3318,6 +3337,8 @@
         });
         var sub = document.getElementById('reset-modal-sub');
         if (sub && userName) sub.textContent = 'Resetting password for: ' + userName;
+        _resetPwUserName = userName || '';
+        PwStrength.refresh('reset-password');
         resetPasswordModal.show();
     }
 
@@ -5020,6 +5041,11 @@
         document.getElementById('teacher-password-group').style.display = 'block';
         document.getElementById('teacher-active').value = (t.is_active || t.is_active === 1) ? '1' : '0';
         _resetTeacherEmailUI();
+        // Optional field ("leave blank to keep current"), so the meter stays hidden until they type.
+        PwStrength.attach('teacher-password', null, {
+            hideWhenEmpty: true,
+            personal: (t.name || '') + ' ' + (t.email || '')
+        });
         new bootstrap.Modal(document.getElementById('teacherModal')).show();
     }
 
@@ -5139,12 +5165,10 @@
             var safeName = (u.name || '').replace(/'/g, "\\'");
             var roleLabel = ARCHIVE_ROLE_LABELS[u.role] || u.role;
 
-            var permDeleteBtn = '<span style="color:var(--muted);font-size:11px;" title="Not available for this role">—</span>';
-            if (u.role === 'student') {
-                permDeleteBtn = '<button class="action-btn delete" title="Permanently Delete" onclick="saForceDeleteArchivedStudent(' + u.id + ',\'' + safeName + '\')"><i class="bi bi-trash3-fill"></i></button>';
-            } else if (u.role === 'teacher') {
-                permDeleteBtn = '<button class="action-btn delete" title="Permanently Delete" onclick="saForceDeleteArchivedTeacher(' + u.id + ',\'' + safeName + '\')"><i class="bi bi-trash3-fill"></i></button>';
-            }
+            var permDeleteFn = u.role === 'student' ? 'saForceDeleteArchivedStudent(' + u.id + ',\'' + safeName + '\')'
+                : u.role === 'teacher' ? 'saForceDeleteArchivedTeacher(' + u.id + ',\'' + safeName + '\')'
+                : 'saForceDeleteArchivedStaff(' + u.id + ',\'' + safeName + '\',\'' + roleLabel + '\')';
+            var permDeleteBtn = '<button class="action-btn delete" title="Permanently Delete" onclick="' + permDeleteFn + '"><i class="bi bi-trash3-fill"></i></button>';
 
             return '<tr>' +
                 '<td><div class="user-row-name"><div class="user-row-avatar" style="background:#fff8e1;color:#b45309;">' + initials + '</div><div><div style="font-size:13px;font-weight:600;">' + (u.name || '—') + '</div><div style="font-size:11px;color:var(--muted);">' + (u.email || '—') + '</div></div></div></td>' +
@@ -5216,6 +5240,27 @@
                     });
                     var d = await r.json();
                     if (d.success) { saToast('success', d.message || 'Teacher permanently deleted.'); saAdjustArchivedBadge(-1); loadArchivedUsers(_archivePage); }
+                    else saToast('error', d.message || 'Delete failed.');
+                } catch(e) { saToast('error', 'Network error.'); }
+            }
+        });
+    }
+
+    function saForceDeleteArchivedStaff(id, name, roleLabel) {
+        saConfirm({
+            title: 'Permanently Delete ' + roleLabel,
+            msg: '⚠️ PERMANENTLY DELETE "' + name + '"? This cannot be undone. If this account is linked to records like promissory notes, the delete will be blocked to protect them.',
+            icon: 'bi-exclamation-triangle-fill',
+            gradient: 'linear-gradient(135deg,#7f1d1d,#b91c1c)',
+            btnLabel: 'Delete Forever',
+            btnColor: '#b91c1c',
+            onConfirm: async function() {
+                try {
+                    var r = await fetch('/superadmin/archived-users/' + id + '/force', {
+                        method: 'DELETE', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
+                    });
+                    var d = await r.json();
+                    if (d.success) { saToast('success', d.message || 'Account permanently deleted.'); saAdjustArchivedBadge(-1); loadArchivedUsers(_archivePage); }
                     else saToast('error', d.message || 'Delete failed.');
                 } catch(e) { saToast('error', 'Network error.'); }
             }
