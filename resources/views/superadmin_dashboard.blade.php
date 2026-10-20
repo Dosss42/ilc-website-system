@@ -1521,17 +1521,18 @@
                 <h1>Backup &amp; Restore</h1>
                 <p>Manage database backups and system restoration.</p>
             </div>
-            <a href="#" class="btn-dash btn-primary">
-                <i class="bi bi-database-fill-up"></i> Create Backup Now
-            </a>
         </div>
 
+        @php
+            $totalSize = array_sum(array_column($backups, 'size_raw'));
+            $totalSizeLabel = $totalSize >= 1048576 ? round($totalSize / 1048576, 2) . ' MB' : round($totalSize / 1024, 1) . ' KB';
+        @endphp
         <div class="row g-4 mb-4">
             <div class="col-md-4">
                 <div class="stat-card">
                     <div class="stat-icon orange"><i class="bi bi-database-fill"></i></div>
                     <div>
-                        <div class="stat-value">0 MB</div>
+                        <div class="stat-value">{{ $totalSizeLabel }}</div>
                         <div class="stat-label">Total Backup Size</div>
                     </div>
                 </div>
@@ -1540,7 +1541,7 @@
                 <div class="stat-card">
                     <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
                     <div>
-                        <div class="stat-value">0</div>
+                        <div class="stat-value">{{ count($backups) }}</div>
                         <div class="stat-label">Total Backups</div>
                     </div>
                 </div>
@@ -1549,7 +1550,7 @@
                 <div class="stat-card">
                     <div class="stat-icon blue"><i class="bi bi-clock-fill"></i></div>
                     <div>
-                        <div class="stat-value">—</div>
+                        <div class="stat-value" style="font-size:{{ count($backups) ? '16px' : '' }};">{{ count($backups) ? $backups[0]['created'] : '—' }}</div>
                         <div class="stat-label">Last Backup</div>
                     </div>
                 </div>
@@ -1611,8 +1612,7 @@
                         </div>
                         <div style="display:flex;justify-content:space-between;margin-bottom:10px;">
                             <span style="color:var(--muted);">Storage Used</span>
-                            @php $totalSize = array_sum(array_column($backups,'size_raw')); @endphp
-                            <strong>{{ $totalSize >= 1048576 ? round($totalSize/1048576,2).' MB' : round($totalSize/1024,1).' KB' }}</strong>
+                            <strong>{{ $totalSizeLabel }}</strong>
                         </div>
                         <div style="background:#fff8ec;border:1px solid #fde68a;border-radius:8px;padding:10px;font-size:12px;color:#92400e;margin-top:6px;">
                             <i class="bi bi-exclamation-triangle-fill me-1"></i>
