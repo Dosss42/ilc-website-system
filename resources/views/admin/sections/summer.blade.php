@@ -52,13 +52,9 @@
             <div class="toolbar-filter">
                 <select id="summer-sy-filter" onchange="loadSummerClasses()">
                     <option value="">All School Years</option>
-                    @php
-                        $currentSY = (int) substr(\App\Models\Setting::getCurrentSchoolYear(), 0, 4);
-                        for ($y = $currentSY + 1; $y >= 1994; $y--) {
-                            $sy = $y . '-' . ($y + 1);
-                            echo "<option value=\"$sy\">$sy</option>";
-                        }
-                    @endphp
+                    @foreach(\App\Models\Setting::schoolYearOptions() as $sy)
+                        <option value="{{ $sy }}">{{ $sy }}</option>
+                    @endforeach
                 </select>
                 <select id="summer-status-filter" onchange="loadSummerClasses()">
                     <option value="">All Status</option>

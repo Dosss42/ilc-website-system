@@ -709,7 +709,7 @@
     // PHP-execute on every page load since they're just display:none, not
     // excluded from rendering — so this bites even "dead" tabs.)
     $feeBreakdowns = $feeBreakdowns ?? [];
-    $schoolYears = $schoolYears ?? [];
+    $schoolYears = $schoolYears ?? \App\Models\Setting::schoolYearOptions();
     
     $studentCount = $studentCount ?? 0;
     $enrollmentCount = $enrollmentCount ?? 0;
@@ -3239,18 +3239,10 @@ function openWalkInEnrollmentModal() {
                         <label class="form-lbl">School Year *</label>
 
                         <select id="sc-sy" class="form-fld">
-                            @php
-                                $currentSY = (int) substr($currentSchoolYear ?? '', 0, 4) ?: (now()->month >= 6 ? now()->year : now()->year - 1);
-                                for ($y = $currentSY + 1; $y >= 1994; $y--) {
-                                    $sy = $y . '-' . ($y + 1);
-                                    // Defaults to the actual current school year, same as every
-                                    // other school-year picker — was current+1, which both looked
-                                    // inconsistent with the rest of the system and didn't reflect
-                                    // the admin-configured setting.
-                                    $selected = $y === $currentSY ? 'selected' : '';
-                                    echo "<option value=\"$sy\" $selected>$sy</option>";
-                                }
-                            @endphp
+                            {{-- Shared range (Setting::schoolYearOptions), defaulting to the current school year --}}
+                            @foreach(\App\Models\Setting::schoolYearOptions() as $sy)
+                                <option value="{{ $sy }}" {{ $sy === \App\Models\Setting::getCurrentSchoolYear() ? 'selected' : '' }}>{{ $sy }}</option>
+                            @endforeach
                         </select>
 
                     </div>
@@ -14005,18 +13997,10 @@ function openWalkInEnrollmentModal() {
                     <div class="col-md-6">
                         <label class="dash-form-label"><i class="bi bi-calendar me-1" style="color:var(--green);"></i>School Year <span class="text-danger">*</span></label>
                         <select id="sec-sy" class="dash-form-control">
-                            @php
-                                $cSY = (int) substr($currentSchoolYear ?? '', 0, 4) ?: (now()->month >= 6 ? now()->year : now()->year - 1);
-                                for ($y = $cSY + 4; $y >= 2020; $y--) {
-                                    $syOpt = $y . '-' . ($y + 1);
-                                    // Defaults to the ACTUAL current school year, not current+1 —
-                                    // this previously always pre-selected next year regardless of
-                                    // what $currentSchoolYear said, which is what looked like a
-                                    // mismatch with the Settings page.
-                                    $selOpt = $y === $cSY ? 'selected' : '';
-                                    echo "<option value=\"$syOpt\" $selOpt>$syOpt</option>";
-                                }
-                            @endphp
+                            {{-- Shared range (Setting::schoolYearOptions), defaulting to the ACTUAL current school year --}}
+                            @foreach(\App\Models\Setting::schoolYearOptions() as $syOpt)
+                                <option value="{{ $syOpt }}" {{ $syOpt === \App\Models\Setting::getCurrentSchoolYear() ? 'selected' : '' }}>{{ $syOpt }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div class="col-md-6">

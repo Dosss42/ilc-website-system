@@ -39,6 +39,17 @@
         </thead>
         <tbody>
             @forelse($timeSlots as $slot)
+                @if(!empty($slot['break']))
+                <tr>
+                    <td class="sched-time-col">
+                        {{ \Carbon\Carbon::parse($slot['start'])->format('g:i A') }}<br>–<br>{{ \Carbon\Carbon::parse($slot['end'])->format('g:i A') }}
+                    </td>
+                    <td colspan="{{ count($showDays) }}" style="text-align:center;background:#fdf8ec;color:#8a6d1f;font-weight:bold;letter-spacing:1px;">
+                        {{ $slot['break'] }}
+                    </td>
+                </tr>
+                @continue
+                @endif
                 <tr>
                     <td class="sched-time-col">
                         {{ \Carbon\Carbon::parse($slot['start'])->format('g:i A') }}<br>–<br>{{ \Carbon\Carbon::parse($slot['end'])->format('g:i A') }}

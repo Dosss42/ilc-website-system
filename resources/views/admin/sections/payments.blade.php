@@ -44,12 +44,7 @@
 
         {{-- Payment Filters --}}
         @php
-            $currentYear = now()->year;
-            $schoolYears = [];
-            for ($i = -2; $i <= 2; $i++) {
-                $start = $currentYear + $i;
-                $schoolYears[] = $start . '-' . ($start + 1);
-            }
+            $schoolYears = \App\Models\Setting::schoolYearOptions();
         @endphp
 
         <div class="content-card mb-4">

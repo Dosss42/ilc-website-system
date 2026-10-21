@@ -126,26 +126,31 @@ class Setting extends Model
         return $year . '-' . ($year + 1);
     }
 
+    /** First and last start-year of the shared School Year range (2020-2021 … 2030-2031). */
+    public const SCHOOL_YEAR_FIRST = 2020;
+    public const SCHOOL_YEAR_LAST  = 2030;
+
     /**
-     * Shared "school year" dropdown range, e.g. ['2021-2022', ..., '2026-2027', '2027-2028'].
+     * Shared "school year" dropdown range used by every School Year filter in
+     * the system, e.g. ['2030-2031', ..., '2026-2027', ..., '2020-2021'].
      *
-     * Several school-year filters across the app (Student Management, Teacher
-     * Assignments, Finance) were copy-pasted with a range that only ever
-     * looked *forward* from the current year (0 to +10 years) and never
-     * backward — meaning there was no way to filter into a past school
-     * year's records at all, even though that data exists. This is the
-     * single, correct implementation those call sites now use instead of
-     * each reinventing (and mis-copying) the same loop.
+     * Several school-year filters across the app were copy-pasted with their
+     * own ranges and drifted apart; this is the single implementation they
+     * all use now. It always covers SCHOOL_YEAR_FIRST..SCHOOL_YEAR_LAST and
+     * widens automatically if the current school year gets within
+     * $yearsBack / $yearsForward of either end.
      *
      * Descending order (most recent first) since that's what every one of
      * those dropdowns actually wants to show by default.
      */
-    public static function schoolYearOptions(int $yearsBack = 5, int $yearsForward = 2): array
+    public static function schoolYearOptions(int $yearsBack = 5, int $yearsForward = 4): array
     {
         $baseYear = (int) substr(static::getCurrentSchoolYear(), 0, 4);
+        $from     = min(self::SCHOOL_YEAR_FIRST, $baseYear - $yearsBack);
+        $to       = max(self::SCHOOL_YEAR_LAST, $baseYear + $yearsForward);
 
         $years = [];
-        for ($y = $baseYear + $yearsForward; $y >= $baseYear - $yearsBack; $y--) {
+        for ($y = $to; $y >= $from; $y--) {
             $years[] = $y . '-' . ($y + 1);
         }
         return $years;

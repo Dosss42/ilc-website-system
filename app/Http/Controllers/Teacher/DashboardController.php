@@ -63,9 +63,12 @@ class DashboardController extends Controller
         // advisory-covers-everything case (confirmed against every real
         // teacher in the system: zero discrepancies vs. the old
         // schedule-reconstruction logic before this was switched over).
+        // Active sections, plus sections from earlier school years even if since
+        // deactivated — My Students' School Year filter (client-side, by each
+        // section's school_year) needs those to show anything for a past year.
         $teacherAssignments = TeacherAssignment::where('teacher_id', $teacher->id)
             ->whereNotNull('subject_id')
-            ->whereHas('section', fn($q) => $q->where('is_active', true))
+            ->whereHas('section', fn($q) => $q->where(fn($w) => $w->where('is_active', true)->orWhere('school_year', '<', $currentSchoolYear)))
             ->with(['section', 'subject'])
             ->get()
             ->filter(fn($a) => $a->section && $a->subject)
@@ -212,7 +215,8 @@ class DashboardController extends Controller
             ->orderBy('start_time')
             ->get();
 
-        $grid = \App\Support\ScheduleGridBuilder::build($schedules);
+        // Full school day even when few/no classes are assigned yet (same as the on-screen timetable)
+        $grid = \App\Support\ScheduleGridBuilder::build($schedules, true);
 
         $data = array_merge($this->schoolPdfLetterhead($teacher->name), [
             'reportTitle'    => 'Class Schedule — ' . $teacher->name,

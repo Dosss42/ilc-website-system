@@ -2113,6 +2113,9 @@
     }
 
     function showSection(name, btn) {
+        // Only known sections can be shown — a hidden/removed one (e.g. 'receipts') would
+        // otherwise stay visible on top of everything, since the hide loop below skips it.
+        if (sections.indexOf(name) === -1) { name = 'dashboard'; btn = null; }
         var delay = _skelDelay[name] || 400;
         updateBreadcrumb(name);
         localStorage.setItem('currentCashierSection', name);

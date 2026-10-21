@@ -798,21 +798,12 @@
     ═══════════════════════════ -->
     <div id="section-schedule" class="dash-section" style="display:none;">
         @php
-            // Always show Mon–Fri; only add Saturday if there's an actual Saturday class
+            // Mon–Fri (+ Saturday only if there's a Saturday class), with the school's
+            // full set of periods always shown — even before any class is assigned.
             $usedDays  = $schedules->pluck('day_of_week')->unique()->toArray();
-            $showDays  = ['Monday','Tuesday','Wednesday','Thursday','Friday'];
-            if (in_array('Saturday', $usedDays)) {
-                $showDays[] = 'Saturday';
-            }
-            $timeSlots  = [];
-            foreach ($schedules as $sched) {
-                $timeKey = substr($sched->start_time,0,5).'-'.substr($sched->end_time,0,5);
-                if (!isset($timeSlots[$timeKey])) {
-                    $timeSlots[$timeKey] = ['start'=>$sched->start_time,'end'=>$sched->end_time,'days'=>[]];
-                }
-                $timeSlots[$timeKey]['days'][$sched->day_of_week] = $sched;
-            }
-            ksort($timeSlots);
+            $grid      = \App\Support\ScheduleGridBuilder::build($schedules, true);
+            $showDays  = $grid['showDays'];
+            $timeSlots = $grid['timeSlots'];
 
             $dayColors = [
                 'Monday'    => ['bg'=>'#1565c0','light'=>'#e3f0ff','text'=>'#1565c0','border'=>'#1565c0'],
@@ -929,6 +920,19 @@
                             </thead>
                             <tbody>
                                 @foreach($timeSlots as $timeKey => $timeSlot)
+                                    @if(!empty($timeSlot['break']))
+                                    <tr style="border-bottom:1px solid var(--border);">
+                                        <td style="background:#f8fafc;padding:8px 14px;vertical-align:middle;border-right:2px solid var(--border);">
+                                            <div style="font-size:10px;color:var(--muted);white-space:nowrap;">
+                                                {{ \Carbon\Carbon::parse($timeSlot['start'])->format('g:i') }} – {{ \Carbon\Carbon::parse($timeSlot['end'])->format('g:i A') }}
+                                            </div>
+                                        </td>
+                                        <td colspan="{{ count($showDays) }}" style="padding:8px 10px;text-align:center;background:repeating-linear-gradient(45deg,#fdf8ec,#fdf8ec 8px,#faf3df 8px,#faf3df 16px);font-size:11px;font-weight:700;letter-spacing:1px;color:#8a6d1f;">
+                                            {{ $timeSlot['break'] }}
+                                        </td>
+                                    </tr>
+                                    @continue
+                                    @endif
                                     <tr style="border-bottom:1px solid var(--border);">
                                         <td style="background:#f8fafc;padding:12px 14px;vertical-align:middle;border-right:2px solid var(--border);">
                                             <div style="font-size:12px;font-weight:700;color:var(--text);white-space:nowrap;">
@@ -972,20 +976,10 @@
                                         @endforeach
                                     </tr>
                                 @endforeach
-                                @if(count($timeSlots) === 0)
-                                    <tr>
-                                        <td style="background:#f8fafc;padding:12px 14px;border-right:2px solid var(--border);"></td>
-                                        @foreach($showDays as $day)
-                                            <td style="padding:40px 10px;text-align:center;color:#d1d5db;font-size:11px;">
-                                                —
-                                            </td>
-                                        @endforeach
-                                    </tr>
-                                @endif
                             </tbody>
                         </table>
                     </div>
-                    @if(count($timeSlots) === 0)
+                    @if($schedules->isEmpty())
                         <div style="padding:18px 20px;background:#f8fafc;border-top:1px solid var(--border);text-align:center;font-size:12px;color:var(--muted);">
                             <i class="bi bi-info-circle me-1"></i> No schedules assigned yet. Contact admin to set up your teaching schedule.
                         </div>
@@ -1134,14 +1128,9 @@
                         <div class="col-md-4">
                             <label class="form-lbl">School Year</label>
                             <select class="form-fld" id="ms-list-sy" onchange="syncFiltersToGradeView()">
-                                @php
-                                    $baseSY = (int) substr($currentSchoolYear ?? '', 0, 4) ?: (now()->month >= 6 ? now()->year : now()->year - 1);
-                                    for ($y = $baseSY + 1; $y >= $baseSY - 2; $y--) {
-                                        $sy = $y . '-' . ($y + 1);
-                                        $selected = ($sy === $currentSchoolYear) ? 'selected' : '';
-                                        echo "<option value=\"$sy\" $selected>$sy</option>";
-                                    }
-                                @endphp
+                                @foreach(\App\Models\Setting::schoolYearOptions() as $sy)
+                                    <option value="{{ $sy }}" {{ $sy === $currentSchoolYear ? 'selected' : '' }}>{{ $sy }}</option>
+                                @endforeach
                             </select>
                         </div>
                         <div class="col-md-4">
@@ -1164,7 +1153,7 @@
             </div>
 
             <div class="content-card">
-                <div class="content-card-header"><h6>My Subject Assignments — S.Y. {{ $currentSchoolYear }}</h6></div>
+                <div class="content-card-header"><h6>My Subject Assignments — S.Y. <span id="ms-list-title-sy">{{ $currentSchoolYear }}</span></h6></div>
                 <div class="mobile-scroll-hint" style="padding:10px 20px 0;"><i class="bi bi-arrow-left-right"></i> Swipe to see more columns</div>
                 <div style="overflow-x:auto;">
                     <table class="dash-table">
@@ -1185,7 +1174,7 @@
                                     $glLabel      = $sec ? ($gradeLabels[$sec->grade_level] ?? ucfirst($sec->grade_level)) : '—';
                                 @endphp
                                 @if($sec)
-                                <tr>
+                                <tr class="ms-assign-row" data-sy="{{ $sec->school_year ?: $currentSchoolYear }}">
                                     <td>
                                         <div style="font-weight:700;color:var(--blue);font-size:13px;">{{ $glLabel }}</div>
                                         <div style="font-size:12px;color:var(--muted);">{{ $sec->name }}</div>
@@ -1226,6 +1215,15 @@
                                     </td>
                                 </tr>
                             @endforelse
+                            {{-- Shown by filterAssignmentsBySchoolYear() when the chosen year has no rows --}}
+                            @if($teacherAssignments->isNotEmpty())
+                                <tr id="ms-assign-empty-sy" style="display:none;">
+                                    <td colspan="4" style="text-align:center;padding:40px;color:var(--muted);">
+                                        <i class="bi bi-calendar-x" style="font-size:36px;display:block;margin-bottom:8px;opacity:0.3;"></i>
+                                        <div style="font-weight:600;">No subject assignments for S.Y. <span id="ms-assign-empty-sy-label"></span>.</div>
+                                    </td>
+                                </tr>
+                            @endif
                         </tbody>
                     </table>
                 </div>
@@ -1254,14 +1252,9 @@
                         <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;">School Year</label>
                         <select id="ms-sy" onchange="loadGradeView()"
                             style="border:1.5px solid #d1d5db;border-radius:8px;padding:7px 12px;font-size:13px;font-weight:600;color:var(--text);background:#fff;cursor:pointer;min-width:130px;">
-                            @php
-                                $baseSY = (int) substr($currentSchoolYear ?? '', 0, 4) ?: (now()->month >= 6 ? now()->year : now()->year - 1);
-                                for ($y = $baseSY + 1; $y >= $baseSY - 2; $y--) {
-                                    $sy = $y . '-' . ($y + 1);
-                                    $selected = ($sy === $currentSchoolYear) ? 'selected' : '';
-                                    echo "<option value=\"$sy\" $selected>$sy</option>";
-                                }
-                            @endphp
+                            @foreach(\App\Models\Setting::schoolYearOptions() as $sy)
+                                <option value="{{ $sy }}" {{ $sy === $currentSchoolYear ? 'selected' : '' }}>{{ $sy }}</option>
+                            @endforeach
                         </select>
                     </div>
 
@@ -2085,9 +2078,31 @@
     }
 
     // Keep the grade-view selectors in sync with list-view selectors
+    // My Students list: show only assignments whose section belongs to the chosen school year.
+    function filterAssignmentsBySchoolYear(sy) {
+        let shown = 0;
+        document.querySelectorAll('#ms-list-view .ms-assign-row').forEach(function(row) {
+            const match = row.dataset.sy === sy;
+            row.style.display = match ? '' : 'none';
+            if (match) shown++;
+        });
+        const titleSy = document.getElementById('ms-list-title-sy');
+        if (titleSy) titleSy.textContent = sy;
+        const empty = document.getElementById('ms-assign-empty-sy');
+        if (empty) {
+            empty.style.display = shown ? 'none' : '';
+            document.getElementById('ms-assign-empty-sy-label').textContent = sy;
+        }
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        const sel = document.getElementById('ms-list-sy');
+        if (sel) filterAssignmentsBySchoolYear(sel.value);
+    });
+
     function syncFiltersToGradeView() {
         const sy   = document.getElementById('ms-list-sy').value;
         const term = document.getElementById('ms-list-term').value;
+        filterAssignmentsBySchoolYear(sy);
         document.getElementById('ms-sy').value   = sy;
         document.getElementById('ms-term').value = term;
 

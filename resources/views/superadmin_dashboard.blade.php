@@ -5535,13 +5535,12 @@
     // `standardSubjects`) and is a nice-to-have, not core parity; can be
     // added later if wanted.
     function _sectionSchoolYearOptions() {
-        var cSY = {!! json_encode((int) substr($currentSchoolYear ?? '', 0, 4)) !!} || (new Date().getMonth() >= 5 ? new Date().getFullYear() : new Date().getFullYear() - 1);
-        var html = '';
-        for (var y = cSY + 4; y >= 2020; y--) {
-            var sy = y + '-' + (y + 1);
-            html += '<option value="' + sy + '"' + (y === cSY ? ' selected' : '') + '>' + sy + '</option>';
-        }
-        return html;
+        // Same shared range as every other School Year filter (Setting::schoolYearOptions)
+        var years   = @json(\App\Models\Setting::schoolYearOptions());
+        var current = @json(\App\Models\Setting::getCurrentSchoolYear());
+        return years.map(function(sy) {
+            return '<option value="' + sy + '"' + (sy === current ? ' selected' : '') + '>' + sy + '</option>';
+        }).join('');
     }
 
     function _sectionModalHtml() {

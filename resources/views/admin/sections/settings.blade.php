@@ -146,11 +146,12 @@
                             <div class="col-md-4">
                                 <label class="form-lbl">Enrollment Target School Year</label>
                                 @php
+                                    // Current school year onward, same upper end as every School Year filter
                                     $baseY = (int) substr(\App\Models\Setting::getCurrentSchoolYear(), 0, 4);
-                                    $syOptions = [];
-                                    for ($i = 0; $i <= 3; $i++) {
-                                        $syOptions[] = ($baseY + $i) . '-' . ($baseY + $i + 1);
-                                    }
+                                    $syOptions = array_values(array_filter(
+                                        array_reverse(\App\Models\Setting::schoolYearOptions()),
+                                        fn ($sy) => (int) substr($sy, 0, 4) >= $baseY
+                                    ));
                                 @endphp
                                 <select id="set-enrollment_target_year" class="form-fld">
                                     <option value="">— Auto (next school year) —</option>

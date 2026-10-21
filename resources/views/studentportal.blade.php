@@ -1523,27 +1523,20 @@
             $glRaw   = $enrollment ? ($enrollment->student_data['grade_level'] ?? $enrollment->grade_level) : '';
             $glLabel = $glMap[$glRaw] ?? ucfirst($glRaw) ?: 'N/A';
 
-            // Build school year options:
-            // - All years student has been enrolled
-            // - Current year
-            // - Next 3 future years
+            // School year options: the shared range every School Year filter uses
+            // (Setting::schoolYearOptions), plus any year this student was enrolled
+            // in that falls outside it.
             $enrolledYears = auth()->user()->enrollments()
                 ->whereNotNull('school_year')
                 ->pluck('school_year')
                 ->unique()
-                ->sort()
                 ->values()
                 ->toArray();
 
-            $currentSY = $enrollment->school_year ?? '';
-            $baseY = $currentSY ? (int) explode('-', $currentSY)[0] : (int) substr(\App\Models\Setting::getCurrentSchoolYear(), 0, 4);
+            // Default to the student's own enrollment year, else the current school year
+            $currentSY = $enrollment->school_year ?? \App\Models\Setting::getCurrentSchoolYear();
 
-            $futureYears = [];
-            for ($fy = $baseY + 1; $fy <= $baseY + 3; $fy++) {
-                $futureYears[] = $fy . '-' . ($fy + 1);
-            }
-
-            $allSYOptions = collect(array_merge($enrolledYears, $futureYears))
+            $allSYOptions = collect(array_merge($enrolledYears, \App\Models\Setting::schoolYearOptions()))
                 ->unique()->sortDesc()->values()->toArray();
         @endphp
 
