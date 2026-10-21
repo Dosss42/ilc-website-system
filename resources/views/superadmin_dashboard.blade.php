@@ -608,6 +608,10 @@
         .schedule-grid-table .break-cell { background: repeating-linear-gradient(135deg, #fbfaf7, #fbfaf7 10px, #f5f2ea 10px, #f5f2ea 20px); text-align: center; vertical-align: middle; font-weight: 700; color: #92722a; letter-spacing: 1.5px; font-size: 11px; border-bottom: 2px solid #ecd9a8; }
         .schedule-cell { cursor: pointer; position: relative; }
         .schedule-cell:hover { background: #f8fafc; }
+        .schedule-cell.drag-over { background: var(--blue-pale); outline: 2px dashed var(--blue); outline-offset: -2px; }
+        .schedule-cell-content[draggable="true"] { cursor: grab; }
+        .schedule-cell-content[draggable="true"]:active { cursor: grabbing; }
+        .schedule-cell-content.dragging { opacity: 0.4; }
         .sched-conflict-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 9.5px; font-weight: 800; color: #fff; background: #dc2626; padding: 2px 7px; border-radius: 20px; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.3px; }
         .schedule-cell-content { padding: 8px 9px; border-radius: 8px; height: 100%; box-sizing: border-box; overflow: hidden; border-left: 3px solid var(--blue); background: var(--blue-pale); transition: transform 0.12s ease, box-shadow 0.12s ease; }
         .schedule-cell-content:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(15,23,42,0.1); }
@@ -5700,6 +5704,15 @@
                     return s.day_of_week === day && (s.start_time || '').substring(0,5) === slot.start && (s.end_time || '').substring(0,5) === slot.end;
                 });
 
+                // Every cell is a drop target (dragover must preventDefault or the browser rejects the drop).
+                cell.ondragover = function(e) { e.preventDefault(); cell.classList.add('drag-over'); };
+                cell.ondragleave = function() { cell.classList.remove('drag-over'); };
+                cell.ondrop = function(e) {
+                    e.preventDefault();
+                    cell.classList.remove('drag-over');
+                    if (_saDraggedScheduleEntry) _saHandleScheduleDrop(_saDraggedScheduleEntry, day, slot.start, slot.end);
+                };
+
                 if (entry) {
                     var subjName = entry.subject ? entry.subject.name : (entry.subject_name || 'N/A');
                     var subjCode = entry.subject ? entry.subject.code : '';
@@ -5708,11 +5721,21 @@
                     var hasConflict = !!entry.has_conflict;
                     var reasons = entry.conflict_reasons || [];
                     var warnBadge = hasConflict ? '<div class="sched-conflict-badge" title="' + reasons.map(function(r){return r.replace(/"/g,'&quot;');}).join(' | ') + '"><i class="bi bi-exclamation-triangle-fill"></i> Conflict</div>' : '';
-                    cell.innerHTML = '<div class="schedule-cell-content' + (hasConflict ? ' has-conflict' : '') + '">' + warnBadge +
+                    cell.innerHTML = '<div class="schedule-cell-content' + (hasConflict ? ' has-conflict' : '') + '" draggable="true" title="Click to edit, drag to move">' + warnBadge +
                         '<div class="subj-row">' + (subjCode ? '<span class="subj-code-pill">' + subjCode + '</span>' : '') + '<div class="subject">' + subjName + '</div></div>' +
                         '<div class="teacher"><i class="bi bi-person-fill teacher-icon"></i> ' + (teacherName || '—') + '</div>' +
                         (roomVal ? '<div class="room"><i class="bi bi-geo-alt-fill"></i>' + roomVal + '</div>' : '') + '</div>';
-                    cell.querySelector('.schedule-cell-content').onclick = function() { openEditScheduleModal(entry, day, slot, grade, sectionId, term); };
+                    var contentEl = cell.querySelector('.schedule-cell-content');
+                    contentEl.onclick = function() { openEditScheduleModal(entry, day, slot, grade, sectionId, term); };
+                    contentEl.ondragstart = function(e) {
+                        _saDraggedScheduleEntry = entry;
+                        contentEl.classList.add('dragging');
+                        e.dataTransfer.effectAllowed = 'move';
+                    };
+                    contentEl.ondragend = function() {
+                        contentEl.classList.remove('dragging');
+                        _saDraggedScheduleEntry = null;
+                    };
                 } else {
                     cell.innerHTML = '<div class="schedule-cell-empty"><i class="bi bi-plus-lg me-1"></i>Add</div>';
                     cell.onclick = function() { openScheduleModalForCell(day, slot, grade, sectionId, term); };
@@ -5721,6 +5744,90 @@
             });
             tbody.appendChild(row);
         });
+    }
+
+    // ── Drag-and-drop: move an entry to another day/time (same behaviour as the Admin grid) ──
+    var _saDraggedScheduleEntry = null;
+
+    function _saTimesOverlap(s1, e1, s2, e2) { return s1 < e2 && e1 > s2; }
+
+    // Teacher/room/section double-booking against the loaded grid, excluding the entry being moved.
+    function _saFindScheduleConflicts(entry, day, start, end) {
+        var conflicts = [];
+        _saScheduleCache.forEach(function(s) {
+            if (String(s.id) === String(entry.id) || s.day_of_week !== day) return;
+            var sStart = (s.start_time || '').substring(0,5), sEnd = (s.end_time || '').substring(0,5);
+            if (!sStart || !sEnd || !_saTimesOverlap(start, end, sStart, sEnd)) return;
+            var subName = (s.subject && s.subject.name) ? s.subject.name : 'a subject';
+            var secName = (s.section && s.section.name) ? s.section.name : 'a section';
+            if (entry.teacher_id && s.teacher_id && String(s.teacher_id) === String(entry.teacher_id)) {
+                conflicts.push('Teacher conflict: ' + ((s.teacher && s.teacher.name) || 'this teacher') + ' is already teaching ' + subName + ' (' + secName + ') on ' + day + ' ' + sStart + '–' + sEnd + '.');
+            }
+            if (entry.room && s.room && s.room.trim() === entry.room.trim()) {
+                conflicts.push('Room conflict: ' + entry.room + ' is already used for ' + subName + ' (' + secName + ') on ' + day + ' ' + sStart + '–' + sEnd + '.');
+            }
+            if (String(s.section_id) === String(entry.section_id)) {
+                conflicts.push('Section conflict: ' + secName + ' already has ' + subName + ' on ' + day + ' ' + sStart + '–' + sEnd + '.');
+            }
+        });
+        return conflicts;
+    }
+
+    function _saHandleScheduleDrop(entry, newDay, newStart, newEnd) {
+        if (entry.day_of_week === newDay && (entry.start_time || '').substring(0,5) === newStart && (entry.end_time || '').substring(0,5) === newEnd) return;
+
+        // Only the same section counts as "occupied" — in All Sections view other sections share the grid.
+        var occupied = _saScheduleCache.find(function(s) {
+            return String(s.id) !== String(entry.id) && String(s.section_id) === String(entry.section_id)
+                && s.day_of_week === newDay && (s.start_time || '').substring(0,5) === newStart && (s.end_time || '').substring(0,5) === newEnd;
+        });
+        if (occupied) {
+            saToast('warning', 'That time slot already has a class. Drag it onto an empty slot, or edit/delete the existing one first.');
+            return;
+        }
+
+        var conflicts = _saFindScheduleConflicts(entry, newDay, newStart, newEnd);
+        var doMove = function() { _saSubmitScheduleDrop(entry, newDay, newStart, newEnd, conflicts); };
+        if (conflicts.length) {
+            saConfirm({
+                title: 'Schedule Conflict',
+                sub: 'Move anyway?',
+                msg: conflicts.join(' '),
+                icon: 'bi-exclamation-triangle-fill',
+                gradient: 'linear-gradient(135deg,#b45309,#d97706)',
+                btnLabel: 'Move Anyway',
+                btnColor: '#d97706',
+                onConfirm: doMove
+            });
+            return;
+        }
+        doMove();
+    }
+
+    async function _saSubmitScheduleDrop(entry, newDay, newStart, newEnd, preSaveConflicts) {
+        var body = {
+            section_id: entry.section_id, subject_id: entry.subject_id, teacher_id: entry.teacher_id || null,
+            day_of_week: newDay, term: entry.term, start_time: newStart, end_time: newEnd,
+            room: entry.room || '', is_active: !!entry.is_active,
+        };
+        try {
+            var r = await fetch('/admin/schedules/' + entry.id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            var d = await r.json();
+            if (!r.ok) {
+                saToast('error', d.message || Object.values(d.errors || {}).flat().join(', ') || 'Failed to move schedule.');
+            } else {
+                var reasons = (d.conflict_reasons && d.conflict_reasons.length) ? d.conflict_reasons : preSaveConflicts;
+                if (d.has_conflict || reasons.length) saToast('warning', 'Schedule moved, but it overlaps with another entry: ' + reasons.join('; '));
+                else saToast('success', 'Schedule moved to ' + newDay + ' ' + newStart + '–' + newEnd + '.');
+            }
+        } catch(e) {
+            saToast('error', 'Failed to move schedule: network or server error.');
+        }
+        loadScheduleGrid();
     }
 
     function _scheduleModalHtml() {
