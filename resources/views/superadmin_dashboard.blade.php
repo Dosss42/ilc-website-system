@@ -1074,7 +1074,7 @@
                     'student'    => 'Student',
                 ];
                 $roleCounts = [
-                    'all'        => $userManagementUsers->total(),
+                    'all'        => $stats['total_users'],
                     'superadmin' => $stats['superadmins'],
                     'admin'      => $stats['admins'],
                     'finance'    => $stats['finance'],
@@ -1084,7 +1084,7 @@
                 ];
             @endphp
             @foreach($roleTabs as $key => $label)
-            <a href="?role={{ $key }}&sort={{ $sort }}&section=users"
+            <a href="?role={{ $key }}&sort={{ $sort }}&section=users{{ $userSearch !== '' ? '&user_search=' . urlencode($userSearch) : '' }}" class="sa-user-role-tab"
                 style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:20px;font-size:12px;font-weight:700;text-decoration:none;border:1.5px solid {{ $roleFilter === $key ? 'var(--blue)' : 'var(--border)' }};background:{{ $roleFilter === $key ? 'var(--blue)' : '#fff' }};color:{{ $roleFilter === $key ? '#fff' : 'var(--text)' }};transition:all .15s;">
                 {{ $label }}
                 <span style="background:{{ $roleFilter === $key ? 'rgba(255,255,255,.25)' : 'var(--blue-pale)' }};color:{{ $roleFilter === $key ? '#fff' : 'var(--blue)' }};padding:1px 7px;border-radius:20px;font-size:10px;">{{ $roleCounts[$key] }}</span>
@@ -1093,9 +1093,9 @@
             <div style="margin-left:auto;display:flex;gap:8px;align-items:center;">
                 <div class="dash-search">
                     <i class="bi bi-search"></i>
-                    <input type="text" id="userSearchInput" placeholder="Search name or email…" oninput="filterUsersTable(this.value)">
+                    <input type="text" id="userSearchInput" placeholder="Search name or email…" value="{{ $userSearch }}" oninput="filterUsersTable(this.value)" autocomplete="off">
                 </div>
-                <select class="form-fld" style="width:auto;padding:7px 10px;font-size:12px;" onchange="window.location.href='?sort='+this.value+'&role={{ $roleFilter }}&section=users'">
+                <select class="form-fld" style="width:auto;padding:7px 10px;font-size:12px;" onchange="saUsersGo({ sort: this.value })">
                     <option value="newest" {{ $sort==='newest'?'selected':'' }}>Newest</option>
                     <option value="oldest" {{ $sort==='oldest'?'selected':'' }}>Oldest</option>
                     <option value="name_asc" {{ $sort==='name_asc'?'selected':'' }}>A–Z</option>
@@ -1104,10 +1104,13 @@
             </div>
         </div>
 
-        <div class="content-card">
+        {{-- #usersListCard is replaced in place by filterUsersTable() when searching --}}
+        <div class="content-card" id="usersListCard">
             <div class="content-card-header">
                 <h6>All User Accounts</h6>
-                <span style="font-size:12px;color:var(--muted);" id="userCountLabel">{{ $userManagementUsers->total() }} account(s)</span>
+                <span style="font-size:12px;color:var(--muted);" id="userCountLabel">
+                    {{ $userManagementUsers->total() }} account(s){{ $userSearch !== '' ? ' matching "' . $userSearch . '"' : '' }}
+                </span>
             </div>
             <div style="overflow-x:auto;">
                 <table class="dash-table">
@@ -1176,6 +1179,14 @@
                             </td>
                         </tr>
                         @endforeach
+                        @if($users->isEmpty())
+                        <tr>
+                            <td colspan="6" style="text-align:center;padding:36px;color:var(--muted);font-size:13px;">
+                                <i class="bi bi-search" style="font-size:22px;display:block;margin-bottom:6px;"></i>
+                                {{ $userSearch !== '' ? 'No users match "' . $userSearch . '".' : 'No users found.' }}
+                            </td>
+                        </tr>
+                        @endif
                     </tbody>
                 </table>
 
@@ -1183,7 +1194,7 @@
                 @if($userManagementUsers->hasPages())
                 <div class="p-3 border-top" style="border-color:var(--border);">
                     <nav>
-                        {{ $userManagementUsers->appends(['sort' => $sort, 'role' => $roleFilter, 'section' => 'users'])->links() }}
+                        {{ $userManagementUsers->appends(['sort' => $sort, 'role' => $roleFilter, 'section' => 'users', 'user_search' => $userSearch !== '' ? $userSearch : null])->links() }}
                     </nav>
                     <div class="pagination-info">
                         Showing {{ $userManagementUsers->firstItem() }} to {{ $userManagementUsers->lastItem() }} of {{ $userManagementUsers->total() }} users
@@ -3594,19 +3605,60 @@
         setBtnLoading('btnResetPwd', false, '<i class="bi bi-key-fill"></i>Reset Password');
     }
 
-    // ── Client-side table search (users) ──────────────────────
-    function filterUsersTable(query) {
-        var q = (query || '').toLowerCase();
-        var rows = document.querySelectorAll('#section-users .dash-table tbody tr');
-        var shown = 0;
-        rows.forEach(function(row) {
-            var text = row.textContent.toLowerCase();
-            var match = !q || text.includes(q);
-            row.style.display = match ? '' : 'none';
-            if (match) shown++;
+    // ── User Management search (server-side, covers every page) ──
+    // Fetches this same page with ?user_search= and swaps in only
+    // #usersListCard, so the search box keeps focus while typing.
+    var _userSearchTimer = null, _userSearchCtrl = null;
+
+    function _usersUrl(changes) {
+        var url = new URL(window.location.href);
+        url.searchParams.set('section', 'users');
+        Object.keys(changes).forEach(function(k) {
+            if (changes[k] === '' || changes[k] === null) url.searchParams.delete(k);
+            else url.searchParams.set(k, changes[k]);
         });
-        var label = document.getElementById('userCountLabel');
-        if (label) label.textContent = shown + ' user(s)';
+        url.searchParams.delete('page'); // new search/sort starts at page 1
+        return url;
+    }
+
+    // Full navigation that keeps the current role, sort and search (used by the sort dropdown).
+    function saUsersGo(changes) {
+        var q = (document.getElementById('userSearchInput') || {}).value || '';
+        window.location.href = _usersUrl(Object.assign({ user_search: q.trim() }, changes)).toString();
+    }
+
+    function filterUsersTable(query) {
+        clearTimeout(_userSearchTimer);
+        _userSearchTimer = setTimeout(function() { _runUserSearch((query || '').trim()); }, 350);
+    }
+
+    async function _runUserSearch(q) {
+        var card = document.getElementById('usersListCard');
+        if (!card) return;
+        var url = _usersUrl({ user_search: q });
+        if (_userSearchCtrl) _userSearchCtrl.abort();
+        var ctrl = new AbortController();
+        _userSearchCtrl = ctrl;
+        card.style.opacity = '0.55';
+        try {
+            var r = await fetch(url.toString(), { headers: { 'Accept': 'text/html' }, signal: ctrl.signal });
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            var doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+            var fresh = doc.getElementById('usersListCard');
+            if (!fresh) throw new Error('missing list');
+            card.innerHTML = fresh.innerHTML;
+            history.replaceState(history.state, '', url.toString());
+            // Role tabs keep the search when switching role
+            document.querySelectorAll('.sa-user-role-tab').forEach(function(a) {
+                var u = new URL(a.href, window.location.href);
+                if (q) u.searchParams.set('user_search', q); else u.searchParams.delete('user_search');
+                a.href = u.toString();
+            });
+        } catch (e) {
+            if (e.name !== 'AbortError') saToast('error', 'Search failed. Please try again.');
+        } finally {
+            if (_userSearchCtrl === ctrl) card.style.opacity = ''; // a newer search owns the spinner state otherwise
+        }
     }
 
     // ── Logs filter ────────────────────────────────────────────

@@ -41,7 +41,16 @@ class SuperAdminController extends Controller
             default     => $usersQuery->orderByDesc('created_at'),
         };
 
-        $userManagementUsers = (clone $usersQuery)->paginate(15)->withQueryString();
+        // User Management search runs on the server so it covers every page,
+        // not just the 15 rows currently shown. Dashboard's list is unaffected.
+        $userSearch    = trim((string) $request->input('user_search', ''));
+        $userListQuery = clone $usersQuery;
+        if ($userSearch !== '') {
+            $like = '%' . addcslashes($userSearch, '%_\\') . '%';
+            $userListQuery->where(fn ($q) => $q->where('name', 'like', $like)->orWhere('email', 'like', $like));
+        }
+
+        $userManagementUsers = $userListQuery->paginate(15)->withQueryString();
         $dashboardUsers      = (clone $usersQuery)->paginate(10)->withQueryString();
         $users = $userManagementUsers;
 
@@ -74,7 +83,7 @@ class SuperAdminController extends Controller
 
         return view('superadmin_dashboard', compact(
             'users', 'dashboardUsers', 'userManagementUsers',
-            'stats', 'sort', 'roleFilter', 'logs', 'section', 'backups',
+            'stats', 'sort', 'roleFilter', 'userSearch', 'logs', 'section', 'backups',
             'announcements', 'newsArticles'
         ));
     }
