@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use App\Services\ActivityLogger;
+use App\Support\SecurityPolicy;
 
 class AuthController extends Controller
 {
@@ -55,19 +56,21 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        // Account lockout: block after 5 failed attempts for 15 minutes.
-        // Keyed by email only (not IP) — an IP-inclusive key lets an
-        // attacker rotate source IP for a fresh 5-attempt budget against
-        // the same target account every time.
+        // Account lockout after Settings > Security "Max Login Attempts" failures,
+        // for "Lockout Duration" minutes. Keyed by email only (not IP) — an
+        // IP-inclusive key lets an attacker rotate source IP for a fresh
+        // attempt budget against the same target account every time.
+        $maxAttempts = SecurityPolicy::maxLoginAttempts();
+        $lockMinutes = SecurityPolicy::lockoutMinutes();
         $lockKey    = 'login_attempts_' . md5($request->email);
         $unlockKey  = 'login_unlock_'   . md5($request->email);
         $attempts   = cache()->get($lockKey, 0);
 
-        if ($attempts >= 5) {
+        if ($attempts >= $maxAttempts) {
             $unlockAt   = cache()->get($unlockKey);
             $minsLeft   = ($unlockAt && $unlockAt > now())
                 ? max(1, (int) ceil(now()->diffInSeconds($unlockAt) / 60))
-                : 15;
+                : $lockMinutes;
             return back()
                 ->withErrors(['email' => "Too many failed login attempts. Please try again in {$minsLeft} minute(s)."])
                 ->withInput($request->only('email'));
@@ -75,14 +78,14 @@ class AuthController extends Controller
 
         if (! Auth::attempt($credentials, $request->boolean('remember'))) {
             $newAttempts = $attempts + 1;
-            $ttl         = now()->addMinutes(15);
+            $ttl         = now()->addMinutes($lockMinutes);
             cache()->put($lockKey, $newAttempts, $ttl);
 
-            if ($newAttempts >= 5) {
+            if ($newAttempts >= $maxAttempts) {
                 cache()->put($unlockKey, $ttl, $ttl);
-                $msg = 'Too many failed login attempts. Please try again in 15 minutes.';
+                $msg = "Too many failed login attempts. Please try again in {$lockMinutes} minute(s).";
             } else {
-                $remaining = 5 - $newAttempts;
+                $remaining = $maxAttempts - $newAttempts;
                 $msg = "Invalid email or password. {$remaining} attempt(s) remaining.";
             }
 

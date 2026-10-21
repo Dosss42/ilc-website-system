@@ -55,17 +55,18 @@ class CashierController extends Controller
             'password' => 'required',
         ]);
 
-        // Keyed by email only — an IP-inclusive key would let an attacker
-        // rotate source IP for a fresh 5-attempt budget every time.
+        // Limits come from Settings > Security. Keyed by email only — an
+        // IP-inclusive key would let an attacker rotate source IP for a
+        // fresh attempt budget every time.
         $lockKey   = 'cashier_login_' . md5($request->email);
         $unlockKey = 'cashier_unlock_' . md5($request->email);
         $attempts  = cache()->get($lockKey, 0);
 
-        if ($attempts >= 5) {
+        if ($attempts >= \App\Support\SecurityPolicy::maxLoginAttempts()) {
             $unlockAt = cache()->get($unlockKey);
             $mins = ($unlockAt && $unlockAt > now())
                 ? max(1, (int) ceil(now()->diffInSeconds($unlockAt) / 60))
-                : 15;
+                : \App\Support\SecurityPolicy::lockoutMinutes();
             return back()->withErrors(['email' => "Too many failed attempts. Try again in {$mins} minute(s)."])
                          ->withInput($request->except('password'));
         }
@@ -115,9 +116,9 @@ class CashierController extends Controller
     private function incrementAttempts(string $lockKey, string $unlockKey, int $current): void
     {
         $new = $current + 1;
-        $ttl = now()->addMinutes(15);
+        $ttl = now()->addMinutes(\App\Support\SecurityPolicy::lockoutMinutes());
         cache()->put($lockKey, $new, $ttl);
-        if ($new >= 5) {
+        if ($new >= \App\Support\SecurityPolicy::maxLoginAttempts()) {
             cache()->put($unlockKey, $ttl, $ttl);
         }
     }
@@ -128,7 +129,7 @@ class CashierController extends Controller
     {
         $request->validate([
             'current_password'      => 'required',
-            'new_password'          => 'required|string|min:8|confirmed',
+            'new_password'          => ['required', 'string', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
         ]);
 
         $user = Auth::guard('cashier')->user();

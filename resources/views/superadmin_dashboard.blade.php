@@ -6273,7 +6273,7 @@
             });
             var d = await r.json();
             if (d.success !== false) {
-                _sysMaintenanceOn = !_sysMaintenanceOn;
+                _sysMaintenanceOn = typeof d.maintenance_mode === 'boolean' ? d.maintenance_mode : !_sysMaintenanceOn;
                 updateMaintenanceToggleUI(_sysMaintenanceOn);
                 saToast('success', _sysMaintenanceOn ? 'Portal maintenance mode ENABLED.' : 'Portal maintenance mode DISABLED.');
             } else { saToast('error', d.message || 'Toggle failed.'); }
@@ -6303,7 +6303,7 @@
             });
             var d = await r.json();
             if (d.success !== false) {
-                _sysSiteMaintenanceOn = !_sysSiteMaintenanceOn;
+                _sysSiteMaintenanceOn = typeof d.site_maintenance_mode === 'boolean' ? d.site_maintenance_mode : !_sysSiteMaintenanceOn;
                 updateSiteMaintenanceToggleUI(_sysSiteMaintenanceOn);
                 saToast('success', _sysSiteMaintenanceOn ? 'Website maintenance mode ENABLED.' : 'Website maintenance mode DISABLED.');
             } else { saToast('error', d.message || 'Toggle failed.'); }

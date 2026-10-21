@@ -153,7 +153,7 @@ class SuperAdminController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
+            'password' => ['required', 'string', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
             'role' => 'required|in:superadmin,admin,finance,cashier,teacher,student',
             'is_active' => 'boolean',
         ]);
@@ -324,7 +324,7 @@ class SuperAdminController extends Controller
     public function resetPassword(Request $request, User $user)
     {
         $validated = $request->validate([
-            'password' => 'required|string|min:8|confirmed',
+            'password' => ['required', 'string', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
         ]);
 
         $user->update(['password' => Hash::make($validated['password'])]);
@@ -338,7 +338,7 @@ class SuperAdminController extends Controller
     {
         $request->validate([
             'current_password' => 'required',
-            'password'         => 'required|string|min:8|confirmed',
+            'password'         => ['required', 'string', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
         ]);
 
         $user = Auth::user();

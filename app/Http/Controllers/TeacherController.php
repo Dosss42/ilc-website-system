@@ -94,7 +94,7 @@ class TeacherController extends Controller
         $validated = $request->validate([
             'name'      => 'required|string|min:2|max:255',
             'email'     => 'required|email:rfc,dns|unique:users,email,' . $teacher->id . '|max:255',
-            'password'  => 'nullable|string|min:8',
+            'password'  => ['nullable', 'string', \Illuminate\Validation\Rules\Password::defaults()],
             'is_active' => 'boolean',
         ]);
 

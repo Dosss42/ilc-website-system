@@ -7,7 +7,9 @@ use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Validation\Rules\Password;
 use App\Mail\Transport\BrevoTransport;
+use App\Support\SecurityPolicy;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -47,5 +49,13 @@ class AppServiceProvider extends ServiceProvider
         Mail::extend('brevo', function (array $config) {
             return new BrevoTransport($config['key'] ?? config('services.brevo.key'));
         });
+
+        // Admin > Settings > Security: password rules and session timeout.
+        Password::defaults(fn () => SecurityPolicy::passwordRule());
+        try {
+            config(['session.lifetime' => SecurityPolicy::sessionMinutes()]);
+        } catch (\Throwable $e) {
+            // settings table not available yet (fresh install / migrations) — keep SESSION_LIFETIME
+        }
     }
 }

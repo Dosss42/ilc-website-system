@@ -22,8 +22,9 @@ trait BuildsSchoolPdf
             'schoolLogoBase64' => file_exists($logoPath)
                 ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
                 : null,
-            'schoolName'    => $settings['school_name'] ?? 'IEMELIF Learning Center',
-            'schoolAddress' => $settings['school_address'] ?? 'General Tinio, Nueva Ecija',
+            // ?: not ?? — a field cleared in Settings is saved as '' and should still fall back
+            'schoolName'    => ($settings['school_name'] ?? '') ?: 'IEMELIF Learning Center',
+            'schoolAddress' => ($settings['school_address'] ?? '') ?: 'General Tinio, Nueva Ecija',
             'generatedBy'   => $generatedByName ?? 'Staff',
             'generatedAt'   => now(),
         ];

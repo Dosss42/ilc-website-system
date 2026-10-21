@@ -133,12 +133,17 @@
                 <img src="data:image/png;base64,{{ base64_encode(file_get_contents($logoPath)) }}" alt="ILC">
                 @endif
             </td>
+            @php
+                // Admin > Settings > School Info
+                $sfSchoolName    = \App\Models\Setting::get('school_name') ?: 'IEMELIF Learning Center';
+                $sfSchoolAddress = \App\Models\Setting::get('school_address') ?: 'General Tinio, Nueva Ecija';
+            @endphp
             <td class="header-center">
                 <div class="republic">Republic of the Philippines</div>
                 <div class="deped">Department of Education</div>
                 <div style="font-size:7.5pt;">Region III — Central Luzon | Schools Division of Nueva Ecija</div>
-                <div class="school">IEMELIF Learning Center</div>
-                <div class="address">General Tinio, Nueva Ecija</div>
+                <div class="school">{{ $sfSchoolName }}</div>
+                <div class="address">{{ $sfSchoolAddress }}</div>
             </td>
             <td class="header-right">
                 <div style="width:50px;height:50px;border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:6pt;color:#999;text-align:center;">DepEd Logo</div>
@@ -240,7 +245,7 @@
         </tr>
     </table>
 
-    <div class="footer-note">This is a system-generated report. IEMELIF Learning Center — General Tinio, Nueva Ecija.</div>
+    <div class="footer-note">This is a system-generated report. {{ $sfSchoolName }} — {{ $sfSchoolAddress }}.</div>
 
 </div>
 </body>

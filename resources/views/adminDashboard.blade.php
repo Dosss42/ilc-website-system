@@ -12514,6 +12514,12 @@ function openWalkInEnrollmentModal() {
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
     function saveSettings(group) {
+        // Saving sends every field on the tab, so an unloaded (empty) form would blank the stored values.
+        if (!_settingsReady) {
+            showAdminToast('Settings are still loading. Please wait a moment and try again.', 'error');
+            if (!_settingsLoading) initSettings();
+            return;
+        }
         var settings = [];
         document.querySelectorAll('#tab-' + group + ' [id^="set-"]').forEach(function(el) {
             var key = el.id.replace('set-', '');
@@ -12534,30 +12540,34 @@ function openWalkInEnrollmentModal() {
         .catch(() => showAdminToast('Network error saving settings.', 'error'));
     }
 
-    function loadSettingsGroup(group) {
-        fetch('/admin/settings/' + group, { headers: { 'Accept': 'application/json' } })
+    // Loads every stored setting (all groups) into the matching set-<key> fields.
+    // Called by showSection('settings') through its initSettings() hook, and on
+    // DOMContentLoaded for a page that was refreshed while already on Settings
+    // (that first showSection() runs before this script has defined initSettings).
+    var _settingsReady = false, _settingsLoading = false;
+    function initSettings() {
+        if (_settingsReady || _settingsLoading) return;
+        _settingsLoading = true;
+        fetch('/admin/settings', { headers: { 'Accept': 'application/json' } })
         .then(r => r.json())
         .then(d => {
-            if (!d.success) return;
-            (d.settings || []).forEach(function(s) {
-                var el = document.getElementById('set-' + s.key);
-                if (el) el.value = s.value ?? '';
+            if (!d.success) throw new Error(d.message || 'load failed');
+            Object.values(d.settings || {}).forEach(function(group) {
+                (Array.isArray(group) ? group : Object.values(group)).forEach(function(s) {
+                    var el = s && s.key ? document.getElementById('set-' + s.key) : null;
+                    if (el) el.value = s.value ?? '';
+                });
             });
-        });
+            _settingsReady = true;
+        })
+        .catch(() => showAdminToast('Could not load settings. Refresh the page before saving.', 'error'))
+        .finally(() => { _settingsLoading = false; });
     }
-
-    // Auto-load all settings groups when Settings section is opened
-    var _settingsLoaded = false;
-    (function() {
-        var origShowSection = window.showSection;
-        window.showSection = function(section) {
-            if (origShowSection) origShowSection(section);
-            if (section === 'settings' && !_settingsLoaded) {
-                _settingsLoaded = true;
-                ['school','academic','security'].forEach(loadSettingsGroup);
-            }
-        };
-    })();
+    window.initSettings = initSettings;
+    document.addEventListener('DOMContentLoaded', function() {
+        var sec = document.getElementById('section-settings');
+        if (sec && sec.classList.contains('section-active')) initSettings();
+    });
 
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // CHANGE STATUS MODAL

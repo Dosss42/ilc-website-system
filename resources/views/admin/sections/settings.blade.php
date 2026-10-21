@@ -66,14 +66,6 @@
                                 <label class="form-lbl">School Name</label>
                                 <input type="text" id="set-school_name" class="form-fld" placeholder="Enter school name">
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-lbl">Principal / Director Name</label>
-                                <input type="text" id="set-principal_name" class="form-fld" placeholder="Enter principal name">
-                            </div>
-                            <div class="col-md-12">
-                                <label class="form-lbl">School Motto / Vision</label>
-                                <input type="text" id="set-school_motto" class="form-fld" placeholder="Enter school motto or vision statement">
-                            </div>
                         </div>
                         <div class="stg-section-label">Contact &amp; Location</div>
                         <div class="row g-3">
@@ -98,23 +90,6 @@
                                 <small class="text-muted" style="font-size:11px;">Path to logo image in the public folder</small>
                             </div>
                         </div>
-                        <div class="stg-section-label">GCash Payment Details</div>
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <label class="form-lbl">GCash Number</label>
-                                <input type="text" id="set-gcash_number" class="form-fld" placeholder="e.g. 0917 123 4567">
-                                <small class="text-muted" style="font-size:11px;">Shown to students when paying via GCash</small>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-lbl">GCash Account Name</label>
-                                <input type="text" id="set-gcash_account_name" class="form-fld" placeholder="e.g. IEMELIF Learning Center">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-lbl">GCash QR Code Path</label>
-                                <input type="text" id="set-gcash_qr_path" class="form-fld" placeholder="qrcodes/gcash.png">
-                                <small class="text-muted" style="font-size:11px;">Relative path inside <code>storage/</code></small>
-                            </div>
-                        </div>
                         <div class="mt-4">
                             <button class="btn-dash btn-primary" onclick="saveSettings('school')">
                                 <i class="bi bi-floppy-fill me-1"></i> Save School Information
@@ -128,7 +103,7 @@
                     <div class="content-card-header" style="border-left:4px solid #f59e0b;padding-left:16px;">
                         <div>
                             <h6 style="margin:0;"><i class="bi bi-mortarboard me-2" style="color:#f59e0b;"></i>Academic Settings</h6>
-                            <div style="font-size:11px;color:var(--muted);margin-top:2px;">Configure grading system and academic year</div>
+                            <div style="font-size:11px;color:var(--muted);margin-top:2px;">Configure the school year and enrollment</div>
                         </div>
                     </div>
                     <div class="p-4">
@@ -154,21 +129,21 @@
                         </div>
                         <div class="stg-section-label">System Controls</div>
                         <div class="row g-3">
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <label class="form-lbl">Total Terms</label>
                                 <select id="set-total_terms" class="form-fld">
                                     <option value="3" selected>3 Terms</option>
                                     <option value="4">4 Quarters</option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <label class="form-lbl">Enrollment Status</label>
                                 <select id="set-enrollment_open" class="form-fld">
                                     <option value="1">Open</option>
                                     <option value="0">Closed</option>
                                 </select>
                             </div>
-                            <div class="col-md-3">
+                            <div class="col-md-4">
                                 <label class="form-lbl">Enrollment Target School Year</label>
                                 @php
                                     $baseY = (int) substr(\App\Models\Setting::getCurrentSchoolYear(), 0, 4);
@@ -184,43 +159,6 @@
                                     @endforeach
                                 </select>
                                 <small class="text-muted" style="font-size:11px;">The year students are enrolling INTO. Used for re-enrollment.</small>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-lbl">Maintenance Mode</label>
-                                <select id="set-maintenance_mode" class="form-fld" onchange="toggleMaintenanceMode()">
-                                    <option value="0" {{ !($maintenanceMode ?? false) ? 'selected' : '' }}>Off — Portals accessible</option>
-                                    <option value="1" {{ ($maintenanceMode ?? false) ? 'selected' : '' }}>On — Portals blocked</option>
-                                </select>
-                                <small class="text-muted" style="font-size:11px;">Blocks student &amp; teacher portals. Admins always have access.</small>
-                            </div>
-                        </div>
-                        <div class="stg-section-label">Grading</div>
-                        <div class="row g-3">
-                            <div class="col-md-3">
-                                <label class="form-lbl">Passing Grade</label>
-                                <input type="number" id="set-passing_grade" class="form-fld" min="0" max="100" placeholder="75">
-                            </div>
-                            <div class="col-md-3">
-                                <label class="form-lbl">Grade Scale Maximum</label>
-                                <input type="number" id="set-grade_scale_max" class="form-fld" min="0" max="100" placeholder="100">
-                            </div>
-                        </div>
-                        <div class="stg-section-label">Grade Component Weights</div>
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <label class="form-lbl">Written Works (%)</label>
-                                <input type="number" id="set-ww_weight" class="form-fld" min="0" max="100" placeholder="30">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-lbl">Performance Task (%)</label>
-                                <input type="number" id="set-pt_weight" class="form-fld" min="0" max="100" placeholder="50">
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-lbl">Assessment (%)</label>
-                                <input type="number" id="set-qa_weight" class="form-fld" min="0" max="100" placeholder="20">
-                            </div>
-                            <div class="col-12">
-                                <div id="weight-total" class="small text-muted">Total: 100%</div>
                             </div>
                         </div>
                         <div class="mt-4">

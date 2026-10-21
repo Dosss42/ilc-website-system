@@ -45,18 +45,18 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        // Rate limiting: block after 5 failed attempts for 15 minutes.
+        // Rate limiting per Settings > Security (max attempts / lockout minutes).
         // Keyed by email only — an IP-inclusive key would let an attacker
-        // rotate source IP for a fresh 5-attempt budget every time.
+        // rotate source IP for a fresh attempt budget every time.
         $lockKey   = 'finance_login_attempts_' . md5($request->email);
         $unlockKey = 'finance_login_unlock_'   . md5($request->email);
         $attempts  = cache()->get($lockKey, 0);
 
-        if ($attempts >= 5) {
+        if ($attempts >= \App\Support\SecurityPolicy::maxLoginAttempts()) {
             $unlockAt = cache()->get($unlockKey);
             $minsLeft = ($unlockAt && $unlockAt > now())
                 ? max(1, (int) ceil(now()->diffInSeconds($unlockAt) / 60))
-                : 15;
+                : \App\Support\SecurityPolicy::lockoutMinutes();
             return back()->withErrors([
                 'email' => "Too many failed login attempts. Please try again in {$minsLeft} minute(s).",
             ])->withInput($request->except('password'));
@@ -137,9 +137,9 @@ class AuthController extends Controller
     private function incrementLoginAttempts(string $lockKey, string $unlockKey, int $current): void
     {
         $newAttempts = $current + 1;
-        $ttl         = now()->addMinutes(15);
+        $ttl         = now()->addMinutes(\App\Support\SecurityPolicy::lockoutMinutes());
         cache()->put($lockKey, $newAttempts, $ttl);
-        if ($newAttempts >= 5) {
+        if ($newAttempts >= \App\Support\SecurityPolicy::maxLoginAttempts()) {
             cache()->put($unlockKey, $ttl, $ttl);
         }
     }
@@ -161,7 +161,7 @@ class AuthController extends Controller
     {
         $request->validate([
             'current_password' => 'required',
-            'new_password' => 'required|string|min:8|confirmed',
+            'new_password' => ['required', 'string', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
         ]);
 
         $user = Auth::guard('finance')->user();
@@ -217,7 +217,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:8',
+            'password' => ['required', 'string', \Illuminate\Validation\Rules\Password::defaults()],
             'phone' => 'nullable|string|max:20',
         ]);
 
