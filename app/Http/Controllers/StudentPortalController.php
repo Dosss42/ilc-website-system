@@ -1153,6 +1153,12 @@ class StudentPortalController extends Controller
     public function changeSection(Request $request)
     {
         $user = Auth::user();
+
+        // Section changes follow the admin's enrollment switch, same as re-enrollment.
+        if (!Setting::get('enrollment_open', true)) {
+            return response()->json(['success' => false, 'message' => 'Section changes are closed because enrollment is currently closed.'], 403);
+        }
+
         $validated = $request->validate([
             'section_id' => 'required|exists:sections,id',
         ]);

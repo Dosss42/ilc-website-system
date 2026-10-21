@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Student Portal — ILC</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
@@ -2555,9 +2556,15 @@
                             {{ ucfirst($enrollment->status) }}
                         </span>
                         @if($enrollment->status === 'enrolled' && $availableSections->count() > 1)
-                        <button type="button" class="btn-dash" style="padding:5px 14px; font-size:12px; background:#f0f4ff; color:var(--blue); border:1px solid #c8d6f0; border-radius:8px;" onclick="openChangeSectionModal()">
-                            <i class="bi bi-arrow-left-right me-1"></i>Change Section
-                        </button>
+                            @if($enrollmentWindowOpen)
+                            <button type="button" class="btn-dash" style="padding:5px 14px; font-size:12px; background:#f0f4ff; color:var(--blue); border:1px solid #c8d6f0; border-radius:8px;" onclick="openChangeSectionModal()">
+                                <i class="bi bi-arrow-left-right me-1"></i>Change Section
+                            </button>
+                            @else
+                            <button type="button" class="btn-dash" disabled title="Section changes are only allowed while enrollment is open." style="padding:5px 14px; font-size:12px; background:#f3f4f6; color:#9ca3af; border:1px solid #e5e7eb; border-radius:8px; cursor:not-allowed;">
+                                <i class="bi bi-lock-fill me-1"></i>Change Section
+                            </button>
+                            @endif
                         @endif
                         <button onclick="showSection('payment')" style="padding:5px 14px;font-size:12px;background:var(--blue);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;">
                             <i class="bi bi-credit-card me-1"></i>Go to Payment
@@ -3632,7 +3639,7 @@
 </div>
 
 {{-- Change Section Modal --}}
-@if(isset($availableSections) && $availableSections->count() > 1 && $enrollment && $enrollment->status === 'enrolled')
+@if(isset($availableSections) && $availableSections->count() > 1 && $enrollment && $enrollment->status === 'enrolled' && $enrollmentWindowOpen)
 <div class="modal fade" id="changeSectionModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius:16px; border:none; overflow:hidden;">
