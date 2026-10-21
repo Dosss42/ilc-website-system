@@ -2038,13 +2038,24 @@
                 <div class="card-box-title"><i class="bi bi-person-lines-fill" style="color:#2471a3;"></i> Profile Information</div>
             </div>
             <div class="card-box-body">
+                @if(session('profile_success'))
+                    <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#16a34a;display:flex;align-items:center;gap:8px;">
+                        <i class="bi bi-check-circle-fill"></i> {{ session('profile_success') }}
+                    </div>
+                @endif
+                <form method="POST" action="{{ route('cashier.profile.update') }}">
+                @csrf
+                @method('PUT')
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <label class="form-lbl">Full Name</label>
+                        <label class="form-lbl">Full Name <span style="color:#dc2626;">*</span></label>
                         <div class="input-icon-wrap">
                             <i class="bi bi-person"></i>
-                            <input type="text" class="form-fld has-icon" value="{{ auth('cashier')->user()->name }}" readonly style="background:#f1f5f9;color:#64748b;">
+                            <input type="text" name="name" class="form-fld has-icon" value="{{ old('name', auth('cashier')->user()->name) }}" required minlength="2" maxlength="255">
                         </div>
+                        @error('name')
+                            <div style="font-size:12px;color:#dc2626;margin-top:4px;">{{ $message }}</div>
+                        @enderror
                     </div>
                     <div class="col-md-6">
                         <label class="form-lbl">Email</label>
@@ -2061,6 +2072,11 @@
                         </div>
                     </div>
                 </div>
+                <div style="font-size:11.5px;color:#94a3b8;margin-top:8px;">Email and role can only be changed by an administrator.</div>
+                <button type="submit" class="btn-primary-cash" style="margin-top:16px;">
+                    <i class="bi bi-check-lg"></i> Save Changes
+                </button>
+                </form>
             </div>
         </div>
 

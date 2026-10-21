@@ -145,6 +145,25 @@ class CashierController extends Controller
         return back()->with('password_success', 'Password changed successfully!');
     }
 
+    // ── Update Profile (name) ─────────────────────────
+
+    public function updateProfile(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|min:2|max:255',
+        ]);
+
+        $user    = Auth::guard('cashier')->user();
+        $oldName = $user->name;
+        $user->update(['name' => $validated['name']]);
+
+        if ($oldName !== $user->name) {
+            ActivityLogger::log('update', "{$oldName} changed their name to {$user->name}", 'User', $user->id);
+        }
+
+        return back()->with('profile_success', 'Profile updated successfully!');
+    }
+
     // ── Dashboard ─────────────────────────────────────
 
     public function dashboard()

@@ -194,12 +194,18 @@ class AuthController extends Controller
     {
         $user = Auth::guard('finance')->user();
 
+        // Only the name is editable — users has no phone column, so the old
+        // Phone field here was silently discarded on every save.
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'phone' => 'nullable|string|max:20',
+            'name' => 'required|string|min:2|max:255',
         ]);
 
-        $user->update($validated);
+        $oldName = $user->name;
+        $user->update(['name' => $validated['name']]);
+
+        if ($oldName !== $user->name) {
+            \App\Services\ActivityLogger::log('update', "{$oldName} changed their name to {$user->name}", 'User', $user->id);
+        }
 
         return back()->with('success', 'Profile updated successfully!');
     }

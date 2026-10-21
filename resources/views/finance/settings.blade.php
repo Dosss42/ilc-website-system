@@ -290,7 +290,7 @@
     <div class="card-header">
         <div>
             <h3 class="card-title"><i class="bi bi-person-lines-fill" style="color: var(--gold);"></i> Profile Information</h3>
-            <div class="card-sub">Update your name and contact number.</div>
+            <div class="card-sub">Update the name shown on your account and on records you process.</div>
         </div>
     </div>
     <div class="card-body">
@@ -304,8 +304,11 @@
                         <label class="form-label">Full Name</label>
                         <div class="input-icon-wrap">
                             <i class="bi bi-person"></i>
-                            <input type="text" name="name" class="form-control" value="{{ $user->name }}" required>
+                            <input type="text" name="name" class="form-control @error('name') is-invalid @enderror" value="{{ old('name', $user->name) }}" required minlength="2" maxlength="255">
                         </div>
+                        @error('name')
+                            <div class="invalid-feedback" style="display:block;">{{ $message }}</div>
+                        @enderror
                     </div>
                 </div>
                 <div class="col-md-6">
@@ -321,15 +324,6 @@
             </div>
 
             <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group" style="margin-bottom:0;">
-                        <label class="form-label">Phone Number</label>
-                        <div class="input-icon-wrap">
-                            <i class="bi bi-telephone"></i>
-                            <input type="text" name="phone" class="form-control" value="{{ $user->phone ?? '' }}" placeholder="Not set">
-                        </div>
-                    </div>
-                </div>
                 <div class="col-md-6">
                     <div class="form-group" style="margin-bottom:0;">
                         <label class="form-label">Role</label>

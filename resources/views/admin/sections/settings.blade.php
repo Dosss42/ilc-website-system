@@ -266,11 +266,26 @@
                                         </div>
                                         <button type="submit" id="admin-photo-submit" style="display:none;"></button>
                                     </form>
-                                    <div style="display:flex;flex-direction:column;gap:0;">
-                                        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f5f5f5;">
-                                            <span style="font-size:12px;color:var(--muted);font-weight:500;">Full Name</span>
-                                            <span style="font-size:12px;font-weight:600;color:var(--text);">{{ Auth::user()->name }}</span>
+                                    {{-- Editable name (errors use the "profile" bag, see Admin\DashboardController::updateProfile) --}}
+                                    <form method="POST" action="{{ route('admin.settings.profile') }}" style="margin-bottom:8px;">
+                                        @csrf
+                                        @method('PUT')
+                                        @if(session('profile_success'))
+                                            <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#2e7d32;display:flex;align-items:center;gap:8px;">
+                                                <i class="bi bi-check-circle-fill"></i> {{ session('profile_success') }}
+                                            </div>
+                                        @endif
+                                        <label class="form-lbl" for="admin-own-name">Full Name</label>
+                                        <div style="display:flex;gap:8px;">
+                                            <input type="text" name="name" id="admin-own-name" class="form-fld" required minlength="2" maxlength="255"
+                                                   value="{{ $errors->profile->any() ? old('name') : Auth::user()->name }}">
+                                            <button type="submit" class="btn-dash btn-primary" style="white-space:nowrap;"><i class="bi bi-check-lg"></i> Save</button>
                                         </div>
+                                        @if($errors->profile->has('name'))
+                                            <div style="font-size:12px;color:#c0392b;margin-top:4px;">{{ $errors->profile->first('name') }}</div>
+                                        @endif
+                                    </form>
+                                    <div style="display:flex;flex-direction:column;gap:0;">
                                         <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid #f5f5f5;">
                                             <span style="font-size:12px;color:var(--muted);font-weight:500;">Email</span>
                                             <span style="font-size:12px;font-weight:600;color:var(--text);">{{ Auth::user()->email }}</span>

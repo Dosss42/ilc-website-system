@@ -2031,11 +2031,27 @@
                             <button type="submit" id="sa-photo-submit" style="display:none;"></button>
                         </form>
 
-                        <div style="border-top:1px solid var(--border);padding-top:16px;display:flex;flex-direction:column;gap:0;">
-                            <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0f0;">
-                                <span style="font-size:12px;color:var(--muted);">Full Name</span>
-                                <span style="font-size:12px;font-weight:600;">{{ Auth::user()->name }}</span>
+                        {{-- Editable name (errors use the "profile" bag, see SuperAdminController::updateProfile) --}}
+                        <form method="POST" action="{{ route('superadmin.settings.profile') }}" style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:6px;">
+                            @csrf
+                            @method('PUT')
+                            @if(session('profile_success'))
+                                <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#2e7d32;display:flex;align-items:center;gap:8px;">
+                                    <i class="bi bi-check-circle-fill"></i> {{ session('profile_success') }}
+                                </div>
+                            @endif
+                            <label class="form-lbl" for="sa-own-name">Full Name</label>
+                            <div style="display:flex;gap:8px;">
+                                <input type="text" name="name" id="sa-own-name" class="form-fld" required minlength="2" maxlength="255"
+                                       value="{{ $errors->profile->any() ? old('name') : Auth::user()->name }}">
+                                <button type="submit" class="btn-dash btn-primary" style="white-space:nowrap;"><i class="bi bi-check-lg"></i> Save</button>
                             </div>
+                            @if($errors->profile->has('name'))
+                                <div style="font-size:12px;color:#c0392b;margin-top:4px;">{{ $errors->profile->first('name') }}</div>
+                            @endif
+                        </form>
+
+                        <div style="display:flex;flex-direction:column;gap:0;">
                             <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0f0;">
                                 <span style="font-size:12px;color:var(--muted);">Email</span>
                                 <span style="font-size:12px;font-weight:600;">{{ Auth::user()->email }}</span>
@@ -3122,7 +3138,7 @@
 
     // On page load, show section from URL parameter (preserves section across pagination/filtering)
     document.addEventListener('DOMContentLoaded', function() {
-        @if(session('settings_tab') || session('photo_success') || session('password_success') || $errors->has('current_password'))
+        @if(session('settings_tab') || session('photo_success') || session('password_success') || $errors->has('current_password') || $errors->profile->any())
         showSection('settings');
         @else
         // Priority: explicit ?section= in the URL (e.g. a filter/sort reload),

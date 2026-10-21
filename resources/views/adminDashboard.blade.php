@@ -11890,7 +11890,7 @@ function openWalkInEnrollmentModal() {
     }
 
     // Auto-redirect to settings Account tab after photo/password update
-    @if(session('settings_tab') || session('photo_success') || session('password_success') || $errors->has('current_password'))
+    @if(session('settings_tab') || session('photo_success') || session('password_success') || $errors->has('current_password') || $errors->profile->any())
     document.addEventListener('DOMContentLoaded', function() {
         showSection('settings');
         showSettingsTab('account');

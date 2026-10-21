@@ -34,6 +34,25 @@ class DashboardController extends Controller
                      ->with('settings_tab', 'account');
     }
 
+    public function updateProfile(Request $request)
+    {
+        // Own error bag so this can't collide with any other form's "name" field on the dashboard
+        $validated = $request->validateWithBag('profile', [
+            'name' => 'required|string|min:2|max:255',
+        ]);
+
+        $user    = Auth::user();
+        $oldName = $user->name;
+        $user->update(['name' => $validated['name']]);
+
+        if ($oldName !== $user->name) {
+            ActivityLogger::log('update', "{$oldName} changed their name to {$user->name}", 'User', $user->id);
+        }
+
+        return back()->with('profile_success', 'Name updated successfully.')
+                     ->with('settings_tab', 'account');
+    }
+
     public function updatePhoto(Request $request)
     {
         $request->validate([

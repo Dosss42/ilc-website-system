@@ -277,6 +277,7 @@ Route::middleware(['auth', 'superadmin'])->prefix('superadmin')->name('superadmi
     // Settings
     Route::put('/settings/password', [SuperAdminController::class, 'updatePassword'])->name('settings.password');
     Route::post('/settings/photo',   [SuperAdminController::class, 'updatePhoto'])->name('settings.photo');
+    Route::put('/settings/profile',  [SuperAdminController::class, 'updateProfile'])->name('settings.profile');
 
     // Announcements
     Route::post('/announcements',                        [SuperAdminController::class, 'storeAnnouncement'])->name('announcements.store');
@@ -529,6 +530,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Settings — account
     Route::put('/settings/password', [\App\Http\Controllers\Admin\DashboardController::class, 'updatePassword'])->name('settings.password');
     Route::post('/settings/photo',   [\App\Http\Controllers\Admin\DashboardController::class, 'updatePhoto'])->name('settings.photo');
+    Route::put('/settings/profile',  [\App\Http\Controllers\Admin\DashboardController::class, 'updateProfile'])->name('settings.profile');
 });
 
 // ─────────────────────────────────────────
@@ -710,6 +712,7 @@ Route::prefix('cashier')->name('cashier.')->group(function () {
         Route::post('/payment/xendit-link', [\App\Http\Controllers\CashierController::class, 'generateXenditLink'])->name('payment.xendit-link');
         Route::get('/payment/xendit-status', [\App\Http\Controllers\CashierController::class, 'checkXenditStatus'])->name('payment.xendit-status');
         Route::post('/change-password', [\App\Http\Controllers\CashierController::class, 'changePassword'])->name('change-password');
+        Route::put('/profile', [\App\Http\Controllers\CashierController::class, 'updateProfile'])->name('profile.update');
     });
 });
 
