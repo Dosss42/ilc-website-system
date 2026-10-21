@@ -487,19 +487,10 @@ function showInstallmentModal(btn) {
                     <div><strong>Amount Paid:</strong> <span style="color:#16a34a;font-weight:700;">${fmt(totalPaid)}</span></div>
                 </div>
             </div>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;text-align:center;">
-                <div style="background:#e3f2fd;padding:14px;border-radius:10px;">
-                    <div style="font-size:11px;color:#666;">Total Fee</div>
-                    <div style="font-weight:700;color:var(--blue);font-size:16px;">${fmt(totalFee)}</div>
-                </div>
-                <div style="background:#e8f5e9;padding:14px;border-radius:10px;">
-                    <div style="font-size:11px;color:#666;">Paid</div>
-                    <div style="font-weight:700;color:#16a34a;font-size:16px;">${fmt(totalPaid)}</div>
-                </div>
-                <div style="background:${balance <= 0 ? '#e8f5e9' : '#fff3e0'};padding:14px;border-radius:10px;">
-                    <div style="font-size:11px;color:#666;">Balance</div>
-                    <div style="font-weight:700;color:${balance <= 0 ? '#16a34a' : '#e65100'};font-size:16px;">${balance <= 0 ? 'Fully Paid' : fmt(balance)}</div>
-                </div>
+            <div class="sum-strip">
+                <div class="sum-cell"><div class="sum-label">Total Fee</div><div class="sum-value">${fmt(totalFee)}</div></div>
+                <div class="sum-cell"><div class="sum-label">Paid</div><div class="sum-value paid">${fmt(totalPaid)}</div></div>
+                <div class="sum-cell"><div class="sum-label">Balance</div><div class="sum-value ${balance <= 0 ? 'paid' : 'due'}">${balance <= 0 ? 'Fully Paid' : fmt(balance)}</div></div>
             </div>
             <div style="margin-bottom:16px;">
                 <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;">
@@ -552,23 +543,11 @@ function showInstallmentModal(btn) {
                     <div><strong>Total Fee:</strong> ${fmt(totalFee)}</div>
                 </div>
             </div>
-            <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px; text-align:center;">
-                <div style="background:#e3f2fd; padding:10px; border-radius:8px;">
-                    <div style="font-size:11px; color:#666;">Total Fee</div>
-                    <div style="font-weight:700; color:var(--blue);">${fmt(totalFee)}</div>
-                </div>
-                <div style="background:#e8f5e9; padding:10px; border-radius:8px;">
-                    <div style="font-size:11px; color:#666;">Amount Paid</div>
-                    <div style="font-weight:700; color:var(--green);">${fmt(totalPaid)}</div>
-                </div>
-                <div style="background:#fff3e0; padding:10px; border-radius:8px;">
-                    <div style="font-size:11px; color:#666;">Balance</div>
-                    <div style="font-weight:700; color:#e65100;">${fmt(Math.max(0, totalFee - totalPaid))}</div>
-                </div>
-                <div style="background:#f3e5f5; padding:10px; border-radius:8px;">
-                    <div style="font-size:11px; color:#666;">Monthly</div>
-                    <div style="font-weight:700; color:#6a1b9a;">${fmt(monthly)}</div>
-                </div>
+            <div class="sum-strip">
+                <div class="sum-cell"><div class="sum-label">Total Fee</div><div class="sum-value">${fmt(totalFee)}</div></div>
+                <div class="sum-cell"><div class="sum-label">Amount Paid</div><div class="sum-value paid">${fmt(totalPaid)}</div></div>
+                <div class="sum-cell"><div class="sum-label">Balance</div><div class="sum-value ${totalFee - totalPaid > 0 ? 'due' : 'paid'}">${fmt(Math.max(0, totalFee - totalPaid))}</div></div>
+                <div class="sum-cell"><div class="sum-label">Monthly</div><div class="sum-value">${fmt(monthly)}</div></div>
             </div>
             <h6 style="font-weight:600; color:var(--blue); margin-bottom:12px;">
                 <i class="bi bi-list-check me-2"></i>Monthly Installment Schedule

@@ -470,6 +470,39 @@
         /* ── Upload Submitted Card ── */
         .doc-uploaded-list { display: flex; flex-direction: column; gap: 8px; }
 
+        /* Summary strip: one bordered panel split by thin dividers (Payment Status / Payment Summary) */
+        .sum-strip { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 1px; background: #e5e7eb; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
+        .sum-cell { background: #fff; padding: 12px 16px; min-width: 0; }
+        .sum-label { font-size: 10.5px; font-weight: 600; letter-spacing: .5px; text-transform: uppercase; color: #6b7280; margin-bottom: 3px; }
+        .sum-value { font-size: 17px; font-weight: 700; color: #1f2937; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sum-value.paid { color: #15803d; }
+        .sum-value.due { color: #b45309; }
+        .sum-value.late { color: #b91c1c; }
+        @media (max-width: 576px) { .sum-strip { grid-auto-flow: row; grid-template-columns: 1fr 1fr; } }
+
+        /* Locked payment plan card (Payment → Make Payment, once a plan is chosen) */
+        .plan-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px; }
+        .plan-card-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+        .plan-card-ico { width: 40px; height: 40px; border-radius: 10px; background: #eef2f7; color: var(--blue); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+        .plan-card-title { font-size: 16px; font-weight: 700; color: #1f2937; line-height: 1.3; }
+        .plan-card-sub { font-size: 12.5px; color: #6b7280; }
+        .plan-badge { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; white-space: nowrap; }
+        .plan-badge.ok { background: #f0fdf4; color: #15803d; border-color: #bbf7d0; }
+        .plan-badge.warn { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+        .plan-note { font-size: 12.5px; color: #6b7280; margin-top: 10px; }
+        .plan-breakdown { margin-top: 14px; }
+        .plan-breakdown summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--blue); list-style: none; display: inline-flex; align-items: center; gap: 6px; }
+        .plan-breakdown summary::-webkit-details-marker { display: none; }
+        .plan-breakdown summary i { transition: transform .2s; }
+        .plan-breakdown[open] summary i { transform: rotate(180deg); }
+        .plan-breakdown-body { margin-top: 10px; font-size: 13px; color: #374151; background: #f9fafb; border: 1px solid #f0f0f0; border-radius: 8px; padding: 14px 16px; }
+        .plan-action { margin-top: 16px; }
+        .plan-pay-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; border: none; border-radius: 10px; background: var(--blue); color: #fff; font-weight: 600; font-size: 15px; cursor: pointer; transition: filter .15s; }
+        .plan-pay-btn:hover { filter: brightness(1.15); }
+        .plan-link-btn { background: none; border: 1px solid #d1d5db; color: #374151; border-radius: 8px; padding: 7px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+        .plan-link-btn:hover { border-color: var(--blue); color: var(--blue); }
+        .plan-pending { background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 12px 14px; font-size: 13px; color: #92400e; text-align: center; }
+
         /* Form fields (Settings → Change Password, OTP). Defined only in adminDashboard.css before, which this page never loads. */
         .dash-form-label {
             display: block; margin-bottom: 6px;
@@ -1409,11 +1442,11 @@
                     $balance  = $enrollment->remaining_balance ?? max(0,$totalFee-$amtPaid);
                     $payPct   = $totalFee > 0 ? min(100,round($amtPaid/$totalFee*100)) : 0;
                 @endphp
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px;">
-                    <div style="background:#e3f2fd;border-radius:10px;padding:16px;text-align:center;"><div style="font-size:10px;color:#1565c0;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Total Fee</div><div style="font-size:18px;font-weight:700;color:#1565c0;">₱{{ number_format($totalFee,2) }}</div></div>
-                    <div style="background:#e8f5e9;border-radius:10px;padding:16px;text-align:center;"><div style="font-size:10px;color:#2e7d32;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Amount Paid</div><div style="font-size:18px;font-weight:700;color:#2e7d32;">₱{{ number_format($amtPaid,2) }}</div></div>
-                    <div style="background:{{ $balance>0?'#fff3e0':'#e8f5e9' }};border-radius:10px;padding:16px;text-align:center;"><div style="font-size:10px;color:{{ $balance>0?'#e65100':'#2e7d32' }};font-weight:700;text-transform:uppercase;margin-bottom:4px;">Balance</div><div style="font-size:18px;font-weight:700;color:{{ $balance>0?'#e65100':'#2e7d32' }};">₱{{ number_format($balance,2) }}</div></div>
-                    <div style="background:#f3e5f5;border-radius:10px;padding:16px;text-align:center;"><div style="font-size:10px;color:#6a1b9a;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Progress</div><div style="font-size:18px;font-weight:700;color:#6a1b9a;">{{ $payPct }}%</div></div>
+                <div class="sum-strip" style="margin-bottom:20px;">
+                    <div class="sum-cell"><div class="sum-label">Total Fee</div><div class="sum-value">₱{{ number_format($totalFee,2) }}</div></div>
+                    <div class="sum-cell"><div class="sum-label">Amount Paid</div><div class="sum-value paid">₱{{ number_format($amtPaid,2) }}</div></div>
+                    <div class="sum-cell"><div class="sum-label">Balance</div><div class="sum-value {{ $balance>0 ? 'due' : 'paid' }}">₱{{ number_format($balance,2) }}</div></div>
+                    <div class="sum-cell"><div class="sum-label">Progress</div><div class="sum-value">{{ $payPct }}%</div></div>
                 </div>
                 <div style="height:10px;background:#e0e0e0;border-radius:5px;margin-bottom:20px;overflow:hidden;">
                     <div style="height:100%;border-radius:5px;background:{{ $payPct>=100?'#28a745':'var(--blue)' }};width:{{ $payPct }}%;"></div>
@@ -2636,25 +2669,12 @@
                 </div>
                 <div style="padding:20px;">
                     {{-- Fee stats --}}
-                    <div class="fee-stat-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">
-                        <div style="background:#e3f2fd;border-radius:10px;padding:14px;text-align:center;">
-                            <div style="font-size:11px;color:#1565c0;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Total Fee</div>
-                            <div style="font-size:18px;font-weight:700;color:#1565c0;">₱{{ number_format($pmtTotal,2) }}</div>
-                        </div>
-                        <div style="background:#e8f5e9;border-radius:10px;padding:14px;text-align:center;">
-                            <div style="font-size:11px;color:#2e7d32;font-weight:700;text-transform:uppercase;margin-bottom:4px;">Amount Paid</div>
-                            <div style="font-size:18px;font-weight:700;color:#2e7d32;">₱{{ number_format($pmtPaid,2) }}</div>
-                        </div>
-                        <div style="background:{{ $pmtBalance>0?'#fff3e0':'#e8f5e9' }};border-radius:10px;padding:14px;text-align:center;">
-                            <div style="font-size:11px;color:{{ $pmtBalance>0?'#e65100':'#2e7d32' }};font-weight:700;text-transform:uppercase;margin-bottom:4px;">Balance</div>
-                            <div style="font-size:18px;font-weight:700;color:{{ $pmtBalance>0?'#e65100':'#2e7d32' }};">₱{{ number_format($pmtBalance,2) }}</div>
-                        </div>
+                    <div class="sum-strip" style="margin-bottom:16px;">
+                        <div class="sum-cell"><div class="sum-label">Total Fee</div><div class="sum-value">₱{{ number_format($pmtTotal,2) }}</div></div>
+                        <div class="sum-cell"><div class="sum-label">Amount Paid</div><div class="sum-value paid">₱{{ number_format($pmtPaid,2) }}</div></div>
+                        <div class="sum-cell"><div class="sum-label">Balance</div><div class="sum-value {{ $pmtBalance>0 ? 'due' : 'paid' }}">₱{{ number_format($pmtBalance,2) }}</div></div>
                     </div>
-                    {{-- Progress bar --}}
-                    <div style="height:10px;background:#e0e0e0;border-radius:5px;margin-bottom:14px;overflow:hidden;">
-                        <div style="height:100%;border-radius:5px;background:{{ $pmtPct>=100?'#28a745':'var(--blue)' }};width:{{ $pmtPct }}%;transition:width .4s;"></div>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);">
+                    <div style="display:flex;justify-content:space-between;font-size:12px;color:#6b7280;">
                         <span>{{ $optLabels[$enrollment->payment_option ?? ''] ?? ucfirst($enrollment->payment_type ?? 'Not set') }}</span>
                         <span>{{ $pmtPct }}% paid</span>
                     </div>
@@ -4643,67 +4663,44 @@
     // read-only "already chosen" / "compare other plans" displays.
     function buildBreakdownHTML(feeData, option) {
         const c = feeData.components || feeData;
+        const peso = n => '₱' + (n || 0).toLocaleString('en-PH', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        const row = (label, value, style = '') =>
+            `<div style="display:flex; justify-content:space-between; gap:12px; margin-bottom:4px; ${style}"><span>${label}</span><span style="font-variant-numeric:tabular-nums;">${value}</span></div>`;
+        const heading = text =>
+            `<div style="font-size:10.5px; font-weight:600; letter-spacing:.5px; text-transform:uppercase; color:#6b7280; margin-bottom:6px;">${text}</div>`;
+        const months = feeData.months || 9;
 
         const feeComponentsHTML = `
-            <div style="margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid #e0e0e0;">
-                <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                    <span>Tuition Fee:</span><span>₱${(c.tuition || 0).toLocaleString()}</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                    <span>Miscellaneous:</span><span>₱${(c.misc || 0).toLocaleString()}</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                    <span>Books:</span><span>₱${(c.books || 0).toLocaleString()}</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                    <span>Insurance:</span><span>₱${(c.insurance || 0).toLocaleString()}</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                    <span>Electric:</span><span>₱${(c.electric || 0).toLocaleString()}</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:4px; font-weight:700;">
-                    <span>Base Total:</span><span>₱${(feeData.base_total || 0).toLocaleString()}</span>
-                </div>
+            <div style="margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid #e5e7eb;">
+                ${heading('Fee components')}
+                ${row('Tuition Fee', peso(c.tuition))}
+                ${row('Miscellaneous', peso(c.misc))}
+                ${row('Books', peso(c.books))}
+                ${row('Insurance', peso(c.insurance))}
+                ${row('Electric', peso(c.electric))}
+                ${row('Base Total', peso(feeData.base_total), 'font-weight:700; color:#1f2937; margin-top:6px;')}
             </div>
         `;
 
         if (option === 'A') {
             return feeComponentsHTML + `
-                <div style="display:flex; justify-content:space-between; color:#dc3545; margin-bottom:12px;">
-                    <span>Discount (20%):</span><span>-₱${(feeData.discount || 0).toLocaleString()}</span>
-                </div>
-                <div style="color:#28a745; font-weight:700; font-size:15px;">
-                    <div style="display:flex; justify-content:space-between;">
-                        <span>Total Due:</span><span>₱${(feeData.total_payable || 0).toLocaleString()}</span>
-                    </div>
-                </div>
+                ${row('Discount (20%)', '-' + peso(feeData.discount), 'color:#b91c1c;')}
+                ${row('Total Due', peso(feeData.total_payable), 'font-weight:700; font-size:15px; color:#1f2937; margin:8px 0 0;')}
             `;
         }
 
         return feeComponentsHTML + `
-            <div style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid #e0e0e0;">
-                <div style="font-weight:600; margin-bottom:4px;">Downpayment Breakdown:</div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
-                    <span>Books:</span><span>₱${(c.books || 0).toLocaleString()}</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
-                    <span>Insurance:</span><span>₱${(c.insurance || 0).toLocaleString()}</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
-                    <span>Misc/Reg/PTA:</span><span>₱${(c.misc || 0).toLocaleString()}</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; font-weight:700; margin-top:4px;">
-                    <span>Total Downpayment:</span><span>₱${(feeData.downpayment || 0).toLocaleString()}</span>
-                </div>
+            <div style="margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid #e5e7eb;">
+                ${heading('Downpayment')}
+                ${row('Books', peso(c.books))}
+                ${row('Insurance', peso(c.insurance))}
+                ${row('Misc/Reg/PTA', peso(c.misc))}
+                ${row('Total Downpayment', peso(feeData.downpayment), 'font-weight:700; color:#1f2937; margin-top:6px;')}
             </div>
             <div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                    <span>Monthly (${feeData.months || 9} months, July-March):</span>
-                    <span>₱${(feeData.monthly_payment || 0).toLocaleString()} × ${feeData.months || 9} = ₱${((feeData.monthly_payment || 0) * (feeData.months || 9)).toLocaleString()}</span>
-                </div>
-                <div style="display:flex; justify-content:space-between; color:#28a745; font-weight:700; font-size:15px;">
-                    <span>Total:</span><span>₱${(feeData.total_payable || 0).toLocaleString()}</span>
-                </div>
+                ${heading('Monthly')}
+                ${row(`${months} months (July–March)`, `${peso(feeData.monthly_payment)} × ${months} = ${peso((feeData.monthly_payment || 0) * months)}`)}
+                ${row('Total', peso(feeData.total_payable), 'font-weight:700; font-size:15px; color:#1f2937; margin:8px 0 0;')}
             </div>
         `;
     }
@@ -4751,6 +4748,32 @@
     // numbers/markup as the selection-flow breakdown, but never touches the
     // hidden payment form fields (those are already set correctly from
     // enrollmentData elsewhere; this is purely informational).
+    // Shell for the locked-plan card shown above Make Payment (Option A, downpayment due, installment active).
+    function lockedPlanCardHTML(o) {
+        return `
+            <div id="installment-notice" class="plan-card mb-4">
+                <div class="plan-card-head">
+                    <div class="plan-card-ico"><i class="bi bi-calendar-check"></i></div>
+                    <div style="flex:1;min-width:0;">
+                        <div class="plan-card-title">${o.title}</div>
+                        <div class="plan-card-sub">${o.subtitle}</div>
+                    </div>
+                    <span class="plan-badge ${o.badgeClass || ''}">${o.badge}</span>
+                </div>
+                <div class="sum-strip">${o.cells}</div>
+                ${o.note ? `<div class="plan-note"><i class="bi bi-info-circle me-1"></i>${o.note}</div>` : ''}
+                <details class="plan-breakdown">
+                    <summary>View fee breakdown <i class="bi bi-chevron-down"></i></summary>
+                    <div id="locked-plan-breakdown" class="plan-breakdown-body">
+                        <div style="text-align:center;color:#888;padding:8px;"><span class="spinner-border spinner-border-sm me-2"></span>Loading breakdown…</div>
+                    </div>
+                </details>
+                ${o.action ? `<div class="plan-action">${o.action}</div>` : ''}
+                ${o.trailer}
+            </div>
+        `;
+    }
+
     async function renderReadOnlyBreakdown(option, containerId) {
         const el = document.getElementById(containerId);
         if (!el) return;
@@ -5253,7 +5276,7 @@
             const lockedPlanGradeLabel = GRADE_LABEL_MAP[studentGradeLevel.toLowerCase().replace(/\s/g, '')] || studentGradeLevel;
             const comparePlansTrailerHTML = `
                 <div style="margin-top:12px;">
-                    <button type="button" id="compare-plans-toggle" onclick="toggleComparePlans()" style="background:none;border:1px solid #90caf9;color:#1565c0;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:600;cursor:pointer;">
+                    <button type="button" id="compare-plans-toggle" onclick="toggleComparePlans()" class="plan-link-btn">
                         <i class="bi bi-list-ul me-1"></i>Compare other plans for ${lockedPlanGradeLabel}
                     </button>
                     <div id="compare-plans-content" style="display:none;margin-top:10px;"></div>
@@ -5268,31 +5291,16 @@
                 const makePaymentCard = document.querySelector('#section-payment .content-card');
                 if (makePaymentCard && !document.getElementById('installment-notice')) {
                     const totalFee = enrollmentData.total_fee || 0;
-                    const noticeHTML = `
-                        <div id="installment-notice" class="alert alert-info mb-4" style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); border: 1px solid #64b5f6; border-radius: 10px; padding: 20px;">
-                            <div style="display: flex; align-items: flex-start; gap: 16px;">
-                                <i class="bi bi-info-circle-fill" style="font-size: 32px; color: #1976d2; flex-shrink: 0;"></i>
-                                <div style="flex: 1;">
-                                    <h5 style="font-weight: 700; color: #1565c0; margin-bottom: 10px;">
-                                        <i class="bi bi-calendar-check me-2"></i>Payment Plan: Option A (Cash Basis)
-                                    </h5>
-                                    <div style="background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
-                                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                            <span style="color: #666;">Total Fee (20% cash discount already applied):</span>
-                                            <span style="font-weight: 700; color: #e65100; font-size: 18px;">₱${totalFee.toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
-                                        </div>
-                                        <div style="font-size: 12px; color: #888; margin-top: 8px;">
-                                            <i class="bi bi-info-circle me-1"></i>Pay the full amount in one payment to complete your enrollment.
-                                        </div>
-                                    </div>
-                                    <div id="locked-plan-breakdown" style="background:#fff;border-radius:8px;padding:16px;margin-bottom:4px;font-size:13px;">
-                                        <div style="text-align:center;color:#888;padding:8px;"><span class="spinner-border spinner-border-sm me-2"></span>Loading breakdown…</div>
-                                    </div>
-                                    ${comparePlansTrailerHTML}
-                                </div>
-                            </div>
-                        </div>
-                    `;
+                    const noticeHTML = lockedPlanCardHTML({
+                        title: 'Full Payment',
+                        subtitle: 'Option A · Cash basis, 20% discount already applied',
+                        badge: 'Unpaid', badgeClass: 'warn',
+                        cells: `
+                            <div class="sum-cell"><div class="sum-label">Payment Plan</div><div class="sum-value">Option A</div></div>
+                            <div class="sum-cell"><div class="sum-label">Total Due</div><div class="sum-value due">₱${totalFee.toLocaleString('en-PH', {minimumFractionDigits: 2})}</div></div>`,
+                        note: 'Pay the full amount in one payment to complete your enrollment.',
+                        trailer: comparePlansTrailerHTML,
+                    });
                     makePaymentCard.insertAdjacentHTML('afterbegin', noticeHTML);
                     renderReadOnlyBreakdown('A', 'locked-plan-breakdown');
                 }
@@ -5316,43 +5324,24 @@
                     // approval step anymore; it's just an unfinished checkout).
                     const pendingTx = paymentHistory.find(p => p.status === 'pending');
                     const dpBtnHTML = pendingTx
-                        ? ('<div style="background:#fff3e0; border-radius:8px; padding:12px; text-align:center; color:#e65100; font-size:13px;">'
+                        ? ('<div class="plan-pending">'
                             + '<div style="font-weight:600;margin-bottom:8px;"><i class="bi bi-hourglass-split me-1"></i>You have a payment link awaiting completion.</div>'
                             + (pendingTx.xendit_invoice_url
-                                ? `<a href="${pendingTx.xendit_invoice_url}" target="_blank" class="btn btn-sm" style="background:#ff9800;color:#fff;font-weight:600;">Complete Payment</a>`
+                                ? `<a href="${pendingTx.xendit_invoice_url}" target="_blank" class="btn btn-sm" style="background:#b45309;color:#fff;font-weight:600;">Complete Payment</a>`
                                 : 'Check Payment History below for details.')
                             + '</div>')
-                        : `<button onclick="payDownpayment(${dpAmount})" class="btn btn-lg w-100" style="background: linear-gradient(135deg, #ff9800, #f57c00); color: #fff; border: none; font-weight: 700; padding: 14px;"><i class="bi bi-cash-coin me-2"></i>Pay Downpayment Now - ₱${dpAmount.toLocaleString('en-PH', {minimumFractionDigits: 2})}</button>`;
-                    const noticeHTML = `
-                        <div id="installment-notice" class="alert alert-info mb-4" style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); border: 1px solid #64b5f6; border-radius: 10px; padding: 20px;">
-                            <div style="display: flex; align-items: flex-start; gap: 16px;">
-                                <i class="bi bi-info-circle-fill" style="font-size: 32px; color: #1976d2; flex-shrink: 0;"></i>
-                                <div style="flex: 1;">
-                                    <h5 style="font-weight: 700; color: #1565c0; margin-bottom: 10px;">
-                                        <i class="bi bi-calendar-check me-2"></i>Payment Plan: Option ${enrollmentData.payment_option}
-                                    </h5>
-                                    <div style="background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
-                                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                            <span style="color: #666;">Downpayment Required:</span>
-                                            <span style="font-weight: 700; color: #e65100; font-size: 18px;">₱${dpAmount.toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
-                                        </div>
-                                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                            <span style="color: #666;">Monthly Amount:</span>
-                                            <span style="font-weight: 600;">₱${(enrollmentData.monthly_amount || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
-                                        </div>
-                                        <div style="font-size: 12px; color: #888; margin-top: 8px;">
-                                            <i class="bi bi-info-circle me-1"></i>Pay the downpayment first, then monthly installments will follow.
-                                        </div>
-                                    </div>
-                                    <div id="locked-plan-breakdown" style="background:#fff;border-radius:8px;padding:16px;margin-bottom:12px;font-size:13px;">
-                                        <div style="text-align:center;color:#888;padding:8px;"><span class="spinner-border spinner-border-sm me-2"></span>Loading breakdown…</div>
-                                    </div>
-                                    ${dpBtnHTML}
-                                    ${comparePlansTrailerHTML}
-                                </div>
-                            </div>
-                        </div>
-                    `;
+                        : `<button onclick="payDownpayment(${dpAmount})" class="plan-pay-btn"><i class="bi bi-cash-coin"></i>Pay Downpayment · ₱${dpAmount.toLocaleString('en-PH', {minimumFractionDigits: 2})}</button>`;
+                    const noticeHTML = lockedPlanCardHTML({
+                        title: 'Installment Plan',
+                        subtitle: `Option ${enrollmentData.payment_option} · Pay the downpayment first, then monthly installments follow`,
+                        badge: 'Downpayment due', badgeClass: 'warn',
+                        cells: `
+                            <div class="sum-cell"><div class="sum-label">Payment Plan</div><div class="sum-value">Option ${enrollmentData.payment_option}</div></div>
+                            <div class="sum-cell"><div class="sum-label">Downpayment</div><div class="sum-value due">₱${dpAmount.toLocaleString('en-PH', {minimumFractionDigits: 2})}</div></div>
+                            <div class="sum-cell"><div class="sum-label">Monthly Amount</div><div class="sum-value">₱${(enrollmentData.monthly_amount || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})}</div></div>`,
+                        action: dpBtnHTML,
+                        trailer: comparePlansTrailerHTML,
+                    });
                     makePaymentCard.insertAdjacentHTML('afterbegin', noticeHTML);
                     renderReadOnlyBreakdown(enrollmentData.payment_option, 'locked-plan-breakdown');
                 }
@@ -5378,48 +5367,27 @@
                         .filter(i => i.status === 'pending' || i.status === 'overdue')
                         .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))[0];
                     const monthlyBtnHTML = pendingTx
-                        ? ('<div style="background:#fff3e0; border-radius:8px; padding:12px; text-align:center; color:#e65100; font-size:13px;">'
+                        ? ('<div class="plan-pending">'
                             + '<div style="font-weight:600;margin-bottom:8px;"><i class="bi bi-hourglass-split me-1"></i>You have a payment link awaiting completion.</div>'
                             + (pendingTx.xendit_invoice_url
-                                ? `<a href="${pendingTx.xendit_invoice_url}" target="_blank" class="btn btn-sm" style="background:#ff9800;color:#fff;font-weight:600;">Complete Payment</a>`
+                                ? `<a href="${pendingTx.xendit_invoice_url}" target="_blank" class="btn btn-sm" style="background:#b45309;color:#fff;font-weight:600;">Complete Payment</a>`
                                 : 'Check Payment History below for details.')
                             + '</div>')
                         : nextInstallment
-                            ? `<button onclick="paySpecificInstallment(${nextInstallment.id}, ${nextInstallment.total_due}, '${nextInstallment.month_name}', '${nextInstallment.due_date}')" class="btn btn-lg w-100" style="background: linear-gradient(135deg, #28a745, #218838); color: #fff; border: none; font-weight: 700; padding: 14px;"><i class="bi bi-credit-card me-2"></i>Pay Monthly Installment Now</button>`
+                            ? `<button onclick="paySpecificInstallment(${nextInstallment.id}, ${nextInstallment.total_due}, '${nextInstallment.month_name}', '${nextInstallment.due_date}')" class="plan-pay-btn"><i class="bi bi-credit-card"></i>Pay ${nextInstallment.month_name} Installment</button>`
                             : '';
-                    const noticeHTML = `
-                        <div id="installment-notice" class="alert alert-info mb-4" style="background: linear-gradient(135deg, #e3f2fd, #bbdefb); border: 1px solid #64b5f6; border-radius: 10px; padding: 20px;">
-                            <div style="display: flex; align-items: flex-start; gap: 16px;">
-                                <i class="bi bi-info-circle-fill" style="font-size: 32px; color: #1976d2; flex-shrink: 0;"></i>
-                                <div style="flex: 1;">
-                                    <h5 style="font-weight: 700; color: #1565c0; margin-bottom: 10px;">
-                                        <i class="bi bi-calendar-check me-2"></i>Installment Payment Active
-                                    </h5>
-                                    <div style="background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
-                                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                            <span style="color: #666;">Payment Plan:</span>
-                                            <span style="font-weight: 600;">Option ${enrollmentData.payment_option}</span>
-                                        </div>
-                                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                                            <span style="color: #666;">Monthly Amount:</span>
-                                            <span style="font-weight: 700; color: #1976d2;">₱${(enrollmentData.monthly_amount || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})}</span>
-                                        </div>
-                                        <div style="display: flex; justify-content: space-between;">
-                                            <span style="color: #666;">Next Due Date:</span>
-                                            <span style="font-weight: 600; color: ${enrollmentData.next_installment_date && new Date(enrollmentData.next_installment_date) < new Date() ? '#dc3545' : '#28a745'};">
-                                                ${enrollmentData.next_installment_date ? new Date(enrollmentData.next_installment_date).toLocaleDateString('en-PH', {month: 'long', day: 'numeric', year: 'numeric'}) : 'Not set'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div id="locked-plan-breakdown" style="background:#fff;border-radius:8px;padding:16px;margin-bottom:12px;font-size:13px;">
-                                        <div style="text-align:center;color:#888;padding:8px;"><span class="spinner-border spinner-border-sm me-2"></span>Loading breakdown…</div>
-                                    </div>
-                                    ${monthlyBtnHTML}
-                                    ${comparePlansTrailerHTML}
-                                </div>
-                            </div>
-                        </div>
-                    `;
+                    const nextDue = enrollmentData.next_installment_date ? new Date(enrollmentData.next_installment_date) : null;
+                    const noticeHTML = lockedPlanCardHTML({
+                        title: 'Installment Plan',
+                        subtitle: `Option ${enrollmentData.payment_option} · Downpayment paid, monthly payments ongoing`,
+                        badge: 'Active', badgeClass: 'ok',
+                        cells: `
+                            <div class="sum-cell"><div class="sum-label">Payment Plan</div><div class="sum-value">Option ${enrollmentData.payment_option}</div></div>
+                            <div class="sum-cell"><div class="sum-label">Monthly Amount</div><div class="sum-value">₱${(enrollmentData.monthly_amount || 0).toLocaleString('en-PH', {minimumFractionDigits: 2})}</div></div>
+                            <div class="sum-cell"><div class="sum-label">Next Due Date</div><div class="sum-value ${nextDue && nextDue < new Date() ? 'late' : ''}">${nextDue ? nextDue.toLocaleDateString('en-PH', {month: 'short', day: 'numeric', year: 'numeric'}) : 'Not set'}</div></div>`,
+                        action: monthlyBtnHTML,
+                        trailer: comparePlansTrailerHTML,
+                    });
                     makePaymentCard.insertAdjacentHTML('afterbegin', noticeHTML);
                     renderReadOnlyBreakdown(enrollmentData.payment_option, 'locked-plan-breakdown');
 

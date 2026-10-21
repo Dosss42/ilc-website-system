@@ -385,10 +385,10 @@
                 <hr style="margin:20px 0;">
                 <div id="installmentDetailsSection" style="display:none;">
                     <h6 style="color:var(--blue);font-weight:600;margin-bottom:16px;"><i class="bi bi-calendar-check me-2"></i>Installment Details</h6>
-                    <div class="row">
-                        <div class="col-md-4"><div style="background:#e3f2fd;padding:16px;border-radius:8px;text-align:center;"><div style="font-size:12px;color:#666;margin-bottom:4px;">Month</div><div id="detailMonthName" style="font-weight:700;color:var(--blue);font-size:16px;"></div></div></div>
-                        <div class="col-md-4"><div style="background:#e8f5e9;padding:16px;border-radius:8px;text-align:center;"><div style="font-size:12px;color:#666;margin-bottom:4px;">Base Amount</div><div id="detailBaseAmount" style="font-weight:700;color:#28a745;font-size:16px;"></div></div></div>
-                        <div class="col-md-4"><div style="background:#fff3e0;padding:16px;border-radius:8px;text-align:center;"><div style="font-size:12px;color:#666;margin-bottom:4px;">Total with Fees</div><div id="detailTotalAmount" style="font-weight:700;color:#f57c00;font-size:16px;"></div></div></div>
+                    <div class="sum-strip" style="margin-bottom:0;">
+                        <div class="sum-cell"><div class="sum-label">Month</div><div id="detailMonthName" class="sum-value"></div></div>
+                        <div class="sum-cell"><div class="sum-label">Base Amount</div><div id="detailBaseAmount" class="sum-value"></div></div>
+                        <div class="sum-cell"><div class="sum-label">Total with Fees</div><div id="detailTotalAmount" class="sum-value"></div></div>
                     </div>
                     <div id="lateFeeRow" style="margin-top:12px;padding:12px;background:#ffebee;border-radius:8px;display:none;">
                         <div style="display:flex;justify-content:space-between;align-items:center;">

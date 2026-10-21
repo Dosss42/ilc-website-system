@@ -377,7 +377,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" style="padding:24px;">
-                <div class="row g-3 mb-4" id="instSummaryCards"></div>
+                <div class="mb-4" id="instSummaryCards"></div>
                 <div style="overflow-x:auto;">
                     <table class="dash-table" id="installmentDetailTable">
                         <thead>
@@ -448,30 +448,13 @@ document.querySelectorAll('.js-view-installments').forEach(btn => {
         document.getElementById('instModalSubtitle').textContent = name + ' · ' + grade + ' · ' + (option === 'full' ? 'Full Payment' : 'Installment');
 
         const summaryCards = document.getElementById('instSummaryCards');
+        const peso = n => '₱' + n.toLocaleString('en-PH',{minimumFractionDigits:2});
         summaryCards.innerHTML = `
-            <div class="col-md-3">
-                <div style="background:#e3f2fd;padding:16px;border-radius:8px;text-align:center;">
-                    <div style="font-size:11px;color:#666;margin-bottom:4px;">Total Fee</div>
-                    <div style="font-weight:700;color:var(--blue);font-size:18px;">₱${totalFee.toLocaleString('en-PH',{minimumFractionDigits:2})}</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div style="background:#e8f5e9;padding:16px;border-radius:8px;text-align:center;">
-                    <div style="font-size:11px;color:#666;margin-bottom:4px;">Total Paid</div>
-                    <div style="font-weight:700;color:#2e7d32;font-size:18px;">₱${totalPaid.toLocaleString('en-PH',{minimumFractionDigits:2})}</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div style="background:#fff3e0;padding:16px;border-radius:8px;text-align:center;">
-                    <div style="font-size:11px;color:#666;margin-bottom:4px;">Downpayment</div>
-                    <div style="font-weight:700;color:#e65100;font-size:18px;">₱${dp.toLocaleString('en-PH',{minimumFractionDigits:2})}</div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div style="background:#f3e5f5;padding:16px;border-radius:8px;text-align:center;">
-                    <div style="font-size:11px;color:#666;margin-bottom:4px;">Monthly</div>
-                    <div style="font-weight:700;color:#7b1fa2;font-size:18px;">₱${monthly.toLocaleString('en-PH',{minimumFractionDigits:2})}</div>
-                </div>
+            <div class="sum-strip" style="margin-bottom:0;">
+                <div class="sum-cell"><div class="sum-label">Total Fee</div><div class="sum-value">${peso(totalFee)}</div></div>
+                <div class="sum-cell"><div class="sum-label">Total Paid</div><div class="sum-value paid">${peso(totalPaid)}</div></div>
+                <div class="sum-cell"><div class="sum-label">Downpayment</div><div class="sum-value">${peso(dp)}</div></div>
+                <div class="sum-cell"><div class="sum-label">Monthly</div><div class="sum-value">${peso(monthly)}</div></div>
             </div>
         `;
 

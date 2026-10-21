@@ -248,6 +248,14 @@
         .stat-icon.red{background:#ffebee;color:#c62828;}
         .stat-value{font-size:24px;font-weight:700;color:var(--blue);}
         .stat-label{font-size:12px;color:#666;margin-top:2px;}
+        /* Summary strip: one bordered panel split by thin dividers (used in modals) */
+        .sum-strip{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:1px;background:#e5e7eb;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-bottom:20px;}
+        .sum-cell{background:#fff;padding:12px 16px;min-width:0;}
+        .sum-label{font-size:10.5px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:#6b7280;margin-bottom:3px;}
+        .sum-value{font-size:16px;font-weight:700;color:#1f2937;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .sum-value.paid{color:#15803d;}
+        .sum-value.due{color:#b45309;}
+        @media (max-width:576px){.sum-strip{grid-auto-flow:row;grid-template-columns:1fr 1fr;}}
         .content-card{background:#fff;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.05);margin-bottom:24px;}
         .content-card-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f0f0f0;}
         .content-card-header h6{margin:0;font-size:14px;font-weight:700;color:var(--blue);}
