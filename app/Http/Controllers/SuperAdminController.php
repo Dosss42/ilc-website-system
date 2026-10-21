@@ -338,6 +338,12 @@ class SuperAdminController extends Controller
 
         $user->update(['password' => Hash::make($validated['password'])]);
 
+        // Resetting your OWN account here: keep this session signed in (see SessionPasswordHash)
+        if ($user->is(Auth::user())) {
+            Auth::guard('web')->setUser($user);
+            \App\Support\SessionPasswordHash::refresh();
+        }
+
         ActivityLogger::log('update', 'Password reset for user: ' . $user->name, 'User', $user->id);
 
         return response()->json(['success' => true, 'message' => 'Password reset successfully.']);
@@ -358,6 +364,7 @@ class SuperAdminController extends Controller
         }
 
         $user->update(['password' => Hash::make($request->password)]);
+        \App\Support\SessionPasswordHash::refresh(); // stay signed in on this device
 
         return back()->with('password_success', 'Password updated successfully.')
                      ->with('settings_tab', 'account');

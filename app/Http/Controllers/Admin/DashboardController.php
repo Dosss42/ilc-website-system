@@ -27,6 +27,7 @@ class DashboardController extends Controller
         }
 
         $user->update(['password' => Hash::make($request->password)]);
+        \App\Support\SessionPasswordHash::refresh(); // stay signed in on this device
 
         ActivityLogger::log('password_change', "{$user->name} changed their own password", 'User', $user->id);
 

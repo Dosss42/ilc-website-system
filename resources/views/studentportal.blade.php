@@ -3415,7 +3415,7 @@
                         <div id="stu-pwd-step2" @if(!session('otp_token')) style="display:none;" @endif>
                             <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:8px;padding:12px 14px;margin-bottom:18px;font-size:13px;color:#2e7d32;">
                                 <i class="bi bi-envelope-check-fill"></i>
-                                OTP sent to <strong id="stu-otp-email">your email</strong>. Enter the 6-digit code below. Expires in 10 minutes.
+                                OTP sent to <strong id="stu-otp-email">{{ Auth::user()->email }}</strong>. Enter the 6-digit code below. Expires in 10 minutes.
                             </div>
                             <form method="POST" action="{{ route('student.settings.password') }}" id="stu-otp-form">
                                 @csrf
@@ -3457,10 +3457,13 @@
 
                         fetch('{{ route('student.settings.password.otp') }}', {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
                             body: JSON.stringify({ current_password: cur, password: npwd, password_confirmation: conf })
                         })
-                        .then(r => r.json())
+                        // Server always replies in JSON; anything else (e.g. an expired page) gets a clear message
+                        .then(r => r.json().catch(() => ({ success: false, message: r.status === 419
+                            ? 'Your session expired. Please refresh the page and try again.'
+                            : 'Something went wrong (error ' + r.status + '). Please try again.' })))
                         .then(d => {
                             if (d.success) {
                                 document.getElementById('stu-otp-token').value = d.token;

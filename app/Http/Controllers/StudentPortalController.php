@@ -24,6 +24,7 @@ use Illuminate\Support\Str;
 class StudentPortalController extends Controller
 {
     use \App\Support\Traits\BuildsSchoolPdf;
+    use \App\Support\Traits\ChangesPasswordWithOtp;
 
     // ── My Schedule — PDF (replaces the old window.open()+window.print()
     // trick in downloadSchedulePDF()). Same section-resolution logic as
@@ -161,12 +162,35 @@ class StudentPortalController extends Controller
         }
 
         if (!$enrollment) {
+            // No (non-cancelled) enrollment — e.g. the only one was cancelled. The
+            // view expects every variable the normal path passes; leaving them out
+            // made the whole portal a 500 ("Undefined variable $profile").
+            $allGuardians = $user->guardians;
             return view('studentportal', [
                 'enrollment' => null,
                 'progress' => null,
                 'documents' => collect([]),
                 'profileComplete' => false,
                 'schedules' => collect([]),
+                'section' => null,
+                'hasRequiredDocuments' => false,
+                'paymentInstallments' => collect([]),
+                'paymentSummary' => null,
+                'examPermitStatus' => null,
+                'availableSections' => collect([]),
+                'advisoryTeachersBySection' => collect([]),
+                'needsReenrollment' => false,
+                'reenrollmentOpen' => false,
+                'suggestedGrade' => null,
+                'currentSchoolYear' => Setting::getCurrentSchoolYear(),
+                'promotionRecord' => null,
+                'enrollmentWindowOpen' => Setting::get('enrollment_open', true),
+                'profile' => $user->profile,
+                'address' => $user->address,
+                'guardian' => $user->guardian,
+                'mother' => $allGuardians->where('relationship', 'Mother')->first(),
+                'father' => $allGuardians->where('relationship', 'Father')->first(),
+                'previousSchool' => $user->previousSchool,
                 'justPaidTransaction' => $justPaidTransaction,
                 'paymentOutcome' => $paymentOutcome,
                 'summerClassEnrollments' => $summerClassEnrollments,
@@ -1455,85 +1479,8 @@ class StudentPortalController extends Controller
         ]);
     }
 
-    public function sendPasswordOtp(Request $request)
+    protected function passwordSettingsTab(): string
     {
-        $request->validate([
-            'current_password' => 'required',
-            'password'         => ['required', 'string', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
-        ]);
-
-        $user = Auth::user();
-
-        if (!Hash::check($request->current_password, $user->password)) {
-            return response()->json(['success' => false, 'message' => 'Current password is incorrect.'], 422);
-        }
-
-        // Invalidate any previous pending OTPs for this user
-        OtpVerification::where('email', $user->email)->delete();
-
-        $code  = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $token = Str::random(40);
-
-        OtpVerification::create([
-            'email'      => $user->email,
-            'code'       => Hash::make($code),
-            'token'      => $token,
-            'attempts'   => 0,
-            'verified'   => false,
-            'expires_at' => now()->addMinutes(10),
-        ]);
-
-        // Store the new password hash temporarily in session
-        session(['pwd_change_hash_' . $token => Hash::make($request->password)]);
-
-        Mail::to($user->email)->send(new PasswordChangeOtpMail($code, $user->name));
-
-        return response()->json(['success' => true, 'token' => $token, 'email' => $user->email]);
-    }
-
-    public function updatePassword(Request $request)
-    {
-        $request->validate([
-            'otp_token' => 'required|string',
-            'otp_code'  => 'required|string|size:6',
-        ]);
-
-        $user = Auth::user();
-        $otp  = OtpVerification::where('token', $request->otp_token)
-                    ->where('email', $user->email)
-                    ->first();
-
-        if (!$otp || $otp->isExpired()) {
-            return back()->withErrors(['otp_code' => 'OTP expired or invalid. Please request a new one.'])
-                         ->with('settings_tab', 'account');
-        }
-
-        if ($otp->hasExceededAttempts()) {
-            $otp->delete();
-            return back()->withErrors(['otp_code' => 'Too many incorrect attempts. Please request a new OTP.'])
-                         ->with('settings_tab', 'account');
-        }
-
-        if (!Hash::check($request->otp_code, $otp->code)) {
-            $otp->increment('attempts');
-            return back()->withErrors(['otp_code' => 'Incorrect OTP code. ' . (2 - $otp->attempts) . ' attempt(s) remaining.'])
-                         ->with('otp_token', $request->otp_token)
-                         ->with('settings_tab', 'account');
-        }
-
-        $hashKey = 'pwd_change_hash_' . $request->otp_token;
-        $newHash = session($hashKey);
-
-        if (!$newHash) {
-            return back()->withErrors(['otp_code' => 'Session expired. Please start over.'])
-                         ->with('settings_tab', 'account');
-        }
-
-        $user->update(['password' => $newHash]);
-        $otp->delete();
-        session()->forget($hashKey);
-
-        return back()->with('password_success', 'Password changed successfully!')
-                     ->with('settings_tab', 'account');
+        return 'account';
     }
 }

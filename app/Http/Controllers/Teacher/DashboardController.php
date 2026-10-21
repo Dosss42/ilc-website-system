@@ -26,6 +26,7 @@ class DashboardController extends Controller
 {
     use ChecksTeacherOwnership;
     use \App\Support\Traits\BuildsSchoolPdf;
+    use \App\Support\Traits\ChangesPasswordWithOtp;
 
     public function index()
     {
@@ -2294,84 +2295,9 @@ class DashboardController extends Controller
         return $pdf->download($filename);
     }
 
-    public function sendPasswordOtp(Request $request)
+    protected function passwordSettingsTab(): string
     {
-        $request->validate([
-            'current_password' => 'required',
-            'password'         => ['required', 'string', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
-        ]);
-
-        $user = Auth::user();
-
-        if (!Hash::check($request->current_password, $user->password)) {
-            return response()->json(['success' => false, 'message' => 'Current password is incorrect.'], 422);
-        }
-
-        OtpVerification::where('email', $user->email)->delete();
-
-        $code  = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $token = Str::random(40);
-
-        OtpVerification::create([
-            'email'      => $user->email,
-            'code'       => Hash::make($code),
-            'token'      => $token,
-            'attempts'   => 0,
-            'verified'   => false,
-            'expires_at' => now()->addMinutes(10),
-        ]);
-
-        session(['pwd_change_hash_' . $token => Hash::make($request->password)]);
-
-        Mail::to($user->email)->send(new PasswordChangeOtpMail($code, $user->name));
-
-        return response()->json(['success' => true, 'token' => $token, 'email' => $user->email]);
-    }
-
-    public function updatePassword(Request $request)
-    {
-        $request->validate([
-            'otp_token' => 'required|string',
-            'otp_code'  => 'required|string|size:6',
-        ]);
-
-        $user = Auth::user();
-        $otp  = OtpVerification::where('token', $request->otp_token)
-                    ->where('email', $user->email)
-                    ->first();
-
-        if (!$otp || $otp->isExpired()) {
-            return back()->withErrors(['otp_code' => 'OTP expired or invalid. Please request a new one.'])
-                         ->with('settings_tab', 'password');
-        }
-
-        if ($otp->hasExceededAttempts()) {
-            $otp->delete();
-            return back()->withErrors(['otp_code' => 'Too many incorrect attempts. Please request a new OTP.'])
-                         ->with('settings_tab', 'password');
-        }
-
-        if (!Hash::check($request->otp_code, $otp->code)) {
-            $otp->increment('attempts');
-            return back()->withErrors(['otp_code' => 'Incorrect OTP. ' . (2 - $otp->attempts) . ' attempt(s) remaining.'])
-                         ->with('otp_token', $request->otp_token)
-                         ->with('settings_tab', 'password');
-        }
-
-        $hashKey = 'pwd_change_hash_' . $request->otp_token;
-        $newHash = session($hashKey);
-
-        if (!$newHash) {
-            return back()->withErrors(['otp_code' => 'Session expired. Please start over.'])
-                         ->with('settings_tab', 'password');
-        }
-
-        $user->update(['password' => $newHash]);
-        $otp->delete();
-        session()->forget($hashKey);
-
-        return back()->with('password_success', 'Password changed successfully!')
-                     ->with('settings_tab', 'password');
+        return 'password';
     }
 
     public function updatePhoto(Request $request)

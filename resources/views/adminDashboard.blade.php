@@ -1580,15 +1580,22 @@ function openWalkInEnrollmentModal() {
 
     <div class="sidebar-section-lbl">Content</div>
 
+    {{-- Totals; computed here too when a controller other than adminIndex renders this page --}}
+    @php
+        $announcementCount = $announcementCount ?? \App\Models\Announcement::count();
+        $newsCount         = $newsCount ?? \App\Models\News::count();
+    @endphp
     <button class="sidebar-link" id="nav-announcements" onclick="showSection('announcements')">
 
         <i class="bi bi-megaphone-fill"></i> Announcements
+        <span class="sidebar-badge info" id="announcementsBadge">{{ $announcementCount }}</span>
 
     </button>
 
     <button class="sidebar-link" id="nav-news" onclick="showSection('news')">
 
         <i class="bi bi-newspaper"></i> News
+        <span class="sidebar-badge info" id="newsBadge">{{ $newsCount }}</span>
 
     </button>
 

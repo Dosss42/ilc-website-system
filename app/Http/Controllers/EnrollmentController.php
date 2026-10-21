@@ -55,9 +55,11 @@ class EnrollmentController extends Controller
 
         $email = strtolower(trim($request->email));
 
-        // Rate limit: block if a non-expired OTP was sent in the last 60 seconds
+        // Rate limit: block if an OTP was sent in the last 60 seconds. Keyed on
+        // created_at — comparing expires_at (sent + 3 min) against now-60s made
+        // the wait about 4 minutes instead of the 60 seconds the message promises.
         $recent = OtpVerification::where('email', $email)
-            ->where('expires_at', '>', now()->subSeconds(60))
+            ->where('created_at', '>', now()->subSeconds(60))
             ->where('verified', false)
             ->latest()->first();
 
@@ -150,7 +152,11 @@ class EnrollmentController extends Controller
 
         if (!\Hash::check($request->code, $otp->code)) {
             $otp->increment('attempts');
-            $remaining = 3 - ($otp->attempts);
+            $remaining = max(0, 3 - $otp->attempts); // OtpVerification::hasExceededAttempts() allows 3
+            if ($remaining === 0) {
+                $otp->delete();
+                return response()->json(['success' => false, 'message' => 'Incorrect code. No attempts left — please request a new code.'], 422);
+            }
             return response()->json([
                 'success' => false,
                 'message' => 'Incorrect code. ' . $remaining . ' attempt' . ($remaining === 1 ? '' : 's') . ' remaining.',
@@ -996,9 +1002,12 @@ class EnrollmentController extends Controller
         // identically redundant.
         $studentCount = User::where('role', 'student')->count();
         $enrollmentCount = Enrollment::where('status', 'pending')->count();
+        // Sidebar totals for Content, same as the Super Admin sidebar shows
+        $announcementCount = \App\Models\Announcement::count();
+        $newsCount = \App\Models\News::count();
 
         return view('adminDashboard', compact(
-            'studentCount', 'enrollmentCount',
+            'studentCount', 'enrollmentCount', 'announcementCount', 'newsCount',
             'pendingPayments', 'totalCollected',
             'unpaidCount', 'partialCount', 'paidCount',
             'sort', 'archivedStudentsCount', 'archivedTeachersCount',

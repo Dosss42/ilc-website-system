@@ -305,6 +305,8 @@
             padding: 2px 7px; border-radius: 10px;
             min-width: 20px; text-align: center;
         }
+        /* Informational totals (Announcements, News) — blue, so they read differently from the gold "needs attention" badges */
+        .sidebar-badge.info { background: #3b82f6; }
 
         .sidebar-divider {
             height: 1px;
