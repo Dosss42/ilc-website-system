@@ -318,6 +318,7 @@ class CashierController extends Controller
             ->paginate((int) $request->get('per_page', 20))
             ->through(function ($tx) {
                 return [
+                    'date'        => $tx->processed_at?->format('M d, Y'), // used by the row's reprint button
                     'time'        => $tx->processed_at?->format('h:i A'),
                     'student'     => $tx->user?->name ?? '—',
                     'grade'       => $tx->enrollment?->grade_level ? ucfirst($tx->enrollment->grade_level) : '—',

@@ -536,7 +536,7 @@
 
         /* ══ PROCESS PAYMENT — receipt-ticket redesign ══
            Scoped entirely under #payPanel so nothing here reaches any other
-           section (Dashboard, History, Lookup, etc. keep the original look). */
+           section (Dashboard, History, etc. keep the original look). */
         #payPanel {
             --pp-paper:  #f8f6f1;
             --pp-surface:#ffffff;
@@ -706,10 +706,6 @@
         <span class="link-label">Payment History</span>
         <span class="sidebar-badge" id="pending-badge" style="display:none;">0</span>
     </button>
-    <button class="sidebar-link" data-section="lookup" onclick="showSection('lookup', this)">
-        <span class="link-icon"><i class="bi bi-person-badge-fill"></i></span>
-        <span class="link-label">Student Lookup</span>
-    </button>
 
     <div class="sidebar-divider"></div>
 
@@ -720,10 +716,13 @@
         <span class="link-icon"><i class="bi bi-calendar-day-fill"></i></span>
         <span class="link-label">Daily Report</span>
     </button>
+    {{-- Receipts is hidden: reprinting is available from Payment History, Daily Report and the
+         Dashboard. To bring it back, restore this link and add 'receipts' to the sections list.
     <button class="sidebar-link" data-section="receipts" onclick="showSection('receipts', this)">
         <span class="link-icon"><i class="bi bi-receipt-cutoff"></i></span>
         <span class="link-label">Receipts</span>
     </button>
+    --}}
     <button class="sidebar-link" data-section="collection" onclick="showSection('collection', this)">
         <span class="link-icon"><i class="bi bi-bar-chart-fill"></i></span>
         <span class="link-label">Collection Summary</span>
@@ -923,15 +922,15 @@
                 <div class="quick-label">Process Payment</div>
                 <div class="quick-desc">Record a walk-in payment</div>
             </div>
-            <div class="quick-card" onclick="showSection('lookup',document.querySelector('.sidebar-link[data-section=lookup]'))">
-                <div class="quick-icon" style="background:#f0fdf4;"><i class="bi bi-person-badge-fill" style="color:#16a34a;font-size:24px;"></i></div>
-                <div class="quick-label">Student Lookup</div>
-                <div class="quick-desc">Check student balance</div>
+            <div class="quick-card" onclick="_historyStudentFilter=null;_historyPage=1;showSection('history',document.querySelector('.sidebar-link[data-section=history]'))">
+                <div class="quick-icon" style="background:#f0fdf4;"><i class="bi bi-clock-history" style="color:#16a34a;font-size:24px;"></i></div>
+                <div class="quick-label">Payment History</div>
+                <div class="quick-desc">View past transactions</div>
             </div>
-            <div class="quick-card" onclick="showSection('receipts',document.querySelector('.sidebar-link[data-section=receipts]'))">
-                <div class="quick-icon" style="background:#fffbeb;"><i class="bi bi-receipt-cutoff" style="color:#b45309;font-size:24px;"></i></div>
-                <div class="quick-label">Receipts</div>
-                <div class="quick-desc">View &amp; reprint receipts</div>
+            <div class="quick-card" onclick="showSection('collection',document.querySelector('.sidebar-link[data-section=collection]'))">
+                <div class="quick-icon" style="background:#fffbeb;"><i class="bi bi-bar-chart-fill" style="color:#b45309;font-size:24px;"></i></div>
+                <div class="quick-label">Collection Summary</div>
+                <div class="quick-desc">Totals by method &amp; type</div>
             </div>
             <div class="quick-card" onclick="showSection('daily',document.querySelector('.sidebar-link[data-section=daily]'))">
                 <div class="quick-icon" style="background:#fdf4ff;"><i class="bi bi-calendar-day-fill" style="color:#9333ea;font-size:24px;"></i></div>
@@ -986,7 +985,7 @@
                             <td style="font-weight:700;color:#16a34a;">₱{{ number_format($tx->amount,2) }}</td>
                             <td style="font-size:12px;color:#64748b;">{{ $tx->processed_at?->format('h:i A') }}</td>
                             <td>
-                                <button onclick="reprintTx('{{ $tx->reference_number }}','{{ $tx->user?->name }}','{{ $tx->enrollment?->grade_level }}','{{ $tx->enrollment?->school_year }}','{{ $tx->payment_type }}','{{ $tx->payment_method }}','{{ $tx->amount }}','{{ $tx->processed_at?->format('M d, Y') }}','{{ $tx->processed_at?->format('h:i A') }}')"
+                                <button onclick="reprintTx(@js($tx->reference_number ?? ''), @js($tx->user?->name ?? ''), @js($tx->enrollment?->grade_level ?? ''), @js($tx->enrollment?->school_year ?? ''), @js($tx->payment_type ?? ''), @js($tx->payment_method ?? ''), @js((string) $tx->amount), @js($tx->processed_at?->format('M d, Y') ?? ''), @js($tx->processed_at?->format('h:i A') ?? ''))"
                                     class="action-btn-sm" title="Print"><i class="bi bi-printer-fill"></i></button>
                             </td>
                         </tr>
@@ -1480,234 +1479,6 @@
             <div id="historyPagination"></div>
         </div>
         </div>{{-- /history-content --}}
-    </div>
-
-    {{-- ── STUDENT LOOKUP SECTION ── --}}
-    <div id="section-lookup" style="display:none;">
-
-        {{-- Skeleton --}}
-        <div id="lookup-skel" style="display:none;">
-            <div style="margin-bottom:24px;"><span class="skel" style="height:26px;width:210px;margin-bottom:8px;"></span><span class="skel" style="height:14px;width:380px;"></span></div>
-            <div class="skel-wrap">
-                <div class="skel-hdr"><span class="skel" style="height:18px;width:150px;"></span><div style="display:flex;gap:8px;"><span class="skel" style="height:38px;width:280px;border-radius:10px;"></span><span class="skel" style="height:38px;width:90px;border-radius:10px;"></span></div></div>
-                @for($i=0;$i<6;$i++)
-                <div class="skel-trow"><span class="skel" style="height:22px;width:90px;border-radius:6px;"></span><span class="skel" style="height:32px;flex:2;border-radius:6px;"></span><span class="skel" style="height:14px;flex:1;"></span><span class="skel" style="height:14px;flex:1;"></span><span class="skel" style="height:14px;flex:1;"></span><span class="skel" style="height:22px;width:80px;border-radius:20px;"></span><span class="skel" style="height:22px;width:70px;border-radius:20px;"></span><span class="skel" style="height:14px;flex:1;max-width:90px;"></span></div>
-                @endfor
-            </div>
-        </div>
-
-        {{-- Real content --}}
-        <div id="lookup-content" class="sec-content">
-        <div class="page-header" style="margin-bottom:20px;">
-            <div>
-                <div class="page-title"><i class="bi bi-person-badge-fill me-2" style="color:#16a34a;"></i>Student Lookup</div>
-                <div class="page-sub">Check a student's balance and payment status — read only. Use Process Payment to collect money.</div>
-            </div>
-        </div>
-
-        {{-- Auto-loaded student table --}}
-        <div id="lookupListPanel">
-            <div class="card-box" style="margin-bottom:16px;">
-                <div class="card-box-header">
-                    <div class="card-box-title">
-                        <i class="bi bi-people-fill" style="color:#16a34a;"></i>
-                        All Students
-                        <span id="lookupListCount" style="background:#f0fdf4;color:#16a34a;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;margin-left:6px;">0</span>
-                    </div>
-                    <div style="display:flex;gap:8px;align-items:center;">
-                        <div style="display:flex;align-items:center;gap:8px;background:#f8faff;border:1.5px solid #e2e8f0;border-radius:10px;padding:8px 14px;min-width:260px;">
-                            <i class="bi bi-search" style="color:#94a3b8;font-size:14px;flex-shrink:0;"></i>
-                            <input type="text" id="lookupFilterInput" placeholder="Filter by name, grade, ref no…"
-                                style="border:none;background:transparent;outline:none;font-size:13px;color:#334155;width:100%;font-family:'Open Sans',sans-serif;"
-                                oninput="filterLookupList(this.value)">
-                        </div>
-                        <button onclick="loadLookupList()" class="btn-outline-cash" style="white-space:nowrap;">
-                            <i class="bi bi-arrow-clockwise"></i> Refresh
-                        </button>
-                    </div>
-                </div>
-                <div style="overflow-x:auto;">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Ref No.</th>
-                                <th>Student Name</th>
-                                <th>Grade</th>
-                                <th>Section</th>
-                                <th>School Year</th>
-                                <th>Payment Plan</th>
-                                <th>Payment Status</th>
-                                <th>Balance</th>
-                            </tr>
-                        </thead>
-                        <tbody id="lookupListBody">
-                            <tr><td colspan="8" style="text-align:center;padding:48px;color:#94a3b8;">
-                                <i class="bi bi-arrow-repeat" style="font-size:28px;display:block;margin-bottom:10px;"></i>Loading…
-                            </td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div id="lookupListPagination"></div>
-            </div>
-        </div>
-
-        {{-- Student detail panel (shown on row click) --}}
-        <div id="lookupPlaceholder" style="display:none;">
-            <div style="padding:70px 24px;background:#fff;border-radius:20px;text-align:center;color:#94a3b8;border:2px dashed #e2e8f0;max-width:680px;">
-                <div style="width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,#e8f0fb,#f1f5f9);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;box-shadow:0 4px 16px rgba(26,58,108,.1);">
-                    <i class="bi bi-person-lines-fill" style="font-size:36px;color:#2471a3;opacity:.7;"></i>
-                </div>
-                <div style="font-size:17px;font-weight:800;color:#334155;margin-bottom:8px;">Search a Student</div>
-                <div style="font-size:13px;color:#94a3b8;max-width:340px;margin:0 auto;line-height:1.6;">Type a student's name, LRN, or email address above to view their full account and payment details.</div>
-                <div style="margin-top:22px;display:flex;justify-content:center;gap:16px;flex-wrap:wrap;">
-                    <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#94a3b8;background:#f8faff;padding:8px 14px;border-radius:20px;border:1.5px solid #e2e8f0;"><i class="bi bi-person" style="color:#2471a3;"></i>Student Name</div>
-                    <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#94a3b8;background:#f8faff;padding:8px 14px;border-radius:20px;border:1.5px solid #e2e8f0;"><i class="bi bi-upc" style="color:#2471a3;"></i>LRN Number</div>
-                    <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#94a3b8;background:#f8faff;padding:8px 14px;border-radius:20px;border:1.5px solid #e2e8f0;"><i class="bi bi-envelope" style="color:#2471a3;"></i>Email Address</div>
-                </div>
-            </div>
-        </div>
-
-        {{-- Student Profile Result --}}
-        <div id="lookupResult" style="display:none;max-width:900px;">
-            <button onclick="backToLookupList()" class="btn-outline-cash" style="margin-bottom:16px;">
-                <i class="bi bi-arrow-left"></i> Back to Student List
-            </button>
-
-            {{-- Identity Banner --}}
-            <div style="background:linear-gradient(145deg,#0f2451 0%,#1a3a6c 45%,#2471a3 100%);border-radius:22px;padding:28px;margin-bottom:18px;position:relative;overflow:hidden;">
-                <div style="position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:rgba(255,255,255,.04);pointer-events:none;"></div>
-                <div style="position:absolute;bottom:-30px;left:-20px;width:120px;height:120px;border-radius:50%;background:rgba(197,160,89,.06);pointer-events:none;"></div>
-                <div style="display:flex;align-items:center;gap:20px;position:relative;flex-wrap:wrap;">
-                    <div style="width:72px;height:72px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;font-weight:900;flex-shrink:0;border:3px solid rgba(255,255,255,.3);box-shadow:0 6px 20px rgba(0,0,0,.2);" id="lkInitial">?</div>
-                    <div style="flex:1;min-width:180px;">
-                        <div style="font-size:22px;font-weight:900;color:#fff;margin-bottom:4px;letter-spacing:-.3px;" id="lkName">—</div>
-                        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;">
-                            <span style="font-size:12px;color:rgba(255,255,255,.65);display:flex;align-items:center;gap:5px;"><i class="bi bi-mortarboard-fill" style="font-size:11px;"></i><span id="lkGrade">—</span></span>
-                            <span style="font-size:12px;color:rgba(255,255,255,.65);display:flex;align-items:center;gap:5px;"><i class="bi bi-calendar3" style="font-size:11px;"></i><span id="lkSY">—</span></span>
-                            <span style="font-size:12px;color:rgba(255,255,255,.65);display:flex;align-items:center;gap:5px;"><i class="bi bi-envelope" style="font-size:11px;"></i><span id="lkEmail">—</span></span>
-                        </div>
-                    </div>
-                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;">
-                        <div id="lkStatusBadge" style="font-size:11px;font-weight:700;padding:5px 14px;border-radius:20px;"></div>
-                        <button onclick="goToProcessPayment()" id="lkProcessBtn"
-                            style="padding:10px 20px;background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .2s;"
-                            onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">
-                            <i class="bi bi-cash-coin"></i> Process Payment
-                        </button>
-                    </div>
-                </div>
-                {{-- Balance + Progress --}}
-                <div style="margin-top:20px;padding-top:18px;border-top:1px solid rgba(255,255,255,.12);position:relative;">
-                    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:10px;flex-wrap:wrap;gap:10px;">
-                        <div>
-                            <div style="font-size:10px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Outstanding Balance</div>
-                            <div style="font-size:34px;font-weight:900;color:#fff;line-height:1;letter-spacing:-1px;" id="lkBalance">₱0.00</div>
-                        </div>
-                        <div style="text-align:right;">
-                            <div style="font-size:10px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Amount Paid</div>
-                            <div style="font-size:20px;font-weight:800;color:rgba(255,255,255,.85);" id="lkAmountPaid">₱0.00</div>
-                        </div>
-                    </div>
-                    <div style="background:rgba(255,255,255,.12);border-radius:20px;height:8px;overflow:hidden;">
-                        <div id="lkProgressBar" style="height:100%;background:linear-gradient(90deg,#c5a059,#f5d08a);border-radius:20px;width:0%;transition:width .7s ease;"></div>
-                    </div>
-                    <div style="display:flex;justify-content:space-between;margin-top:6px;">
-                        <span style="font-size:11px;color:rgba(255,255,255,.4);" id="lkProgressLabel">0% paid</span>
-                        <span style="font-size:11px;color:rgba(255,255,255,.4);" id="lkTotalFee">Total: ₱0.00</span>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Details Grid --}}
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;">
-
-                {{-- Account Summary --}}
-                <div class="card-box">
-                    <div class="card-box-header">
-                        <div class="card-box-title"><i class="bi bi-wallet2" style="color:#2471a3;"></i> Account Summary</div>
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:#f1f5f9;">
-                        <div style="background:#fff;padding:14px 16px;">
-                            <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Payment Plan</div>
-                            <div id="lkPlan" style="font-size:14px;font-weight:800;color:#1a3a6c;">—</div>
-                        </div>
-                        <div style="background:#fff;padding:14px 16px;">
-                            <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Total Fee</div>
-                            <div id="lkTotal" style="font-size:14px;font-weight:800;color:#1e293b;">—</div>
-                        </div>
-                        <div style="background:#fff;padding:14px 16px;border-top:1px solid #f1f5f9;">
-                            <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Amount Paid</div>
-                            <div id="lkPaid" style="font-size:14px;font-weight:800;color:#16a34a;">—</div>
-                        </div>
-                        <div style="background:#fff;padding:14px 16px;border-top:1px solid #f1f5f9;">
-                            <div style="font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Monthly</div>
-                            <div id="lkMonthly" style="font-size:14px;font-weight:800;color:#1a3a6c;">—</div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Student Info --}}
-                <div class="card-box">
-                    <div class="card-box-header">
-                        <div class="card-box-title"><i class="bi bi-person-badge" style="color:#2471a3;"></i> Student Info</div>
-                    </div>
-                    <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px;">
-                        <div style="display:flex;justify-content:space-between;align-items:center;">
-                            <span style="font-size:12px;color:#64748b;display:flex;align-items:center;gap:6px;"><i class="bi bi-upc" style="color:#2471a3;"></i>LRN</span>
-                            <span id="lkLrn" style="font-size:13px;font-weight:700;color:#1e293b;font-family:monospace;">—</span>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;align-items:center;">
-                            <span style="font-size:12px;color:#64748b;display:flex;align-items:center;gap:6px;"><i class="bi bi-envelope" style="color:#2471a3;"></i>Email</span>
-                            <span id="lkEmailVal" style="font-size:12px;font-weight:600;color:#1e293b;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</span>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;align-items:center;">
-                            <span style="font-size:12px;color:#64748b;display:flex;align-items:center;gap:6px;"><i class="bi bi-mortarboard" style="color:#2471a3;"></i>Grade</span>
-                            <span id="lkGradeVal" style="font-size:13px;font-weight:700;color:#1e293b;">—</span>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;align-items:center;">
-                            <span style="font-size:12px;color:#64748b;display:flex;align-items:center;gap:6px;"><i class="bi bi-calendar3" style="color:#2471a3;"></i>School Year</span>
-                            <span id="lkSYVal" style="font-size:13px;font-weight:700;color:#1e293b;">—</span>
-                        </div>
-                        <div style="display:flex;justify-content:space-between;align-items:center;">
-                            <span style="font-size:12px;color:#64748b;display:flex;align-items:center;gap:6px;"><i class="bi bi-circle-fill" style="color:#2471a3;font-size:8px;"></i>Pay Status</span>
-                            <span id="lkPayStatusBadge" style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;"></span>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
-            {{-- Balance breakdown bar --}}
-            <div class="card-box" style="margin-bottom:18px;">
-                <div class="card-box-header">
-                    <div class="card-box-title"><i class="bi bi-bar-chart-fill" style="color:#2471a3;"></i> Payment Overview</div>
-                    <span id="lkOverviewPct" style="font-size:12px;font-weight:700;color:#16a34a;background:#f0fdf4;padding:3px 10px;border-radius:20px;">0% complete</span>
-                </div>
-                <div style="padding:16px 20px 20px;">
-                    <div style="display:flex;height:20px;border-radius:10px;overflow:hidden;gap:2px;margin-bottom:12px;">
-                        <div id="lkBarPaid"      style="background:linear-gradient(90deg,#16a34a,#22c55e);height:100%;border-radius:8px 0 0 8px;transition:width .7s ease;width:0%;min-width:0;"></div>
-                        <div id="lkBarRemaining" style="background:#f1f5f9;height:100%;flex:1;border-radius:0 8px 8px 0;"></div>
-                    </div>
-                    <div style="display:flex;gap:20px;flex-wrap:wrap;">
-                        <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:#64748b;"><span style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#16a34a,#22c55e);display:inline-block;flex-shrink:0;"></span>Paid: <strong id="lkBarPaidAmt" style="color:#16a34a;">₱0.00</strong></div>
-                        <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:#64748b;"><span style="width:12px;height:12px;border-radius:3px;background:#e2e8f0;display:inline-block;flex-shrink:0;"></span>Remaining: <strong id="lkBarRemAmt" style="color:#dc2626;">₱0.00</strong></div>
-                        <div style="display:flex;align-items:center;gap:7px;font-size:12px;color:#64748b;"><span style="width:12px;height:12px;border-radius:3px;background:#f0f4ff;border:1.5px solid #c7d2fe;display:inline-block;flex-shrink:0;"></span>Total: <strong id="lkBarTotalAmt" style="color:#1a3a6c;">₱0.00</strong></div>
-                    </div>
-                </div>
-            </div>
-
-            {{-- Action buttons --}}
-            <div style="display:flex;gap:12px;flex-wrap:wrap;">
-                <button onclick="goToProcessPayment()" style="padding:14px 28px;background:linear-gradient(135deg,#166534,#16a34a);color:#fff;border:none;border-radius:14px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:9px;box-shadow:0 8px 20px rgba(22,163,74,.35);transition:all .2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'">
-                    <i class="bi bi-cash-coin" style="font-size:17px;"></i> Process Payment Now
-                </button>
-                <button onclick="clearLookup()" style="padding:14px 22px;background:#fff;color:#64748b;border:1.5px solid #e2e8f0;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;transition:all .2s;" onmouseover="this.style.background='#f8faff'" onmouseout="this.style.background='#fff'">
-                    <i class="bi bi-arrow-counterclockwise"></i> New Search
-                </button>
-            </div>
-
-        </div>{{-- /lookupResult --}}
-        </div>{{-- /lookup-content --}}
     </div>
 
     {{-- ── DAILY REPORT SECTION ── --}}
@@ -2277,7 +2048,8 @@
     })();
     // ─────────────────────────────────────────────────────────────────────────
 
-    var sections = ['dashboard','process','history','lookup','daily','receipts','collection','audit','settings'];
+    // 'receipts' is intentionally left out (section hidden — see the sidebar comment)
+    var sections = ['dashboard','process','history','daily','collection','audit','settings'];
 
     // Initialise on load — restore whichever tab was open last time, same
     // behavior as the Admin portal, so re-visiting doesn't always dump you
@@ -2312,7 +2084,7 @@
     // ── Breadcrumbs ──
     var BREADCRUMB_LABELS = {
         dashboard: 'Dashboard', process: 'Process Payment', history: 'Transaction History',
-        lookup: 'Student Lookup', daily: 'Daily Report', receipts: 'Receipts',
+        daily: 'Daily Report', receipts: 'Receipts',
         collection: 'Collection Summary', audit: 'Audit Log', settings: 'Settings',
     };
     function updateBreadcrumb(name) {
@@ -2362,14 +2134,6 @@
 
         // 3. Start data fetches in parallel with the skeleton (so data is ready sooner)
         if (name === 'process') { clearPaymentForm(); loadStudentList(); }
-        if (name === 'lookup') {
-            document.getElementById('lookupListPanel').style.display  = 'block';
-            document.getElementById('lookupResult').style.display     = 'none';
-            document.getElementById('lookupPlaceholder').style.display = 'none';
-            var lf = document.getElementById('lookupFilterInput');
-            if (lf) lf.value = '';
-            loadLookupList();
-        }
         if (name === 'daily')    { var dr = document.getElementById('dailyReportDate'); loadDailyReport(dr ? dr.value : ''); }
         if (name === 'receipts') { loadReceipts(); }
         if (name === 'history')  { loadHistory(); }
@@ -2421,7 +2185,8 @@
     }
 
     function openReceiptModal() {
-        showSection('receipts');
+        // Receipts section is hidden; reprints live in Payment History
+        showSection('history', document.querySelector('.sidebar-link[data-section="history"]'));
     }
 
     function selectMethod(method) {
@@ -2620,93 +2385,6 @@
         if (bcExtraWrap) bcExtraWrap.style.display = 'none';
     }
 
-    /* ── Student Lookup List ── */
-    var _allLookupStudents = [];
-
-    var _lookupListPage = 1;
-    var _lookupListSearch = '';
-    var _lookupListSearchTimer = null;
-
-    function goToLookupListPage(p) { _lookupListPage = p; loadLookupList(); }
-
-    function loadLookupList() {
-        var tbody = document.getElementById('lookupListBody');
-        var count = document.getElementById('lookupListCount');
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:48px;color:#94a3b8;"><i class="bi bi-arrow-repeat" style="font-size:28px;display:block;margin-bottom:10px;"></i>Loading…</td></tr>';
-        var url = _listUrl + '?page=' + _lookupListPage + (_lookupListSearch ? '&q=' + encodeURIComponent(_lookupListSearch) : '');
-        fetch(url, { credentials:'same-origin', headers:{'Accept':'application/json','X-CSRF-TOKEN':_csrfToken} })
-        .then(function(r){ return r.json(); })
-        .then(function(data){
-            _allLookupStudents = data.data || [];
-            if (count) count.textContent = data.total ?? _allLookupStudents.length;
-            renderLookupList(_allLookupStudents);
-            renderPaginationControls('lookupListPagination', data, 'goToLookupListPage', 'students');
-        })
-        .catch(function(){
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#dc2626;">Failed to load. <button onclick="loadLookupList()" style="margin-left:6px;padding:4px 12px;background:#1a3a6c;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;">Retry</button></td></tr>';
-        });
-    }
-
-    function renderLookupList(students) {
-        var tbody = document.getElementById('lookupListBody');
-        var count = document.getElementById('lookupListCount');
-        if (count) count.textContent = students.length;
-        if (!students.length) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:48px;color:#94a3b8;"><i class="bi bi-inbox" style="font-size:32px;display:block;margin-bottom:10px;"></i>No students found.</td></tr>';
-            return;
-        }
-        var planMap = {A:'Plan A – Cash',B:'Plan B – Monthly',C:'Plan C – Elem Monthly',D:'Plan D – Nur/K Monthly'};
-        var payBadge = function(s) {
-            if (s==='paid')    return '<span class="badge-status paid"><i class="bi bi-check-circle-fill me-1"></i>Paid</span>';
-            if (s==='partial') return '<span class="badge-status partial"><i class="bi bi-clock-fill me-1"></i>Partial</span>';
-            return '<span class="badge-status pending"><i class="bi bi-hourglass-split me-1"></i>Pending</span>';
-        };
-        tbody.innerHTML = students.map(function(s) {
-            var grade = s.grade_level ? (s.grade_level.charAt(0).toUpperCase()+s.grade_level.slice(1)) : '—';
-            var bal   = parseFloat(s.balance)||0;
-            var tf    = parseFloat(s.total_fee)||0;
-            var balColor = s.payment_status==='paid' ? '#16a34a' : (tf>0&&bal>0 ? '#dc2626' : '#94a3b8');
-            var balText  = tf===0 ? '<span style="font-size:11px;color:#94a3b8;">Fee not set</span>' : '₱'+bal.toLocaleString('en-PH',{minimumFractionDigits:2});
-            var enc = JSON.stringify(s).replace(/"/g,'&quot;');
-            return '<tr style="cursor:pointer;" onclick="openLookupDetail('+enc+')">'
-                +'<td><span style="font-family:monospace;font-size:11.5px;background:#f8faff;padding:3px 8px;border-radius:6px;color:#475569;">'+(s.reference_no||'—')+'</span></td>'
-                +'<td><div style="font-weight:700;color:#1e293b;">'+s.name+'</div><div style="font-size:11px;color:#94a3b8;">'+s.email+'</div></td>'
-                +'<td style="font-weight:600;">'+grade+'</td>'
-                +'<td>'+(s.section&&s.section!=='—'?s.section:'<span style="color:#cbd5e1;">—</span>')+'</td>'
-                +'<td style="font-size:12px;color:#64748b;">'+(s.school_year||'—')+'</td>'
-                +'<td style="font-size:12px;color:#475569;">'+(s.payment_option ? (planMap[s.payment_option]||s.payment_option) : '<span style="color:#94a3b8;">Not set</span>')+'</td>'
-                +'<td>'+payBadge(s.payment_status)+'</td>'
-                +'<td style="font-weight:800;color:'+balColor+';">'+balText+'</td>'
-                +'</tr>';
-        }).join('');
-    }
-
-    function filterLookupList(q) {
-        // Server-side now, same reasoning as filterStudentList above.
-        clearTimeout(_lookupListSearchTimer);
-        _lookupListSearchTimer = setTimeout(function () {
-            _lookupListSearch = q || '';
-            _lookupListPage = 1;
-            loadLookupList();
-        }, 400);
-    }
-
-    function openLookupDetail(s) {
-        document.getElementById('lookupListPanel').style.display = 'none';
-        document.getElementById('lookupPlaceholder').style.display = 'none';
-        selectLookupStudent(s);
-    }
-
-    function backToLookupList() {
-        document.getElementById('lookupResult').style.display = 'none';
-        document.getElementById('lookupPlaceholder').style.display = 'none';
-        document.getElementById('lookupListPanel').style.display = 'block';
-        document.getElementById('lookupFilterInput').value = '';
-        _lookupListSearch = '';
-        _lookupListPage = 1;
-        loadLookupList();
-    }
-
     /* ── Daily Report ── */
     var _dailyRows = [];
 
@@ -2751,7 +2429,7 @@
                 +'<td><span class="method-pill '+(r.method.toLowerCase()==='cash'?'cash':'gcash')+'">'+r.method+'</span></td>'
                 +'<td style="font-weight:700;color:#16a34a;">₱'+r.amount+'</td>'
                 +'<td><span style="font-family:monospace;font-size:11px;background:#f8faff;padding:2px 7px;border-radius:5px;color:#475569;">'+r.reference+'</span></td>'
-                +'<td><button onclick="reprintTx(\''+r.or_no+'\',\''+r.student+'\',\''+r.grade+'\',\''+r.school_year+'\',\''+r.type+'\',\''+r.method+'\',\''+r.amount+'\',\''+r.time+'\',\''+r.time+'\')" class="action-btn-sm" title="Print"><i class="bi bi-printer-fill"></i></button></td>'
+                +'<td><button onclick="'+_reprintOnclick(r)+'" class="action-btn-sm" title="Print"><i class="bi bi-printer-fill"></i></button></td>'
                 +'</tr>';
         }).join('');
     }
@@ -2811,7 +2489,7 @@
                 +'<td><span class="method-pill '+(r.method.toLowerCase()==='cash'?'cash':'gcash')+'">'+r.method+'</span></td>'
                 +'<td style="font-weight:700;color:#16a34a;">₱'+r.amount+'</td>'
                 +'<td style="font-size:12px;color:#64748b;">'+r.date+'<br><span style="font-size:10px;">'+r.time+'</span></td>'
-                +'<td><button onclick="reprintTx(\''+r.or_no+'\',\''+r.student+'\',\''+r.grade+'\',\''+r.school_year+'\',\''+r.type+'\',\''+r.method+'\',\''+r.amount+'\',\''+r.date+'\',\''+r.time+'\')" class="btn-primary-cash" style="padding:7px 14px;font-size:12px;border-radius:8px;" title="Print Receipt"><i class="bi bi-printer-fill me-1"></i>Print</button></td>'
+                +'<td><button onclick="'+_reprintOnclick(r)+'" class="btn-primary-cash" style="padding:7px 14px;font-size:12px;border-radius:8px;" title="Print Receipt"><i class="bi bi-printer-fill me-1"></i>Print</button></td>'
                 +'</tr>';
         }).join('');
     }
@@ -3020,7 +2698,7 @@
                 + '<td style="font-weight:700;color:#16a34a;">₱' + r.amount + '</td>'
                 + '<td>' + badge + '</td>'
                 + '<td style="font-size:12px;color:#64748b;">' + r.date + '<br><span style="font-size:10px;">' + r.time + '</span></td>'
-                + '<td><button onclick="reprintTx(\'' + r.or_no + '\',\'' + r.student + '\',\'' + r.grade + '\',\'' + r.school_year + '\',\'' + r.type + '\',\'' + r.method + '\',\'' + r.amount + '\',\'' + r.date + '\',\'' + r.time + '\')" class="action-btn-sm" title="Print Receipt"><i class="bi bi-printer-fill"></i></button></td>'
+                + '<td><button onclick="' + _reprintOnclick(r) + '" class="action-btn-sm" title="Print Receipt"><i class="bi bi-printer-fill"></i></button></td>'
                 + '</tr>';
         }).join('');
     }
@@ -3722,11 +3400,22 @@
         printOfficialReceipt(_lastReceiptData);
     }
 
+    // Builds a Print button's onclick from a list row. Every value is JSON-encoded and
+    // HTML-escaped, so names like O'Brien can't break the button.
+    function _reprintOnclick(r) {
+        var args = [r.or_no, r.student, r.grade, r.school_year, r.type, r.method, r.amount, r.date, r.time]
+            .map(function(v) { return JSON.stringify(v == null ? '' : String(v)); })
+            .join(',');
+        return 'reprintTx(' + args.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + ')';
+    }
+
     function reprintTx(ref, name, grade, sy, type, method, amount, date, time) {
+        // Lists send the amount pre-formatted ("1,056.10"); Number() on that is NaN, so strip the commas first
+        var amt = parseFloat(String(amount).replace(/[^0-9.\-]/g, '')) || 0;
         printOfficialReceipt({
             or_no: ref, student_name: name, grade_level: grade,
             school_year: sy, description: type, method: method,
-            amount: Number(amount).toLocaleString('en-PH',{minimumFractionDigits:2}),
+            amount: amt.toLocaleString('en-PH',{minimumFractionDigits:2, maximumFractionDigits:2}),
             date: date, time: time,
             received_by: '{{ auth("cashier")->user()->name ?? "Cashier" }}'
         });
@@ -3788,78 +3477,6 @@
         w.document.open();
         w.document.write(html);
         w.document.close();
-    }
-
-    /* ══ STUDENT LOOKUP ══ */
-    var _lookupStudent = null;
-    var _lookupTimer   = null;
-
-    function selectLookupStudent(s) {
-        _lookupStudent = s;
-        document.getElementById('lookupListPanel').style.display = 'none';
-        document.getElementById('lookupPlaceholder').style.display = 'none';
-        document.getElementById('lookupResult').style.display = 'block';
-
-        var fmt = function(v) { return '₱' + Number(v||0).toLocaleString('en-PH',{minimumFractionDigits:2}); };
-        var planLabels = { A:'Full Payment', B:'Installment B', C:'Installment C', D:'Installment D' };
-
-        // Banner
-        document.getElementById('lkInitial').textContent   = s.name.charAt(0).toUpperCase();
-        document.getElementById('lkName').textContent      = s.name;
-        document.getElementById('lkGrade').textContent     = 'Grade ' + (s.grade_level||'—');
-        document.getElementById('lkSY').textContent        = 'S.Y. ' + (s.school_year||'—');
-        document.getElementById('lkEmail').textContent     = s.email || '—';
-        document.getElementById('lkBalance').textContent   = fmt(s.balance);
-        document.getElementById('lkAmountPaid').textContent = fmt(s.payment_amount);
-
-        // Progress bar
-        var total = Number(s.total_fee||0);
-        var paid  = Number(s.payment_amount||0);
-        var pct   = total > 0 ? Math.min(100, Math.round((paid/total)*100)) : 0;
-        document.getElementById('lkProgressBar').style.width  = pct + '%';
-        document.getElementById('lkProgressLabel').textContent = pct + '% paid';
-        document.getElementById('lkTotalFee').textContent      = 'Total: ' + fmt(total);
-
-        // Status badge
-        var statusMap = { paid:['Fully Paid','#dcfce7','#16a34a'], partial:['Partially Paid','#fef3c7','#b45309'], unpaid:['Unpaid','#fee2e2','#dc2626'], pending:['No Enrollment','#f1f5f9','#64748b'] };
-        var st = statusMap[s.payment_status] || statusMap.pending;
-        var badge = document.getElementById('lkStatusBadge');
-        badge.textContent = st[0]; badge.style.background = st[1]; badge.style.color = st[2];
-
-        // Account summary
-        document.getElementById('lkPlan').textContent    = planLabels[s.payment_option] || '—';
-        document.getElementById('lkTotal').textContent   = total > 0 ? fmt(total) : '—';
-        document.getElementById('lkPaid').textContent    = fmt(paid);
-        document.getElementById('lkMonthly').textContent = s.monthly_amount > 0 ? fmt(s.monthly_amount) : '—';
-
-        // Student info card
-        document.getElementById('lkLrn').textContent      = s.lrn || '—';
-        document.getElementById('lkEmailVal').textContent  = s.email || '—';
-        document.getElementById('lkGradeVal').textContent  = 'Grade ' + (s.grade_level||'—');
-        document.getElementById('lkSYVal').textContent     = 'S.Y. ' + (s.school_year||'—');
-        var pb = document.getElementById('lkPayStatusBadge');
-        pb.textContent = st[0]; pb.style.background = st[1]; pb.style.color = st[2];
-
-        // Bar chart
-        var barPct = total > 0 ? Math.min(100, (paid/total)*100) : 0;
-        document.getElementById('lkBarPaid').style.width      = barPct + '%';
-        document.getElementById('lkBarPaidAmt').textContent   = fmt(paid);
-        document.getElementById('lkBarRemAmt').textContent    = fmt(s.balance);
-        document.getElementById('lkBarTotalAmt').textContent  = fmt(total);
-        document.getElementById('lkOverviewPct').textContent  = pct + '% complete';
-    }
-
-    function goToProcessPayment() {
-        if (!_lookupStudent) return;
-        showSection('process', document.querySelector('.sidebar-link[data-section="process"]'));
-        setTimeout(function() { selectStudentFromList(_lookupStudent); }, 150);
-    }
-
-    function clearLookup() {
-        _lookupStudent = null;
-        document.getElementById('lookupListPanel').style.display = 'block';
-        document.getElementById('lookupPlaceholder').style.display = 'none';
-        document.getElementById('lookupResult').style.display = 'none';
     }
 
     // ══ Chart.js ══
