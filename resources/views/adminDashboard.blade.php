@@ -36,6 +36,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     {{-- pageWindow(): max-10 page buttons, shared by every JS-built pager --}}
     <script src="/js/page-window.js?v={{ filemtime(public_path('js/page-window.js')) }}"></script>
+    {{-- printOfficialReceipt(): the one receipt layout used across the system --}}
+    <script src="/js/official-receipt.js?v={{ filemtime(public_path('js/official-receipt.js')) }}"></script>
 
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
 
@@ -741,7 +743,7 @@
 
 const sections = [
     'dashboard','students','teachers','teacher-assignments','enrollment','finance','payments','installments','fees','subjects','sections','schedules',
-    'guidance','announcements','news','reports','settings','summer','promotion','assessment','messages','grade-oversight','archives'
+    'guidance','announcements','news','reports','settings','summer','promotion','assessment','messages','grade-oversight','archives','audit'
 ];
 
 // ── Breadcrumbs ──
@@ -754,6 +756,7 @@ const BREADCRUMB_LABELS = {
     reports: 'Reports', settings: 'Settings', summer: 'Summer Classes',
     promotion: 'Assessment & Promotion', assessment: 'Assessment & Promotion',
     messages: 'Contact Messages', 'grade-oversight': 'Grade Oversight', archives: 'Archives',
+    audit: 'Audit Trail',
 };
 function updateBreadcrumb(name) {
     const el = document.getElementById('bc-current');
@@ -833,6 +836,9 @@ function showSection(name, opts = {}) {
     }
     if (name === 'archives') {
         loadArchivesSection('{{ route("admin.section.archives") }}');
+    }
+    if (name === 'audit') {
+        loadAuditSection('{{ route("admin.section.audit") }}');
     }
     if (name === 'enrollment') {
         loadEnrollmentSection('{{ route("admin.section.enrollment") }}');
@@ -1023,6 +1029,41 @@ document.addEventListener('click', function (e) {
         e.preventDefault();
         const url = new URL(link.href, window.location.origin);
         loadArchivesSection('{{ route("admin.section.archives") }}?' + url.searchParams.toString());
+    }
+});
+
+// ── On-demand section loading (Audit Trail) ── same pattern as Guidance
+// Records: the filter form, Clear link and pagination all reload just this
+// section (it has no other links).
+function loadAuditSection(url) {
+    const container = document.getElementById('section-audit');
+    if (!container) return;
+    fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.text();
+        })
+        .then(html => { swapSectionContent('audit', html); })
+        .catch(() => {
+            swapSectionContent('audit', '<div style="text-align:center;padding:60px 20px;color:#dc2626;">' +
+                '<i class="bi bi-exclamation-triangle-fill" style="font-size:32px;display:block;margin-bottom:10px;"></i>' +
+                'Failed to load the Audit Trail. <button onclick="loadAuditSection(\'' + url.replace(/'/g, "\\'") + '\')" style="margin-left:8px;padding:4px 12px;border:1px solid #dc2626;background:#fff;color:#dc2626;border-radius:6px;cursor:pointer;">Retry</button>' +
+                '</div>');
+        });
+}
+document.addEventListener('submit', function (e) {
+    if (e.target && e.target.id === 'audit-filter-form') {
+        e.preventDefault();
+        const params = new URLSearchParams(new FormData(e.target)).toString();
+        loadAuditSection('{{ route("admin.section.audit") }}?' + params);
+    }
+});
+document.addEventListener('click', function (e) {
+    const link = e.target.closest('#section-audit a[href]');
+    if (link && !link.closest('.pagination')?.classList.contains('disabled')) {
+        e.preventDefault();
+        const url = new URL(link.href, window.location.origin);
+        loadAuditSection('{{ route("admin.section.audit") }}?' + url.searchParams.toString());
     }
 });
 
@@ -1242,7 +1283,7 @@ function escHtml(str) {
 // swapSectionContent, called from each load*Section() below), not
 // disappear on a fixed timer regardless of whether the content has
 // actually arrived yet.
-const _ASYNC_SECTIONS = ['guidance', 'announcements', 'news', 'archives', 'enrollment', 'students', 'subjects', 'reports'];
+const _ASYNC_SECTIONS = ['guidance', 'announcements', 'news', 'archives', 'enrollment', 'students', 'subjects', 'reports', 'audit'];
 
 // Same minimum-visible + fade timing used everywhere — both for async
 // sections (where this is a real floor under how fast the fetch could
@@ -1632,6 +1673,10 @@ function openWalkInEnrollmentModal() {
         @endif
     </button>
 
+    <button class="sidebar-link" id="nav-audit" onclick="showSection('audit')">
+        <i class="bi bi-journal-check"></i> Audit Trail
+    </button>
+
     <button class="sidebar-link" id="nav-reports" onclick="showSection('reports')">
 
         <i class="bi bi-bar-chart-fill"></i> Reports
@@ -1708,6 +1753,11 @@ function openWalkInEnrollmentModal() {
          SECTION: ARCHIVES
     ══════════════════════════════════════ --}}
     @include('admin.sections.archives')
+
+    {{-- ══════════════════════════════════════
+         SECTION: AUDIT TRAIL
+    ══════════════════════════════════════ --}}
+    @include('admin.sections.audit')
 
     <script>
     function filterArchiveRows() {
@@ -1844,8 +1894,8 @@ function openWalkInEnrollmentModal() {
                              go straight to Decision without clicking there — this repeats
                              the warning right where the actual choice gets made, so it
                              can't be missed. --}}
-                        <div id="sm-decision-balance-warning" style="display:none;margin-bottom:16px;padding:10px 14px;background:#fff3e0;border:1px solid #ffc107;border-radius:8px;font-size:12.5px;color:#854d0e;">
-                            <i class="bi bi-exclamation-triangle-fill me-1"></i><span id="sm-decision-balance-text"></span>
+                        <div id="sm-decision-balance-warning" style="display:none;margin-bottom:16px;padding:10px 14px;background:#fdecea;border:1px solid #f5c2c0;border-radius:8px;font-size:12.5px;color:#b71c1c;">
+                            <i class="bi bi-lock-fill me-1"></i><span id="sm-decision-balance-text"></span>
                         </div>
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
                             <label style="border:2px solid #ddd;border-radius:10px;padding:14px;cursor:pointer;transition:all 0.2s;" id="sm-opt-promote" onclick="smSelectDecision('promote')">
@@ -1941,7 +1991,7 @@ function openWalkInEnrollmentModal() {
         </div>
     </div>
 
-    {{-- Auto-Advance Modal (Nursery/Kindergarten — no checks) --}}
+    {{-- Auto-Advance Modal (Nursery/Kindergarten — payment check only) --}}
     <div class="modal fade" id="autoAdvanceModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content modal-content-styled">
@@ -1959,15 +2009,21 @@ function openWalkInEnrollmentModal() {
                             <label class="form-lbl">Advance to School Year</label>
                             <input type="text" id="aa-to-sy" class="form-fld" readonly>
                         </div>
-                        <div style="background:#e8f8f0;border:1px solid #b8e6c8;border-radius:10px;padding:12px 16px;">
+                        <div style="background:#e8f8f0;border:1px solid #b8e6c8;border-radius:10px;padding:12px 16px;margin-bottom:14px;">
                             <div style="font-weight:700;color:#1e8449;font-size:14px;">
                                 <i class="bi bi-check-circle-fill me-1"></i><span id="aa-count">0</span> student(s) will be advanced
                             </div>
-                            <div style="font-size:11.5px;color:#2e7d32;margin-top:4px;">No grade, guidance, payment, or document checks apply at this level.</div>
+                            <div style="font-size:11.5px;color:#2e7d32;margin-top:4px;">No grade, guidance, or document checks apply at this level — only a fully paid school year.</div>
                             <div id="aa-names" style="font-size:12px;color:#2e7d32;margin-top:6px;max-height:120px;overflow-y:auto;"></div>
                         </div>
+                        <div id="aa-excluded-box" style="background:#fff8e1;border:1px solid #f0dca0;border-radius:10px;padding:12px 16px;display:none;">
+                            <div style="font-weight:700;color:#856404;font-size:14px;">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i><span id="aa-excluded-count">0</span> student(s) skipped — unpaid balance
+                            </div>
+                            <div id="aa-excluded-list" style="font-size:12px;color:#6b5400;margin-top:8px;max-height:150px;overflow-y:auto;"></div>
+                        </div>
                         <div id="aa-none" style="display:none;text-align:center;padding:20px;color:var(--muted);">
-                            No students found for this grade/school year.
+                            No students can be advanced right now — none found, or everyone still has a balance for this school year.
                         </div>
                     </div>
                 </div>
@@ -8841,131 +8897,101 @@ function openWalkInEnrollmentModal() {
 
     }
 
-    function printOfficialReceipt(data) {
-        const w = window.open('', '_blank', 'width=680,height=820');
-        const fmt = v => parseFloat(String(v).replace(/,/g, '')).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const typeLabel = data.type === 'walkin' ? 'Walk-in / Cashier' : 'Online Payment';
-        w.document.write(`<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Official Receipt ${data.or_no}</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Segoe UI', Arial, sans-serif; background: #fff; color: #1a1a1a; }
-  .page { max-width: 620px; margin: 0 auto; padding: 32px 36px; }
-  /* Header */
-  .hdr { text-align: center; border-bottom: 3px double #1a3a6c; padding-bottom: 18px; margin-bottom: 20px; }
-  .hdr .school { font-size: 20px; font-weight: 800; color: #1a3a6c; letter-spacing: .3px; }
-  .hdr .addr  { font-size: 12px; color: #555; margin-top: 3px; }
-  .hdr .doc-title { font-size: 15px; font-weight: 700; color: #fff; background: #1a3a6c; display: inline-block;
-                     padding: 5px 28px; border-radius: 4px; margin-top: 14px; letter-spacing: 2px; }
-  /* OR Meta */
-  .meta { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 12px; }
-  .meta .or-no { font-size: 15px; font-weight: 700; color: #1a3a6c; }
-  .meta .dt    { text-align: right; color: #555; line-height: 1.7; }
-  /* Table */
-  .tbl { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; }
-  .tbl th { background: #eef3fc; color: #1a3a6c; font-size: 10px; font-weight: 700;
-             text-transform: uppercase; letter-spacing: 1px; padding: 8px 12px; border: 1px solid #d0d9ef; }
-  .tbl td { padding: 10px 12px; border: 1px solid #e4e9f4; vertical-align: top; }
-  .tbl tr:nth-child(even) td { background: #f8f9ff; }
-  .label { color: #555; font-size: 11px; }
-  /* Total */
-  .total-row { background: #1a3a6c !important; }
-  .total-row td { color: #fff !important; font-size: 15px; font-weight: 700; border-color: #1a3a6c !important; }
-  /* Footer */
-  .sigs { display: flex; justify-content: space-between; margin-top: 36px; gap: 24px; }
-  .sig-box { flex: 1; text-align: center; }
-  .sig-line { border-top: 1px solid #1a3a6c; margin: 0 8px; padding-top: 6px; font-size: 11px; color: #333; font-weight: 600; }
-  .sig-role { font-size: 10px; color: #777; margin-top: 2px; }
-  .note { text-align: center; font-size: 10px; color: #888; margin-top: 28px; border-top: 1px solid #e0e0e0; padding-top: 12px; }
-  @media print {
-    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .page { padding: 12px 18px; }
-    .no-print { display: none; }
-  }
-</style>
-</head>
-<body>
-<div class="page">
-  <!-- Header -->
-  <div class="hdr">
-    <div class="school">IEMELIF Learning Center</div>
-    <div class="addr">General Tinio, Nueva Ecija &nbsp;|&nbsp; Tel: (044) 000-0000</div>
-    <div class="doc-title">OFFICIAL RECEIPT</div>
-  </div>
-  <!-- OR # and Date -->
-  <div class="meta">
-    <div>
-      <div class="label">OR Number</div>
-      <div class="or-no">${data.or_no}</div>
-    </div>
-    <div class="dt">
-      <div><strong>${data.date}</strong></div>
-      <div>${data.time}</div>
-      <div style="margin-top:4px;padding:2px 8px;border-radius:4px;background:#e3f2fd;color:#1565c0;font-size:10px;font-weight:600;display:inline-block;">${typeLabel}</div>
-    </div>
-  </div>
-  <!-- Details Table -->
-  <table class="tbl">
-    <thead>
-      <tr><th colspan="2">Payment Details</th></tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td style="width:38%"><span class="label">Student Name</span></td>
-        <td><strong>${data.student_name}</strong></td>
-      </tr>
-      <tr>
-        <td><span class="label">Grade Level</span></td>
-        <td>${data.grade_level}</td>
-      </tr>
-      <tr>
-        <td><span class="label">School Year</span></td>
-        <td>${data.school_year}</td>
-      </tr>
-      <tr>
-        <td><span class="label">Description</span></td>
-        <td>${data.description}</td>
-      </tr>
-      <tr>
-        <td><span class="label">Payment Method</span></td>
-        <td>${data.method}</td>
-      </tr>
-      <tr>
-        <td><span class="label">Received By</span></td>
-        <td>${data.received_by}</td>
-      </tr>
-      <tr class="total-row">
-        <td>Amount Paid</td>
-        <td>₱ ${fmt(data.amount)}</td>
-      </tr>
-    </tbody>
-  </table>
-  <!-- Signatures -->
-  <div class="sigs">
-    <div class="sig-box">
-      <div style="height:44px;"></div>
-      <div class="sig-line">${data.received_by}</div>
-      <div class="sig-role">Cashier / Authorized Staff</div>
-    </div>
-    <div class="sig-box">
-      <div style="height:44px;"></div>
-      <div class="sig-line">${data.student_name}</div>
-      <div class="sig-role">Student / Guardian</div>
-    </div>
-  </div>
-  <!-- Note -->
-  <div class="note">
-    This is a computer-generated official receipt.<br>
-    Please keep this receipt for your records. &copy; ${new Date().getFullYear()} IEMELIF Learning Center
-  </div>
-</div>
-<scr` + `ipt>window.onload=function(){window.print();};</scr` + `ipt>
-</body>
-</html>`);
-        w.document.close();
+    // printOfficialReceipt() — the shared Official Receipt (Cashier layout), public/js/official-receipt.js
+
+    // ── Student Management › Transaction History ──
+    let _stxStudentId = null;
+    let _stxRows = [];
+    let _stxStudent = null;
+
+    function openStudentTransactions(userId) {
+        _stxStudentId = userId;
+        const sel = document.getElementById('stx-sy');
+        sel.innerHTML = '<option value="all">All School Years</option>';
+        sel.value = 'all';
+        document.getElementById('stx-subtitle').textContent = 'Loading…';
+        loadStudentTransactions();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('studentTransactionsModal')).show();
+    }
+
+    function loadStudentTransactions() {
+        const sel = document.getElementById('stx-sy');
+        const body = document.getElementById('stx-body');
+        body.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted);"><span class="spinner-border spinner-border-sm me-2"></span>Loading transactions…</td></tr>';
+        fetch('/admin/students/' + _stxStudentId + '/transactions?school_year=' + encodeURIComponent(sel.value || 'all'), { headers: { 'Accept': 'application/json' } })
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+            .then(renderStudentTransactions)
+            .catch(() => {
+                body.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--red);">Could not load the transaction history. Please try again.</td></tr>';
+            });
+    }
+
+    function renderStudentTransactions(d) {
+        const esc = escHtml;
+        const peso = n => '₱' + Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const grade = g => ({ nursery:'Nursery', kindergarten:'Kindergarten' }[g] || String(g || '—').replace(/^grade(\d)$/, 'Grade $1'));
+        _stxRows = d.transactions || [];
+        _stxStudent = d.student || {};
+
+        document.getElementById('stx-subtitle').textContent = (_stxStudent.name || '') + (_stxStudent.lrn ? ' · LRN ' + _stxStudent.lrn : '') + (_stxStudent.email ? ' · ' + _stxStudent.email : '');
+
+        // School-year options = the years this student was actually enrolled
+        const sel = document.getElementById('stx-sy');
+        if (sel.options.length === 1) {
+            (d.school_years || []).forEach(y => sel.add(new Option('S.Y. ' + y.school_year + ' — ' + grade(y.grade_level), y.school_year)));
+        }
+        sel.value = d.school_year || 'all';
+
+        // Summary: paid via transactions + the account standing of the year shown
+        const yr = d.school_year !== 'all' ? (d.school_years || []).find(y => y.school_year === d.school_year) : (d.school_years || [])[0];
+        const tile = (icon, color, value, label, sub) =>
+            '<div class="col-md-3 col-6"><div class="stat-card h-100" style="padding:14px 16px;">' +
+            '<div class="stat-icon ' + color + '" style="width:40px;height:40px;"><i class="bi ' + icon + '"></i></div>' +
+            '<div><div class="stat-value" style="font-size:18px;">' + value + '</div><div class="stat-label">' + label + '</div>' + (sub ? '<div style="font-size:11px;color:var(--muted);">' + sub + '</div>' : '') + '</div></div></div>';
+        document.getElementById('stx-summary').innerHTML =
+            tile('bi-receipt', 'blue', d.summary.count, 'Transactions', d.summary.pending ? d.summary.pending + ' pending' : '') +
+            tile('bi-cash-stack', 'green', peso(d.summary.total_paid), 'Total Paid', 'completed payments') +
+            // A year with no fee recorded shows "Not set" — not a misleading ₱0.00 balance
+            (yr ? (yr.total_fee > 0
+                    ? tile('bi-wallet2', 'gold', peso(yr.total_fee), 'Total Fee', 'S.Y. ' + esc(yr.school_year)) +
+                      tile('bi-hourglass-split', yr.balance > 0 ? 'red' : 'green', peso(yr.balance), 'Balance', 'S.Y. ' + esc(yr.school_year) + (yr.plan ? ' · Plan ' + esc(yr.plan) : ''))
+                    : tile('bi-wallet2', 'gold', 'Not set', 'Total Fee', 'S.Y. ' + esc(yr.school_year) + ' — no fee recorded') +
+                      tile('bi-hourglass-split', 'blue', '—', 'Balance', 'S.Y. ' + esc(yr.school_year) + (yr.plan ? ' · Plan ' + esc(yr.plan) : ''))) : '');
+
+        const body = document.getElementById('stx-body');
+        if (!_stxRows.length) {
+            body.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted);"><i class="bi bi-inbox" style="font-size:28px;display:block;margin-bottom:8px;opacity:.4;"></i>No transactions' + (d.school_year !== 'all' ? ' for S.Y. ' + esc(d.school_year) : '') + ' yet.</td></tr>';
+            return;
+        }
+        const badge = s => {
+            const m = { completed: ['active', 'Completed'], pending: ['pending', 'Pending'], rejected: ['declined', 'Rejected'], expired: ['inactive', 'Expired'], failed: ['declined', 'Failed'] }[s] || ['inactive', s];
+            return '<span class="status-badge ' + m[0] + '">' + esc(m[1]) + '</span>';
+        };
+        body.innerHTML = _stxRows.map((t, i) =>
+            '<tr>' +
+            '<td style="white-space:nowrap;">' + esc(t.date) + '<div style="font-size:11px;color:var(--muted);">' + esc(t.time) + '</div></td>' +
+            '<td style="font-family:monospace;font-size:11.5px;">' + esc(t.reference) + '</td>' +
+            '<td>' + esc(t.description) + '</td>' +
+            '<td style="white-space:nowrap;">' + esc(t.school_year) + '</td>' +
+            '<td>' + esc(t.method) + '</td>' +
+            '<td style="font-size:12px;">' + esc(t.processed_by) + '</td>' +
+            '<td style="text-align:right;font-weight:700;white-space:nowrap;">' + peso(t.amount) + '</td>' +
+            '<td>' + badge(t.status) + '</td>' +
+            '<td style="text-align:center;">' + (t.status === 'completed'
+                ? '<button type="button" class="action-btn view" title="Print Official Receipt" onclick="printStudentTransactionReceipt(' + i + ')"><i class="bi bi-printer-fill"></i></button>'
+                : '<span style="color:#cbd5e1;">—</span>') + '</td>' +
+            '</tr>').join('');
+    }
+
+    // The shared Official Receipt (same slip as the Cashier's) — it escapes the values itself
+    function printStudentTransactionReceipt(i) {
+        const t = _stxRows[i];
+        if (!t) return;
+        printOfficialReceipt({
+            or_no: t.reference, date: t.date, time: t.time, type: t.channel,
+            student_name: _stxStudent.name || '', grade_level: t.grade_level, school_year: t.school_year,
+            description: t.description, method: t.method, received_by: t.processed_by, amount: t.amount,
+        });
     }
 
     function printPaymentReceipt(enrollmentId, studentName, refNumber, amount, method, date) {
@@ -11892,9 +11918,14 @@ function openWalkInEnrollmentModal() {
             viewStudentDetails(id); 
         }
 
-        else if (btn.classList.contains('js-student-edit')) { 
-            e.preventDefault(); 
-            editStudent(id); 
+        else if (btn.classList.contains('js-student-edit')) {
+            e.preventDefault();
+            editStudent(id);
+        }
+
+        else if (btn.classList.contains('js-student-transactions')) {
+            e.preventDefault();
+            openStudentTransactions(id);
         }
 
         else if (btn.classList.contains('js-student-archive')) {
@@ -12627,11 +12658,15 @@ function openWalkInEnrollmentModal() {
     };
 
     let _smAssessFromSY = '';
+    // Set when the school year being left isn't fully paid (PaymentService::promotionBlockReason):
+    // Promote/Retain stay disabled and the server refuses them too.
+    let _smAssessBlocked = '';
 
-    function openSmAssessModal(userId, studentName, gradeRaw, section, totalFee, amtPaid, balance, payStatus, fromSY) {
+    function openSmAssessModal(userId, studentName, gradeRaw, section, totalFee, amtPaid, balance, payStatus, fromSY, blockReason) {
         _smAssessStudentId = userId;
         _smAssessGradeRaw  = gradeRaw;
         _smAssessFromSY    = fromSY || '';
+        _smAssessBlocked   = blockReason || '';
 
         // "Next School Year" defaults to the year after the one being assessed
         // (it was always current + 1, even when assessing an older year)
@@ -12700,21 +12735,25 @@ function openWalkInEnrollmentModal() {
                     </div>
                 </div>
             </div>
-            ${balance > 0 ? '<div style="margin-top:12px;padding:10px 14px;background:#fff3e0;border-radius:8px;font-size:12px;color:#854d0e;"><i class="bi bi-info-circle me-1"></i>Student has an outstanding balance. You may still promote them — admin discretion applies. The balance will carry over or must be settled before the new school year begins.</div>' : ''}
+            ${_smAssessBlocked ? '<div style="margin-top:12px;padding:10px 14px;background:#fdecea;border-radius:8px;font-size:12px;color:#b71c1c;"><i class="bi bi-lock-fill me-1"></i>The school year must be fully paid before the student can be promoted or retained. Payments are recorded by the Cashier / Finance Office.</div>' : ''}
         `;
 
-        // Same warning, repeated on the Decision tab itself (see docs/
-        // SCHOOL-YEAR-VISIBILITY-PHASED-PLAN.md Phase 3) — the Balance tab
-        // already covers this, but it's a separate tab an admin could skip
-        // on the way to Decision.
+        // Repeated on the Decision tab itself — the Balance tab is a separate
+        // tab an admin could skip on the way to Decision.
         const decisionWarning = document.getElementById('sm-decision-balance-warning');
-        if (balance > 0) {
+        if (_smAssessBlocked) {
             document.getElementById('sm-decision-balance-text').textContent =
-                'This student has an unpaid balance of ' + fmt(balance) + ' for ' + (fromSY || 'this school year') + '. You can still promote them, but confirm this is intentional.';
+                _smAssessBlocked + '. The student can\'t be promoted or retained until it is fully paid.';
             decisionWarning.style.display = '';
         } else {
             decisionWarning.style.display = 'none';
         }
+        ['sm-opt-promote', 'sm-opt-retain'].forEach(function (id) {
+            const opt = document.getElementById(id);
+            opt.style.opacity = _smAssessBlocked ? '0.5' : '';
+            opt.style.pointerEvents = _smAssessBlocked ? 'none' : '';
+            opt.querySelector('input').disabled = !!_smAssessBlocked;
+        });
 
         new bootstrap.Modal(document.getElementById('smAssessModal')).show();
         loadSmGrades();
@@ -12734,6 +12773,7 @@ function openWalkInEnrollmentModal() {
             btn.style.borderBottom = '2px solid var(--blue)';
         }
         document.getElementById('sm-assess-submit-btn').style.display = (tab === 'decision') ? '' : 'none';
+        document.getElementById('sm-assess-submit-btn').disabled = !!_smAssessBlocked;
     }
 
     function loadSmGrades() {
@@ -13424,7 +13464,7 @@ function openWalkInEnrollmentModal() {
         );
     }
 
-    // ── Auto-Advance (Nursery/Kindergarten — no checks) ──
+    // ── Auto-Advance (Nursery/Kindergarten — payment check only) ──
     let _aaGrade = null, _aaFromSY = null, _aaToSY = null;
 
     function openAutoAdvanceModal(grade, gradeLabel) {
@@ -13433,6 +13473,7 @@ function openWalkInEnrollmentModal() {
         document.getElementById('aa-content').style.display = 'none';
         document.getElementById('aa-confirm-btn').style.display = 'none';
         document.getElementById('aa-none').style.display = 'none';
+        document.getElementById('aa-excluded-box').style.display = 'none';
 
         _aaGrade  = grade;
         _aaFromSY = @js($assessSchoolYear ?? $currentSchoolYear); // year selected on the Assessment tab
@@ -13449,6 +13490,14 @@ function openWalkInEnrollmentModal() {
             document.getElementById('aa-content').style.display = '';
             document.getElementById('aa-count').textContent = data.count;
             document.getElementById('aa-names').textContent = data.students.map(s => s.name).join(', ') || '—';
+
+            if (data.excluded_count > 0) {
+                document.getElementById('aa-excluded-box').style.display = '';
+                document.getElementById('aa-excluded-count').textContent = data.excluded_count;
+                document.getElementById('aa-excluded-list').innerHTML = data.excluded.map(function(e) {
+                    return '<div style="margin-bottom:4px;"><strong>' + bpEscapeHtml(e.name) + '</strong>: ' + bpEscapeHtml(e.reasons.join(', ')) + '</div>';
+                }).join('');
+            }
 
             if (data.count > 0) {
                 document.getElementById('aa-confirm-btn').style.display = '';
@@ -13928,6 +13977,46 @@ function openWalkInEnrollmentModal() {
 </div>
 
 <!-- Section Modal (Add / Edit) -->
+{{-- Student Management › Transaction History (filled by openStudentTransactions()) --}}
+<div class="modal fade" id="studentTransactionsModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content modal-content-styled" style="border-radius:16px; overflow:hidden; border:none;">
+            <div class="modal-header modal-header-styled" style="background:linear-gradient(135deg, #0056b3, #003d82); padding:18px 24px;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="width:38px; height:38px; background:rgba(255,255,255,0.15); border-radius:10px; display:flex; align-items:center; justify-content:center;">
+                        <i class="bi bi-receipt" style="font-size:18px; color:#fff;"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title" style="color:#fff; font-weight:700; margin:0; font-size:16px;">Transaction History</h5>
+                        <div id="stx-subtitle" style="color:rgba(255,255,255,.8); font-size:12px;"></div>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="padding:20px 24px; background:#fff;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+                    <div style="font-size:12px; color:var(--muted);"><i class="bi bi-info-circle me-1"></i>Cashier (walk-in) and online payments, newest first.</div>
+                    <select id="stx-sy" class="form-fld" style="width:auto; min-width:190px; padding:7px 12px; font-size:13px;" onchange="loadStudentTransactions()">
+                        <option value="all">All School Years</option>
+                    </select>
+                </div>
+                <div id="stx-summary" class="row g-3 mb-3"></div>
+                <div style="overflow-x:auto;">
+                    <table class="dash-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th><th>Reference</th><th>Description</th><th>S.Y.</th>
+                                <th>Method</th><th>Processed By</th><th style="text-align:right;">Amount</th><th>Status</th><th style="text-align:center;">Receipt</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stx-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="modal fade" id="sectionModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content modal-content-styled" style="border-radius:16px; overflow:hidden; border:none;">

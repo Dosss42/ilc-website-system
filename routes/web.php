@@ -257,6 +257,7 @@ Route::middleware(['auth', 'superadmin'])->prefix('superadmin')->name('superadmi
 
     // System Logs
     Route::get('/logs/export', [SuperAdminController::class, 'exportLogs'])->name('logs.export');
+    Route::post('/logs/retention', [SuperAdminController::class, 'updateLogRetention'])->name('logs.retention');
 
     // Reports tab PDFs — shared pdf.shared.* design (see
     // app/Support/Traits/BuildsSchoolPdf.php).
@@ -314,6 +315,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/section/students', [EnrollmentController::class, 'sectionStudents'])->name('section.students');
     Route::get('/section/subjects', [EnrollmentController::class, 'sectionSubjects'])->name('section.subjects');
     Route::get('/section/reports', [EnrollmentController::class, 'sectionReports'])->name('section.reports');
+    Route::get('/section/audit', [\App\Http\Controllers\Admin\AuditTrailController::class, 'section'])->name('section.audit');
 
     // REPORTS TAB — PDF downloads (shared pdf.shared.* design, see
     // app/Support/Traits/BuildsSchoolPdf.php), one per sub-report.
@@ -385,6 +387,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::post('/{id}/restore', [EnrollmentController::class, 'restoreStudent'])->name('restore');
         Route::delete('/{id}/force', [EnrollmentController::class, 'forceDeleteStudent'])->name('force-delete');
         Route::get('/{user}/sf10', [EnrollmentController::class, 'downloadSF10'])->name('sf10');
+        Route::get('/{user}/transactions', [EnrollmentController::class, 'studentTransactions'])->name('transactions');
         Route::get('/{user}', [EnrollmentController::class, 'showStudent'])->name('show');
         Route::put('/{user}', [EnrollmentController::class, 'updateStudent'])->name('update');
         Route::delete('/{user}', [EnrollmentController::class, 'deleteStudent'])->name('destroy');
@@ -639,8 +642,8 @@ Route::middleware([\App\Http\Middleware\FinanceMiddleware::class])->prefix('fina
         Route::get('/status-overview-pdf', [\App\Http\Controllers\Finance\DashboardController::class, 'downloadStatusOverviewPdf'])->name('status-overview-pdf');
     });
 
-    // Audit Trail — own actions only, see controller for why
-    Route::get('/audit-trail', [\App\Http\Controllers\Finance\DashboardController::class, 'auditTrail'])->name('audit-trail');
+    // No Audit Trail here: it's viewed only by Admin and Super Admin (finance actions are
+    // still recorded — see Admin\AuditTrailController)
 });
 
 // ─────────────────────────────────────────
@@ -706,7 +709,6 @@ Route::prefix('cashier')->name('cashier.')->group(function () {
         Route::get('/daily-report', [\App\Http\Controllers\CashierController::class, 'dailyReport'])->name('daily.report');
         Route::get('/daily-report-pdf', [\App\Http\Controllers\CashierController::class, 'downloadDailyReportPdf'])->name('daily-report-pdf');
         Route::get('/receipts', [\App\Http\Controllers\CashierController::class, 'receiptsList'])->name('receipts.list');
-        Route::get('/audit-trail', [\App\Http\Controllers\CashierController::class, 'auditTrail'])->name('audit-trail');
         Route::get('/collection-summary', [\App\Http\Controllers\CashierController::class, 'collectionSummary'])->name('collection-summary');
         Route::get('/collection-summary-pdf', [\App\Http\Controllers\CashierController::class, 'downloadCollectionSummaryPdf'])->name('collection-summary-pdf');
         Route::post('/payment/cash', [\App\Http\Controllers\CashierController::class, 'processCash'])->name('payment.cash');

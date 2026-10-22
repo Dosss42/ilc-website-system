@@ -39,6 +39,37 @@ class FeeCalculator
         'grade6' => 'grade4',
     ];
 
+    /** Which payment plans each grade may choose: A and B for everyone, C for Grade 1-6
+     * (elementary monthly), D for Nursery/Kinder (pre-elementary monthly). */
+    public const PLANS_BY_GRADE = [
+        'nursery'      => ['A', 'B', 'D'],
+        'kindergarten' => ['A', 'B', 'D'],
+        'grade1'       => ['A', 'B', 'C'],
+        'grade2'       => ['A', 'B', 'C'],
+        'grade3'       => ['A', 'B', 'C'],
+        'grade4'       => ['A', 'B', 'C'],
+        'grade5'       => ['A', 'B', 'C'],
+        'grade6'       => ['A', 'B', 'C'],
+    ];
+
+    public static function planAllowed(?string $gradeLevel, ?string $option): bool
+    {
+        return in_array($option, self::PLANS_BY_GRADE[$gradeLevel] ?? [], true);
+    }
+
+    /** Error message for a plan this grade can't take, or null when it is allowed. */
+    public static function planError(?string $gradeLevel, ?string $option): ?string
+    {
+        if (self::planAllowed($gradeLevel, $option)) {
+            return null;
+        }
+        return match ($option) {
+            'C'     => 'Option C is for Grade 1-6 only.',
+            'D'     => 'Option D is for Nursery and Kindergarten only.',
+            default => 'This payment option is not available for this grade level.',
+        };
+    }
+
     private static ?array $cache = null;
 
     /** All fee_components rows, cached for the life of the request. */

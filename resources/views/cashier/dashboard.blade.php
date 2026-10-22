@@ -16,6 +16,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     {{-- pageWindow(): max-10 page buttons, shared by every JS-built pager --}}
     <script src="/js/page-window.js?v={{ filemtime(public_path('js/page-window.js')) }}"></script>
+    {{-- printOfficialReceipt(): the one receipt layout used across the system --}}
+    <script src="/js/official-receipt.js?v={{ filemtime(public_path('js/official-receipt.js')) }}"></script>
     <style>
         :root {
             --blue:       #1a3a6c;
@@ -737,10 +739,7 @@
         <span class="link-icon"><i class="bi bi-bar-chart-fill"></i></span>
         <span class="link-label">Collection Summary</span>
     </button>
-    <button class="sidebar-link" data-section="audit" onclick="showSection('audit', this)">
-        <span class="link-icon"><i class="bi bi-journal-check"></i></span>
-        <span class="link-label">Audit Trail</span>
-    </button>
+    {{-- No Audit Trail here: it's viewed only by Admin and Super Admin (cashier actions are still recorded) --}}
 
     {{-- BOTTOM --}}
     <div class="sidebar-bottom">
@@ -1735,60 +1734,6 @@
         </div>{{-- /collection-content --}}
     </div>
 
-    {{-- ── AUDIT TRAIL SECTION ── --}}
-    <div id="section-audit" style="display:none;">
-
-        {{-- Skeleton --}}
-        <div id="audit-skel" style="display:none;">
-            <div style="margin-bottom:24px;"><span class="skel" style="height:26px;width:160px;margin-bottom:8px;"></span><span class="skel" style="height:14px;width:310px;"></span></div>
-            <div class="skel-wrap">
-                <div class="skel-hdr"><div style="display:flex;align-items:center;gap:10px;"><span class="skel" style="height:18px;width:120px;"></span><span class="skel" style="height:22px;width:34px;border-radius:20px;"></span></div></div>
-                @for($i=0;$i<7;$i++)
-                <div class="skel-trow"><span class="skel" style="height:12px;width:24px;"></span><span class="skel" style="height:22px;width:110px;border-radius:6px;"></span><span class="skel" style="height:28px;flex:2;border-radius:6px;"></span><span class="skel" style="height:14px;flex:1;"></span></div>
-                @endfor
-            </div>
-        </div>
-
-        {{-- Real content --}}
-        <div id="audit-content" class="sec-content">
-        <div class="page-header">
-            <div>
-                <div class="page-title"><i class="bi bi-journal-check me-2" style="color:#2471a3;"></i>Audit Trail</div>
-                <div class="page-sub">A record of payments and actions you've performed — for your own reference and accountability.</div>
-            </div>
-        </div>
-        <div class="card-box">
-            <div class="card-box-header">
-                <div class="card-box-title">
-                    <i class="bi bi-list-check" style="color:#2471a3;"></i> My Activity
-                    <span id="auditCount" style="background:#eff6ff;color:#2471a3;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;margin-left:6px;">0</span>
-                </div>
-                <button onclick="loadAuditTrail()" class="btn-outline-cash" style="white-space:nowrap;">
-                    <i class="bi bi-arrow-clockwise"></i> Refresh
-                </button>
-            </div>
-            <div style="overflow-x:auto;">
-                <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Action</th>
-                            <th>Description</th>
-                            <th>Date &amp; Time</th>
-                        </tr>
-                    </thead>
-                    <tbody id="auditBody">
-                        <tr><td colspan="4" style="text-align:center;padding:48px;color:#94a3b8;">
-                            <i class="bi bi-arrow-repeat" style="font-size:28px;display:block;margin-bottom:10px;"></i>Loading activity…
-                        </td></tr>
-                    </tbody>
-                </table>
-            </div>
-            <div id="auditPagination"></div>
-        </div>
-        </div>{{-- /audit-content --}}
-    </div>
-
     {{-- ── SETTINGS SECTION ── --}}
     <div id="section-settings" style="display:none;">
 
@@ -2080,7 +2025,7 @@
     // ─────────────────────────────────────────────────────────────────────────
 
     // 'receipts' is intentionally left out (section hidden — see the sidebar comment)
-    var sections = ['dashboard','process','history','daily','collection','audit','settings'];
+    var sections = ['dashboard','process','history','daily','collection','settings'];
 
     // Initialise on load — restore whichever tab was open last time, same
     // behavior as the Admin portal, so re-visiting doesn't always dump you
@@ -2116,7 +2061,7 @@
     var BREADCRUMB_LABELS = {
         dashboard: 'Dashboard', process: 'Process Payment', history: 'Transaction History',
         daily: 'Daily Report', receipts: 'Receipts',
-        collection: 'Collection Summary', audit: 'Audit Log', settings: 'Settings',
+        collection: 'Collection Summary', settings: 'Settings',
     };
     function updateBreadcrumb(name) {
         var el = document.getElementById('bc-current');
@@ -2171,7 +2116,6 @@
         if (name === 'daily')    { var dr = document.getElementById('dailyReportDate'); loadDailyReport(dr ? dr.value : ''); }
         if (name === 'receipts') { loadReceipts(); }
         if (name === 'history')  { loadHistory(); }
-        if (name === 'audit')    { loadAuditTrail(); }
 
         // 4. Show the section container
         var sec = document.getElementById('section-' + name);
@@ -2261,7 +2205,6 @@
     var _dailyUrl       = '{{ route("cashier.daily.report") }}';
     var _receiptsUrl    = '{{ route("cashier.receipts.list") }}';
     var _timelineUrlBase = '{{ url("cashier/installments") }}';
-    var _auditUrl       = '{{ route("cashier.audit-trail") }}';
     var _cashierName    = '{{ auth("cashier")->user()->name ?? "Cashier" }}';
     var _allStudents = [];
 
@@ -2758,54 +2701,6 @@
             _receiptsPage = 1;
             loadReceipts();
         }, 400);
-    }
-
-    /* ── Audit Trail (own activity only) ── */
-    var _auditBadgeClass = {
-        login: 'cash', logout: 'cash',
-        cash_payment: 'cash', walkin_payment: 'cash',
-        xendit_link_generated: 'gcash', xendit_payment_completed: 'gcash',
-        password_change: 'gcash'
-    };
-    var _auditLabel = {
-        login: 'Login', logout: 'Logout',
-        cash_payment: 'Cash Payment', walkin_payment: 'Walk-in Payment',
-        xendit_link_generated: 'Xendit Link', xendit_payment_completed: 'Xendit Confirmed',
-        password_change: 'Password Change'
-    };
-
-    var _auditPage = 1;
-    function goToAuditPage(p) { _auditPage = p; loadAuditTrail(); }
-
-    function loadAuditTrail() {
-        var tbody = document.getElementById('auditBody');
-        var count = document.getElementById('auditCount');
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:48px;color:#94a3b8;"><i class="bi bi-arrow-repeat" style="font-size:28px;display:block;margin-bottom:10px;"></i>Loading activity…</td></tr>';
-        fetch(_auditUrl + '?page=' + _auditPage, { credentials:'same-origin', headers:{'Accept':'application/json','X-CSRF-TOKEN':_csrfToken} })
-        .then(function(r){ return r.json(); })
-        .then(function(data){
-            var logs = data.data || [];
-            if (count) count.textContent = data.total ?? logs.length;
-            if (!logs.length) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:48px;color:#94a3b8;"><i class="bi bi-inbox" style="font-size:32px;display:block;margin-bottom:10px;"></i>No activity recorded yet.</td></tr>';
-                renderPaginationControls('auditPagination', data, 'goToAuditPage', 'activity records');
-                return;
-            }
-            tbody.innerHTML = logs.map(function(log,i){
-                var cls   = _auditBadgeClass[log.event_type] || 'cash';
-                var label = _auditLabel[log.event_type] || log.event_type;
-                return '<tr>'
-                    +'<td style="color:#94a3b8;">'+(i+1)+'</td>'
-                    +'<td><span class="method-pill '+cls+'">'+label+'</span></td>'
-                    +'<td style="font-size:12.5px;color:#334155;">'+log.description+'</td>'
-                    +'<td style="font-size:12px;color:#64748b;white-space:nowrap;">'+log.date+'<br><span style="font-size:10px;">'+log.time+'</span></td>'
-                    +'</tr>';
-            }).join('');
-            renderPaginationControls('auditPagination', data, 'goToAuditPage', 'activity records');
-        })
-        .catch(function(){
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:40px;color:#dc2626;">Failed to load activity. <button onclick="loadAuditTrail()" style="margin-left:6px;padding:4px 12px;background:#1a3a6c;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:11px;">Retry</button></td></tr>';
-        });
     }
 
     /* ── Payment Plan Selector ── */
@@ -3468,63 +3363,8 @@
         });
     }
 
-    function printOfficialReceipt(d) {
-        var w = window.open('', '_blank', 'width=420,height=640,scrollbars=yes');
-        if (!w) { showToast('Pop-ups are blocked. Please allow pop-ups for this site to print receipts.', 'warning'); return; }
-        var html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
-            + '<title>Official Receipt</title>'
-            + '<style>'
-            + 'body{font-family:"Courier New",monospace;font-size:12px;margin:0;padding:20px 24px;color:#000;}'
-            + '.center{text-align:center;} .bold{font-weight:700;} .right{text-align:right;}'
-            + 'h2{margin:0;font-size:15px;letter-spacing:.5px;} h3{margin:3px 0;font-size:11px;font-weight:400;}'
-            + '.solid{border-top:2px solid #000;margin:10px 0;} .dash{border-top:1px dashed #000;margin:8px 0;}'
-            + 'table{width:100%;border-collapse:collapse;}'
-            + 'td{padding:3px 0;vertical-align:top;}'
-            + 'td:last-child{text-align:right;}'
-            + '.amt{font-size:16px;font-weight:900;}'
-            + '.footer{margin-top:24px;font-size:10px;text-align:center;color:#444;}'
-            + '.sig{margin-top:36px;border-top:1px solid #000;padding-top:4px;text-align:center;font-size:11px;}'
-            + '@media print{body{padding:10px;}}'
-            + '</style></head>'
-            + '<body onload="setTimeout(function(){window.print();},400);">'
-            + '<div class="center">'
-            + '<img src="' + _logoUrl + '" alt="ILC Logo" style="width:70px;height:70px;object-fit:contain;border-radius:50%;margin-bottom:8px;" onerror="this.style.display=\'none\'">'
-            + '<h2>IEMELIF LEARNING CENTER</h2>'
-            + '<h3>General Tinio, Nueva Ecija</h3>'
-            + '<h3>Tel: 0951-989-9685</h3></div>'
-            + '<div class="solid"></div>'
-            + '<div class="center bold" style="font-size:13px;letter-spacing:1px;">OFFICIAL RECEIPT</div>'
-            + '<div class="solid"></div>'
-            + '<table>'
-            + '<tr><td>OR No.:</td><td class="bold">' + (d.or_no||'—') + '</td></tr>'
-            + '<tr><td>Date:</td><td>' + (d.date||'—') + '</td></tr>'
-            + '<tr><td>Time:</td><td>' + (d.time||'—') + '</td></tr>'
-            + '</table>'
-            + '<div class="dash"></div>'
-            + '<table>'
-            + '<tr><td>Student:</td><td class="bold">' + (d.student_name||'—') + '</td></tr>'
-            + '<tr><td>Grade Level:</td><td>' + (d.grade_level ? (d.grade_level.charAt(0).toUpperCase()+d.grade_level.slice(1)) : '—') + '</td></tr>'
-            + '<tr><td>School Year:</td><td>' + (d.school_year||'—') + '</td></tr>'
-            + '</table>'
-            + '<div class="dash"></div>'
-            + '<table>'
-            + '<tr><td>Description:</td><td>' + (d.description||'Payment') + '</td></tr>'
-            + '<tr><td>Method:</td><td>' + (d.method||'Cash') + '</td></tr>'
-            + '</table>'
-            + '<div class="solid"></div>'
-            + '<table><tr><td class="bold amt">AMOUNT PAID:</td><td class="bold amt right">&#x20B1;' + (d.amount||'0.00') + '</td></tr></table>'
-            + '<div class="solid"></div>'
-            + '<div style="margin-top:14px;font-size:11px;">Received by: <span class="bold">' + (d.received_by||'Cashier') + '</span></div>'
-            + '<div class="sig">Cashier Signature</div>'
-            + '<div class="footer">'
-            + '<div>Thank you for your payment!</div>'
-            + '<div style="margin-top:3px;">This is a computer-generated receipt.</div>'
-            + '</div>'
-            + '</body></html>';
-        w.document.open();
-        w.document.write(html);
-        w.document.close();
-    }
+    // printOfficialReceipt() — the shared Official Receipt, public/js/official-receipt.js
+    // (this slip's layout, now used by Admin, Finance and the Student Portal too)
 
     // ══ Chart.js ══
     const _CsC = {blue:'#1a3a6c',mid:'#2471a3',gold:'#c5a059',green:'#16a34a',red:'#dc2626',gray:'#94a3b8'};

@@ -1289,7 +1289,8 @@
                                         'Create, edit, deactivate, and delete any user account (including other Super Admins)',
                                         'Create and restore full database backups',
                                         'Toggle enrollment open/closed and site-wide maintenance mode',
-                                        'View system-wide activity logs across every role',
+                                        'View system-wide activity logs across every role, including Super Admin actions',
+                                        'Set how long audit logs are kept before automatic clearing',
                                     ],
                                 ],
                                 'admin' => [
@@ -1311,6 +1312,9 @@
                                         'Announcements, news, contact message inbox',
                                         'Academic, financial, enrollment, and guidance reports',
                                     ],
+                                    'Audit Trail' => [
+                                        'View the actions of every role except Super Admin (read-only)',
+                                    ],
                                 ],
                                 'finance' => [
                                     'Payments (view only)' => [
@@ -1319,7 +1323,7 @@
                                         'View fee settings and financial reports',
                                     ],
                                     'Own account' => [
-                                        'Own profile, password, and personal Audit Trail (own actions only — not other staff\'s)',
+                                        'Own profile and password (actions are recorded in the Admin/Super Admin audit trail)',
                                     ],
                                 ],
                                 'cashier' => [
@@ -1329,7 +1333,7 @@
                                         'Daily collection report and receipts list',
                                     ],
                                     'Own account' => [
-                                        'Own profile, password, and personal Audit Trail (own actions only — not other staff\'s)',
+                                        'Own profile and password (actions are recorded in the Admin/Super Admin audit trail)',
                                     ],
                                 ],
                                 'teacher' => [
@@ -1400,6 +1404,29 @@
             </a>
         </div>
 
+        {{-- Automatic clearing — Super Admin only (Admin sees it read-only on its Audit Trail) --}}
+        <div class="content-card mb-4">
+            <div class="p-3" style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+                <div style="flex:1;min-width:240px;">
+                    <h6 style="font-weight:700;color:var(--text);margin-bottom:4px;"><i class="bi bi-clock-history me-1"></i> Automatic Clearing</h6>
+                    <p style="font-size:12px;color:var(--muted);margin:0;">
+                        Logs older than this are deleted automatically (checked once a day). Keeps personal data no longer than needed (Data Privacy Act).
+                        Export the logs first if you need a copy.
+                    </p>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <select class="form-fld" id="logRetentionSelect" style="min-width:170px;" data-current="{{ $logRetentionMonths }}">
+                        @foreach(\App\Services\AuditLogRetention::OPTIONS as $months => $label)
+                            <option value="{{ $months }}" {{ $logRetentionMonths === $months ? 'selected' : '' }}>Keep {{ $label === 'Never (keep all)' ? 'all (never clear)' : $label }}</option>
+                        @endforeach
+                    </select>
+                    <button type="button" class="btn-dash btn-primary" onclick="saveLogRetention()">
+                        <i class="bi bi-check2"></i> Save
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <div class="content-card mb-4">
             <div class="p-3">
                 <form method="GET" action="{{ url()->current() }}" id="logs-filter-form" class="row g-3">
@@ -1413,36 +1440,42 @@
                     <div class="col-md-2">
                         <select class="form-fld" name="log_type" id="logTypeFilter" onchange="this.form.submit()">
                             <option value="">All Event Types</option>
-                            <option value="login" {{ request('log_type') === 'login' ? 'selected' : '' }}>Login</option>
-                            <option value="logout" {{ request('log_type') === 'logout' ? 'selected' : '' }}>Logout</option>
-                            <option value="failed_login" {{ request('log_type') === 'failed_login' ? 'selected' : '' }}>Failed Login</option>
-                            <option value="denied" {{ request('log_type') === 'denied' ? 'selected' : '' }}>Denied Attempt</option>
-                            <option value="create" {{ request('log_type') === 'create' ? 'selected' : '' }}>Create</option>
-                            <option value="update" {{ request('log_type') === 'update' ? 'selected' : '' }}>Update</option>
-                            <option value="delete" {{ request('log_type') === 'delete' ? 'selected' : '' }}>Delete</option>
-                            <option value="error" {{ request('log_type') === 'error' ? 'selected' : '' }}>Error</option>
+                            @foreach(\App\Models\ActivityLog::EVENT_TYPES as $value => $label)
+                                <option value="{{ $value }}" {{ request('log_type') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div class="col-md-2">
                         <select class="form-fld" name="log_role" id="logRoleFilter" onchange="this.form.submit()">
                             <option value="">All Roles</option>
-                            <option value="superadmin" {{ request('log_role') === 'superadmin' ? 'selected' : '' }}>Super Admin</option>
-                            <option value="admin" {{ request('log_role') === 'admin' ? 'selected' : '' }}>Admin</option>
-                            <option value="finance" {{ request('log_role') === 'finance' ? 'selected' : '' }}>Finance</option>
-                            <option value="cashier" {{ request('log_role') === 'cashier' ? 'selected' : '' }}>Cashier</option>
-                            <option value="teacher" {{ request('log_role') === 'teacher' ? 'selected' : '' }}>Teacher</option>
-                            <option value="student" {{ request('log_role') === 'student' ? 'selected' : '' }}>Student</option>
+                            @foreach(\App\Models\ActivityLog::ROLES as $value => $label)
+                                <option value="{{ $value }}" {{ request('log_role') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                            @endforeach
+                            <option value="system" {{ request('log_role') === 'system' ? 'selected' : '' }}>System (automatic)</option>
                         </select>
                     </div>
-                    <div class="col-md-3">
-                        <input type="date" class="form-fld" name="log_date" id="logDateFilter" onchange="this.form.submit()" value="{{ request('log_date') }}">
+                    @php
+                        // Old single-day links (?log_date=) open as a one-day range
+                        $logFrom = request('log_from', request('log_date'));
+                        $logTo   = request('log_to', request('log_date'));
+                    @endphp
+                    <div class="col-md-2">
+                        <input type="date" class="form-fld" name="log_from" id="logFromFilter" title="From date" onchange="this.form.submit()" value="{{ $logFrom }}" max="{{ now()->toDateString() }}">
                     </div>
                     <div class="col-md-2">
-                        <a href="{{ url()->current() }}?section=logs" class="btn-dash btn-secondary" style="width:100%;justify-content:center;">
-                            <i class="bi bi-arrow-counterclockwise"></i> Reset
+                        <input type="date" class="form-fld" name="log_to" id="logToFilter" title="To date" onchange="this.form.submit()" value="{{ $logTo }}" max="{{ now()->toDateString() }}">
+                    </div>
+                    <div class="col-md-1">
+                        <a href="{{ url()->current() }}?section=logs" class="btn-dash btn-secondary" title="Reset filters" style="width:100%;justify-content:center;">
+                            <i class="bi bi-arrow-counterclockwise"></i>
                         </a>
                     </div>
                 </form>
+                @if(request('log_search') || request('log_type') || request('log_role') || $logFrom || $logTo)
+                <div style="margin-top:10px;font-size:12px;color:var(--muted);">
+                    <i class="bi bi-funnel-fill me-1"></i>{{ number_format($logs->total()) }} matching log(s) — Export Logs downloads exactly these.
+                </div>
+                @endif
             </div>
         </div>
 
@@ -1462,28 +1495,15 @@
                     <tbody id="logsTableBody">
                         @forelse($logs as $log)
                         @php
-                            $badgeClass = match($log->event_type) {
-                                'login'        => 'success',
-                                'logout'       => 'active',
-                                'failed_login' => 'warning',
-                                'denied'       => 'danger',
-                                'create'       => 'success',
-                                'update'       => 'primary',
-                                'delete'       => 'danger',
-                                'error'        => 'danger',
-                                default        => 'active',
+                            // Badge styles defined on this page: enrolled = green, inactive = red,
+                            // pending = amber, active/primary = blue
+                            $badgeClass = match(true) {
+                                in_array($log->event_type, ['failed_login', 'denied', 'delete', 'error', 'payment_rejected']) => 'inactive',
+                                in_array($log->event_type, ['login', 'create']) || str_contains($log->event_type, 'payment') => 'enrolled',
+                                $log->event_type === 'password_change' => 'pending',
+                                default => 'active',
                             };
-                            $badgeLabel = match($log->event_type) {
-                                'login'        => 'Login',
-                                'logout'       => 'Logout',
-                                'failed_login' => 'Failed Login',
-                                'denied'       => 'Denied Attempt',
-                                'create'       => 'Create',
-                                'update'       => 'Update',
-                                'delete'       => 'Delete',
-                                'error'        => 'Error',
-                                default        => ucfirst($log->event_type),
-                            };
+                            $badgeLabel = \App\Models\ActivityLog::eventLabel($log->event_type);
                         @endphp
                         <tr class="log-row"
                             data-type="{{ $log->event_type }}"
@@ -1495,7 +1515,7 @@
                             <td>
                                 @if($log->user_name)
                                 <div style="font-size:13px;font-weight:600;">{{ $log->user_name }}</div>
-                                <div style="font-size:11px;color:var(--muted);">{{ $log->user_role ?? '' }}</div>
+                                <div style="font-size:11px;color:var(--muted);">{{ \App\Models\ActivityLog::ROLES[$log->user_role] ?? ucfirst($log->user_role ?? '') }}</div>
                                 @else
                                 <span style="color:var(--muted);font-size:12px;">System</span>
                                 @endif
@@ -1509,7 +1529,11 @@
                         <tr>
                             <td colspan="5" style="text-align:center;padding:48px;color:var(--muted);">
                                 <i class="bi bi-journal-x" style="font-size:40px;display:block;margin-bottom:12px;"></i>
-                                No activity logs yet. Events will appear here after users log in.
+                                @if(request('log_search') || request('log_type') || request('log_role') || $logFrom || $logTo)
+                                    No logs match the current filters.
+                                @else
+                                    No activity logs yet. Events will appear here after users log in.
+                                @endif
                             </td>
                         </tr>
                         @endforelse
@@ -1519,7 +1543,8 @@
             @if($logs->total() > 0)
             <div class="p-3 border-top" style="border-color:var(--border);">
                 <nav>
-                    {{ $logs->appends(['log_type' => request('log_type'), 'log_search' => request('log_search'), 'log_date' => request('log_date'), 'section' => 'logs'])->links() }}
+                    {{-- withQueryString() in the controller keeps every filter on the page links --}}
+                    {{ $logs->appends(['section' => 'logs'])->links() }}
                 </nav>
                 <div class="pagination-info">
                     Showing {{ $logs->firstItem() ?? 0 }} to {{ $logs->lastItem() ?? 0 }} of {{ $logs->total() }} log(s)
@@ -3313,6 +3338,38 @@
         saConfirmModal.show();
     }
 
+    // System Logs › Automatic Clearing (Super Admin only). Saving clears older logs right away.
+    function saveLogRetention() {
+        var sel = document.getElementById('logRetentionSelect');
+        var months = parseInt(sel.value, 10);
+        if (months === parseInt(sel.dataset.current, 10)) { saToast('warning', 'No change — this is already the current setting.'); return; }
+        var label = sel.options[sel.selectedIndex].text;
+        saConfirm({
+            title: 'Automatic Clearing',
+            sub: label,
+            msg: months === 0
+                ? 'Audit logs will be kept until you change this setting.'
+                : 'Audit logs older than ' + label.replace(/^Keep /, '') + ' will be deleted now, and every day from now on. Deleted logs cannot be recovered — export them first if you need a copy.',
+            icon: months === 0 ? 'bi-infinity' : 'bi-clock-history',
+            gradient: months === 0 ? undefined : 'linear-gradient(135deg,#b45309,#d97706)',
+            btnLabel: 'Save',
+            btnColor: months === 0 ? undefined : '#d97706',
+            onConfirm: async function () {
+                try {
+                    var r = await fetch('{{ route("superadmin.logs.retention") }}', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                        body: JSON.stringify({ months: months })
+                    });
+                    var d = await r.json();
+                    if (!r.ok || !d.success) { saToast('error', d.message || 'Could not save the setting.'); return; }
+                    saToast('success', 'Setting saved', d.message);
+                    setTimeout(function () { window.location.href = '{{ route("superadmin.dashboard") }}?section=logs'; }, 1200);
+                } catch (e) { saToast('error', 'Network error. Please try again.'); }
+            }
+        });
+    }
+
     // Shared helper for every logout <form onsubmit="return confirmLogout(this)">
     // in this file — reuses the same confirm modal as the other super admin
     // actions instead of a plain confirm() popup.
@@ -3743,11 +3800,13 @@
     function currentLogFilterParams() {
         var params = new URLSearchParams();
         var type = document.getElementById('logTypeFilter').value;
-        var date = document.getElementById('logDateFilter').value;
+        var from = document.getElementById('logFromFilter').value;
+        var to = document.getElementById('logToFilter').value;
         var search = document.getElementById('logSearchInput').value;
         var roleEl = document.getElementById('logRoleFilter');
         if (type) params.set('log_type', type);
-        if (date) params.set('log_date', date);
+        if (from) params.set('log_from', from);
+        if (to) params.set('log_to', to);
         if (search) params.set('log_search', search);
         if (roleEl && roleEl.value) params.set('log_role', roleEl.value);
         return params;

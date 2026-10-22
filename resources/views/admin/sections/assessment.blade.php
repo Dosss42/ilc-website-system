@@ -111,7 +111,7 @@
                 <i class="bi bi-arrow-up-circle me-1"></i> Advance All {{ $glMap[$assessGradeFilter] ?? ucfirst($assessGradeFilter) }} Students
             </button>
             <span style="font-size:11.5px;color:var(--muted);margin-left:8px;">
-                {{ $glMap[$assessGradeFilter] ?? ucfirst($assessGradeFilter) }} is developmental, not academic — every student here advances automatically, no review needed.
+                {{ $glMap[$assessGradeFilter] ?? ucfirst($assessGradeFilter) }} is developmental, not academic — no grade review needed. Only students whose school year is fully paid will be advanced.
             </span>
             @else
             <button type="button" class="btn-dash btn-success" style="padding:8px 16px;font-size:12.5px;"
@@ -119,7 +119,7 @@
                 <i class="bi bi-arrow-up-circle me-1"></i> Promote All {{ $glMap[$assessGradeFilter] ?? ucfirst($assessGradeFilter) }} Students
             </button>
             <span style="font-size:11.5px;color:var(--muted);margin-left:8px;">
-                Only students with a settled balance and complete documents will be included. Failing/incomplete grades and guidance concerns are shown as warnings but don't block promotion.
+                Only students whose school year is fully paid and whose documents are complete will be included. Failing/incomplete grades and guidance concerns are shown as warnings but don't block promotion.
             </span>
             @endif
         </div>
@@ -229,9 +229,11 @@
                             @php
                                 $asTotalFee  = $asEnr ? ($asEnr->total_fee ?? 0) : 0;
                                 $asAmtPaid   = $asEnr ? ($asEnr->payment_amount ?? 0) : 0;
-                                $asBalance   = $asEnr ? ($asEnr->remaining_balance ?? max(0, $asTotalFee - $asAmtPaid)) : 0;
+                                $asBalance   = $asEnr ? (\App\Services\PaymentService::balanceDue($asEnr) ?? 0) : 0;
                                 $asPayStatus = $asEnr ? ($asEnr->payment_status ?? 'pending') : 'pending';
                                 $asFromSY    = $asEnr ? ($asEnr->school_year ?? '') : '';
+                                // Not fully paid → can't be promoted or retained (the server refuses it too)
+                                $asBlock     = \App\Services\PaymentService::promotionBlockReason($asEnr) ?? '';
                             @endphp
                             <td>
                                 @if($isDone)
@@ -244,7 +246,7 @@
                                 @else
                                 <button type="button" class="action-btn edit"
                                     title="Assess Student"
-                                    onclick="openSmAssessModal({{ $as->id }}, '{{ addslashes($as->name) }}', '{{ $asGl }}', '{{ $asSection }}', {{ $asTotalFee }}, {{ $asAmtPaid }}, {{ $asBalance }}, '{{ $asPayStatus }}', '{{ $asFromSY }}')">
+                                    onclick="openSmAssessModal({{ $as->id }}, '{{ addslashes($as->name) }}', '{{ $asGl }}', '{{ $asSection }}', {{ $asTotalFee }}, {{ $asAmtPaid }}, {{ $asBalance }}, '{{ $asPayStatus }}', '{{ $asFromSY }}', @js($asBlock))">
                                     <i class="bi bi-mortarboard-fill"></i>
                                 </button>
                                 @endif

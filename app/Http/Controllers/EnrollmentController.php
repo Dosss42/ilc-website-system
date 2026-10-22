@@ -496,6 +496,10 @@ class EnrollmentController extends Controller
                 'guardian_phone.regex' => 'Phone must be a valid Philippine mobile number (e.g. 9123456789, 09123456789, or +639123456789).',
             ]);
 
+            if ($planError = \App\Services\FeeCalculator::planError($validated['grade_level'], $validated['payment_option'])) {
+                return response()->json(['success' => false, 'message' => $planError, 'errors' => ['payment_option' => [$planError]]], 422);
+            }
+
             $isReEnrollment = !empty($validated['reenroll_student_id']);
 
             // Use transaction for faster and safer operations
@@ -2138,11 +2142,17 @@ class EnrollmentController extends Controller
             // Calculate payment fields only if payment_option is explicitly set in student_data
             // (walk-in enrollments have it; online enrollments choose later in student portal)
             $paymentUpdate = [];
-            if (empty($enrollment->total_fee)) {
+            // As a number — an unset fee is the string "0.00", which empty() treats as set
+            if ((float) $enrollment->total_fee <= 0) {
                 $paymentOption = $studentData['payment_option'] ?? ($studentData['paymentOption'] ?? null);
+                $gradeLevel = $studentData['grade_level'] ?? $enrollment->grade_level;
+                // A plan this grade can't take (C: Grade 1-6, D: Nursery/Kinder) isn't priced —
+                // the student chooses a valid one in the portal instead
+                if ($paymentOption && !\App\Services\FeeCalculator::planAllowed($gradeLevel, $paymentOption)) {
+                    $paymentOption = null;
+                }
 
                 if ($paymentOption) {
-                    $gradeLevel = $studentData['grade_level'] ?? $enrollment->grade_level;
                     $breakdown = $this->calculatePaymentBreakdown($gradeLevel, $paymentOption);
 
                     $paymentUpdate['total_fee'] = $breakdown['total_due'] ?? $breakdown['base_total'] ?? 0;
@@ -2828,6 +2838,78 @@ class EnrollmentController extends Controller
     }
 
     /**
+     * Student Management › Transaction History (admin API): every payment
+     * transaction of one student — cashier walk-ins and online (Xendit) — across
+     * all school years, optionally narrowed with ?school_year=, plus each year's
+     * fee/paid/balance so the modal can show where the account stands.
+     */
+    public function studentTransactions(Request $request, User $user)
+    {
+        abort_unless($user->role === 'student', 404);
+
+        $enrollments = Enrollment::where('user_id', $user->id)
+            ->where('status', '!=', 'cancelled')
+            ->orderByDesc('school_year')->orderByDesc('id')
+            ->get(['id', 'school_year', 'grade_level', 'status', 'payment_option', 'total_fee', 'payment_amount', 'remaining_balance', 'payment_status']);
+
+        $schoolYear = (string) $request->query('school_year', 'all');
+        if ($schoolYear !== 'all' && !$enrollments->contains('school_year', $schoolYear)) {
+            $schoolYear = 'all';
+        }
+
+        $methodLabels = ['cash' => 'Cash', 'gcash' => 'GCash', 'maya' => 'Maya', 'grabpay' => 'GrabPay', 'bank' => 'Bank Transfer', 'otc' => 'Over-the-Counter'];
+        $transactions = \App\Models\PaymentTransaction::where('user_id', $user->id)
+            ->with(['enrollment:id,school_year,grade_level', 'installment:id,month_name', 'processedBy:id,name'])
+            ->when($schoolYear !== 'all', fn ($q) => $q->whereHas('enrollment', fn ($e) => $e->where('school_year', $schoolYear)))
+            ->orderByDesc('created_at')->orderByDesc('id')
+            ->get()
+            ->map(function ($t) use ($methodLabels) {
+                $when = $t->processed_at ?? $t->created_at;
+                $online = $t->payment_type === 'online';
+                return [
+                    'id'           => $t->id,
+                    'date'         => $when?->format('M d, Y'),
+                    'time'         => $when?->format('h:i A'),
+                    'reference'    => $t->reference_number ?: ('OR-' . str_pad($t->id, 6, '0', STR_PAD_LEFT)),
+                    'description'  => $t->installment
+                        ? $t->installment->month_name . ' Installment'
+                        : ($t->description ?: ($t->installment_month ? $t->installment_month . ' Installment' : 'Payment')),
+                    'school_year'  => $t->enrollment->school_year ?? '—',
+                    'grade_level'  => $t->enrollment->grade_level ?? '—',
+                    'method'       => ($methodLabels[$t->payment_method] ?? ucfirst((string) $t->payment_method)) . ($online ? ' (Online)' : ''),
+                    'channel'      => $online ? 'online' : 'walkin',
+                    'processed_by' => $online ? 'Online payment (Xendit)' : ($t->processedBy->name ?? 'Cashier'),
+                    'amount'       => (float) $t->amount,
+                    'status'       => $t->status,
+                ];
+            });
+
+        $completed = $transactions->where('status', 'completed');
+        $years = $enrollments->map(fn ($e) => [
+            'school_year' => $e->school_year,
+            'grade_level' => $e->grade_level,
+            'status'      => $e->status,
+            'plan'        => $e->payment_option,
+            'total_fee'   => (float) $e->total_fee,
+            'paid'        => (float) $e->payment_amount,
+            'balance'     => (float) ($e->remaining_balance ?? max(0, $e->total_fee - $e->payment_amount)),
+            'pay_status'  => $e->payment_status,
+        ])->unique('school_year')->values();
+
+        return response()->json([
+            'student'      => ['id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'lrn' => $user->lrn],
+            'school_year'  => $schoolYear,
+            'school_years' => $years,
+            'summary'      => [
+                'count'      => $transactions->count(),
+                'total_paid' => round((float) $completed->sum('amount'), 2),
+                'pending'    => $transactions->where('status', 'pending')->count(),
+            ],
+            'transactions' => $transactions->values(),
+        ]);
+    }
+
+    /**
      * Show student details (admin API)
      */
     public function showStudent(User $user)
@@ -3214,6 +3296,28 @@ class EnrollmentController extends Controller
                     continue;
                 }
 
+                // The school year being left must be fully paid (see PaymentService::promotionBlockReason)
+                $fromEnrollment = Enrollment::where('user_id', $studentId)
+                    ->where('school_year', $validated['from_school_year'])
+                    ->whereIn('status', ['enrolled', 'approved', 'completed'])
+                    ->latest('id')->first() ?? $user->latestEnrollment;
+                if ($blocked = PaymentService::promotionBlockReason($fromEnrollment)) {
+                    $skippedCount++;
+                    Promotion::create([
+                        'student_id' => $studentId,
+                        'lrn' => $user->lrn,
+                        'from_grade' => $fromGrade,
+                        'to_grade' => $nextGrade,
+                        'from_school_year' => $validated['from_school_year'],
+                        'to_school_year' => $toSchoolYear,
+                        'promoted_by' => Auth::id(),
+                        'promoted_at' => now(),
+                        'status' => 'skipped',
+                        'error_message' => $blocked,
+                    ]);
+                    continue;
+                }
+
                 // Get latest enrollment
                 $latestEnrollment = $user->latestEnrollment;
                 // Captured before update() below overwrites it in memory —
@@ -3578,6 +3682,12 @@ class EnrollmentController extends Controller
             return response()->json(['success' => false, 'message' => 'No active enrollment found for this student.'], 422);
         }
 
+        // The school year being left must be fully paid — promote or retain, every grade
+        // (Nursery/Kinder included). Bulk promote and auto-advance go through here too.
+        if ($blocked = PaymentService::promotionBlockReason($currentEnrollment)) {
+            return response()->json(['success' => false, 'message' => $blocked . '. Settle it before moving the student to the next school year.'], 422);
+        }
+
         $fromGrade = $currentEnrollment->grade_level;
         $toGrade   = $validated['action'] === 'promote'
             ? ($gradeMap[$fromGrade] ?? null)
@@ -3750,11 +3860,9 @@ class EnrollmentController extends Controller
      * Grade1-Grade6 promotion policy at this school: nobody is academically
      * retained (private school, no failed students), so grades/guidance are
      * WARNINGS only — shown to the admin but never block promotion. The real
-     * gates are administrative: an unpaid balance or incomplete documents for
-     * the ending school year block bulk promotion, same thresholds
-     * StudentPortalController::getCompletionProgress() already uses for
-     * "payment done" / "has required documents", so this doesn't invent a new
-     * standard for what "complete" means.
+     * gates are administrative: any balance left on the ending school year
+     * (PaymentService::promotionBlockReason) or incomplete documents block
+     * bulk promotion.
      */
     private function bulkPromotionCandidates(string $grade, string $fromSchoolYear): array
     {
@@ -3852,13 +3960,9 @@ class EnrollmentController extends Controller
                 $reasons[] = 'Already assessed for this school year';
             }
 
-            $enr = $s->enrollments->first();
-            $isInstallmentPlan = $enr->payment_type === 'installment' || in_array($enr->payment_option, ['B', 'C', 'D']);
-            $paymentDone = $isInstallmentPlan
-                ? in_array($enr->payment_status ?? 'pending', ['partial', 'paid'])
-                : ($enr->payment_status ?? 'pending') === 'paid';
-            if (!$paymentDone) {
-                $reasons[] = 'Unpaid balance for ' . $fromSchoolYear;
+            // Fully paid, installment plans included (a downpayment alone used to count)
+            if ($unpaid = PaymentService::promotionBlockReason($s->enrollments->first())) {
+                $reasons[] = $unpaid;
             }
 
             if (!$studentsWithDocs->contains($s->id)) {
@@ -3983,21 +4087,37 @@ class EnrollmentController extends Controller
 
     /**
      * Nursery→Kindergarten and Kindergarten→Grade1 are developmental, not
-     * academic, transitions at this school — no grades, guidance, payment, or
-     * document checks apply, every student in the grade just advances. Only
-     * excludes someone already holding an enrollment for the target year, so
+     * academic, transitions at this school — no grades, guidance, or document
+     * checks apply. The school year must still be fully paid: anyone with a
+     * balance is returned under 'excluded' with the reason. Someone already
+     * holding an enrollment for the target year isn't listed at all, so
      * clicking this twice doesn't error out on duplicates.
      */
-    private function preElemAdvanceCandidates(string $grade, string $fromSchoolYear, string $toSchoolYear)
+    private function preElemAdvanceCandidates(string $grade, string $fromSchoolYear, string $toSchoolYear): array
     {
-        return User::where('role', 'student')
-            ->whereHas('enrollments', fn($q) => $q
-                ->where('school_year', $fromSchoolYear)
-                ->where('grade_level', $grade)
-                ->whereIn('status', ['enrolled', 'approved', 'completed'])
-            )
-            ->whereDoesntHave('enrollments', fn($q) => $q->where('school_year', $toSchoolYear))
+        $fromYear = fn($q) => $q
+            ->where('school_year', $fromSchoolYear)
+            ->where('grade_level', $grade)
+            ->whereIn('status', ['enrolled', 'approved', 'completed']);
+
+        $students = User::where('role', 'student')
+            ->whereHas('enrollments', $fromYear)
+            ->with(['enrollments' => fn($q) => $fromYear($q)->latest('id')])
+            // An undone (cancelled) or declined next-year row doesn't count — same as assessPromotion()
+            ->whereDoesntHave('enrollments', fn($q) => $q->where('school_year', $toSchoolYear)->whereNotIn('status', ['declined', 'cancelled']))
             ->get();
+
+        $eligible = collect();
+        $excluded = collect();
+        foreach ($students as $s) {
+            if ($reason = PaymentService::promotionBlockReason($s->enrollments->first())) {
+                $excluded->push(['student' => $s, 'reasons' => [$reason]]);
+            } else {
+                $eligible->push($s);
+            }
+        }
+
+        return ['eligible' => $eligible, 'excluded' => $excluded];
     }
 
     /**
@@ -4011,20 +4131,26 @@ class EnrollmentController extends Controller
             'to_school_year'   => 'required|string|max:20',
         ]);
 
-        $students = $this->preElemAdvanceCandidates($validated['grade'], $validated['from_school_year'], $validated['to_school_year']);
+        $result = $this->preElemAdvanceCandidates($validated['grade'], $validated['from_school_year'], $validated['to_school_year']);
 
         return response()->json([
-            'success' => true,
-            'count'   => $students->count(),
-            'students'=> $students->map(fn($s) => ['id' => $s->id, 'name' => $s->name])->values(),
+            'success'        => true,
+            'count'          => $result['eligible']->count(),
+            'students'       => $result['eligible']->map(fn($s) => ['id' => $s->id, 'name' => $s->name])->values(),
+            'excluded_count' => $result['excluded']->count(),
+            'excluded'       => $result['excluded']->map(fn($e) => [
+                'id'      => $e['student']->id,
+                'name'    => $e['student']->name,
+                'reasons' => $e['reasons'],
+            ])->values(),
         ]);
     }
 
     /**
-     * Advance every Nursery/Kindergarten student in one grade with zero
-     * per-student checks. Still reuses assessPromotion() per student for the
-     * actual write (same transaction safety, same audit trail as every other
-     * promotion path in this system).
+     * Advance every fully paid Nursery/Kindergarten student in one grade (no
+     * grade/guidance/document checks). Still reuses assessPromotion() per
+     * student for the actual write (same transaction safety, same audit trail
+     * as every other promotion path in this system).
      */
     public function autoAdvance(Request $request)
     {
@@ -4034,12 +4160,12 @@ class EnrollmentController extends Controller
             'to_school_year'   => 'required|string|max:20',
         ]);
 
-        $students = $this->preElemAdvanceCandidates($validated['grade'], $validated['from_school_year'], $validated['to_school_year']);
+        $result = $this->preElemAdvanceCandidates($validated['grade'], $validated['from_school_year'], $validated['to_school_year']);
 
         $promoted = [];
         $failed   = [];
 
-        foreach ($students as $student) {
+        foreach ($result['eligible'] as $student) {
             $subRequest = Request::create('', 'POST', [
                 'action'           => 'promote',
                 'from_school_year' => $validated['from_school_year'],
@@ -4056,13 +4182,17 @@ class EnrollmentController extends Controller
             }
         }
 
+        $skipped = $result['excluded']->count();
+
         return response()->json([
             'success'        => true,
             'promoted_count' => count($promoted),
+            'skipped_count'  => $skipped,
             'failed_count'   => count($failed),
             'promoted'       => $promoted,
             'failed'         => $failed,
             'message'        => count($promoted) . ' student(s) advanced.'
+                . ($skipped ? ' ' . $skipped . ' skipped (unpaid balance).' : '')
                 . (count($failed) ? ' ' . count($failed) . ' failed.' : ''),
         ]);
     }

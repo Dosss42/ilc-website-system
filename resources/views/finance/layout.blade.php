@@ -43,6 +43,8 @@
     <link rel="stylesheet" href="/css/global-scrollbar.css">
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    {{-- printOfficialReceipt(): the one receipt layout used across the system --}}
+    <script src="/js/official-receipt.js?v={{ filemtime(public_path('js/official-receipt.js')) }}"></script>
     <style>
         :root {
             --blue: #1a3a6c;
@@ -424,10 +426,6 @@
             <a href="{{ route('finance.reports.index') }}" class="menu-item {{ request()->routeIs('finance.reports.*') ? 'active' : '' }}">
                 <i class="bi bi-graph-up"></i>
                 Financial Reports
-            </a>
-            <a href="{{ route('finance.audit-trail') }}" class="menu-item {{ request()->routeIs('finance.audit-trail') ? 'active' : '' }}">
-                <i class="bi bi-journal-check"></i>
-                Audit Trail
             </a>
 
             <div class="sidebar-bottom">

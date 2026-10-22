@@ -70,12 +70,10 @@ class SuperAdminController extends Controller
             'archived_users' => User::onlyTrashed()->count(),
         ];
 
-        $logs    = $this->getSystemLogs([
-            'type'   => $request->input('log_type'),
-            'search' => $request->input('log_search'),
-            'date'   => $request->input('log_date'),
-            'role'   => $request->input('log_role'),
-        ])->withQueryString();
+        \App\Services\AuditLogRetention::clearIfDue();
+        $logRetentionMonths = \App\Services\AuditLogRetention::months();
+
+        $logs    = $this->getSystemLogs($this->logFilters($request))->withQueryString();
         $backups = $this->listBackups();
 
         $announcements = Announcement::with('teacher')->latest()->paginate(15, ['*'], 'ann_page');
@@ -84,8 +82,34 @@ class SuperAdminController extends Controller
         return view('superadmin_dashboard', compact(
             'users', 'dashboardUsers', 'userManagementUsers',
             'stats', 'sort', 'roleFilter', 'userSearch', 'logs', 'section', 'backups',
-            'announcements', 'newsArticles'
+            'announcements', 'newsArticles', 'logRetentionMonths'
         ));
+    }
+
+    /**
+     * Super Admin only: how long audit logs are kept before automatic clearing. A shorter
+     * period clears the older entries right away (the change itself is logged, and so is
+     * every clearing, as "System").
+     */
+    public function updateLogRetention(Request $request)
+    {
+        $validated = $request->validate([
+            'months' => ['required', 'integer', \Illuminate\Validation\Rule::in(array_keys(\App\Services\AuditLogRetention::OPTIONS))],
+        ]);
+
+        $old = \App\Services\AuditLogRetention::label();
+        \App\Services\AuditLogRetention::setMonths((int) $validated['months']);
+        $new = \App\Services\AuditLogRetention::label();
+        ActivityLogger::log('update', "Audit log automatic clearing changed from {$old} to {$new}", 'Setting');
+
+        $cleared = \App\Services\AuditLogRetention::clear();
+
+        return response()->json([
+            'success' => true,
+            'label'   => $new,
+            'cleared' => $cleared,
+            'message' => "Audit logs are now kept for {$new}." . ($cleared ? " {$cleared} older log(s) were cleared." : ''),
+        ]);
     }
 
     /**
@@ -93,25 +117,41 @@ class SuperAdminController extends Controller
      */
     private function buildLogsQuery(array $filters = [])
     {
-        $query = ActivityLog::orderByDesc('created_at');
+        $query = ActivityLog::orderByDesc('created_at')->orderByDesc('id');
+        $isDate = fn ($v) => is_string($v) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $v);
 
-        if (!empty($filters['type'])) {
+        if (isset(ActivityLog::EVENT_TYPES[$filters['type'] ?? ''])) {
             $query->where('event_type', $filters['type']);
         }
-        if (!empty($filters['search'])) {
-            $query->where(function ($q) use ($filters) {
-                $q->where('description', 'like', '%' . $filters['search'] . '%')
-                  ->orWhere('user_name', 'like', '%' . $filters['search'] . '%');
-            });
+        if (trim((string) ($filters['search'] ?? '')) !== '') {
+            $like = '%' . addcslashes(trim($filters['search']), '%_\\') . '%';
+            $query->where(fn ($q) => $q->where('description', 'like', $like)->orWhere('user_name', 'like', $like));
         }
-        if (!empty($filters['date'])) {
-            $query->whereDate('created_at', $filters['date']);
+        if ($isDate($filters['from'] ?? null)) {
+            $query->whereDate('created_at', '>=', $filters['from']);
         }
-        if (!empty($filters['role'])) {
+        if ($isDate($filters['to'] ?? null)) {
+            $query->whereDate('created_at', '<=', $filters['to']);
+        }
+        if (isset(ActivityLog::ROLES[$filters['role'] ?? ''])) {
             $query->where('user_role', $filters['role']);
+        } elseif (($filters['role'] ?? '') === 'system') {
+            $query->whereNull('user_role');
         }
 
         return $query;
+    }
+
+    /** The System Logs filter values from a request — the page, CSV export and PDF all use these. */
+    private function logFilters(Request $request): array
+    {
+        return [
+            'type'   => $request->input('log_type'),
+            'search' => $request->input('log_search'),
+            'from'   => $request->input('log_from', $request->input('log_date')), // log_date: old single-day links
+            'to'     => $request->input('log_to', $request->input('log_date')),
+            'role'   => $request->input('log_role'),
+        ];
     }
 
     private function getSystemLogs(array $filters = [])
@@ -126,12 +166,7 @@ class SuperAdminController extends Controller
      */
     public function exportLogs(Request $request)
     {
-        $logs = $this->buildLogsQuery([
-            'type'   => $request->input('log_type'),
-            'search' => $request->input('log_search'),
-            'date'   => $request->input('log_date'),
-            'role'   => $request->input('log_role'),
-        ])->get();
+        $logs = $this->buildLogsQuery($this->logFilters($request))->get();
 
         ActivityLogger::log('update', 'System logs exported (' . $logs->count() . ' rows)', 'ActivityLog');
 
@@ -845,12 +880,7 @@ class SuperAdminController extends Controller
      */
     public function downloadAuditLogReportPdf(Request $request)
     {
-        $filters = [
-            'type'   => $request->input('log_type'),
-            'search' => $request->input('log_search'),
-            'date'   => $request->input('log_date'),
-            'role'   => $request->input('log_role'),
-        ];
+        $filters = $this->logFilters($request);
         $logs = $this->buildLogsQuery($filters)->get();
 
         ActivityLogger::log('update', 'Audit log PDF exported (' . $logs->count() . ' rows)', 'ActivityLog');

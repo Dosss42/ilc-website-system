@@ -98,7 +98,10 @@ class AuthController extends Controller
             ]);
             ActivityLogger::log('login', $user->name . ' logged in', 'User', $user->id);
 
-            return redirect()->intended(route('finance.dashboard'));
+            // Only go back to a page inside this portal: the remembered "intended" URL is shared
+            // by every portal, so an Admin page opened while logged out used to land finance there
+            $intended = $request->session()->pull('url.intended');
+            return redirect(is_string($intended) && str_starts_with($intended, url('/finance/')) ? $intended : route('finance.dashboard'));
         }
 
         $this->incrementLoginAttempts($lockKey, $unlockKey, $attempts);

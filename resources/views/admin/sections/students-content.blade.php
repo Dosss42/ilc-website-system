@@ -307,6 +307,11 @@
 
                                     <a href="#" class="action-btn edit js-student-edit" data-id="{{ $s->id }}" title="Edit"><i class="bi bi-pencil-fill"></i></a>
 
+                                    <a href="#" class="action-btn js-student-transactions" data-id="{{ $s->id }}" title="Transaction History"
+                                       style="background:#eef2ff;color:#4338ca;">
+                                        <i class="bi bi-receipt"></i>
+                                    </a>
+
                                     <a href="{{ route('admin.students.sf10', $s->id) }}" target="_blank"
                                        class="action-btn" title="Download SF10"
                                        style="background:#e8f8f0;color:#1a6b2d;">

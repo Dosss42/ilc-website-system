@@ -456,6 +456,12 @@ class StudentPortalController extends Controller
             return back()->with('error', 'No previous enrollment found. Please contact the admin.');
         }
 
+        // The previous school year must be fully paid — Nursery/Kinder included (they skip
+        // assessment, not payment). The portal locks the button too; this is the real check.
+        if ($blocked = PaymentService::promotionBlockReason($prevEnrollment)) {
+            return back()->with('error', $blocked . '. Please settle it before re-enrolling.');
+        }
+
         // Full grade progression map
         $gradeProgressionMap = [
             'nursery'     => 'kindergarten',
@@ -580,6 +586,12 @@ class StudentPortalController extends Controller
             'installment_id'    => 'nullable|integer',
             'number_of_months'  => 'nullable|integer|min:1',
         ]);
+
+        // A plan being chosen now must be one this grade can take (C: Grade 1-6, D: Nursery/Kinder)
+        if ($request->payment_option && !$enrollment->payment_option
+            && ($planError = \App\Services\FeeCalculator::planError($enrollment->grade_level ?? ($enrollment->student_data['grade_level'] ?? null), $request->payment_option))) {
+            return redirect()->route('student.portal')->with('error', $planError);
+        }
 
         // For installment payments - use PaymentService
         $isInstallment = $enrollment->payment_type === 'installment' || in_array($enrollment->payment_option, ['B', 'C', 'D']);
@@ -1320,6 +1332,12 @@ class StudentPortalController extends Controller
         // never from client input.
         $paymentOption = $enrollment->payment_option ?: $request->payment_option;
         $gradeLevel    = $enrollment->grade_level ?? ($enrollment->student_data['grade_level'] ?? null);
+
+        // A plan being chosen now must be one this grade can take (C: Grade 1-6, D: Nursery/Kinder)
+        if (!$enrollment->payment_option && $paymentOption
+            && ($planError = \App\Services\FeeCalculator::planError($gradeLevel, $paymentOption))) {
+            return response()->json(['success' => false, 'message' => $planError], 422);
+        }
         $calc          = ($gradeLevel && $paymentOption)
             ? \App\Services\FeeCalculator::calculate($gradeLevel, $paymentOption)
             : null;
@@ -1331,7 +1349,10 @@ class StudentPortalController extends Controller
             $planUpdate['payment_option'] = $paymentOption;
             $planUpdate['payment_type']   = $paymentOption === 'A' ? 'full' : 'installment';
         }
-        if ($calc && !$enrollment->total_fee) {
+        // Compared as a number: total_fee defaults to 0 and is cast decimal:2, so an unset fee
+        // comes back as the string "0.00" — which PHP treats as true, so `!total_fee` skipped
+        // this and a promoted student's Xendit payment left the enrollment at ₱0.
+        if ($calc && (float) $enrollment->total_fee <= 0) {
             $planUpdate['total_fee']          = $calc['total_due'];
             $planUpdate['remaining_balance']  = max(0, $calc['total_due'] - ($enrollment->payment_amount ?? 0));
             if (isset($calc['downpayment'])) {

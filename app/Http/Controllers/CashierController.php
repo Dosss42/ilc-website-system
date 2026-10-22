@@ -90,7 +90,10 @@ class CashierController extends Controller
             cache()->forget($unlockKey);
             Log::info('Cashier login', ['user_id' => $user->id, 'ip' => $request->ip()]);
             ActivityLogger::log('login', $user->name . ' logged in', 'User', $user->id);
-            return redirect()->intended(route('cashier.dashboard'));
+            // Only go back to a page inside this portal: the remembered "intended" URL is shared
+            // by every portal, so an Admin page opened while logged out used to land the cashier there
+            $intended = $request->session()->pull('url.intended');
+            return redirect(is_string($intended) && str_starts_with($intended, url('/cashier/')) ? $intended : route('cashier.dashboard'));
         }
 
         $this->incrementAttempts($lockKey, $unlockKey, $attempts);
@@ -452,29 +455,6 @@ class CashierController extends Controller
         return response()->json($txs);
     }
 
-    // ── Audit Trail (own activity only) ────────────────
-    // Deliberately scoped to the signed-in cashier's own actions, not every
-    // cashier/admin's — this is their personal accountability record, not a
-    // system-wide log (that stays a Super Admin-only view).
-    public function auditTrail(Request $request)
-    {
-        $userId = Auth::guard('cashier')->id();
-
-        $logs = \App\Models\ActivityLog::where('user_id', $userId)
-            ->latest('created_at')
-            ->paginate((int) $request->get('per_page', 25))
-            ->through(function ($log) {
-                return [
-                    'event_type'  => $log->event_type,
-                    'description' => $log->description,
-                    'date'        => $log->created_at?->format('M d, Y'),
-                    'time'        => $log->created_at?->format('h:i A'),
-                ];
-            });
-
-        return response()->json($logs);
-    }
-
     // ── Student Search ────────────────────────────────
 
     public function searchStudent(Request $request)
@@ -675,19 +655,8 @@ class CashierController extends Controller
     private function buildBreakdown(string $grade, string $option): array
     {
         // Option C is only offered for Grade 1-6, Option D only for
-        // Nursery/Kindergarten — FeeCalculator itself doesn't encode this
-        // availability rule (it just returns 0 for an unconfigured
-        // downpayment), so it stays here as an explicit allow-list.
-        $optionCGrades = ['grade1', 'grade2', 'grade3', 'grade4', 'grade5', 'grade6'];
-        $optionDGrades = ['nursery', 'kindergarten'];
-
-        if (!in_array($option, ['A', 'B', 'C', 'D'])) {
-            return [];
-        }
-        if ($option === 'C' && !in_array($grade, $optionCGrades)) {
-            return [];
-        }
-        if ($option === 'D' && !in_array($grade, $optionDGrades)) {
+        // Nursery/Kindergarten (FeeCalculator::PLANS_BY_GRADE)
+        if (!\App\Services\FeeCalculator::planAllowed($grade, $option)) {
             return [];
         }
 

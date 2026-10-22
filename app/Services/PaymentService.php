@@ -738,6 +738,40 @@ class PaymentService
     }
 
     /**
+     * What is still owed on an enrollment's school year, or null when no fee was ever set
+     * (no payment plan chosen, so it can't be called paid). Computed from total_fee and
+     * payment_amount (completed payments only), not the stored remaining_balance.
+     */
+    public static function balanceDue(Enrollment $enrollment): ?float
+    {
+        $totalFee = (float) $enrollment->total_fee;
+        if ($totalFee <= 0) {
+            return ($enrollment->payment_status === 'paid' && (float) $enrollment->payment_amount > 0) ? 0.0 : null;
+        }
+        return max(0, round($totalFee - (float) $enrollment->payment_amount, 2));
+    }
+
+    /**
+     * Why this enrollment's school year blocks moving the student to the next one, or null
+     * when it is fully paid. Every way a student moves up (assess, bulk promote, Nursery/Kinder
+     * auto-advance, portal re-enrollment) requires the old school year to be settled.
+     */
+    public static function promotionBlockReason(?Enrollment $enrollment): ?string
+    {
+        if (!$enrollment) {
+            return null;
+        }
+        $due = self::balanceDue($enrollment);
+        if ($due === null) {
+            return 'No tuition fee recorded for S.Y. ' . $enrollment->school_year . ' (no payment plan chosen)';
+        }
+        if ($due > 0) {
+            return 'Unpaid balance of ₱' . number_format($due, 2) . ' for S.Y. ' . $enrollment->school_year;
+        }
+        return null;
+    }
+
+    /**
      * Single source of truth for "find an active section for this grade
      * level/school year that still has room, and assign the student to it."
      *

@@ -72,7 +72,7 @@ class CashPaymentTest extends TestCase
         $this->assertEquals('enrolled', $enrollment->status);
     }
 
-    public function test_cash_payment_is_logged_to_the_cashiers_audit_trail(): void
+    public function test_cash_payment_is_logged_to_the_audit_trail(): void
     {
         $cashier = User::factory()->cashier()->create();
         $enrollment = Enrollment::factory()->create();
@@ -90,11 +90,11 @@ class CashPaymentTest extends TestCase
             'event_type' => 'cash_payment',
         ]);
 
-        // Confirm it shows up through the actual Audit Trail endpoint too.
-        $response = $this->actingAs($cashier, 'cashier')->getJson('/cashier/audit-trail');
-        $response->assertOk();
-        // The audit trail is paginated: entries are under "data".
-        $this->assertTrue(collect($response->json('data'))->contains(fn ($l) => $l['event_type'] === 'cash_payment'));
+        // Cashiers no longer view an audit trail; the entry shows up on the Admin's
+        $this->actingAs($cashier, 'cashier')->getJson('/cashier/audit-trail')->assertNotFound();
+        $this->actingAs(User::factory()->admin()->create(), 'web')
+            ->get('/admin/section/audit?audit_type=cash_payment')->assertOk()
+            ->assertSee('Cash Payment')->assertSee($cashier->name);
     }
 
     public function test_cash_payment_is_refused_when_no_fee_plan_is_set(): void

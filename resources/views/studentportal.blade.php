@@ -8,6 +8,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+    {{-- printOfficialReceipt(): the one receipt layout used across the system --}}
+    <script src="/js/official-receipt.js?v={{ filemtime(public_path('js/official-receipt.js')) }}"></script>
     <link rel="stylesheet" href="/css/dashboard.css?v={{ filemtime(public_path('css/dashboard.css')) }}">
     <link rel="stylesheet" href="/css/global-scrollbar.css">
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
@@ -925,7 +927,7 @@
                     <span style="font-weight:600;">{{ $jptWhen->format('M d, Y h:i A') }}</span>
                 </div>
                 <div style="display:flex;gap:10px;margin-top:18px;">
-                    {{-- Prints the same Official Receipt layout the Cashier issues (it used to
+                    {{-- Prints the Cashier's receipt layout as an Acknowledgment Receipt (it used to
                          print this popup itself). Only once paid — the processing state reloads
                          into the paid one by itself. --}}
                     @if($jptPaid)
@@ -941,66 +943,11 @@
         </div>
     </div>
     <script>
-        // Official Receipt in its own window — same layout as the Cashier's
-        // printOfficialReceipt(), with "paid online" in place of the cashier signature.
+        // Online-payment receipt — the Cashier's slip (public/js/official-receipt.js) as an
+        // Acknowledgment Receipt: "PAID ONLINE" instead of a signature, and a note that the
+        // Official Receipt is issued by the Cashier / Finance Office (same reference number).
         function printStudentReceipt(d) {
-            const esc = v => String(v == null || v === '' ? '—' : v)
-                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-            const w = window.open('', '_blank', 'width=420,height=640,scrollbars=yes');
-            if (!w) { window.print(); return; } // pop-ups blocked: fall back to printing the card
-            const html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
-                + '<title>Official Receipt — ' + esc(d.or_no) + '</title>'
-                + '<style>'
-                + 'body{font-family:"Courier New",monospace;font-size:12px;margin:0;padding:20px 24px;color:#000;}'
-                + '.center{text-align:center;} .bold{font-weight:700;} .right{text-align:right;}'
-                + 'h2{margin:0;font-size:15px;letter-spacing:.5px;} h3{margin:3px 0;font-size:11px;font-weight:400;}'
-                + '.solid{border-top:2px solid #000;margin:10px 0;} .dash{border-top:1px dashed #000;margin:8px 0;}'
-                + 'table{width:100%;border-collapse:collapse;}'
-                + 'td{padding:3px 0;vertical-align:top;}'
-                + 'td:last-child{text-align:right;word-break:break-all;padding-left:8px;}'
-                + '.amt{font-size:16px;font-weight:900;}'
-                + '.footer{margin-top:24px;font-size:10px;text-align:center;color:#444;}'
-                + '.paid{margin-top:22px;border:1.5px solid #000;padding:6px;text-align:center;font-size:11px;font-weight:700;letter-spacing:1px;}'
-                + '@media print{body{padding:10px;}}'
-                + '</style></head>'
-                + '<body onload="setTimeout(function(){window.print();},400);">'
-                + '<div class="center">'
-                + '<img src="{{ asset('images/logo.png') }}" alt="ILC Logo" style="width:70px;height:70px;object-fit:contain;border-radius:50%;margin-bottom:8px;" onerror="this.style.display=\'none\'">'
-                + '<h2>IEMELIF LEARNING CENTER</h2>'
-                + '<h3>General Tinio, Nueva Ecija</h3>'
-                + '<h3>Tel: 0951-989-9685</h3></div>'
-                + '<div class="solid"></div>'
-                + '<div class="center bold" style="font-size:13px;letter-spacing:1px;">OFFICIAL RECEIPT</div>'
-                + '<div class="solid"></div>'
-                + '<table>'
-                + '<tr><td>OR No.:</td><td class="bold">' + esc(d.or_no) + '</td></tr>'
-                + '<tr><td>Date:</td><td>' + esc(d.date) + '</td></tr>'
-                + '<tr><td>Time:</td><td>' + esc(d.time) + '</td></tr>'
-                + '</table>'
-                + '<div class="dash"></div>'
-                + '<table>'
-                + '<tr><td>Student:</td><td class="bold">' + esc(d.student_name) + '</td></tr>'
-                + '<tr><td>Grade Level:</td><td>' + esc(d.grade_level) + '</td></tr>'
-                + '<tr><td>School Year:</td><td>' + esc(d.school_year) + '</td></tr>'
-                + '</table>'
-                + '<div class="dash"></div>'
-                + '<table>'
-                + '<tr><td>Description:</td><td>' + esc(d.description) + '</td></tr>'
-                + '<tr><td>Method:</td><td>' + esc(d.method) + '</td></tr>'
-                + (d.txn_id ? '<tr><td>Transaction ID:</td><td style="font-size:10px;">' + esc(d.txn_id) + '</td></tr>' : '')
-                + '</table>'
-                + '<div class="solid"></div>'
-                + '<table><tr><td class="bold amt">AMOUNT PAID:</td><td class="bold amt right">&#x20B1;' + esc(d.amount) + '</td></tr></table>'
-                + '<div class="solid"></div>'
-                + '<div class="paid">PAID ONLINE &middot; VERIFIED BY PAYMENT GATEWAY</div>'
-                + '<div class="footer">'
-                + '<div>Thank you for your payment!</div>'
-                + '<div style="margin-top:3px;">This is a computer-generated receipt. No signature required.</div>'
-                + '</div>'
-                + '</body></html>';
-            w.document.open();
-            w.document.write(html);
-            w.document.close();
+            if (printOfficialReceipt(Object.assign({}, d, { type: 'online', acknowledgment: true })) === false) window.print(); // pop-ups blocked: print the card
         }
     </script>
     @if(!$jptPaid && $justPaidTransaction->xendit_invoice_id)
@@ -2463,8 +2410,10 @@
                 $promoResult = $promotionRecord->to_grade === 'graduated' ? 'Graduated'
                     : ($promotionRecord->from_grade === $promotionRecord->to_grade ? 'Retained' : 'Promoted');
             }
-            $reenrollBalance = $enrollment->remaining_balance ?? max(0, ($enrollment->total_fee ?? 0) - ($enrollment->payment_amount ?? 0));
-            $balanceCleared  = $reenrollBalance <= 0;
+            // Same rule the server enforces: the school year must be fully paid (no fee set = not paid)
+            $reenrollBlock   = \App\Services\PaymentService::promotionBlockReason($enrollment);
+            $reenrollBalance = \App\Services\PaymentService::balanceDue($enrollment) ?? 0;
+            $balanceCleared  = $reenrollBlock === null;
             $docsVerified    = $enrollApproved === 4;
             $canReenroll     = ($isAutoAdvance || $isAssessed) && $docsVerified && $balanceCleared;
         @endphp
@@ -2553,9 +2502,11 @@
                         <div style="font-size:12px;color:#666;margin-top:3px;">
                             @if($balanceCleared)
                                 No outstanding balance — you're clear.
-                            @else
+                            @elseif($reenrollBalance > 0)
                                 Balance: <strong style="color:#dc2626;">₱{{ number_format($reenrollBalance,2) }}</strong>
-                                — settle this before or upon re-enrollment.
+                                — settle this before re-enrolling.
+                            @else
+                                No payment plan was chosen for S.Y. {{ $enrollment->school_year }} — please contact the Cashier / Finance Office.
                             @endif
                         </div>
                     </div>
@@ -2605,7 +2556,7 @@
                                 <li>Get all required documents approved ({{ $enrollApproved }}/4 verified)</li>
                                 @endif
                                 @if(!$balanceCleared)
-                                <li>Settle outstanding balance of <strong>₱{{ number_format($reenrollBalance, 2) }}</strong></li>
+                                <li>@if($reenrollBalance > 0)Settle outstanding balance of <strong>₱{{ number_format($reenrollBalance, 2) }}</strong>@else Pay the tuition for S.Y. {{ $enrollment->school_year }} @endif</li>
                                 @endif
                             </ul>
                         </div>

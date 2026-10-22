@@ -372,9 +372,10 @@ class DashboardController extends Controller
 
         $transaction->load(['user', 'enrollment', 'installment', 'processedBy']);
 
+        // Same wording as the printed receipts (installment month, else the payment's own description)
         $description = $transaction->installment
             ? ($transaction->installment->month_name . ' Installment')
-            : ($transaction->installment_month ?? ucfirst($transaction->payment_type) . ' Payment');
+            : ($transaction->description ?: ($transaction->installment_month ?? ucfirst($transaction->payment_type) . ' Payment'));
 
         $letterhead = $this->financePdfLetterhead();
 
@@ -382,13 +383,14 @@ class DashboardController extends Controller
             'reportTitle'    => 'Official Receipt',
             'dateRangeLabel' => null,
             'transaction'    => $transaction,
-            'orNumber'       => 'OR-' . str_pad($transaction->id, 6, '0', STR_PAD_LEFT),
+            // Same OR No. the Cashier's slip and every other receipt print
+            'orNumber'       => $transaction->reference_number ?: 'OR-' . str_pad($transaction->id, 6, '0', STR_PAD_LEFT),
             'description'    => $description,
             'receivedBy'     => $transaction->processedBy->name ?? $letterhead['generatedBy'],
         ]);
 
         $pdf = $this->financePdfOptions(\Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.finance.receipt', $data));
-        $pdf->setPaper([0, 0, 288, 420], 'portrait'); // narrow receipt-style page (4in wide)
+        $pdf->setPaper([0, 0, 288, 520], 'portrait'); // narrow receipt slip (4in wide), tall enough for the full slip on one page
 
         return $pdf->download($data['orNumber'] . '.pdf');
     }
@@ -1096,16 +1098,7 @@ class DashboardController extends Controller
         // actually charged. Option C is Grade 1-6 only, Option D is
         // Nursery/Kinder only — those cells are simply omitted per grade
         // rather than showing a misleading ₱0.
-        $optionsByGrade = [
-            'nursery'      => ['A', 'B', 'D'],
-            'kindergarten' => ['A', 'B', 'D'],
-            'grade1'       => ['A', 'B', 'C'],
-            'grade2'       => ['A', 'B', 'C'],
-            'grade3'       => ['A', 'B', 'C'],
-            'grade4'       => ['A', 'B', 'C'],
-            'grade5'       => ['A', 'B', 'C'],
-            'grade6'       => ['A', 'B', 'C'],
-        ];
+        $optionsByGrade = \App\Services\FeeCalculator::PLANS_BY_GRADE;
         $optionTotals = [];
         foreach ($gradeLevels as $grade) {
             foreach ($optionsByGrade[$grade] as $option) {
@@ -1307,23 +1300,6 @@ class DashboardController extends Controller
         $pdf = $this->financePdfOptions(\Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.finance.collection-summary', $data), $data);
 
         return $pdf->download('Collection_Summary_' . $dateFrom . '_to_' . $dateTo . '.pdf');
-    }
-
-    /**
-     * Audit Trail — deliberately scoped to the signed-in finance staff's own
-     * actions, not every finance/admin's. It's their personal accountability
-     * record (proof of what they approved/rejected/processed and when), not
-     * a system-wide log — that stays a Super Admin-only view.
-     */
-    public function auditTrail(Request $request)
-    {
-        $userId = Auth::guard('finance')->id();
-
-        $logs = \App\Models\ActivityLog::where('user_id', $userId)
-            ->latest('created_at')
-            ->paginate(25);
-
-        return view('finance.audit-trail', compact('logs'));
     }
 
     /**

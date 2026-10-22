@@ -199,15 +199,15 @@
                             @if($walkInTx->status === 'completed')
                                 <button type="button" class="action-btn" title="Print Official Receipt" style="background:#e8f5e9;color:#2e7d32;"
                                     onclick="printOfficialReceipt({
-                                        or_no: 'OR-{{ str_pad($walkInTx->id, 6, '0', STR_PAD_LEFT) }}',
+                                        or_no: '{{ addslashes($walkInTx->reference_number ?: 'OR-' . str_pad($walkInTx->id, 6, '0', STR_PAD_LEFT)) }}',
                                         date: '{{ $walkInTx->created_at->format('F d, Y') }}',
                                         time: '{{ $walkInTx->created_at->format('h:i A') }}',
                                         student_name: '{{ addslashes($walkInTx->user->name ?? 'N/A') }}',
                                         grade_level: '{{ $walkInTx->enrollment->grade_level ?? 'N/A' }}',
                                         school_year: '{{ $walkInTx->enrollment->school_year ?? 'N/A' }}',
-                                        description: '{{ addslashes($walkInInstallment ? ($walkInInstallment->month_name.' Installment') : ($walkInTx->installment_month ?? 'Downpayment')) }}',
+                                        description: '{{ addslashes($walkInInstallment ? ($walkInInstallment->month_name.' Installment') : ($walkInTx->description ?: ($walkInTx->installment_month ?? 'Payment'))) }}',
                                         amount: '{{ number_format($walkInTx->amount, 2) }}',
-                                        method: '{{ ucfirst($walkInTx->payment_method ?? 'Cash') }}',
+                                        method: '{{ ['cash' => 'Cash', 'gcash' => 'GCash'][$walkInTx->payment_method] ?? ucfirst($walkInTx->payment_method ?? 'Cash') }}',
                                         received_by: '{{ addslashes($walkInTx->processedBy->name ?? 'Admin') }}',
                                         type: 'walkin'
                                     })">
@@ -556,47 +556,7 @@ document.getElementById('financeConfirmOk').addEventListener('click', function()
     }
 });
 
-/* ── Print Official Receipt ── */
-function printOfficialReceipt(data) {
-    const w = window.open('', '_blank', 'width=700,height=600');
-    w.document.write(`<!DOCTYPE html><html><head><title>Official Receipt</title>
-    <style>body{font-family:'Open Sans',Arial,sans-serif;margin:0;padding:30px;}
-    .receipt{max-width:600px;margin:0 auto;border:2px solid #1e3a5f;border-radius:10px;overflow:hidden;}
-    .r-header{background:#1e3a5f;color:#fff;padding:20px 24px;text-align:center;}
-    .r-header h2{margin:0;font-size:20px;}.r-header p{margin:4px 0 0;font-size:12px;opacity:.85;}
-    .r-body{padding:20px 24px;}.r-row{display:flex;justify-content:space-between;margin-bottom:10px;font-size:13px;}
-    .r-label{color:#666;font-weight:600;}.r-value{font-weight:700;color:#1e3a5f;}
-    .r-divider{border-top:1px solid #e0e0e0;margin:14px 0;}
-    .r-total{display:flex;justify-content:space-between;font-size:16px;font-weight:700;background:#f0f4ff;padding:12px;border-radius:6px;}
-    .r-footer{text-align:center;font-size:11px;color:#888;padding:14px 24px;background:#f8f9fa;}
-    @media print{button{display:none!important;}}</style></head><body>
-    <div class="receipt">
-        <div class="r-header">
-            <h2>IEMELIF Learning Center</h2>
-            <p>Official Receipt</p>
-        </div>
-        <div class="r-body">
-            <div class="r-row"><span class="r-label">OR No.:</span><span class="r-value">${data.or_no}</span></div>
-            <div class="r-row"><span class="r-label">Date:</span><span class="r-value">${data.date} ${data.time}</span></div>
-            <div class="r-divider"></div>
-            <div class="r-row"><span class="r-label">Student Name:</span><span class="r-value">${data.student_name}</span></div>
-            <div class="r-row"><span class="r-label">Grade Level:</span><span class="r-value">${data.grade_level}</span></div>
-            <div class="r-row"><span class="r-label">School Year:</span><span class="r-value">${data.school_year}</span></div>
-            <div class="r-divider"></div>
-            <div class="r-row"><span class="r-label">Description:</span><span class="r-value">${data.description}</span></div>
-            <div class="r-row"><span class="r-label">Payment Method:</span><span class="r-value">${data.method}</span></div>
-            <div class="r-divider"></div>
-            <div class="r-total"><span>Amount Paid:</span><span>₱${data.amount}</span></div>
-            <div style="margin-top:20px;text-align:right;">
-                <div style="font-size:12px;color:#666;">Received by:</div>
-                <div style="font-weight:700;font-size:14px;">${data.received_by}</div>
-            </div>
-        </div>
-        <div class="r-footer">This is an official receipt. Thank you for your payment.</div>
-    </div>
-    <div style="text-align:center;margin-top:20px;"><button onclick="window.print()" style="padding:10px 30px;background:#1e3a5f;color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;">Print</button></div>
-    </body></html>`);
-    w.document.close();
-}
+/* ── Print Official Receipt ── printOfficialReceipt() is the shared one
+   (public/js/official-receipt.js, loaded by finance.layout) — the Cashier's slip. */
 </script>
 @endsection

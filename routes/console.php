@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
 // Send a reminder 3 days before an installment's due date.
@@ -22,3 +23,11 @@ Schedule::command('payments:check-overdue')->dailyAt('08:10');
 // Windows Task Scheduler to run `php artisan schedule:run` every minute —
 // see BACKUP_SETUP.md.
 Schedule::command('backup:run')->dailyAt('02:00');
+
+// Automatic clearing of old audit logs (period set by the Super Admin in System Logs).
+// Also runs when an Admin/Super Admin opens the logs, since Railway has no cron.
+Artisan::command('audit:clear', function () {
+    $n = \App\Services\AuditLogRetention::clear();
+    $this->info("Keep: " . \App\Services\AuditLogRetention::label() . " — {$n} old audit log(s) cleared.");
+})->purpose('Delete audit logs older than the retention period');
+Schedule::command('audit:clear')->dailyAt('02:30');
