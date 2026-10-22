@@ -1619,8 +1619,8 @@
                         @forelse($backups as $bk)
                         <div class="backup-card" id="bk-{{ Str::slug($bk['name']) }}">
                             <div style="flex:1;min-width:0;">
-                                <div class="backup-info-name" style="font-size:13px;font-weight:700;color:var(--text);word-break:break-all;">
-                                    {{ $bk['name'] }}
+                                <div class="backup-info-name" style="font-size:13px;font-weight:700;color:var(--text);word-break:break-word;" title="{{ $bk['name'] }}">
+                                    {{ preg_replace('/ \((before restore|uploaded)\)(?=\.sql$)/', '', \App\Services\BackupService::displayName($bk['name'])) }}
                                     @if(str_ends_with($bk['name'], '_before-restore.sql'))
                                         <span class="status-badge pending" style="margin-left:4px;" title="Saved automatically just before a restore — restore this to undo it">Safety copy before restore</span>
                                     @elseif(str_ends_with($bk['name'], '_uploaded.sql'))

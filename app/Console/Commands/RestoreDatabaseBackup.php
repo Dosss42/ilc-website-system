@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\File;
  *   php artisan backup:restore --list                 show the backups on this server
  *   php artisan backup:restore --latest               restore the newest backup
  *   php artisan backup:restore backup_2026-10-22_143000.sql
- *   php artisan backup:restore "C:\Users\me\Downloads\Ilc-backup-files_2026-10-22_143000.sql"
+ *   php artisan backup:restore "C:\Users\me\Downloads\ILC System Backup File - 2026-10-22 02-30 PM.sql"
  */
 #[Signature('backup:restore
     {file? : A backup name from storage/app/backups, or the full path to any .sql backup file}

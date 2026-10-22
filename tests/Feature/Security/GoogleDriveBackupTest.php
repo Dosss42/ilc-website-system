@@ -92,6 +92,41 @@ class GoogleDriveBackupTest extends TestCase
         $this->assertStringContainsString('Google Drive is not connected — run php artisan backup:google-drive-setup', $result['drive_error']);
     }
 
+    public function test_backups_get_a_readable_name_in_drive_downloads_and_the_list(): void
+    {
+        $name = fn ($f) => BackupService::displayName($f);
+        $this->assertSame('ILC System Backup File - 2026-10-22 08-15 PM.sql', $name('backup_2026-10-22_201530.sql'));
+        $this->assertSame('ILC System Backup File - 2026-10-22 08-15 AM (before restore).sql', $name('backup_2026-10-22_081500_before-restore.sql'));
+        $this->assertSame('ILC System Backup File - 2026-01-05 12-00 PM (uploaded).sql', $name('backup_2026-01-05_120000_uploaded.sql'));
+        $this->assertSame('something-else.sql', $name('something-else.sql'));
+
+        // Google Drive receives the readable name (fake uploader: nothing leaves the machine)
+        $uploaded = [];
+        $this->app->instance(\App\Services\GoogleDriveBackupUploader::class, new class($uploaded) extends \App\Services\GoogleDriveBackupUploader {
+            public function __construct(private array &$names) {}
+            public function upload(string $localPath, string $filename): bool { $this->names[] = $filename; return true; }
+            public function pruneOlderThan(int $keepDays): void {}
+        });
+        config(['backup.driver' => 'php', 'backup.google_drive.enabled' => true]);
+        $result = BackupService::runFull();
+        $path = BackupService::backupDir() . DIRECTORY_SEPARATOR . $result['filename'];
+
+        try {
+            $this->assertTrue($result['drive']);
+            $this->assertSame([BackupService::displayName($result['filename'])], $uploaded);
+            $this->assertStringStartsWith('ILC System Backup File - ' . now()->format('Y-m-d'), $uploaded[0]);
+
+            // Download and the Backup History list use it too
+            $superadmin = \App\Models\User::factory()->create(['role' => 'superadmin']);
+            $this->actingAs($superadmin, 'web')->get('/superadmin/backup/download/' . $result['filename'])->assertOk()
+                ->assertDownload(BackupService::displayName($result['filename']));
+            $this->actingAs($superadmin, 'web')->get('/superadmin/dashboard?section=backup')->assertOk()
+                ->assertSee(BackupService::displayName($result['filename']));
+        } finally {
+            File::delete($path);
+        }
+    }
+
     public function test_drive_off_is_just_skipped(): void
     {
         config(['backup.driver' => 'php', 'backup.google_drive.enabled' => false]);

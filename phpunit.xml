@@ -46,6 +46,11 @@
         <env name="DB_PASSWORD" value=""/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
+        <!-- Never upload test backups to the real Google Drive connected in .env; tests that
+             need Drive turn it on themselves with a fake uploader. -->
+        <env name="BACKUP_GDRIVE_ENABLED" value="false"/>
+        <env name="BACKUP_GDRIVE_REFRESH_TOKEN" value=""/>
+        <env name="BACKUP_GDRIVE_FOLDER_ID" value=""/>
         <!-- Disable reCAPTCHA in tests — RecaptchaService::isEnabled() checks
              this site key, so leaving it blank cleanly bypasses the "I'm not
              a robot" check for every login test without touching app code. -->

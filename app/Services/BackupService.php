@@ -37,6 +37,24 @@ class BackupService
         return (bool) preg_match('/^backup_\d{4}-\d{2}-\d{2}_\d{6}(_(uploaded|before-restore))?\.sql$/', basename($file));
     }
 
+    /**
+     * The readable name a backup is shown, downloaded and stored in Google Drive under —
+     * "ILC System Backup File - 2026-10-22 08-15 PM.sql" (+ " (before restore)" /
+     * " (uploaded)"). On the server it keeps its strict backup_<date>_<time>.sql name,
+     * which restore/delete validate. Date first so names sort by date; no ":" (Windows).
+     */
+    public static function displayName(string $file): string
+    {
+        $file = basename($file);
+        if (!preg_match('/^backup_(\d{4}-\d{2}-\d{2})_(\d{6})(?:_(uploaded|before-restore))?\.sql$/', $file, $m)) {
+            return $file;
+        }
+        $at = \Illuminate\Support\Carbon::createFromFormat('Y-m-d His', $m[1] . ' ' . $m[2]);
+        $tag = ['uploaded' => ' (uploaded)', 'before-restore' => ' (before restore)'][$m[3] ?? ''] ?? '';
+
+        return 'ILC System Backup File - ' . $at->format('Y-m-d h-i A') . $tag . '.sql';
+    }
+
     /** Does this file look like a database backup (mysqldump or the app's PHP backup)? */
     public static function looksLikeBackup(string $path): bool
     {
@@ -372,7 +390,7 @@ class BackupService
         }
 
         $secondaryOk = self::copyToSecondary($dump['path'], $dump['filename']);
-        $driveOk     = self::uploadToGoogleDrive($dump['path'], $dump['filename']);
+        $driveOk     = self::uploadToGoogleDrive($dump['path'], self::displayName($dump['filename']));
 
         self::applyRetention();
 

@@ -719,10 +719,9 @@ class SuperAdminController extends Controller
             abort(404, 'Backup file not found.');
         }
         ActivityLogger::log('update', 'Backup downloaded: ' . basename($file), 'Backup');
-        // Stored name stays backup_<date>_<time>.sql (restore/delete validate it); only the saved copy is renamed.
-        // Date/time kept so several downloads don't overwrite each other.
-        $downloadName = preg_replace('/^backup_/', 'Ilc-backup-files_', basename($file));
-        return response()->download($path, $downloadName);
+        // Stored name stays backup_<date>_<time>.sql (restore/delete validate it); the saved copy
+        // gets the readable "ILC System Backup File - <date> <time>.sql" name
+        return response()->download($path, \App\Services\BackupService::displayName($file));
     }
 
     public function deleteBackup(string $file)
