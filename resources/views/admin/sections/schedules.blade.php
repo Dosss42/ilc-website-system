@@ -19,6 +19,16 @@
         <div class="sched-filter-card">
             <div class="sched-filter-title">Filters</div>
             <div class="sched-toolbar">
+                {{-- Schedules belong to sections, which are created per school year --}}
+                @php $schedCurrentSy = \App\Models\Setting::getCurrentSchoolYear(); @endphp
+                <div class="sched-field-group">
+                    <label for="scheduleYearFilter">School Year</label>
+                    <select class="form-fld" id="scheduleYearFilter" onchange="onScheduleYearChange()">
+                        @foreach(\App\Models\Setting::schoolYearOptions() as $sy)
+                            <option value="{{ $sy }}" {{ $sy === $schedCurrentSy ? 'selected' : '' }}>{{ $sy }}{{ $sy === $schedCurrentSy ? ' (current)' : '' }}</option>
+                        @endforeach
+                    </select>
+                </div>
                 <div class="sched-field-group">
                     <label for="scheduleGradeFilter">Grade Level</label>
                     <select class="form-fld" id="scheduleGradeFilter">

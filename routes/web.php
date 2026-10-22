@@ -406,6 +406,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::post('/', [SectionController::class, 'store'])->name('store');
         Route::post('/auto-assign', [SectionController::class, 'autoAssign'])->name('autoAssign');
         Route::get('/{section}', [SectionController::class, 'show'])->name('show');
+        Route::get('/{section}/summary', [SectionController::class, 'summary'])->name('summary');
+        Route::get('/{section}/summary/pdf', [SectionController::class, 'summaryPdf'])->name('summaryPdf');
         Route::put('/{section}', [SectionController::class, 'update'])->name('update');
         Route::delete('/{section}', [SectionController::class, 'destroy'])->name('destroy');
         Route::post('/{section}/assign-teacher', [SectionController::class, 'assignTeacher'])->name('assignTeacher');

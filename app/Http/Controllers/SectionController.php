@@ -3,16 +3,30 @@
 namespace App\Http\Controllers;
 
 use App\Models\Section;
+use App\Models\StudentDocument;
 use App\Models\Subject;
 use App\Models\TeacherAssignment;
 use App\Models\User;
 use App\Services\ActivityLogger;
+use App\Services\PaymentService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class SectionController extends Controller
 {
+    use \App\Support\Traits\BuildsSchoolPdf;
+
+    /** Documents every student must have approved (same list as the promotion check). */
+    private const REQUIRED_DOCS = ['birth_certificate', 'form_137', 'report_card', 'two_by_two_picture'];
+
+    private const GRADE_LABELS = [
+        'nursery' => 'Nursery', 'kindergarten' => 'Kindergarten',
+        'grade1' => 'Grade 1', 'grade2' => 'Grade 2', 'grade3' => 'Grade 3',
+        'grade4' => 'Grade 4', 'grade5' => 'Grade 5', 'grade6' => 'Grade 6',
+    ];
+
     // DepEd K-6 Curriculum Subjects by Grade Level
     private $curriculumSubjects = [
         'nursery' => [
@@ -202,6 +216,126 @@ class SectionController extends Controller
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to load section: ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Section Summary: everyone in the section at a glance — boys/girls, student type,
+     * payments and required documents — with the roster behind the numbers. The same
+     * students as View Students; each one is counted from their enrollment for the
+     * section's school year.
+     */
+    public function summary(Section $section)
+    {
+        return response()->json($this->buildSummary($section));
+    }
+
+    public function summaryPdf(Section $section)
+    {
+        $s = $this->buildSummary($section);
+
+        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Admin'), [
+            'reportTitle'    => 'Section Summary',
+            'dateRangeLabel' => $s['section']['grade_label'] . ' — ' . $s['section']['name'] . ' · S.Y. ' . $s['section']['school_year'],
+            'summary'        => $s,
+        ]);
+
+        $file = 'section-summary-' . \Illuminate\Support\Str::slug($s['section']['grade_label'] . ' ' . $s['section']['name'])
+            . '-' . $s['section']['school_year'] . '.pdf';
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.admin.section-summary', $pdfData),
+            $pdfData
+        )->download($file);
+    }
+
+    private function buildSummary(Section $section): array
+    {
+        $sy = $section->school_year;
+
+        $students = $section->students()
+            ->select('users.id', 'users.name', 'users.lrn')
+            ->whereHas('enrollments', fn ($q) => $q->where('status', 'enrolled'))
+            ->with([
+                'profile:id,user_id,gender',
+                'enrollments' => fn ($q) => $q->where('status', '!=', 'cancelled')->orderByDesc('id'),
+            ])
+            ->orderBy('users.name')
+            ->get();
+
+        $docsByStudent = StudentDocument::whereIn('user_id', $students->pluck('id'))
+            ->whereIn('document_type', self::REQUIRED_DOCS)
+            ->where('status', 'approved')
+            ->get(['user_id', 'document_type'])
+            ->groupBy('user_id')
+            ->map(fn ($rows) => $rows->pluck('document_type')->unique()->count());
+
+        $rows = $students->map(function ($student) use ($sy, $docsByStudent) {
+            // This school year's enrollment (enrolled first); older data may lack a school year
+            $forYear = $student->enrollments->where('school_year', $sy);
+            $enrollment = $forYear->firstWhere('status', 'enrolled') ?? $forYear->first()
+                ?? $student->enrollments->firstWhere('status', 'enrolled');
+            $data = $enrollment?->student_data ?? [];
+
+            $gender = strtolower((string) ($student->profile?->gender ?: ($data['gender'] ?? '')));
+            $type   = strtolower((string) ($data['student_type'] ?? ''));
+            $fee    = (float) ($enrollment?->total_fee ?? 0);
+            $paid   = (float) ($enrollment?->payment_amount ?? 0);
+            $due    = $enrollment ? PaymentService::balanceDue($enrollment) : null;
+            $docs   = (int) ($docsByStudent[$student->id] ?? 0);
+
+            return [
+                'id'            => $student->id,
+                'name'          => $student->name,
+                'lrn'           => $student->lrn,
+                'gender'        => in_array($gender, ['male', 'female'], true) ? $gender : null,
+                'student_type'  => in_array($type, ['new', 'returning', 'transferee'], true) ? $type : null,
+                'payment_plan'  => $enrollment?->payment_option,
+                'total_fee'     => round($fee, 2),
+                'amount_paid'   => round($paid, 2),
+                'balance'       => $due,
+                // From the amounts, not the stored payment_status
+                'payment'       => ($due !== null && $due <= 0) ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid'),
+                'docs_approved' => $docs,
+                'docs_complete' => $docs >= count(self::REQUIRED_DOCS),
+            ];
+        })->values();
+
+        $count = fn (string $key, $value) => $rows->where($key, $value)->count();
+        $adviser = $section->advisory_teacher ?? $section->teacher;
+
+        return [
+            'section' => [
+                'id'          => $section->id,
+                'name'        => $section->name,
+                'grade_level' => $section->grade_level,
+                'grade_label' => self::GRADE_LABELS[$section->grade_level] ?? $section->grade_level,
+                'school_year' => $sy,
+                'room'        => $section->room_number,
+                'adviser'     => $adviser?->name,
+                'max_students'=> (int) ($section->max_students ?? 30),
+                'is_active'   => (bool) $section->is_active,
+            ],
+            'totals' => [
+                'students'        => $rows->count(),
+                'male'            => $count('gender', 'male'),
+                'female'          => $count('gender', 'female'),
+                'gender_unknown'  => $count('gender', null),
+                'new'             => $count('student_type', 'new'),
+                'returning'       => $count('student_type', 'returning'),
+                'transferee'      => $count('student_type', 'transferee'),
+                'type_unknown'    => $count('student_type', null),
+                'paid'            => $count('payment', 'paid'),
+                'partial'         => $count('payment', 'partial'),
+                'unpaid'          => $count('payment', 'unpaid'),
+                'total_fees'      => round($rows->sum('total_fee'), 2),
+                'total_collected' => round($rows->sum('amount_paid'), 2),
+                'total_balance'   => round($rows->sum(fn ($r) => (float) ($r['balance'] ?? 0)), 2),
+                'docs_complete'   => $count('docs_complete', true),
+                'docs_incomplete' => $count('docs_complete', false),
+            ],
+            'required_docs' => count(self::REQUIRED_DOCS),
+            'students'      => $rows,
+        ];
     }
 
     public function update(Request $request, Section $section)

@@ -265,6 +265,7 @@
 
                             <td style="text-align:center;white-space:nowrap;">
                                 <button class="action-btn view js-section-view-students" title="View Students" data-id="{{ $sec->id }}" data-name="{{ $sec->name }}"><i class="bi bi-people-fill"></i></button>
+                                <button class="action-btn view js-section-summary" title="Section Summary" data-id="{{ $sec->id }}" data-name="{{ $sec->name }}"><i class="bi bi-clipboard-data-fill"></i></button>
                                 <button class="action-btn view js-section-view-subjects" title="View Subjects" data-id="{{ $sec->id }}" data-name="{{ $sec->name }}"><i class="bi bi-book-fill"></i></button>
 <button class="action-btn edit js-section-manage-subjects" title="Manage Subjects" data-id="{{ $sec->id }}" data-name="{{ $sec->name }}" data-grade="{{ $sec->grade_level }}"><i class="bi bi-gear-fill"></i></button>
                                 <button class="action-btn add-student" title="Add Student" data-id="{{ $sec->id }}" data-name="{{ $sec->name }}" data-enrolled="{{ $sec->current_enrollment ?? 0 }}" data-max="{{ $sec->max_students ?? 30 }}"><i class="bi bi-person-plus-fill"></i></button>

@@ -4059,6 +4059,7 @@ function openWalkInEnrollmentModal() {
             'id'          => $s->id,
             'name'        => $s->name,
             'grade_level' => $s->grade_level,
+            'school_year' => $s->school_year, // the Add/Edit Schedule window lists the chosen year's sections
             'room_number' => $s->room_number,
             'subjects'    => $s->subjects->map(fn($subj) => ['id'=>$subj->id,'name'=>$subj->name,'code'=>$subj->code])->values()->toArray()
         ]);
@@ -4143,6 +4144,19 @@ function openWalkInEnrollmentModal() {
 
     // â”€â”€ Load Schedule Grid â”€â”€
 
+    // School year chosen in Schedule Management (schedules belong to that year's sections)
+    function schedSelectedYear() {
+        const el = document.getElementById('scheduleYearFilter');
+        return el ? el.value : '';
+    }
+
+    // Changing the year: reload that year's sections into the Section filter, then the grid
+    function onScheduleYearChange() {
+        const gradeSelect = document.getElementById('scheduleGradeFilter');
+        if (gradeSelect && gradeSelect.value) gradeSelect.dispatchEvent(new Event('change'));
+        loadScheduleGrid();
+    }
+
     function loadScheduleGrid() {
 
         const grade = document.getElementById('scheduleGradeFilter').value;
@@ -4175,15 +4189,16 @@ function openWalkInEnrollmentModal() {
 
         const termLabel = termInfo[term] ? termInfo[term].name : 'Term ' + term;
 
-        document.getElementById('scheduleInfoText').textContent = `${gradeLabel} - ${sectionLabel} (${termLabel})`;
+        const schoolYear = schedSelectedYear();
+        document.getElementById('scheduleInfoText').textContent = `${gradeLabel} - ${sectionLabel} (${termLabel})` + (schoolYear ? ` · S.Y. ${schoolYear}` : '');
 
         // Build grid with loading state
         const tbody = document.getElementById('scheduleGridBody');
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;"><i class="bi bi-hourglass-split" style="font-size:24px;color:var(--muted);"></i><div style="font-size:12px;color:var(--muted);margin-top:8px;">Loading schedules...</div></td></tr>';
 
         // Fetch schedules from API
-        const cacheKey = `${grade}-${sectionId}-${term}`;
-        let fetchUrl = '/admin/schedules?grade_level=' + grade + '&term=' + term;
+        const cacheKey = `${schoolYear}-${grade}-${sectionId}-${term}`;
+        let fetchUrl = '/admin/schedules?grade_level=' + grade + '&term=' + term + '&school_year=' + encodeURIComponent(schoolYear);
         if (sectionId) fetchUrl += '&section_id=' + sectionId;
 
         fetch(fetchUrl, { headers: { 'Accept': 'application/json' } })
@@ -4368,7 +4383,8 @@ function openWalkInEnrollmentModal() {
         var sectionId  = sectionSel ? sectionSel.value : '';
         var term       = termSel ? termSel.value : '1';
 
-        var url = '{{ route("admin.schedules.pdf") }}?grade_level=' + encodeURIComponent(grade) + '&term=' + encodeURIComponent(term);
+        var url = '{{ route("admin.schedules.pdf") }}?grade_level=' + encodeURIComponent(grade) + '&term=' + encodeURIComponent(term)
+            + '&school_year=' + encodeURIComponent(schedSelectedYear());
         if (sectionId) url += '&section_id=' + encodeURIComponent(sectionId);
         window.open(url, '_blank');
     }
@@ -4449,7 +4465,7 @@ function openWalkInEnrollmentModal() {
         sectionSelect.innerHTML = '<option value="">All Sections</option>';
 
         if (grade) {
-            fetch('/admin/sections?grade_level=' + grade, { headers: { 'Accept': 'application/json' } })
+            fetch('/admin/sections?grade_level=' + grade + '&school_year=' + encodeURIComponent(schedSelectedYear()), { headers: { 'Accept': 'application/json' } })
             .then(r => r.json())
             .then(data => {
                 const sections = Array.isArray(data) ? data : (data.sections || data.data || []);
@@ -6536,8 +6552,9 @@ function openWalkInEnrollmentModal() {
             return;
         }
 
-        // Populate sections filtered by grade
-        const filteredSections = sectionsList.filter(s => s.grade_level === gradeLevel);
+        // Populate sections filtered by grade (and the school year chosen in Schedule Management)
+        const syFilter = schedSelectedYear();
+        const filteredSections = sectionsList.filter(s => s.grade_level === gradeLevel && (!syFilter || s.school_year === syFilter));
         if (filteredSections.length === 0) {
             const o = document.createElement('option');
             o.value = '';
@@ -6652,7 +6669,8 @@ function openWalkInEnrollmentModal() {
 
         // Populate sections for this grade
         sectionSel.innerHTML = '<option value=””>— Select Section —</option>';
-        const gradeSections = sectionsList.filter(s => s.grade_level === grade);
+        const editSy = schedSelectedYear();
+        const gradeSections = sectionsList.filter(s => s.grade_level === grade && (!editSy || s.school_year === editSy || String(s.id) === String(sectionId)));
         gradeSections.forEach(s => {
             const o = document.createElement('option');
             o.value = s.id;
@@ -10104,6 +10122,11 @@ function openWalkInEnrollmentModal() {
 
     var _viewSectionGradeLevel = null;
 
+    // Section Summary — the window itself lives in public/js/section-summary.js (shared with Super Admin)
+    function viewSectionSummary(sectionId, sectionName) {
+        window.ilcSectionSummary.open(sectionId, sectionName);
+    }
+
     function viewSectionStudents(sectionId, sectionName) {
         _viewSectionGradeLevel = null;
         document.getElementById('viewSectionId').value = sectionId;
@@ -10391,6 +10414,7 @@ function openWalkInEnrollmentModal() {
                 source_term: sourceTerm,
                 target_term: targetTerm,
                 replace_target: replace,
+                school_year: schedSelectedYear(), // only that year's schedules
             }),
         })
         .then(r => r.json().then(data => ({ ok: r.ok, data })))
@@ -12107,6 +12131,11 @@ function openWalkInEnrollmentModal() {
         else if (btn.classList.contains('js-section-view-students')) {
             e.preventDefault();
             viewSectionStudents(id, btn.dataset.name);
+        }
+
+        else if (btn.classList.contains('js-section-summary')) {
+            e.preventDefault();
+            viewSectionSummary(id, btn.dataset.name);
         }
 
         else if (btn.classList.contains('js-section-view-subjects')) {
@@ -14718,6 +14747,7 @@ function openWalkInEnrollmentModal() {
     });
 </script>
 
+<script src="{{ asset('js/section-summary.js') }}?v={{ @filemtime(public_path('js/section-summary.js')) }}"></script>
 @include('partials.idle-logout', ['portal' => 'web'])
 </body>
 

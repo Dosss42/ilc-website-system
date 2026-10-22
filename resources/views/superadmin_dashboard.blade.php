@@ -2490,6 +2490,16 @@
         <div class="sched-filter-card">
             <div class="sched-filter-title">Filters</div>
             <div class="sched-toolbar">
+                {{-- Schedules belong to sections, which are created per school year --}}
+                @php $schedCurrentSy = \App\Models\Setting::getCurrentSchoolYear(); @endphp
+                <div class="sched-field-group">
+                    <label for="scheduleYearFilter">School Year</label>
+                    <select class="form-fld" id="scheduleYearFilter" onchange="onScheduleYearChange()">
+                        @foreach(\App\Models\Setting::schoolYearOptions() as $sy)
+                            <option value="{{ $sy }}" {{ $sy === $schedCurrentSy ? 'selected' : '' }}>{{ $sy }}{{ $sy === $schedCurrentSy ? ' (current)' : '' }}</option>
+                        @endforeach
+                    </select>
+                </div>
                 <div class="sched-field-group">
                     <label for="scheduleGradeFilter">Grade Level</label>
                     <select class="form-fld" id="scheduleGradeFilter">
@@ -5634,7 +5644,8 @@
                     '<td style="font-size:12.5px;color:var(--muted);white-space:nowrap;">' + (s.school_year || '—') + '</td>' +
                     '<td>' + teacherName + '</td>' +
                     '<td><span style="font-size:13px;font-weight:700;color:var(--blue);">' + studentCount + '</span><span style="font-size:11px;color:var(--muted);"> students</span></td>' +
-                    '<td>' +
+                    '<td style="white-space:nowrap;">' +
+                    '<button class="action-btn view" title="Section Summary" onclick="saSectionSummary(' + s.id + ')"><i class="bi bi-clipboard-data-fill"></i></button>' +
                     '<button class="action-btn edit" title="Edit" onclick="editSaSection(' + s.id + ')"><i class="bi bi-pencil-fill"></i></button>' +
                     '<button class="action-btn delete" title="Delete" onclick="saDeleteSection(' + s.id + ',\'' + (s.name || '').replace(/'/g, "\\'") + '\')"><i class="bi bi-trash3-fill"></i></button>' +
                     '</td>' +
@@ -5647,6 +5658,12 @@
     }
 
     function goToSectionsPage(p) { loadSectionsMgmt(p); }
+
+    // Section Summary — same window as Admin's (public/js/section-summary.js)
+    function saSectionSummary(sectionId) {
+        var s = _sectionsData.find(function(x) { return x.id == sectionId; });
+        window.ilcSectionSummary.open(sectionId, s ? s.name : '');
+    }
 
     // Add/Edit Section — ported from Admin's own sectionModal
     // (adminDashboard.blade.php openSectionModal/editSection/
@@ -5821,26 +5838,39 @@
         loadScheduleGrid();
     }
 
+    // School year chosen in Schedule Management (schedules belong to that year's sections)
+    function schedSelectedYear() {
+        var el = document.getElementById('scheduleYearFilter');
+        return el ? el.value : '';
+    }
+
+    function onScheduleYearChange() {
+        document.getElementById('scheduleSectionFilter').value = '';
+        loadScheduleGrid(); // reloads that year's sections into the Section filter too
+    }
+
     async function loadScheduleGrid() {
         var grade = document.getElementById('scheduleGradeFilter').value;
         var term = document.getElementById('scheduleTermFilter').value;
-        var sectionId = document.getElementById('scheduleSectionFilter').value;
+        var schoolYear = schedSelectedYear();
 
-        // Populate the section filter for this grade, if not already done for it.
+        // Populate the section filter for this grade + year, if not already done for them.
         var secSel = document.getElementById('scheduleSectionFilter');
-        if (grade && secSel.dataset.loadedGrade !== grade) {
+        var loadedFor = grade + '|' + schoolYear;
+        if (grade && secSel.dataset.loadedGrade !== loadedFor) {
             secSel.innerHTML = '<option value="">All Sections</option>';
             try {
-                var sr = await fetch('/admin/sections?grade_level=' + encodeURIComponent(grade), { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
+                var sr = await fetch('/admin/sections?grade_level=' + encodeURIComponent(grade) + '&school_year=' + encodeURIComponent(schoolYear), { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
                 var sd = await sr.json();
                 (sd.sections || []).forEach(function(sec) {
                     var opt = document.createElement('option');
                     opt.value = sec.id; opt.textContent = sec.name;
                     secSel.appendChild(opt);
                 });
-                secSel.dataset.loadedGrade = grade;
+                secSel.dataset.loadedGrade = loadedFor;
             } catch(e) {}
         }
+        var sectionId = secSel.value;
 
         if (!grade) {
             document.getElementById('scheduleGridContainer').style.display = 'none';
@@ -5853,16 +5883,16 @@
         var gradeLabel = grade.charAt(0).toUpperCase() + grade.slice(1).replace('grade', 'Grade ');
         var sectionLabel = sectionId ? secSel.selectedOptions[0].textContent : 'All Sections';
         var termLabel = (schedTermInfo[term] || {}).name || ('Term ' + term);
-        document.getElementById('scheduleInfoText').textContent = gradeLabel + ' - ' + sectionLabel + ' (' + termLabel + ')';
+        document.getElementById('scheduleInfoText').textContent = gradeLabel + ' - ' + sectionLabel + ' (' + termLabel + ')' + (schoolYear ? ' · S.Y. ' + schoolYear : '');
 
-        var pdfUrl = '{{ route("admin.schedules.pdf") }}?grade_level=' + encodeURIComponent(grade) + '&term=' + encodeURIComponent(term);
+        var pdfUrl = '{{ route("admin.schedules.pdf") }}?grade_level=' + encodeURIComponent(grade) + '&term=' + encodeURIComponent(term) + '&school_year=' + encodeURIComponent(schoolYear);
         if (sectionId) pdfUrl += '&section_id=' + encodeURIComponent(sectionId);
         document.getElementById('saSchedulePdfLink').href = pdfUrl;
 
         var tbody = document.getElementById('scheduleGridBody');
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;"><i class="bi bi-hourglass-split" style="font-size:24px;color:var(--muted);"></i><div style="font-size:12px;color:var(--muted);margin-top:8px;">Loading schedules...</div></td></tr>';
 
-        var fetchUrl = '/admin/schedules?grade_level=' + grade + '&term=' + term + (sectionId ? '&section_id=' + sectionId : '');
+        var fetchUrl = '/admin/schedules?grade_level=' + grade + '&term=' + term + '&school_year=' + encodeURIComponent(schoolYear) + (sectionId ? '&section_id=' + sectionId : '');
         try {
             var r = await fetch(fetchUrl, { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
             var data = await r.json();
@@ -6066,7 +6096,7 @@
         var secSel = document.getElementById('sa-sched-section');
         secSel.innerHTML = '<option value="">Loading…</option>';
         try {
-            var r = await fetch('/admin/sections?grade_level=' + encodeURIComponent(grade), { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
+            var r = await fetch('/admin/sections?grade_level=' + encodeURIComponent(grade) + '&school_year=' + encodeURIComponent(schedSelectedYear()), { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
             var d = await r.json();
             var sections = d.sections || [];
             secSel.innerHTML = '<option value="">— Select Section —</option>';
@@ -6286,7 +6316,7 @@
             var r = await fetch('{{ route("admin.schedules.copy-term") }}', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
-                body: JSON.stringify({ source_term: sourceTerm, target_term: targetTerm, replace_target: replace }),
+                body: JSON.stringify({ source_term: sourceTerm, target_term: targetTerm, replace_target: replace, school_year: schedSelectedYear() }),
             });
             var data = await r.json();
             btn.disabled = false;
@@ -6617,6 +6647,7 @@
         });
     }
 </script>
+<script src="{{ asset('js/section-summary.js') }}?v={{ @filemtime(public_path('js/section-summary.js')) }}"></script>
 @include('partials.idle-logout', ['portal' => 'web'])
 </body>
 </html>

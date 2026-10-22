@@ -17,6 +17,12 @@ class ScheduleController extends Controller
     {
         $query = Schedule::with(['section', 'subject', 'teacher']);
 
+        // Filter by school year — schedules have none of their own, they belong to a section,
+        // and sections are created per school year (Schedule Management › School Year)
+        if ($request->filled('school_year') && $request->school_year !== 'all') {
+            $query->whereHas('section', fn ($q) => $q->where('school_year', $request->school_year));
+        }
+
         // Filter by section_id
         if ($request->filled('section_id')) {
             $query->where('section_id', $request->section_id);
@@ -73,6 +79,11 @@ class ScheduleController extends Controller
     {
         $query = Schedule::with(['section:id,name,grade_level', 'subject:id,name,code', 'teacher:id,name']);
 
+        $schoolYear = $request->filled('school_year') && $request->school_year !== 'all'
+            ? (string) $request->school_year
+            : \App\Models\Setting::getCurrentSchoolYear();
+        $query->whereHas('section', fn ($q) => $q->where('school_year', $schoolYear));
+
         if ($request->filled('section_id')) {
             $query->where('section_id', $request->section_id);
         }
@@ -98,7 +109,6 @@ class ScheduleController extends Controller
             ? (\App\Models\Section::find($request->section_id)->name ?? 'Section')
             : 'All Sections';
         $term = (int) $request->input('term', 1);
-        $schoolYear = \App\Models\Setting::get('current_school_year', now()->year . '-' . (now()->year + 1));
 
         $data = array_merge($this->schoolPdfLetterhead(\Illuminate\Support\Facades\Auth::user()->name ?? 'Admin'), [
             'reportTitle'    => 'Class Schedule — ' . $gradeLabel,
@@ -269,6 +279,10 @@ class ScheduleController extends Controller
     {
         $conflicts = [];
 
+        // Only schedules of the same school year can clash — a teacher's 2026-2027 class doesn't
+        // conflict with their 2027-2028 class at the same time (schedules get their year from the section)
+        $schoolYear = Section::whereKey($data['section_id'] ?? null)->value('school_year');
+
         // Base query: same day, same term, active schedules, overlapping time
         // Two slots overlap when: start_A < end_B AND end_A > start_B
         $base = Schedule::where('day_of_week', $data['day_of_week'])
@@ -276,6 +290,7 @@ class ScheduleController extends Controller
             ->where('is_active', true)
             ->where('start_time', '<', $data['end_time'])
             ->where('end_time', '>', $data['start_time'])
+            ->when($schoolYear, fn($q) => $q->whereHas('section', fn($s) => $s->where('school_year', $schoolYear)))
             ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
             ->with(['section:id,name,grade_level', 'subject:id,name'])
             ->get();
@@ -331,13 +346,15 @@ class ScheduleController extends Controller
             $everyoneThatDayTerm = Schedule::where('day_of_week', $day)
                 ->where('term', (int) $term)
                 ->where('is_active', true)
-                ->with(['section:id,name', 'subject:id,name'])
+                ->with(['section:id,name,school_year', 'subject:id,name'])
                 ->get();
 
             foreach ($schedules->where('day_of_week', $day)->where('term', (int) $term) as $a) {
                 foreach ($everyoneThatDayTerm as $b) {
                     if ($a->id === $b->id) continue;
                     if (!$a->is_active || !$b->is_active) continue;
+                    // Different school years never clash
+                    if (optional($a->section)->school_year !== optional($b->section)->school_year) continue;
                     if (!($a->start_time < $b->end_time && $a->end_time > $b->start_time)) continue;
 
                     $bName = optional($b->subject)->name ?? 'a subject';
@@ -377,6 +394,7 @@ class ScheduleController extends Controller
             'source_term'     => 'required|integer|min:1|max:3',
             'target_term'     => 'required|integer|min:1|max:3|different:source_term',
             'replace_target'  => 'boolean',
+            'school_year'     => ['nullable', 'regex:/^\d{4}-\d{4}$/'],
         ]);
 
         // Schedules carry no school_year of their own (only inherited via
@@ -386,7 +404,8 @@ class ScheduleController extends Controller
         // skips entries whose day/time actually collides, so a stale
         // section's schedule at a non-colliding slot gets duplicated into
         // the target term with no guard at all.
-        $currentSchoolYear = \App\Models\Setting::getCurrentSchoolYear();
+        // The school year chosen in Schedule Management (default: the current one)
+        $currentSchoolYear = $validated['school_year'] ?? \App\Models\Setting::getCurrentSchoolYear();
         $sourceSchedules = Schedule::where('term', $validated['source_term'])
             ->whereHas('section', function ($q) use ($currentSchoolYear) {
                 $q->where('is_active', true)->where('school_year', $currentSchoolYear);
@@ -402,8 +421,11 @@ class ScheduleController extends Controller
             ], 422);
         }
 
+        // Only that school year's target term — it used to clear the target term of EVERY year
         if ($request->boolean('replace_target')) {
-            Schedule::where('term', $validated['target_term'])->delete();
+            Schedule::where('term', $validated['target_term'])
+                ->whereHas('section', fn ($q) => $q->where('school_year', $currentSchoolYear))
+                ->delete();
         }
 
         $copied  = 0;
