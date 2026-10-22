@@ -14,6 +14,12 @@ class RoleAccountsSeeder extends Seeder
      */
     public function run(): void
     {
+        // Known passwords — a developer's own computer only, never the live server
+        if (app()->environment('production')) {
+            $this->command?->warn('Skipped: no dummy accounts on the live server (APP_ENV=production).');
+            return;
+        }
+
         $accounts = [
             [
                 'email' => 'superadmin@ilc.com',

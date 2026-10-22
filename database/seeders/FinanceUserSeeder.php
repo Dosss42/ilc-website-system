@@ -13,6 +13,12 @@ class FinanceUserSeeder extends Seeder
      */
     public function run(): void
     {
+        // Known password — a developer's own computer only, never the live server
+        if (app()->environment('production')) {
+            $this->command?->warn('Skipped: no dummy accounts on the live server (APP_ENV=production).');
+            return;
+        }
+
         // Create default finance user
         User::updateOrCreate(
             ['email' => 'finance@ilc.com'],

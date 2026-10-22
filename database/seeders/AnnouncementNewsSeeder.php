@@ -11,7 +11,13 @@ class AnnouncementNewsSeeder extends Seeder
 {
     public function run(): void
     {
-        $poster = User::where('email', 'superadmin@ilc.com')->first()
+        // Sample posts — a developer's own computer only, never the live server
+        if (app()->environment('production')) {
+            $this->command?->warn('Skipped: no sample announcements/news on the live server (APP_ENV=production).');
+            return;
+        }
+
+        $poster =User::where('email', 'superadmin@ilc.com')->first()
             ?? User::whereIn('role', ['superadmin', 'admin'])->orderBy('id')->first();
 
         if (!$poster) {

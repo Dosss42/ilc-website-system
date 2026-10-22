@@ -13,6 +13,10 @@ php artisan config:cache
 # Run migrations
 php artisan migrate --force
 
+# Add any missing default settings (never changes saved ones; no accounts or sample data).
+# Not fatal: the site still starts if this fails, and Settings › seed defaults can redo it.
+php artisan db:seed --class=DefaultSettingsSeeder --force || echo "Default settings could not be added (see error above)"
+
 # Create storage symlink
 php artisan storage:link || true
 
