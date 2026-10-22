@@ -196,6 +196,7 @@
             margin-top: 18px;
         }
     </style>
+    @include('partials.password-eye-style')
 </head>
 <body>
     @include('partials.session-notice')

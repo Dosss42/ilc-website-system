@@ -133,6 +133,7 @@
         .spinner { width:18px;height:18px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite; }
         @keyframes spin { to{transform:rotate(360deg);} }
     </style>
+    @include('partials.password-eye-style')
 </head>
 <body>
     @include('partials.session-notice')

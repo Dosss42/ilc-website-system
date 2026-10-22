@@ -360,6 +360,7 @@
         .mb-2 { margin-bottom: 10px; }
         .mb-3 { margin-bottom: 16px; }
     </style>
+    @include('partials.password-eye-style')
 </head>
 <body>
 @include('partials.session-notice')

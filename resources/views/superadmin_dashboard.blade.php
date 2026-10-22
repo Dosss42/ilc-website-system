@@ -631,6 +631,7 @@
     <script src="/js/password-strength.js"></script>
     {{-- pageWindow(): max-10 page buttons, shared by every JS-built pager --}}
     <script src="/js/page-window.js?v={{ filemtime(public_path('js/page-window.js')) }}"></script>
+    @include('partials.password-eye-style')
 </head>
 <body>
 

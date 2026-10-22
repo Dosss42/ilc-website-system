@@ -124,6 +124,7 @@
         .tips-box .example code { color: #15803d; font-weight: 700; background: none; }
         .btn-main:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
     </style>
+    @include('partials.password-eye-style')
 </head>
 <body>
 

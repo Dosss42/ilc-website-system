@@ -686,6 +686,7 @@
         .kpi-dot-na { background:#cbd5e1; }
 
     </style>
+    @include('partials.password-eye-style')
 
 </head>
 
