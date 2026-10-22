@@ -18,15 +18,13 @@
 
         </div>
 
-        {{-- Stat Cards --}}
-
-        {{-- CHANGE: Replace 0 with dynamic counts from controller --}}
+        {{-- Stat Cards — same height (h-100) and same three lines each: value, label, sub-line --}}
 
         <div class="row g-3 mb-4">
 
             <div class="col-md-3 col-sm-6">
 
-                <div class="stat-card">
+                <div class="stat-card h-100">
 
                     <div class="stat-icon blue"><i class="bi bi-people-fill"></i></div>
 
@@ -36,7 +34,7 @@
 
                         <div class="stat-label">Total Students</div>
 
-                        <div class="stat-change up"><i class="bi bi-arrow-up-short"></i> This year</div>
+                        <div class="stat-change up"><i class="bi bi-person-check"></i> Registered accounts</div>
 
                     </div>
 
@@ -46,7 +44,7 @@
 
             <div class="col-md-3 col-sm-6">
 
-                <div class="stat-card">
+                <div class="stat-card h-100">
 
                     <div class="stat-icon gold"><i class="bi bi-person-badge-fill"></i></div>
 
@@ -56,6 +54,8 @@
 
                         <div class="stat-label">Total Teachers</div>
 
+                        <div class="stat-change up"><i class="bi bi-book"></i> {{ $teachersWithSubjectsCount ?? 0 }} teaching this S.Y.</div>
+
                     </div>
 
                 </div>
@@ -64,7 +64,7 @@
 
             <div class="col-md-3 col-sm-6">
 
-                <div class="stat-card">
+                <div class="stat-card h-100">
 
                     <div class="stat-icon green"><i class="bi bi-clipboard-check-fill"></i></div>
 
@@ -74,7 +74,8 @@
 
                         <div class="stat-label">Paid</div>
 
-                        <div class="stat-change up">S.Y. 2026“2027</div>
+                        {{-- was hardcoded "S.Y. 2026“2027" (with a broken dash) --}}
+                        <div class="stat-change up"><i class="bi bi-calendar3"></i> S.Y. {{ $currentSchoolYear ?? \App\Models\Setting::getCurrentSchoolYear() }}</div>
 
                     </div>
 
@@ -84,7 +85,7 @@
 
             <div class="col-md-3 col-sm-6">
 
-                <div class="stat-card">
+                <div class="stat-card h-100">
 
                     <div class="stat-icon red"><i class="bi bi-hourglass-split"></i></div>
 
@@ -94,7 +95,7 @@
 
                         <div class="stat-label">Unpaid</div>
 
-                        <div class="stat-change down">Needs action</div>
+                        <div class="stat-change down"><i class="bi bi-exclamation-circle"></i> Needs action</div>
 
                     </div>
 
@@ -119,27 +120,27 @@
                 ->groupBy('ym')
                 ->pluck('cnt', 'ym');
             $chEnroll = array_map(fn($k) => (int) ($chEnrollByMonth[$k] ?? 0), $chMonthKeys);
-
-            $chPaid    = \App\Models\Enrollment::where('payment_status','paid')->count();
-            $chPartial = \App\Models\Enrollment::where('payment_status','partial')->count();
-            $chUnpaid  = \App\Models\Enrollment::whereNotIn('payment_status',['paid','partial'])->count();
         @endphp
+        {{-- Chart data rides on the canvases as data-* attributes: variables set in this
+             included partial never reach adminDashboard.blade.php's chart script, so both
+             charts used to draw empty. The doughnut uses the same numbers as the Paid /
+             Unpaid cards above (each student's latest enrollment). --}}
         <div class="row g-3 mb-4">
             <div class="col-lg-8">
-                <div class="content-card">
+                <div class="content-card h-100">
                     <div class="content-card-header">
                         <h6><i class="bi bi-graph-up me-2" style="color:var(--blue);"></i>Monthly Enrollment Trend</h6>
                         <span style="font-size:11px;color:var(--muted);">Last 6 months</span>
                     </div>
-                    <div class="p-3" style="height:200px;"><canvas id="adminEnrollTrend"></canvas></div>
+                    <div class="p-3" style="height:220px;"><canvas id="adminEnrollTrend" data-labels='@json($chMonths)' data-values='@json($chEnroll)'></canvas></div>
                 </div>
             </div>
             <div class="col-lg-4">
-                <div class="content-card">
+                <div class="content-card h-100">
                     <div class="content-card-header">
                         <h6><i class="bi bi-pie-chart-fill me-2" style="color:var(--blue);"></i>Payment Status</h6>
                     </div>
-                    <div class="p-3" style="height:200px;display:flex;justify-content:center;"><canvas id="adminPayDoughnut"></canvas></div>
+                    <div class="p-3" style="height:220px;display:flex;justify-content:center;"><canvas id="adminPayDoughnut" data-values='@json([(int) ($paidCount ?? 0), (int) ($partialCount ?? 0), (int) ($unpaidCount ?? 0)])'></canvas></div>
                 </div>
             </div>
         </div>
@@ -246,7 +247,7 @@
 
             <div class="col-lg-7">
 
-                <div class="content-card">
+                <div class="content-card h-100">
 
                     <div class="content-card-header">
 
@@ -355,7 +356,7 @@
 
             <div class="col-lg-5">
 
-                <div class="content-card">
+                <div class="content-card h-100">
 
                     <div class="content-card-header">
 
@@ -365,29 +366,32 @@
 
                     </div>
 
-                    <div class="ann-dash-item">
+                    {{-- The newest real announcements (these three used to be hardcoded samples) --}}
+                    @php
+                        $dashAnnouncements = \App\Models\Announcement::with('teacher:id,name')
+                            ->where('is_active', true)
+                            ->latest()
+                            ->take(6)
+                            ->get(['id', 'title', 'category', 'teacher_id', 'created_at']);
+                    @endphp
 
-                        <div class="ann-date-badge"><span class="ann-day">15</span><span class="ann-mon">Jun</span></div>
-
-                        <div><div class="ann-body-title">School Opening Day</div><div class="ann-body-meta">Posted by Admin</div></div>
-
-                    </div>
-
-                    <div class="ann-dash-item">
-
-                        <div class="ann-date-badge"><span class="ann-day">10</span><span class="ann-mon">Jun</span></div>
-
-                        <div><div class="ann-body-title">Enrollment Period Now Open</div><div class="ann-body-meta">Posted by Registrar</div></div>
-
-                    </div>
+                    @forelse($dashAnnouncements as $ann)
 
                     <div class="ann-dash-item">
 
-                        <div class="ann-date-badge"><span class="ann-day">05</span><span class="ann-mon">Jun</span></div>
+                        <div class="ann-date-badge"><span class="ann-day">{{ $ann->created_at->format('d') }}</span><span class="ann-mon">{{ $ann->created_at->format('M') }}</span></div>
 
-                        <div><div class="ann-body-title">Parent-Teacher Conference</div><div class="ann-body-meta">Posted by Admin</div></div>
+                        <div><div class="ann-body-title">{{ $ann->title }}</div><div class="ann-body-meta">Posted by {{ $ann->teacher->name ?? 'Admin' }}{{ $ann->category ? ' · ' . ucfirst($ann->category) : '' }}</div></div>
 
                     </div>
+
+                    @empty
+
+                    <div style="padding:40px 20px;text-align:center;color:var(--muted);font-size:13px;">
+                        <i class="bi bi-megaphone" style="font-size:28px;display:block;margin-bottom:8px;opacity:.4;"></i>No announcements yet.
+                    </div>
+
+                    @endforelse
 
                 </div>
 

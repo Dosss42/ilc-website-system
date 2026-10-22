@@ -34,10 +34,17 @@
 
     {{-- Chart.js for Reports --}}
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    {{-- pageWindow(): max-10 page buttons, shared by every JS-built pager --}}
+    <script src="/js/page-window.js?v={{ filemtime(public_path('js/page-window.js')) }}"></script>
 
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
 
     <style>
+
+        /* ── Page background — same light gray-blue as Super Admin, so the white cards
+           stand out. adminDashboard.css already sets this, but Bootstrap loads after it
+           and its reset turned the page back to white. ── */
+        body { background: var(--bg, #f0f4f8); }
 
         /* ── Section visibility — all dash-sections hidden by default ── */
         .dash-section { display: none !important; }
@@ -7043,14 +7050,16 @@ function openWalkInEnrollmentModal() {
             html += '<li class="page-item disabled"><span class="page-link">Previous</span></li>';
         }
 
-        // Page numbers
-        for (let i = 1; i <= paginator.lastPage; i++) {
-            if (i === paginator.currentPage) {
+        // Page numbers — max 10 (shared rule, public/js/page-window.js); used to list every page
+        pageWindow(paginator.currentPage, paginator.lastPage).forEach(function (i) {
+            if (i === '…') {
+                html += '<li class="page-item disabled"><span class="page-link">…</span></li>';
+            } else if (i === paginator.currentPage) {
                 html += '<li class="page-item active"><span class="page-link">' + i + '</span></li>';
             } else {
                 html += '<li class="page-item"><a href="#" class="page-link" onclick="goToPage(' + i + '); return false;">' + i + '</a></li>';
             }
-        }
+        });
 
         // Next button
         if (paginator.currentPage < paginator.lastPage) {
@@ -11420,11 +11429,14 @@ function openWalkInEnrollmentModal() {
 
                 const p = d.pagination;
                 if (p && p.hasPages) {
-                    let pagHtml = '<nav><ul class="pagination justify-content-center mb-0">';
-                    pagHtml += `<li class="page-item ${p.onFirstPage ? 'disabled' : ''}"><a class="page-link" href="#" onclick="loadSummerClasses(${p.currentPage - 1});return false;">Prev</a></li>`;
-                    for (let i = 1; i <= p.lastPage; i++) {
-                        pagHtml += `<li class="page-item ${i === p.currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="loadSummerClasses(${i});return false;">${i}</a></li>`;
-                    }
+                    // Same look as every other pager ("Previous", max 10 page buttons)
+                    let pagHtml = '<nav><ul class="pagination">';
+                    pagHtml += `<li class="page-item ${p.onFirstPage ? 'disabled' : ''}"><a class="page-link" href="#" onclick="loadSummerClasses(${p.currentPage - 1});return false;">Previous</a></li>`;
+                    pageWindow(p.currentPage, p.lastPage).forEach(i => {
+                        pagHtml += i === '…'
+                            ? '<li class="page-item disabled"><span class="page-link">…</span></li>'
+                            : `<li class="page-item ${i === p.currentPage ? 'active' : ''}"><a class="page-link" href="#" onclick="loadSummerClasses(${i});return false;">${i}</a></li>`;
+                    });
                     pagHtml += `<li class="page-item ${!p.hasMorePages ? 'disabled' : ''}"><a class="page-link" href="#" onclick="loadSummerClasses(${p.currentPage + 1});return false;">Next</a></li>`;
                     pagHtml += '</ul></nav>';
                     document.getElementById('summer-pagination').innerHTML = pagHtml;
@@ -14402,11 +14414,12 @@ function openWalkInEnrollmentModal() {
     (function(){
         const el = document.getElementById('adminEnrollTrend');
         if (!el) return;
+        // Data comes from the canvas (set in admin/sections/dashboard.blade.php)
         new Chart(el, {
             type:'line',
             data:{
-                labels: @json($chMonths ?? []),
-                datasets:[{label:'Enrollments',data:@json($chEnroll ?? []),
+                labels: JSON.parse(el.dataset.labels || '[]'),
+                datasets:[{label:'Enrollments',data:JSON.parse(el.dataset.values || '[]'),
                     borderColor:_CC.blue,backgroundColor:_CC.bpale,
                     borderWidth:2,pointRadius:4,tension:0.4,fill:true}]
             },
@@ -14423,7 +14436,7 @@ function openWalkInEnrollmentModal() {
         new Chart(el, {
             type:'doughnut',
             data:{labels:['Paid','Partial','Unpaid'],
-                datasets:[{data:[{{$chPaid??0}},{{$chPartial??0}},{{$chUnpaid??0}}],
+                datasets:[{data:JSON.parse(el.dataset.values || '[0,0,0]'),
                     backgroundColor:[_CC.green,_CC.gold,_CC.red],borderWidth:0,hoverOffset:4}]},
             options:{responsive:true,maintainAspectRatio:false,cutout:'68%',
                 plugins:{legend:{position:'bottom',labels:{padding:12,font:{size:11}}}}}

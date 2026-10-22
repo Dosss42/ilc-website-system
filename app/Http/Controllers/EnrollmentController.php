@@ -756,7 +756,13 @@ class EnrollmentController extends Controller
         // only ever covered one page's worth of rows, the same
         // counts-from-a-paginated-list bug already fixed for Student
         // Management — now a real, independent, correct count).
-        $teachersWithSubjectsCount = \App\Models\Subject::whereNotNull('teacher_id')->distinct('teacher_id')->count('teacher_id');
+        // Teachers actually teaching this school year: subject loads live in
+        // teacher_assignments (subjects.teacher_id is never filled in, so the old
+        // count was always 0 on the Dashboard and Teacher Management cards).
+        $teachersWithSubjectsCount = \App\Models\TeacherAssignment::where('school_year', $currentSchoolYear)
+            ->whereNotNull('subject_id')
+            ->distinct()
+            ->count('teacher_id');
 
         // select() MUST come before withCount() here — withCount() appends a
         // subquery column, but select() called afterward would wipe it out
@@ -953,7 +959,9 @@ class EnrollmentController extends Controller
             $assessFiltered->count(),
             $assessPerPage,
             $assessPageNum,
-            ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()]
+            // pageName must match the assess_page read above — without it the links
+            // said ?page=N, which this ignored, so every page click showed page 1
+            ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath(), 'pageName' => 'assess_page']
         );
 
         // Badge lookups scoped to just the current page, not the full eligible set.

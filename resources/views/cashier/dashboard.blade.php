@@ -14,6 +14,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    {{-- pageWindow(): max-10 page buttons, shared by every JS-built pager --}}
+    <script src="/js/page-window.js?v={{ filemtime(public_path('js/page-window.js')) }}"></script>
     <style>
         :root {
             --blue:       #1a3a6c;
@@ -2296,20 +2298,13 @@
         // and centering pushed page 1 and "Previous" out of view on the left
         // with no way back — looked broken because, for any list long enough
         // to matter, it effectively was.
-        var windowSize = 2;
-        var shown = [];
-        for (var i = 1; i <= last; i++) {
-            if (i === 1 || i === last || (i >= page - windowSize && i <= page + windowSize)) {
-                shown.push(i);
-            }
-        }
-        var prevShown = null;
-        shown.forEach(function(i) {
-            if (prevShown !== null && i - prevShown > 1) {
+        // Max 10 page buttons — shared rule, see public/js/page-window.js
+        pageWindow(page, last).forEach(function(i) {
+            if (i === '…') {
                 html += '<li class="page-item disabled"><span class="page-link" style="cursor:default;">…</span></li>';
+                return;
             }
             html += '<li class="page-item ' + (i === page ? 'active' : '') + '"><a class="page-link" href="javascript:void(0)" onclick="' + onPageChangeFnName + '(' + i + ')">' + i + '</a></li>';
-            prevShown = i;
         });
 
         html += '<li class="page-item ' + (page >= last ? 'disabled' : '') + '"><a class="page-link" href="javascript:void(0)" onclick="' + onPageChangeFnName + '(' + (page + 1) + ')">Next</a></li>';

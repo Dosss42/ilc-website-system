@@ -629,6 +629,8 @@
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/js/password-strength.js"></script>
+    {{-- pageWindow(): max-10 page buttons, shared by every JS-built pager --}}
+    <script src="/js/page-window.js?v={{ filemtime(public_path('js/page-window.js')) }}"></script>
 </head>
 <body>
 
@@ -3705,19 +3707,8 @@
     // so these AJAX-driven tables look and behave exactly like every
     // server-rendered paginated table elsewhere in this app.
     function pageElements(current, last) {
-        var delta = 2, range = [], withDots = [], l;
-        for (var i = 1; i <= last; i++) {
-            if (i === 1 || i === last || (i >= current - delta && i <= current + delta)) range.push(i);
-        }
-        range.forEach(function(i) {
-            if (l) {
-                if (i - l === 2) withDots.push(l + 1);
-                else if (i - l !== 1) withDots.push('...');
-            }
-            withDots.push(i);
-            l = i;
-        });
-        return withDots;
+        // Max 10 page buttons — shared rule, see public/js/page-window.js
+        return pageWindow(current, last).map(function (p) { return p === '…' ? '...' : p; });
     }
 
     function renderPagerControls(containerId, meta, itemLabel, fnName) {
@@ -3732,7 +3723,7 @@
 
         pageElements(meta.current_page, meta.last_page).forEach(function(p) {
             if (p === '...') {
-                html += '<li class="page-item disabled" aria-disabled="true"><span class="page-link">...</span></li>';
+                html += '<li class="page-item disabled" aria-disabled="true"><span class="page-link">…</span></li>';
             } else if (p === meta.current_page) {
                 html += '<li class="page-item active" aria-current="page"><span class="page-link">' + p + '</span></li>';
             } else {
