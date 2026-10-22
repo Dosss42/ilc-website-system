@@ -19,6 +19,11 @@ return [
     // "cURL error 60" on Windows). Left blank, XAMPP's bundled list is used if present.
     'ca_bundle' => env('BACKUP_CA_BUNDLE'),
 
+    // Emergency Recovery (/recovery) opens only with this key — generate one with
+    // `php artisan recovery:key`, print it, keep it sealed. Blank = the page is off.
+    // See docs/EMERGENCY_RECOVERY.md.
+    'recovery_key' => env('RECOVERY_KEY'),
+
     // How many days of backups to keep in the primary (local) folder.
     // Ransomware-resilience note: this is deliberately NOT the only copy —
     // see 'secondary_path' and the Google Drive settings below. A local-only

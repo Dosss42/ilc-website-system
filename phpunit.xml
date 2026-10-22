@@ -51,6 +51,8 @@
         <env name="BACKUP_GDRIVE_ENABLED" value="false"/>
         <env name="BACKUP_GDRIVE_REFRESH_TOKEN" value=""/>
         <env name="BACKUP_GDRIVE_FOLDER_ID" value=""/>
+        <!-- Tests set their own key; never use the real one from .env -->
+        <env name="RECOVERY_KEY" value=""/>
         <!-- Disable reCAPTCHA in tests — RecaptchaService::isEnabled() checks
              this site key, so leaving it blank cleanly bypasses the "I'm not
              a robot" check for every login test without touching app code. -->

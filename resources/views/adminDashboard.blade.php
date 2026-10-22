@@ -743,7 +743,7 @@
 
 const sections = [
     'dashboard','students','teachers','teacher-assignments','enrollment','finance','payments','installments','fees','subjects','sections','schedules',
-    'guidance','announcements','news','reports','settings','summer','promotion','assessment','messages','grade-oversight','archives','audit'
+    'guidance','announcements','news','reports','settings','summer','promotion','assessment','messages','grade-oversight','archives','audit','backup'
 ];
 
 // ── Breadcrumbs ──
@@ -756,7 +756,7 @@ const BREADCRUMB_LABELS = {
     reports: 'Reports', settings: 'Settings', summer: 'Summer Classes',
     promotion: 'Assessment & Promotion', assessment: 'Assessment & Promotion',
     messages: 'Contact Messages', 'grade-oversight': 'Grade Oversight', archives: 'Archives',
-    audit: 'Audit Trail',
+    audit: 'Audit Trail', backup: 'Backup & Restore',
 };
 function updateBreadcrumb(name) {
     const el = document.getElementById('bc-current');
@@ -839,6 +839,9 @@ function showSection(name, opts = {}) {
     }
     if (name === 'audit') {
         loadAuditSection('{{ route("admin.section.audit") }}');
+    }
+    if (name === 'backup') {
+        loadBackupSection();
     }
     if (name === 'enrollment') {
         loadEnrollmentSection('{{ route("admin.section.enrollment") }}');
@@ -1067,6 +1070,110 @@ document.addEventListener('click', function (e) {
     }
 });
 
+// ── Backup & Restore ── same actions as the Super Admin page except Delete
+// (Admin\BackupController). Loaded on demand; buttons call the functions below.
+function loadBackupSection() {
+    fetch('{{ route("admin.section.backup") }}', { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+        .then(html => { swapSectionContent('backup', html); })
+        .catch(() => {
+            swapSectionContent('backup', '<div style="text-align:center;padding:60px 20px;color:#dc2626;">' +
+                '<i class="bi bi-exclamation-triangle-fill" style="font-size:32px;display:block;margin-bottom:10px;"></i>' +
+                'Failed to load Backup &amp; Restore. <button onclick="loadBackupSection()" style="margin-left:8px;padding:4px 12px;border:1px solid #dc2626;background:#fff;color:#dc2626;border-radius:6px;cursor:pointer;">Retry</button>' +
+                '</div>');
+        });
+}
+
+function adminBackupLog(msg) {
+    const el = document.getElementById('adminBackupLog');
+    if (!el) return;
+    if (el.dataset.started !== '1') { el.textContent = ''; el.dataset.started = '1'; }
+    const line = document.createElement('div');
+    line.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+    el.appendChild(line);
+    el.scrollTop = el.scrollHeight;
+}
+
+async function adminCreateBackup() {
+    const btn = document.getElementById('adminBtnCreateBackup');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Creating…';
+    adminBackupLog('Starting database backup…');
+    try {
+        const r = await fetch('{{ route("admin.backup.create") }}', { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' } });
+        const d = await r.json().catch(() => ({ success: false, message: r.status === 429 ? 'Too many attempts — wait a minute.' : 'HTTP ' + r.status }));
+        if (r.ok && d.success) {
+            adminBackupLog('✓ ' + d.message);
+            adminBackupLog(d.drive ? '✓ Uploaded to Google Drive'
+                : (d.drive_error ? '✗ Google Drive upload failed: ' + d.drive_error : '— Google Drive not connected, skipped'));
+            showAdminToast('Backup created.', 'success');
+            setTimeout(loadBackupSection, 1500);
+        } else {
+            adminBackupLog('✗ ' + (d.message || 'Backup failed.'));
+            showAdminToast(d.message || 'Backup failed.', 'error');
+        }
+    } catch (e) {
+        adminBackupLog('✗ Network error: ' + e.message);
+        showAdminToast('Network error.', 'error');
+    }
+    btn.disabled = false;
+    btn.innerHTML = '<i class="bi bi-database-add"></i> Create Backup Now';
+}
+
+// Shared by restore-from-list and Restore from File: send, report, reload (the restored
+// data may include older login sessions, so the page reloads to pick up the new state)
+async function adminSendRestore(url, body, label) {
+    adminBackupLog('Restoring from ' + label + '… this may take a moment.');
+    try {
+        const r = await fetch(url, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }, body: body });
+        const d = await r.json().catch(() => ({ success: false, message: r.status === 429 ? 'Too many attempts — wait a minute.' : 'HTTP ' + r.status }));
+        if (r.ok && d.success) {
+            if (d.safety) adminBackupLog('✓ Previous data saved as ' + d.safety);
+            adminBackupLog('✓ Restore complete!');
+            showAdminToast(d.message, 'success');
+            setTimeout(() => location.reload(), 2500);
+        } else {
+            const msg = d.message || (d.errors ? Object.values(d.errors).flat().join(' ') : 'Restore failed.');
+            adminBackupLog('✗ ' + msg);
+            showAdminToast(msg, 'error');
+        }
+    } catch (e) {
+        adminBackupLog('✗ ' + e.message);
+        showAdminToast('Network error during restore.', 'error');
+    }
+}
+
+const _ADMIN_RESTORE_OPTS = {
+    btnText: 'Restore & Replace Data', btnClass: 'btn btn-danger', btnIcon: 'bi-arrow-counterclockwise',
+    headerBg: 'linear-gradient(135deg,#b91c1c,#dc2626)', headerIcon: 'bi-exclamation-triangle-fill'
+};
+
+document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.js-admin-backup-restore');
+    if (!btn) return;
+    const file = btn.dataset.file, label = btn.dataset.label;
+    showConfirm('Restore Database',
+        'Restore the database from "' + label + '"? All current data will be replaced. The current data is saved first as a safety copy, so you can undo this. You may need to log in again afterwards.',
+        function () { adminSendRestore('{{ url("admin/backup/restore") }}/' + encodeURIComponent(file), null, label); },
+        _ADMIN_RESTORE_OPTS);
+});
+
+function adminRestoreFromFile(input) {
+    const file = input.files && input.files[0];
+    input.value = ''; // so choosing the same file again still triggers change
+    if (!file) return;
+    if (!/\.sql$/i.test(file.name)) { showAdminToast('Choose a .sql backup file.', 'warning'); return; }
+    if (file.size > 50 * 1024 * 1024) { showAdminToast('The backup file is larger than 50 MB.', 'warning'); return; }
+    showConfirm('Restore from File',
+        'Upload "' + file.name + '" and restore the database from it? All current data will be replaced. The current data is saved first as a safety copy, so you can undo this. You may need to log in again afterwards.',
+        function () {
+            const fd = new FormData();
+            fd.append('backup_file', file);
+            adminSendRestore('{{ route("admin.backup.upload-restore") }}', fd, file.name);
+        },
+        _ADMIN_RESTORE_OPTS);
+}
+
 // ── On-demand section loading (Enrollment Management) ── same
 // .pagination-only scoping as Archives — this section also has real
 // <a href="#"> action links (View) alongside pagination.
@@ -1283,7 +1390,7 @@ function escHtml(str) {
 // swapSectionContent, called from each load*Section() below), not
 // disappear on a fixed timer regardless of whether the content has
 // actually arrived yet.
-const _ASYNC_SECTIONS = ['guidance', 'announcements', 'news', 'archives', 'enrollment', 'students', 'subjects', 'reports', 'audit'];
+const _ASYNC_SECTIONS = ['guidance', 'announcements', 'news', 'archives', 'enrollment', 'students', 'subjects', 'reports', 'audit', 'backup'];
 
 // Same minimum-visible + fade timing used everywhere — both for async
 // sections (where this is a real floor under how fast the fetch could
@@ -1677,6 +1784,10 @@ function openWalkInEnrollmentModal() {
         <i class="bi bi-journal-check"></i> Audit Trail
     </button>
 
+    <button class="sidebar-link" id="nav-backup" onclick="showSection('backup')">
+        <i class="bi bi-database-fill-gear"></i> Backup &amp; Restore
+    </button>
+
     <button class="sidebar-link" id="nav-reports" onclick="showSection('reports')">
 
         <i class="bi bi-bar-chart-fill"></i> Reports
@@ -1758,6 +1869,11 @@ function openWalkInEnrollmentModal() {
          SECTION: AUDIT TRAIL
     ══════════════════════════════════════ --}}
     @include('admin.sections.audit')
+
+    {{-- ══════════════════════════════════════
+         SECTION: BACKUP & RESTORE
+    ══════════════════════════════════════ --}}
+    @include('admin.sections.backup')
 
     <script>
     function filterArchiveRows() {

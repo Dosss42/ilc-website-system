@@ -52,6 +52,27 @@ Route::get('/cron/run-scheduler', function (Request $request) {
     return response('OK: ' . now()->toDateTimeString(), 200)->header('Content-Type', 'text/plain');
 })->name('cron.run-scheduler');
 
+// Emergency Recovery — get back in when nobody can log in, without an IT person
+// (docs/EMERGENCY_RECOVERY.md). Guarded by the Recovery Key, not a login. Runs without
+// sessions/CSRF so it still works when the database (and so database sessions) is damaged;
+// outside 'site-maintenance' so maintenance mode can't lock the school out of it.
+Route::prefix('recovery')->name('recovery.')
+    ->withoutMiddleware([
+        \Illuminate\Session\Middleware\StartSession::class,
+        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        // CSRF check (PreventRequestForgery in this Laravel; the older names for other versions)
+        \Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class,
+        \Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
+        \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
+    ])
+    ->group(function () {
+        Route::get('/', [\App\Http\Controllers\EmergencyRecoveryController::class, 'show'])->name('show');
+        Route::post('/', [\App\Http\Controllers\EmergencyRecoveryController::class, 'unlock'])->name('unlock');
+        Route::post('/superadmin', [\App\Http\Controllers\EmergencyRecoveryController::class, 'repairSuperAdmin'])->name('superadmin');
+        Route::post('/restore-upload', [\App\Http\Controllers\EmergencyRecoveryController::class, 'restoreUpload'])->name('restore-upload');
+        Route::post('/restore', [\App\Http\Controllers\EmergencyRecoveryController::class, 'restoreFromServer'])->name('restore-server');
+    });
+
 // Everything below (home page through the public enrollment endpoints) is
 // gated by WEBSITE maintenance mode ('site_maintenance_mode') — a separate
 // switch from the portal maintenance mode used by the Teacher/Student
@@ -318,6 +339,14 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/section/subjects', [EnrollmentController::class, 'sectionSubjects'])->name('section.subjects');
     Route::get('/section/reports', [EnrollmentController::class, 'sectionReports'])->name('section.reports');
     Route::get('/section/audit', [\App\Http\Controllers\Admin\AuditTrailController::class, 'section'])->name('section.audit');
+
+    // Backup & Restore — same actions as the Super Admin page except Delete (see
+    // Admin\BackupController); throttled like there, since each runs a full dump/restore.
+    Route::get('/section/backup', [\App\Http\Controllers\Admin\BackupController::class, 'section'])->name('section.backup');
+    Route::post('/backup/create', [\App\Http\Controllers\Admin\BackupController::class, 'createBackup'])->middleware('throttle:3,1')->name('backup.create');
+    Route::get('/backup/download/{file}', [\App\Http\Controllers\Admin\BackupController::class, 'downloadBackup'])->name('backup.download');
+    Route::post('/backup/restore/{file}', [\App\Http\Controllers\Admin\BackupController::class, 'restoreBackup'])->middleware('throttle:3,1')->name('backup.restore');
+    Route::post('/backup/upload-restore', [\App\Http\Controllers\Admin\BackupController::class, 'uploadRestoreBackup'])->middleware('throttle:3,1')->name('backup.upload-restore');
 
     // REPORTS TAB — PDF downloads (shared pdf.shared.* design, see
     // app/Support/Traits/BuildsSchoolPdf.php), one per sub-report.

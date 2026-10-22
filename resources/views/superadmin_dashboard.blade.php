@@ -1680,6 +1680,12 @@
                             <strong>Download</strong> important backups to your computer: the online server's storage is cleared on every update.
                             <strong>Restore from File</strong> brings them back.
                         </div>
+                        @php $recoveryReady = \App\Services\EmergencyRecovery::isSetUp(); @endphp
+                        <div style="border-radius:8px;padding:10px;font-size:12px;margin-top:8px;line-height:1.55;background:{{ $recoveryReady ? '#f0fdf4' : '#fef2f2' }};color:{{ $recoveryReady ? '#166534' : '#991b1b' }};">
+                            <i class="bi bi-shield-lock-fill me-1"></i>
+                            <strong>Emergency Recovery:</strong>
+                            {{ $recoveryReady ? 'ready — the Recovery Key is set (/recovery).' : 'not set up — run php artisan recovery:key (see docs/EMERGENCY_RECOVERY.md).' }}
+                        </div>
                     </div>
                 </div>
                 <div class="content-card">
