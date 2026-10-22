@@ -52,6 +52,12 @@ Route::get('/cron/run-scheduler', function (Request $request) {
     return response('OK: ' . now()->toDateTimeString(), 200)->header('Content-Type', 'text/plain');
 })->name('cron.run-scheduler');
 
+// Automatic logout after inactivity (Admin › Settings › Security › Session Timeout) — used by
+// public/js/idle-logout.js on every portal page. Outside 'site-maintenance' so it always works.
+Route::get('/session/ping', [\App\Http\Controllers\SessionTimeoutController::class, 'ping'])->name('session.ping');
+Route::post('/session/expire', [\App\Http\Controllers\SessionTimeoutController::class, 'expire'])->name('session.expire');
+Route::get('/session-expired', [\App\Http\Controllers\SessionTimeoutController::class, 'expired'])->name('session.expired');
+
 // Emergency Recovery — get back in when nobody can log in, without an IT person
 // (docs/EMERGENCY_RECOVERY.md). Guarded by the Recovery Key, not a login. Runs without
 // sessions/CSRF so it still works when the database (and so database sessions) is damaged;

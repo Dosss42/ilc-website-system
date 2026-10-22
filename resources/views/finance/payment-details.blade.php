@@ -766,5 +766,6 @@
             return false;
         }
     </script>
+    @include('partials.idle-logout', ['portal' => 'finance'])
 </body>
 </html>

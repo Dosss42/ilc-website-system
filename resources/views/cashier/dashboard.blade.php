@@ -3463,5 +3463,6 @@
     }
 
 </script>
+@include('partials.idle-logout', ['portal' => 'cashier'])
 </body>
 </html>

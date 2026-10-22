@@ -6209,5 +6209,6 @@ document.getElementById('spDocViewerModal').addEventListener('hidden.bs.modal', 
     });
 })();
 </script>
+@include('partials.idle-logout', ['portal' => 'web'])
 </body>
 </html>

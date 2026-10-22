@@ -362,6 +362,7 @@
     </style>
 </head>
 <body>
+@include('partials.session-notice')
 
 <div class="bg-image"></div>
 

@@ -3041,5 +3041,6 @@
         });
     })();
 </script>
+@include('partials.idle-logout', ['portal' => 'web'])
 </body>
 </html>

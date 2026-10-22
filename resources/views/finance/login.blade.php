@@ -135,6 +135,7 @@
     </style>
 </head>
 <body>
+    @include('partials.session-notice')
     <div class="bg-image"></div>
     <div class="accent-circle c1"></div>
     <div class="accent-circle c2"></div>
