@@ -96,6 +96,11 @@ class SectionController extends Controller
             $query->where('grade_level', $request->grade_level);
         }
 
+        // Optional School Year (?school_year=2026-2027 | all) — Super Admin's Section Management
+        if ($request->filled('school_year') && $request->school_year !== 'all') {
+            $query->where('school_year', $request->school_year);
+        }
+
         // Pagination is opt-in (?paginated=1) — other callers (dropdown
         // population elsewhere, the dedicated Section Management page) need
         // the full list, so the default response stays unpaginated.
@@ -296,6 +301,70 @@ class SectionController extends Controller
         return response()->json($section->load('teacher'));
     }
 
+    /**
+     * Students the "Add Student" modal can offer for this section: an enrollment
+     * for the section's grade level that is approved or enrolled (any payment
+     * state), or the pending enrollment a Promotion created — and who aren't
+     * already in a section of this grade. Unpaginated — the modal used to read
+     * page 1 of /admin/students (15 of ~180 rows), so unassigned students on
+     * later pages never showed up.
+     *
+     * Only the section's own school year is listed; `waiting_elsewhere` counts
+     * same-grade students waiting for a section in OTHER school years (e.g.
+     * promoted into next year) so the modal can say where they went.
+     */
+    public function eligibleStudents(Section $section)
+    {
+        $unplaced = fn () => \App\Models\Enrollment::query()
+            ->whereNotNull('user_id')
+            ->where('grade_level', $section->grade_level)
+            ->where(fn ($q) => $q->whereIn('status', ['approved', 'enrolled'])
+                // A promotion creates the next-year enrollment as 'pending'
+                ->orWhere(fn ($p) => $p->where('status', 'pending')->whereExists(fn ($x) => $x->select(DB::raw(1))
+                    ->from('promotions')->whereColumn('promotions.enrollment_id', 'enrollments.id')->where('promotions.status', 'completed'))))
+            ->whereHas('user', fn ($q) => $q->where('role', 'student'))
+            // Same rule addStudent() enforces: not already in a section of this grade
+            ->whereNotExists(function ($q) use ($section) {
+                $q->select(DB::raw(1))
+                  ->from('section_student')
+                  ->join('sections', 'sections.id', '=', 'section_student.section_id')
+                  ->whereColumn('section_student.user_id', 'enrollments.user_id')
+                  ->where('sections.grade_level', $section->grade_level);
+            });
+
+        $enrollments = $unplaced()
+            ->where('school_year', $section->school_year)
+            ->with('user:id,name,email,lrn')
+            ->orderByDesc('id')
+            ->get()
+            ->unique('user_id');
+
+        $students = $enrollments->map(fn ($e) => [
+            'id'             => $e->user->id,
+            'name'           => $e->user->name,
+            'email'          => $e->user->email,
+            'lrn'            => $e->user->lrn,
+            'status'         => $e->status,
+            'payment_status' => $e->payment_status,
+            'grade_level'    => $e->grade_level,
+            'section'        => null,
+        ])->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values();
+
+        $waitingElsewhere = $unplaced()
+            ->where('school_year', '!=', $section->school_year)
+            ->selectRaw('school_year, COUNT(DISTINCT user_id) AS c')
+            ->groupBy('school_year')
+            ->pluck('c', 'school_year');
+
+        return response()->json([
+            'students'          => $students,
+            'total'             => $students->count(),
+            'school_year'       => $section->school_year,
+            'grade_level'       => $section->grade_level,
+            'waiting_elsewhere' => $waitingElsewhere,
+        ]);
+    }
+
     public function addStudent(Request $request, Section $section)
     {
         $validated = $request->validate([
@@ -315,6 +384,11 @@ class SectionController extends Controller
         // (StudentPortalController::changeSection()).
         if ($enrollment && $enrollment->school_year && $section->school_year !== $enrollment->school_year) {
             return response()->json(['error' => "Section {$section->name} is not available for this student's school year ({$enrollment->school_year})."], 422);
+        }
+
+        // ...and only into a section of the student's own grade level
+        if ($enrollment && $enrollment->grade_level && $section->grade_level !== $enrollment->grade_level) {
+            return response()->json(['error' => "{$user->name} is enrolled in {$enrollment->grade_level}, but {$section->name} is a {$section->grade_level} section."], 422);
         }
 
         return DB::transaction(function () use ($section, $validated, $user, $enrollment) {

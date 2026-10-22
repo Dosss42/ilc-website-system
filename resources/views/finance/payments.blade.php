@@ -59,43 +59,46 @@
     <div class="content-card-header">
         <h6><i class="bi bi-funnel me-2" style="color:var(--gold);"></i>Filter Payments</h6>
     </div>
-    <div style="padding:16px 20px;display:flex;flex-wrap:wrap;gap:12px;align-items:end;">
+    {{-- Server-side (both tabs + the stat cards); each change reloads, keeping the open tab --}}
+    <form method="GET" action="{{ route('finance.payments.index') }}" id="payFilterForm" style="padding:16px 20px;display:flex;flex-wrap:wrap;gap:12px;align-items:end;">
+        <input type="hidden" name="tab" id="payFilterTab" value="{{ request('tab', 'walkin') === 'xendit' ? 'xendit' : 'walkin' }}">
         <div style="flex:1;min-width:140px;">
             <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block;">School Year</label>
-            <select id="payFilterYear" class="form-select" style="font-size:13px;padding:8px 12px;">
-                <option value="all">All Years</option>
+            <select name="school_year" id="payFilterYear" class="form-select" style="font-size:13px;padding:8px 12px;" onchange="this.form.requestSubmit()">
+                <option value="all" {{ ($yearFilter ?? 'all') === 'all' ? 'selected' : '' }}>All Years</option>
                 @foreach($schoolYears as $year)
-                    <option value="{{ $year }}">{{ $year }}</option>
+                    <option value="{{ $year }}" {{ ($yearFilter ?? '') === $year ? 'selected' : '' }}>{{ $year }}{{ $year === \App\Models\Setting::getCurrentSchoolYear() ? ' (current)' : '' }}</option>
                 @endforeach
             </select>
         </div>
         <div style="flex:1;min-width:140px;">
             <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block;">Status</label>
-            <select id="payFilterStatus" class="form-select" style="font-size:13px;padding:8px 12px;">
-                <option value="all">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
+            <select name="status" id="payFilterStatus" class="form-select" style="font-size:13px;padding:8px 12px;" onchange="this.form.requestSubmit()">
+                @foreach(['all' => 'All Status', 'completed' => 'Completed', 'pending' => 'Pending', 'rejected' => 'Rejected', 'expired' => 'Expired'] as $sv => $sl)
+                    <option value="{{ $sv }}" {{ ($statusFilter ?? 'all') === $sv ? 'selected' : '' }}>{{ $sl }}</option>
+                @endforeach
             </select>
         </div>
         <div style="flex:1;min-width:140px;">
             <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block;">Payment Method</label>
-            <select id="payFilterMethod" class="form-select" style="font-size:13px;padding:8px 12px;">
-                <option value="all">All Methods</option>
-                <option value="gcash">GCash</option>
-                <option value="cash">Cash</option>
+            <select name="method" id="payFilterMethod" class="form-select" style="font-size:13px;padding:8px 12px;" onchange="this.form.requestSubmit()">
+                @foreach(['all' => 'All Methods', 'cash' => 'Cash', 'gcash' => 'GCash', 'maya' => 'Maya', 'grabpay' => 'GrabPay', 'bank' => 'Bank Transfer', 'otc' => 'Over-the-Counter'] as $mv => $ml)
+                    <option value="{{ $mv }}" {{ ($methodFilter ?? 'all') === $mv ? 'selected' : '' }}>{{ $ml }}</option>
+                @endforeach
             </select>
         </div>
         <div style="flex:1;min-width:180px;">
             <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block;">Search Student</label>
-            <input type="text" id="payFilterSearch" class="form-control" placeholder="Search by name or email..." style="font-size:13px;padding:8px 12px;">
+            <input type="text" name="search" id="payFilterSearch" class="form-control" placeholder="Name, email or reference no..." style="font-size:13px;padding:8px 12px;"
+                value="{{ $search ?? '' }}" oninput="debounceFormSubmit(this)"
+                @if(($search ?? '') !== '') autofocus onfocus="this.setSelectionRange(this.value.length, this.value.length)" @endif>
         </div>
         <div>
-            <button type="button" class="btn-dash btn-secondary" onclick="resetPaymentFilters()" style="padding:8px 16px;font-size:13px;">
+            <a href="{{ route('finance.payments.index') }}" class="btn-dash btn-secondary" style="padding:8px 16px;font-size:13px;text-decoration:none;">
                 <i class="bi bi-arrow-counterclockwise"></i> Reset
-            </button>
+            </a>
         </div>
-    </div>
+    </form>
 </div>
 
 {{-- Tabbed Payment Tables --}}
@@ -118,7 +121,8 @@
         </li>
     </ul>
 
-    @php $walkInTotalAmount = ($walkInTransactions ?? collect())->sum('amount'); @endphp
+    {{-- Whole filtered set, not just the 15 rows on this page --}}
+    @php $walkInTotalAmount = $combinedPayStats['walkin_amount'] ?? 0; @endphp
     <div id="pmtPanel-walkin">
         <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid #f0f0f0;">
             <h6 style="margin:0;font-size:14px;font-weight:700;"><i class="bi bi-building me-2" style="color:var(--blue);"></i>Walk-in Payment Transactions</h6>
@@ -447,38 +451,19 @@
 
 @section('scripts')
 <script>
-/* ── Tab switching ── */
+/* ── Tab switching ── (the open tab rides along with the filter form and pagination) */
 function switchPmtTab(tab) {
     ['walkin','xendit'].forEach(t => {
         document.getElementById('pmtPanel-' + t).style.display = tab === t ? '' : 'none';
         document.getElementById('pmtTab-' + t).classList.toggle('active', tab === t);
     });
-}
-
-/* ── Filters ── */
-function resetPaymentFilters() {
-    ['payFilterYear','payFilterStatus','payFilterMethod'].forEach(id => { const el=document.getElementById(id); if(el) el.value='all'; });
-    const s=document.getElementById('payFilterSearch'); if(s) s.value='';
-    filterPayments();
-}
-
-function filterPayments() {
-    const year   = (document.getElementById('payFilterYear')?.value   || 'all').toLowerCase();
-    const status = (document.getElementById('payFilterStatus')?.value || 'all').toLowerCase();
-    const method = (document.getElementById('payFilterMethod')?.value || 'all').toLowerCase();
-    const search = (document.getElementById('payFilterSearch')?.value || '').toLowerCase();
-    document.querySelectorAll('#walkInPaymentsTable tbody tr[data-status]').forEach(row => {
-        const matchYear   = year   === 'all' || row.dataset.year   === year;
-        const matchStatus = status === 'all' || row.dataset.status === status;
-        const matchMethod = method === 'all' || row.dataset.method === method;
-        const matchSearch = !search || row.dataset.student.includes(search);
-        row.style.display = (matchYear && matchStatus && matchMethod && matchSearch) ? '' : 'none';
+    const tabInput = document.getElementById('payFilterTab');
+    if (tabInput) tabInput.value = tab;
+    document.querySelectorAll('#pmtPanel-walkin .pagination a[href], #pmtPanel-xendit .pagination a[href]').forEach(a => {
+        const u = new URL(a.href, window.location.origin); u.searchParams.set('tab', tab); a.href = u.toString();
     });
 }
-['payFilterYear','payFilterStatus','payFilterMethod'].forEach(id => {
-    document.getElementById(id)?.addEventListener('change', filterPayments);
-});
-document.getElementById('payFilterSearch')?.addEventListener('input', filterPayments);
+if (new URLSearchParams(window.location.search).get('tab') === 'xendit') switchPmtTab('xendit');
 
 /* ── Screenshot Modal ── */
 function showScreenshotModal(url) {

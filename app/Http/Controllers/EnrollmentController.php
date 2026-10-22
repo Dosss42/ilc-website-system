@@ -728,7 +728,7 @@ class EnrollmentController extends Controller
                 COUNT(*) as total_with_enrollment,
                 COALESCE(SUM(CASE WHEN e.payment_status IN ('paid', 'partial') THEN e.payment_amount ELSE 0 END), 0) as total_collected
             FROM enrollments e
-            WHERE e.id IN (SELECT MAX(id) FROM enrollments GROUP BY user_id)
+            WHERE e.id IN (SELECT MAX(id) FROM enrollments WHERE status <> 'cancelled' GROUP BY user_id)
         ");
         $paidCount = $financeSummary->paid_count ?? 0;
         $partialCount = $financeSummary->partial_count ?? 0;
@@ -768,7 +768,30 @@ class EnrollmentController extends Controller
             ->withCount('students')
             ->orderByDesc('created_at');
 
-        $sections = $sectionsQuery->paginate(15, ['*'], 'section_page');
+        // School Year filter (?section_sy=2027-2028 | all). Defaults to the current
+        // school year so next year's sections (for promoted students) get their own
+        // view; anything outside the shared range falls back to the current year.
+        $sectionSyFilter = (string) $request->get('section_sy', $currentSchoolYear);
+        if ($sectionSyFilter !== 'all' && !in_array($sectionSyFilter, \App\Models\Setting::schoolYearOptions(), true)) {
+            $sectionSyFilter = $currentSchoolYear;
+        }
+        if ($sectionSyFilter !== 'all') {
+            $sectionsQuery->where('school_year', $sectionSyFilter);
+        }
+
+        // Stat cards cover the whole filtered year, not just the 15 rows on this page
+        $sectionStatsBase = \App\Models\Section::query()
+            ->when($sectionSyFilter !== 'all', fn ($q) => $q->where('school_year', $sectionSyFilter));
+        $sectionStats = [
+            'total'    => (clone $sectionStatsBase)->count(),
+            'active'   => (clone $sectionStatsBase)->where('is_active', true)->count(),
+            'enrolled' => \Illuminate\Support\Facades\DB::table('section_student')
+                ->whereIn('section_id', (clone $sectionStatsBase)->select('id'))
+                ->count(),
+        ];
+
+        $sections = $sectionsQuery->paginate(15, ['*'], 'section_page')
+            ->appends(['section' => 'sections', 'section_sy' => $sectionSyFilter]);
         // current_enrollment is a virtual, in-memory-only attribute here (the
         // column itself was dropped in Phase 1's Contract step — see
         // DATABASE_NORMALIZATION_PLAN.md) fed from the live section_student
@@ -849,16 +872,40 @@ class EnrollmentController extends Controller
 
         $assessGradeLevels = ['nursery','kindergarten','grade1','grade2','grade3','grade4','grade5','grade6'];
 
-        $assessEligible = \App\Models\User::where('role', 'student')
-            ->with(['latestEnrollment', 'promotions' => fn($q) => $q->orderByDesc('id')])
-            ->whereHas('latestEnrollment', fn($q) => $q
+        // School Year being assessed (?assess_sy=), default the current one. Students
+        // are listed by their enrollment IN that year, so anyone already promoted out
+        // of it (old enrollment now 'completed') stays listed as Assessed instead of
+        // vanishing, and a past year can still be reviewed.
+        $assessSchoolYear = (string) $request->get('assess_sy', $currentSchoolYear);
+        if (!in_array($assessSchoolYear, Setting::schoolYearOptions(), true)) {
+            $assessSchoolYear = $currentSchoolYear;
+        }
+
+        $assessEligibleFor = function (string $sy) use ($assessGradeLevels) {
+            $inYear = fn($q) => $q->where('school_year', $sy)
                 ->whereIn('status', ['enrolled', 'completed'])
-                ->whereIn('grade_level', $assessGradeLevels)
-            )
-            ->orderByDesc('created_at')
-            ->get()
-            ->filter(fn($s) => $this->isPromotionEligibleByType($s->id, $s->latestEnrollment->student_data ?? []))
-            ->values();
+                ->whereIn('grade_level', $assessGradeLevels);
+
+            return \App\Models\User::where('role', 'student')
+                ->whereHas('enrollments', $inYear)
+                ->with(['enrollments' => fn($q) => $inYear($q)->orderByDesc('id'),
+                        'promotions' => fn($q) => $q->where('status', 'completed')->where('from_school_year', $sy)->orderByDesc('id')])
+                ->orderByDesc('created_at')
+                ->get()
+                // The view reads ->latestEnrollment: point it at THIS year's enrollment.
+                // "Assessed" = a live (not undone/skipped/failed) promotion out of this year.
+                ->each(fn($s) => $s->setRelation('latestEnrollment', $s->enrollments->first()))
+                ->filter(fn($s) => $this->isPromotionEligibleByType($s->id, $s->latestEnrollment->student_data ?? []))
+                ->values();
+        };
+
+        $assessEligible = $assessEligibleFor($assessSchoolYear);
+
+        // Sidebar badge: students still waiting for assessment in the CURRENT year,
+        // whatever year/page/filter the Assessment tab happens to be showing.
+        $sidebarAssessCount = ($assessSchoolYear === $currentSchoolYear ? $assessEligible : $assessEligibleFor($currentSchoolYear))
+            ->filter(fn($s) => $s->promotions->isEmpty())
+            ->count();
 
         // Stat cards + grade chips always reflect the FULL eligible set,
         // independent of whichever filter/page is currently applied below.
@@ -928,7 +975,7 @@ class EnrollmentController extends Controller
         // "Cleared" means a SummerClassEnrollment for that same subject has
         // status = 'passed'.
         $assessGradeRows = \App\Models\Grade::whereIn('student_id', $assessPageIds)
-            ->where('school_year', $currentSchoolYear)
+            ->where('school_year', $assessSchoolYear)
             ->where('status', 'approved')
             ->whereNotNull('grade')
             ->get(['student_id', 'subject_id', 'grade']);
@@ -959,7 +1006,8 @@ class EnrollmentController extends Controller
             ];
         }
 
-        $assessNextSchoolYear = $this->nextSchoolYear($currentSchoolYear);
+        // Promote INTO the year after the one being assessed (bulk / auto-advance modals)
+        $assessNextSchoolYear = $this->nextSchoolYear($assessSchoolYear);
 
         // Staff who can be logged as the counselor on a guidance record.
         // Stays here (not moved to sectionGuidance()) because the "Add
@@ -1011,7 +1059,7 @@ class EnrollmentController extends Controller
             'pendingPayments', 'totalCollected',
             'unpaidCount', 'partialCount', 'paidCount',
             'sort', 'archivedStudentsCount', 'archivedTeachersCount',
-            'sections', 'teachers', 'teachersCount', 'teachersWithSubjectsCount',
+            'sections', 'sectionSyFilter', 'sectionStats', 'teachers', 'teachersCount', 'teachersWithSubjectsCount',
             'allActiveSubjects', 'allActiveTeachers',
             'summerTotalCount', 'summerOngoingCount', 'summerCompletedCount',
             'feeSettings', 'recentStudents', 'allSchedules',
@@ -1019,6 +1067,7 @@ class EnrollmentController extends Controller
             'assessSummerStatus', 'guidanceCounselors',
             'assessGradeFilter', 'assessStatusFilter', 'assessSearchTerm',
             'assessTotal', 'assessPending', 'assessDone', 'assessByGrade', 'assessNextSchoolYear',
+            'assessSchoolYear', 'sidebarAssessCount',
             'contactMessages', 'unreadMessagesCount', 'totalMessagesCount', 'readMessagesCount', 'repliedMessagesCount'
         ));
     }
@@ -1110,11 +1159,27 @@ class EnrollmentController extends Controller
         $studentGradeFilter = $request->get('student_grade', 'all');
         $studentStatusFilter = $request->get('student_status', 'all');
         $studentPaymentFilter = $request->get('student_payment', 'all');
-        $studentSchoolYearFilter = $request->get('student_schoolyear', 'all');
+        // Opens on the Current School Year (Admin › Settings › Academic); "all" = every year
+        $studentSchoolYearFilter = (string) $request->get('student_schoolyear', $this->getCurrentSchoolYear());
+        if ($studentSchoolYearFilter !== 'all' && !in_array($studentSchoolYearFilter, Setting::schoolYearOptions(), true)) {
+            $studentSchoolYearFilter = $this->getCurrentSchoolYear();
+        }
         $gradeLevel = $request->get('grade_level', 'all'); // for mass promotion
 
         // Show ALL students with role='student' — including pending enrollments
         $studentsQuery = User::where('role', 'student');
+
+        // Which enrollment the grade/status/payment filters, stat cards and rows
+        // look at: the student's latest one, or — once a School Year is picked —
+        // their enrollment IN that year (so 2026-2027 doesn't show a promoted
+        // student's 2027-2028 "Grade 3 · Pending" row).
+        $studentSy = ($studentSchoolYearFilter && $studentSchoolYearFilter !== 'all') ? $studentSchoolYearFilter : null;
+        $hasEnr = fn ($q, \Closure $cb) => $studentSy
+            ? $q->whereHas('enrollments', fn ($e) => $cb($e->where('school_year', $studentSy)->where('status', '!=', 'cancelled')))
+            : $q->whereHas('latestEnrollment', $cb);
+        $lacksEnr = fn ($q, \Closure $cb) => $studentSy
+            ? $q->whereDoesntHave('enrollments', fn ($e) => $cb($e->where('school_year', $studentSy)->where('status', '!=', 'cancelled')))
+            : $q->whereDoesntHave('latestEnrollment', $cb);
 
         if ($studentSearch) {
             $studentsQuery->where(function ($q) use ($studentSearch) {
@@ -1125,53 +1190,47 @@ class EnrollmentController extends Controller
         }
 
         if ($studentGradeFilter && $studentGradeFilter !== 'all') {
-            $studentsQuery->whereHas('latestEnrollment', function ($q) use ($studentGradeFilter) {
-                $q->where('student_data->grade_level', $studentGradeFilter);
-            });
+            $hasEnr($studentsQuery, fn ($q) => $q->where('student_data->grade_level', $studentGradeFilter));
         }
 
         // Apply grade_level filter for mass promotion
         if ($gradeLevel && $gradeLevel !== 'all') {
-            $studentsQuery->whereHas('latestEnrollment', function ($q) use ($gradeLevel) {
-                $q->where('student_data->grade_level', $gradeLevel);
-            });
+            $hasEnr($studentsQuery, fn ($q) => $q->where('student_data->grade_level', $gradeLevel));
         }
 
         if ($studentStatusFilter && $studentStatusFilter !== 'all') {
             if ($studentStatusFilter === 'not_enrolled') {
-                $studentsQuery->whereDoesntHave('enrollments', function ($q) {
-                    $q->whereIn('status', ['enrolled', 'approved', 'pending']);
-                });
+                if ($studentSy) {
+                    $lacksEnr($studentsQuery, fn ($q) => $q->whereIn('status', ['enrolled', 'approved', 'pending']));
+                } else {
+                    $studentsQuery->whereDoesntHave('enrollments', function ($q) {
+                        $q->whereIn('status', ['enrolled', 'approved', 'pending']);
+                    });
+                }
             } else {
-                $studentsQuery->whereHas('latestEnrollment', function ($q) use ($studentStatusFilter) {
-                    $q->where('status', $studentStatusFilter);
-                });
+                $hasEnr($studentsQuery, fn ($q) => $q->where('status', $studentStatusFilter));
             }
         }
 
         if ($studentPaymentFilter && $studentPaymentFilter !== 'all') {
-            $studentsQuery->whereHas('latestEnrollment', function ($q) use ($studentPaymentFilter) {
-                $q->where('payment_status', $studentPaymentFilter);
-            });
+            $hasEnr($studentsQuery, fn ($q) => $q->where('payment_status', $studentPaymentFilter));
         }
 
-        // Apply school year filter — check any enrollment, not just the latest
-        if ($studentSchoolYearFilter && $studentSchoolYearFilter !== 'all') {
-            $studentsQuery->whereHas('enrollments', function ($q) use ($studentSchoolYearFilter) {
-                $q->where('school_year', $studentSchoolYearFilter);
-            });
+        // School year filter: students with a (non-cancelled) enrollment in that year
+        if ($studentSy) {
+            $hasEnr($studentsQuery, fn ($q) => $q);
         }
 
         // Student Management stat cards — counted from the full filtered set
         // via clones of $studentsQuery (all filters already applied above),
         // not from the paginated $students list below.
         $smTotal = (clone $studentsQuery)->count();
-        $smEnrolled = (clone $studentsQuery)->whereHas('latestEnrollment', fn($q) => $q->where('status', 'enrolled'))->count();
-        $smApproved = (clone $studentsQuery)->whereHas('latestEnrollment', fn($q) => $q->where('status', 'approved'))->count();
-        $smPending = (clone $studentsQuery)->whereHas('latestEnrollment', fn($q) => $q->where('status', 'pending'))->count();
-        $smNotEnrolled = (clone $studentsQuery)->whereDoesntHave('latestEnrollment', fn($q) => $q->whereIn('status', ['approved', 'enrolled', 'pending']))->count();
-        $smPaid = (clone $studentsQuery)->whereHas('latestEnrollment', fn($q) => $q->where('payment_status', 'paid'))->count();
-        $smBalance = (clone $studentsQuery)->whereHas('latestEnrollment', fn($q) => $q->whereIn('payment_status', ['partial', 'pending', 'unpaid']))->count();
+        $smEnrolled = $hasEnr(clone $studentsQuery, fn($q) => $q->where('status', 'enrolled'))->count();
+        $smApproved = $hasEnr(clone $studentsQuery, fn($q) => $q->where('status', 'approved'))->count();
+        $smPending = $hasEnr(clone $studentsQuery, fn($q) => $q->where('status', 'pending'))->count();
+        $smNotEnrolled = $lacksEnr(clone $studentsQuery, fn($q) => $q->whereIn('status', ['approved', 'enrolled', 'pending']))->count();
+        $smPaid = $hasEnr(clone $studentsQuery, fn($q) => $q->where('payment_status', 'paid'))->count();
+        $smBalance = $hasEnr(clone $studentsQuery, fn($q) => $q->whereIn('payment_status', ['partial', 'pending', 'unpaid']))->count();
 
         $studentsQuery->with(['latestEnrollment' => function ($query) {
                 $query->with('paymentInstallments');
@@ -1203,6 +1262,22 @@ class EnrollmentController extends Controller
         }
 
         $students = $studentsQuery->paginate(15, ['*'], 'student_page');
+
+        // Rows read ->latestEnrollment; with a School Year picked, show that year's
+        // enrollment instead (a real one ahead of a declined one, newest first).
+        if ($studentSy) {
+            $yearEnrollments = Enrollment::whereIn('user_id', $students->pluck('id'))
+                ->where('school_year', $studentSy)
+                ->where('status', '!=', 'cancelled')
+                ->with('paymentInstallments')
+                ->orderByRaw("status = 'declined'")
+                ->orderByDesc('id')
+                ->get()
+                ->groupBy('user_id');
+            foreach ($students as $s) {
+                $s->setRelation('latestEnrollment', $yearEnrollments->get($s->id)?->first());
+            }
+        }
 
         return view('admin.sections.students-content', compact(
             'students', 'sort', 'studentSearch', 'studentGradeFilter',
@@ -1884,10 +1959,31 @@ class EnrollmentController extends Controller
         $gradeFilter = $request->get('grade', 'all');
         $enrollmentSearch = trim((string) $request->get('enrollment_search', ''));
 
-        $enrollmentQuery = Enrollment::select('id', 'user_id', 'reference_number', 'status', 'student_data', 'payment_status', 'payment_amount', 'payment_method', 'payment_reference', 'payment_type', 'total_fee', 'remaining_balance', 'payment_due_date', 'created_at', 'updated_at');
+        // School Year filter (?enrollment_sy=): opens on the Current School Year
+        // (Admin › Settings › Academic); "all" = every year. Pending applications
+        // for other years are flagged in a banner so none get missed.
+        $enrollmentSyFilter = (string) $request->get('enrollment_sy', Setting::getCurrentSchoolYear());
+        if ($enrollmentSyFilter !== 'all' && !in_array($enrollmentSyFilter, Setting::schoolYearOptions(), true)) {
+            $enrollmentSyFilter = Setting::getCurrentSchoolYear();
+        }
+        $enrollmentSy = $enrollmentSyFilter !== 'all' ? $enrollmentSyFilter : null;
+        $pendingOtherYears = $enrollmentSy
+            ? Enrollment::where('status', 'pending')->where('school_year', '!=', $enrollmentSy)
+                ->selectRaw('school_year, COUNT(*) as c')->groupBy('school_year')->orderBy('school_year')->pluck('c', 'school_year')
+            : collect();
+
+        $enrollmentQuery = Enrollment::select('id', 'user_id', 'reference_number', 'status', 'school_year', 'student_data', 'payment_status', 'payment_amount', 'payment_method', 'payment_reference', 'payment_type', 'total_fee', 'remaining_balance', 'payment_due_date', 'created_at', 'updated_at');
+
+        if ($enrollmentSy) {
+            $enrollmentQuery->where('school_year', $enrollmentSy);
+        }
 
         if ($statusFilter !== 'all') {
             $enrollmentQuery->where('status', $statusFilter);
+        } else {
+            // 'cancelled' rows are leftovers of an undone promotion — nothing to
+            // act on; still reachable through the Cancelled status option.
+            $enrollmentQuery->where('status', '!=', 'cancelled');
         }
 
         if ($gradeFilter !== 'all') {
@@ -1928,27 +2024,36 @@ class EnrollmentController extends Controller
         // Stat cards — scoped to the whole table, not the current page/filter,
         // same "full query, not the paginated subset" rule the other stat
         // cards in this controller already follow.
+        // "Enrolled" card: the picked school year, or the current one under All.
+        $enrolledStatYear = $enrollmentSy ?? Setting::getCurrentSchoolYear();
         $enrolledThisYear = Enrollment::where('status', 'enrolled')
-            ->where('school_year', Setting::getCurrentSchoolYear())
+            ->where('school_year', $enrolledStatYear)
             ->count();
 
         // Same aggregate query adminIndex() already uses for its own
         // paid/unpaid/collected stat cards (one DB round-trip, scoped to
         // each student's latest enrollment) — reused here for consistency
-        // rather than computing a second, possibly-diverging figure.
+        // rather than computing a second, possibly-diverging figure. With a
+        // School Year picked: each student's latest enrollment IN that year.
+        // Cancelled rows (undone promotions) never count as the latest one.
         $enrollmentFinanceSummary = DB::selectOne("
             SELECT
                 COUNT(CASE WHEN e.payment_status IS NULL OR e.payment_status = 'pending' THEN 1 END) as unpaid_count,
                 COALESCE(SUM(CASE WHEN e.payment_status IN ('paid','partial') THEN e.payment_amount ELSE 0 END), 0) as total_collected
             FROM enrollments e
-            WHERE e.id IN (SELECT MAX(id) FROM enrollments GROUP BY user_id)
-        ");
+            WHERE e.id IN (
+                SELECT MAX(id) FROM enrollments
+                WHERE status <> 'cancelled'" . ($enrollmentSy ? " AND school_year = ?" : "") . "
+                GROUP BY user_id
+            )
+        ", $enrollmentSy ? [$enrollmentSy] : []);
         $totalFeesCollected = $enrollmentFinanceSummary->total_collected ?? 0;
         $pendingPaymentsCount = $enrollmentFinanceSummary->unpaid_count ?? 0;
 
         return view('admin.sections.enrollment-content', compact(
             'enrollments', 'sort', 'statusFilter', 'gradeFilter', 'enrollmentSearch', 'enrollmentOpen',
-            'enrolledThisYear', 'totalFeesCollected', 'pendingPaymentsCount'
+            'enrolledThisYear', 'totalFeesCollected', 'pendingPaymentsCount',
+            'enrollmentSyFilter', 'enrolledStatYear', 'pendingOtherYears'
         ));
     }
 
@@ -2310,14 +2415,23 @@ class EnrollmentController extends Controller
         ]);
 
         try {
-            // Update enrollment status
-            $enrollment->update([
+            $declineFields = [
                 'status' => 'declined',
                 'declined_at' => now(),
                 'declined_by' => Auth::id(),
                 'decline_reason' => $validated['reason'],
                 'decline_storage' => $validated['storage'] ?? 'pending',
-            ]);
+            ];
+
+            // An enrollment created by Assessment & Promotion: declining it undoes
+            // the promotion, so the student goes back to their previous enrollment
+            // and can be re-assessed (the decline details are kept on the row).
+            $reversedPromotion = $this->reversiblePromotionFor($enrollment);
+            if ($reversedPromotion) {
+                DB::transaction(fn () => $this->reversePromotion($reversedPromotion, $enrollment, $declineFields));
+            } else {
+                $enrollment->update($declineFields);
+            }
 
             // Sent via the real queue (see docker/entrypoint.sh's supervised
             // queue:work worker) — a failed send lands in `failed_jobs`
@@ -2340,18 +2454,22 @@ class EnrollmentController extends Controller
 
             $studentData = $enrollment->student_data;
             $studentName = trim(($studentData['first_name'] ?? '') . ' ' . ($studentData['last_name'] ?? '')) ?: ($studentData['student_email'] ?? 'student');
-            ActivityLogger::log('delete', "Declined enrollment for {$studentName} (#{$enrollment->reference_number}) — reason: {$validated['reason']}", 'Enrollment', $enrollment->id);
+            ActivityLogger::log('delete', "Declined enrollment for {$studentName} (#{$enrollment->reference_number}) — reason: {$validated['reason']}" . ($reversedPromotion ? ' (promotion undone)' : ''), 'Enrollment', $enrollment->id);
+
+            $declineMessage = $reversedPromotion
+                ? "Enrollment declined and the promotion undone — the student is back on their {$reversedPromotion->from_school_year} enrollment and can be re-assessed."
+                : 'Enrollment declined successfully.';
 
             // Check if request expects JSON (AJAX)
             if (request()->expectsJson()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Enrollment declined successfully.'
+                    'message' => $declineMessage
                 ]);
             }
 
             return redirect()->route('admin.enrollments.show', $enrollment)
-                ->with('success', 'Enrollment declined successfully.');
+                ->with('success', $declineMessage);
 
         } catch (\Exception $e) {
             // Log the error for debugging
@@ -2448,6 +2566,16 @@ class EnrollmentController extends Controller
                     ], 400);
                 }
 
+                // Same rules as the student's own Change Section: an active section
+                // in the enrollment's school year (the sections list includes
+                // inactive and other-year sections too)
+                if (!$section->is_active) {
+                    return response()->json(['success' => false, 'message' => "Section {$section->name} is not active."], 422);
+                }
+                if ($enrollment->school_year && $section->school_year !== $enrollment->school_year) {
+                    return response()->json(['success' => false, 'message' => "Section {$section->name} belongs to S.Y. {$section->school_year}, not {$enrollment->school_year}."], 422);
+                }
+
                 // Check if section has available capacity (live count, not the
                 // denormalized column — see Section::getLiveEnrollmentCountAttribute())
                 if ($section->live_enrollment_count >= $section->max_students) {
@@ -2480,8 +2608,9 @@ class EnrollmentController extends Controller
                 }
 
                 return response()->json([
-                    'success' => true,
-                    'message' => 'Section changed successfully.'
+                    'success'      => true,
+                    'message'      => 'Section changed successfully.',
+                    'section_name' => $section->name,
                 ]);
             });
 
@@ -3277,42 +3406,9 @@ class EnrollmentController extends Controller
             ], 422);
         }
 
-        $oldEnrollment = Enrollment::find($promotion->previous_enrollment_id);
-
         DB::beginTransaction();
         try {
-            // Cancel the new enrollment — not hard-deleted. Enrollment has
-            // no SoftDeletes trait, so a real delete would leave no record
-            // this ever happened; 'cancelled' is excluded everywhere the
-            // app looks for "this student's current enrollment" (User::
-            // latestEnrollment, the duplicate-enrollment checks, the
-            // student portal's own enrollment resolver).
-            $newEnrollment->update(['status' => 'cancelled']);
-
-            if ($newEnrollment->section) {
-                $newSection = Section::where('name', $newEnrollment->section)
-                    ->where('grade_level', $newEnrollment->grade_level)
-                    ->where('school_year', $newEnrollment->school_year)
-                    ->first();
-                $newSection?->students()->detach($promotion->student_id);
-            }
-
-            if ($oldEnrollment) {
-                $oldEnrollment->update([
-                    'status' => $promotion->from_status,
-                    'completed_at' => null,
-                ]);
-
-                if ($promotion->from_section_id) {
-                    Section::find($promotion->from_section_id)?->students()->attach($promotion->student_id);
-                }
-            }
-
-            $promotion->update([
-                'status' => 'reversed',
-                'undone_at' => now(),
-                'undone_by' => Auth::id(),
-            ]);
+            $this->reversePromotion($promotion, $newEnrollment);
 
             $studentName = $promotion->student?->name ?? ('student #' . $promotion->student_id);
             ActivityLogger::log(
@@ -3330,6 +3426,68 @@ class EnrollmentController extends Controller
             Log::error("Undo promotion failed for promotion #{$promotion->id}: " . $e->getMessage());
             return response()->json(['success' => false, 'message' => 'Failed to undo promotion: ' . $e->getMessage()], 500);
         }
+    }
+
+    /**
+     * Put a promoted student back on the enrollment they were promoted FROM:
+     * cancel the new enrollment, swap the section pivot back, restore the old
+     * enrollment's status, mark the promotion reversed. Callers own the
+     * transaction and the guards. Shared by undoPromotion() and by declining
+     * the enrollment a promotion created — declining it without this left the
+     * old enrollment 'completed', so the student vanished from Assessment &
+     * Promotion and could neither be re-assessed nor re-enroll.
+     */
+    private function reversePromotion(Promotion $promotion, Enrollment $newEnrollment, array $newEnrollmentExtra = []): void
+    {
+        // Cancel the new enrollment — not hard-deleted. Enrollment has
+        // no SoftDeletes trait, so a real delete would leave no record
+        // this ever happened; 'cancelled' is excluded everywhere the
+        // app looks for "this student's current enrollment" (User::
+        // latestEnrollment, the duplicate-enrollment checks, the
+        // student portal's own enrollment resolver).
+        $newEnrollment->update(array_merge($newEnrollmentExtra, ['status' => 'cancelled']));
+
+        if ($newEnrollment->section) {
+            $newSection = Section::where('name', $newEnrollment->section)
+                ->where('grade_level', $newEnrollment->grade_level)
+                ->where('school_year', $newEnrollment->school_year)
+                ->first();
+            $newSection?->students()->detach($promotion->student_id);
+        }
+
+        $oldEnrollment = Enrollment::find($promotion->previous_enrollment_id);
+        if ($oldEnrollment) {
+            $oldEnrollment->update([
+                'status' => $promotion->from_status,
+                'completed_at' => null,
+            ]);
+
+            if ($promotion->from_section_id) {
+                Section::find($promotion->from_section_id)?->students()->syncWithoutDetaching([$promotion->student_id]);
+            }
+        }
+
+        $promotion->update([
+            'status' => 'reversed',
+            'undone_at' => now(),
+            'undone_by' => Auth::id(),
+        ]);
+    }
+
+    /**
+     * The completed promotion that created this enrollment, if it can still be
+     * reversed cleanly (old enrollment known, nothing paid against the new one).
+     */
+    private function reversiblePromotionFor(Enrollment $enrollment): ?Promotion
+    {
+        $promotion = Promotion::where('enrollment_id', $enrollment->id)->where('status', 'completed')->latest('id')->first();
+
+        if (!$promotion || !$promotion->previous_enrollment_id || !$promotion->from_status
+            || \App\Models\PaymentTransaction::where('enrollment_id', $enrollment->id)->exists()) {
+            return null;
+        }
+
+        return $promotion;
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -3608,8 +3766,11 @@ class EnrollmentController extends Controller
 
         $studentIds = $students->pluck('id');
 
+        // Only live promotions — an undone (reversed), skipped or failed one
+        // must not keep the student out of bulk promotion
         $alreadyAssessedIds = Promotion::whereIn('student_id', $studentIds)
             ->where('from_school_year', $fromSchoolYear)
+            ->where('status', 'completed')
             ->pluck('student_id')
             ->unique();
 
@@ -3944,20 +4105,33 @@ class EnrollmentController extends Controller
             ]);
         }
 
-        $enrollment->update([
-            'status' => $request->status,
-        ]);
+        // Declining an enrollment that Assessment & Promotion created undoes the
+        // promotion (same as decline()), instead of stranding the student.
+        $reversedPromotion = $request->status === 'declined' ? $this->reversiblePromotionFor($enrollment) : null;
+        if ($reversedPromotion) {
+            DB::transaction(fn () => $this->reversePromotion($reversedPromotion, $enrollment, [
+                'declined_at' => now(),
+                'declined_by' => Auth::id(),
+                'decline_reason' => $request->remarks,
+            ]));
+        } else {
+            $enrollment->update([
+                'status' => $request->status,
+            ]);
+        }
 
         ActivityLogger::log(
             'update',
-            "Changed enrollment status to {$request->status}" . ($request->remarks ? " ({$request->remarks})" : ''),
+            "Changed enrollment status to {$request->status}" . ($request->remarks ? " ({$request->remarks})" : '') . ($reversedPromotion ? ' (promotion undone)' : ''),
             'Enrollment',
             $enrollment->id
         );
 
         return response()->json([
             'success' => true,
-            'message' => 'Status updated to ' . ucfirst($request->status) . '.',
+            'message' => $reversedPromotion
+                ? "Declined and the promotion undone — the student is back on their {$reversedPromotion->from_school_year} enrollment and can be re-assessed."
+                : 'Status updated to ' . ucfirst($request->status) . '.',
         ]);
     }
 

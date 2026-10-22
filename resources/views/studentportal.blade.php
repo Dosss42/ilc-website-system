@@ -871,6 +871,26 @@
         $jptPaid   = $justPaidTransaction->status === 'completed';
         $jptWhen   = $justPaidTransaction->processed_at ?? $justPaidTransaction->created_at;
         $jptMethod = ['gcash'=>'GCash','maya'=>'Maya','grabpay'=>'GrabPay','bank'=>'Bank Transfer','otc'=>'Over-the-Counter'][$justPaidTransaction->payment_method] ?? ucfirst($justPaidTransaction->payment_method);
+        // Same fields as the Cashier's Official Receipt (printOfficialReceipt there)
+        $jptEnr = $justPaidTransaction->enrollment;
+        $jptGrade = $jptEnr ? ($jptEnr->grade_level ?: ($jptEnr->student_data['grade_level'] ?? '')) : '';
+        $jptReceipt = [
+            'or_no'        => $justPaidTransaction->reference_number,
+            'date'         => $jptWhen->format('F j, Y'),
+            'time'         => $jptWhen->format('h:i A'),
+            // Same full name as the portal header (profile, then enrollment form, then account)
+            'student_name' => trim(implode(' ', array_filter([
+                    $profile->first_name  ?? ($jptEnr->student_data['first_name']  ?? ''),
+                    $profile->middle_name ?? ($jptEnr->student_data['middle_name'] ?? ''),
+                    $profile->last_name   ?? ($jptEnr->student_data['last_name']   ?? ''),
+                ]))) ?: auth()->user()->name,
+            'grade_level'  => ['nursery'=>'Nursery','kindergarten'=>'Kindergarten','grade1'=>'Grade 1','grade2'=>'Grade 2','grade3'=>'Grade 3','grade4'=>'Grade 4','grade5'=>'Grade 5','grade6'=>'Grade 6'][$jptGrade] ?? ($jptGrade ?: '—'),
+            'school_year'  => $jptEnr->school_year ?? '—',
+            'description'  => $justPaidTransaction->description ?: 'Payment',
+            'method'       => $jptMethod . ' (Online)',
+            'amount'       => number_format($justPaidTransaction->amount, 2),
+            'txn_id'       => $justPaidTransaction->xendit_invoice_id,
+        ];
     @endphp
     <div id="xendit-receipt-overlay" class="xendit-modal-overlay" onclick="if(event.target===this) this.remove()">
         <div id="xendit-receipt-card" class="xendit-modal-card" style="background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);overflow:hidden;border:1px solid #e5e7eb;">
@@ -905,9 +925,14 @@
                     <span style="font-weight:600;">{{ $jptWhen->format('M d, Y h:i A') }}</span>
                 </div>
                 <div style="display:flex;gap:10px;margin-top:18px;">
-                    <button type="button" onclick="window.print()" style="flex:1;padding:10px;border-radius:9px;border:1.5px solid #1a3a6c;background:#fff;color:#1a3a6c;font-weight:700;font-size:13px;cursor:pointer;">
-                        <i class="bi bi-printer-fill me-1"></i> Print / Save
+                    {{-- Prints the same Official Receipt layout the Cashier issues (it used to
+                         print this popup itself). Only once paid — the processing state reloads
+                         into the paid one by itself. --}}
+                    @if($jptPaid)
+                    <button type="button" onclick="printStudentReceipt(@js($jptReceipt))" style="flex:1;padding:10px;border-radius:9px;border:1.5px solid #1a3a6c;background:#fff;color:#1a3a6c;font-weight:700;font-size:13px;cursor:pointer;">
+                        <i class="bi bi-printer-fill me-1"></i> Print / Save Receipt
                     </button>
+                    @endif
                     <button type="button" onclick="document.getElementById('xendit-receipt-overlay').remove()" style="flex:1;padding:10px;border-radius:9px;border:none;background:#1a3a6c;color:#fff;font-weight:700;font-size:13px;cursor:pointer;">
                         Done
                     </button>
@@ -915,6 +940,69 @@
             </div>
         </div>
     </div>
+    <script>
+        // Official Receipt in its own window — same layout as the Cashier's
+        // printOfficialReceipt(), with "paid online" in place of the cashier signature.
+        function printStudentReceipt(d) {
+            const esc = v => String(v == null || v === '' ? '—' : v)
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            const w = window.open('', '_blank', 'width=420,height=640,scrollbars=yes');
+            if (!w) { window.print(); return; } // pop-ups blocked: fall back to printing the card
+            const html = '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+                + '<title>Official Receipt — ' + esc(d.or_no) + '</title>'
+                + '<style>'
+                + 'body{font-family:"Courier New",monospace;font-size:12px;margin:0;padding:20px 24px;color:#000;}'
+                + '.center{text-align:center;} .bold{font-weight:700;} .right{text-align:right;}'
+                + 'h2{margin:0;font-size:15px;letter-spacing:.5px;} h3{margin:3px 0;font-size:11px;font-weight:400;}'
+                + '.solid{border-top:2px solid #000;margin:10px 0;} .dash{border-top:1px dashed #000;margin:8px 0;}'
+                + 'table{width:100%;border-collapse:collapse;}'
+                + 'td{padding:3px 0;vertical-align:top;}'
+                + 'td:last-child{text-align:right;word-break:break-all;padding-left:8px;}'
+                + '.amt{font-size:16px;font-weight:900;}'
+                + '.footer{margin-top:24px;font-size:10px;text-align:center;color:#444;}'
+                + '.paid{margin-top:22px;border:1.5px solid #000;padding:6px;text-align:center;font-size:11px;font-weight:700;letter-spacing:1px;}'
+                + '@media print{body{padding:10px;}}'
+                + '</style></head>'
+                + '<body onload="setTimeout(function(){window.print();},400);">'
+                + '<div class="center">'
+                + '<img src="{{ asset('images/logo.png') }}" alt="ILC Logo" style="width:70px;height:70px;object-fit:contain;border-radius:50%;margin-bottom:8px;" onerror="this.style.display=\'none\'">'
+                + '<h2>IEMELIF LEARNING CENTER</h2>'
+                + '<h3>General Tinio, Nueva Ecija</h3>'
+                + '<h3>Tel: 0951-989-9685</h3></div>'
+                + '<div class="solid"></div>'
+                + '<div class="center bold" style="font-size:13px;letter-spacing:1px;">OFFICIAL RECEIPT</div>'
+                + '<div class="solid"></div>'
+                + '<table>'
+                + '<tr><td>OR No.:</td><td class="bold">' + esc(d.or_no) + '</td></tr>'
+                + '<tr><td>Date:</td><td>' + esc(d.date) + '</td></tr>'
+                + '<tr><td>Time:</td><td>' + esc(d.time) + '</td></tr>'
+                + '</table>'
+                + '<div class="dash"></div>'
+                + '<table>'
+                + '<tr><td>Student:</td><td class="bold">' + esc(d.student_name) + '</td></tr>'
+                + '<tr><td>Grade Level:</td><td>' + esc(d.grade_level) + '</td></tr>'
+                + '<tr><td>School Year:</td><td>' + esc(d.school_year) + '</td></tr>'
+                + '</table>'
+                + '<div class="dash"></div>'
+                + '<table>'
+                + '<tr><td>Description:</td><td>' + esc(d.description) + '</td></tr>'
+                + '<tr><td>Method:</td><td>' + esc(d.method) + '</td></tr>'
+                + (d.txn_id ? '<tr><td>Transaction ID:</td><td style="font-size:10px;">' + esc(d.txn_id) + '</td></tr>' : '')
+                + '</table>'
+                + '<div class="solid"></div>'
+                + '<table><tr><td class="bold amt">AMOUNT PAID:</td><td class="bold amt right">&#x20B1;' + esc(d.amount) + '</td></tr></table>'
+                + '<div class="solid"></div>'
+                + '<div class="paid">PAID ONLINE &middot; VERIFIED BY PAYMENT GATEWAY</div>'
+                + '<div class="footer">'
+                + '<div>Thank you for your payment!</div>'
+                + '<div style="margin-top:3px;">This is a computer-generated receipt. No signature required.</div>'
+                + '</div>'
+                + '</body></html>';
+            w.document.open();
+            w.document.write(html);
+            w.document.close();
+        }
+    </script>
     @if(!$jptPaid && $justPaidTransaction->xendit_invoice_id)
     <script>
         // This receipt card claims "this updates automatically" while still

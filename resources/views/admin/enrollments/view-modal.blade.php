@@ -169,14 +169,28 @@
                                             <div style="font-size:11px;color:#94a3b8;">Current assigned section</div>
                                         </div>
                                     </div>
-                                    <button type="button" class="btn btn-sm btn-outline-primary" id="btn-change-section" onclick="openChangeSectionModal()">
-                                        <i class="bi bi-pencil-square"></i> Change Section
+                                    <button type="button" class="evm-sec-btn" id="btn-change-section" onclick="evmStartSectionEdit()">
+                                        <i class="bi bi-arrow-left-right"></i> Change Section
                                     </button>
                                 </div>
                                 <div style="padding:18px;">
                                     <div class="row g-3">
                                         <div class="col-md-6"><div class="evm-field"><label>Current Section</label><div id="modal-current-section" class="evm-val">Not assigned</div></div></div>
                                         <div class="col-md-6"><div class="evm-field"><label>Grade Level</label><div id="modal-section-grade-level" class="evm-val"></div></div></div>
+                                    </div>
+
+                                    {{-- Inline editor (replaces the old stacked "Change Section" modal, whose
+                                         extra backdrop was left behind after saving and dimmed the screen) --}}
+                                    <div id="evm-sec-editor" class="evm-sec-editor" style="display:none;">
+                                        <label for="evm-sec-select">Move to section</label>
+                                        <div class="evm-sec-editor-row">
+                                            <select id="evm-sec-select" class="form-select form-select-sm"></select>
+                                            <button type="button" class="evm-sec-save" id="evm-sec-save" onclick="evmSaveSection()">
+                                                <i class="bi bi-check-lg"></i> Save
+                                            </button>
+                                            <button type="button" class="evm-sec-cancel" onclick="evmCancelSectionEdit()">Cancel</button>
+                                        </div>
+                                        <div class="evm-sec-hint">Only active sections for this student's grade level and school year are listed.</div>
                                     </div>
                                 </div>
                             </div>
@@ -223,33 +237,121 @@
 .evm-field { display:flex;flex-direction:column;gap:4px; }
 .evm-field label { font-size:10.5px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px; }
 .evm-val { font-size:13px;font-weight:500;color:#1e293b;background:#f8faff;border:1px solid #e8edf5;border-radius:7px;padding:7px 11px;min-height:34px;display:flex;align-items:center; }
+
+/* Section Assignment — Change Section button + inline editor */
+.evm-sec-btn { display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;border:1px solid #c7d2fe;background:#eef2ff;color:#3730a3;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s,border-color .15s; }
+.evm-sec-btn:hover { background:#e0e7ff;border-color:#a5b4fc; }
+.evm-sec-btn:disabled { opacity:.5;cursor:not-allowed; }
+.evm-sec-editor { margin-top:16px;padding:14px;border:1px dashed #c7d2fe;border-radius:10px;background:#f8faff; }
+.evm-sec-editor label { display:block;font-size:10.5px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px; }
+.evm-sec-editor-row { display:flex;gap:8px;flex-wrap:wrap;align-items:center; }
+.evm-sec-editor-row select { flex:1;min-width:200px;font-size:13px; }
+.evm-sec-save { display:inline-flex;align-items:center;gap:5px;padding:6px 16px;border:none;border-radius:8px;background:#1a3a6c;color:#fff;font-size:12.5px;font-weight:600;cursor:pointer; }
+.evm-sec-save:disabled { opacity:.6;cursor:not-allowed; }
+.evm-sec-cancel { padding:6px 14px;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#475569;font-size:12.5px;font-weight:600;cursor:pointer; }
+.evm-sec-hint { font-size:11px;color:#94a3b8;margin-top:8px; }
 </style>
 
-<!-- Change Section Modal -->
-<div class="modal fade" id="changeSectionModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content" style="border:0;border-radius:16px;overflow:hidden;">
-            <div class="modal-header" style="background:linear-gradient(135deg,#1a3a6c,#0056b3);color:#fff;border:none;">
-                <h5 class="modal-title"><i class="bi bi-people-fill me-2"></i>Change Section Assignment</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-4">
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Select New Section</label>
-                    <select id="new-section-select" class="form-select">
-                        <option value="">-- Select Section --</option>
-                    </select>
-                </div>
-                <div class="alert alert-info" style="font-size:.875rem;">
-                    <i class="bi bi-info-circle me-2"></i>
-                    ILC has only one section per grade level. If you need multiple sections, create them first in the Section Management module.
-                </div>
-                <input type="hidden" id="change-section-enrollment-id">
-            </div>
-            <div class="modal-footer bg-light">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="bi bi-x"></i> Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="saveSectionChange()"><i class="bi bi-check"></i> Save Changes</button>
-            </div>
-        </div>
-    </div>
-</div>
+<script>
+/*
+ * Section Assignment inline editor — shared by the Admin and Super Admin
+ * dashboards (both include this partial and both set
+ * window._currentEnrollmentData when the details modal loads).
+ * Each dashboard may define window.onEnrollmentSectionChanged(id, name) to
+ * refresh its own enrollment list afterwards.
+ */
+function _evmNotify(type, msg) {
+    if (typeof window.saToast === 'function') { window.saToast(type, msg); return; }
+    if (typeof window.showCustomAlert === 'function') {
+        window.showCustomAlert(type, type === 'success' ? 'Success!' : (type === 'warning' ? 'Warning' : 'Error'), msg);
+        return;
+    }
+    alert(msg);
+}
+
+function evmCancelSectionEdit() {
+    var ed = document.getElementById('evm-sec-editor');
+    if (ed) ed.style.display = 'none';
+    var btn = document.getElementById('btn-change-section');
+    if (btn) btn.disabled = false;
+}
+
+function evmStartSectionEdit() {
+    var data = window._currentEnrollmentData;
+    if (!data) { _evmNotify('error', 'No enrollment loaded.'); return; }
+    var grade  = (data.student_data || {}).grade_level || data.grade_level || '';
+    var select = document.getElementById('evm-sec-select');
+    select.innerHTML = '<option value="">Loading sections…</option>';
+    select.disabled = true;
+    document.getElementById('evm-sec-save').disabled = true;
+    document.getElementById('evm-sec-editor').style.display = 'block';
+    document.getElementById('btn-change-section').disabled = true;
+
+    fetch('/admin/sections?grade_level=' + encodeURIComponent(grade), {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') || {}).content || '' }
+    })
+    .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function (d) {
+        // Same rules the server enforces: active, same school year, not full
+        var sections = (d.sections || []).filter(function (s) {
+            return s.is_active && (!data.school_year || s.school_year === data.school_year);
+        });
+        if (!sections.length) {
+            select.innerHTML = '<option value="">No active sections for this grade and school year</option>';
+            return;
+        }
+        select.innerHTML = '<option value="">— Select a section —</option>' + sections.map(function (s) {
+            var count     = (s.students || []).length;
+            var isCurrent = data.section && s.name === data.section;
+            var full      = !isCurrent && s.max_students && count >= s.max_students;
+            var label     = s.name + ' — ' + count + '/' + (s.max_students || '?') + ' students'
+                          + (isCurrent ? ' (current)' : (full ? ' (full)' : ''));
+            var opt = document.createElement('option');
+            opt.value = s.id; opt.textContent = label; opt.disabled = !!(isCurrent || full);
+            return opt.outerHTML;
+        }).join('');
+        select.disabled = false;
+        document.getElementById('evm-sec-save').disabled = false;
+    })
+    .catch(function () {
+        select.innerHTML = '<option value="">Failed to load sections — close and try again</option>';
+    });
+}
+
+function evmSaveSection() {
+    var data      = window._currentEnrollmentData;
+    var sectionId = document.getElementById('evm-sec-select').value;
+    if (!data) return;
+    if (!sectionId) { _evmNotify('warning', 'Please select a section.'); return; }
+
+    var btn = document.getElementById('evm-sec-save');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving…';
+
+    fetch('/admin/enrollments/' + data.id + '/change-section', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json', 'Accept': 'application/json',
+            'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') || {}).content || ''
+        },
+        body: JSON.stringify({ section_id: sectionId })
+    })
+    .then(function (r) { return r.json().catch(function () { return { success: false, message: 'Server error (' + r.status + ').' }; }); })
+    .then(function (d) {
+        if (!d.success) { _evmNotify('error', d.message || 'Failed to change section.'); return; }
+        // Update the card in place — no second modal, no re-opening, so no stray backdrop
+        data.section = d.section_name || data.section;
+        document.getElementById('modal-current-section').textContent = data.section || 'Not assigned';
+        evmCancelSectionEdit();
+        _evmNotify('success', d.message || 'Section changed successfully.');
+        if (typeof window.onEnrollmentSectionChanged === 'function') window.onEnrollmentSectionChanged(data.id, data.section);
+    })
+    .catch(function () { _evmNotify('error', 'Network error while changing section.'); })
+    .finally(function () { btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg"></i> Save'; });
+}
+
+// Each time the details modal opens for a student, start with the editor closed
+document.addEventListener('show.bs.modal', function (e) {
+    if (e.target && e.target.id === 'enrollmentViewModal') evmCancelSectionEdit();
+});
+</script>

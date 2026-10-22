@@ -102,42 +102,44 @@
         <h6><i class="bi bi-funnel me-2" style="color:var(--gold);"></i>Filter Students</h6>
     </div>
     <form method="GET" action="{{ route('finance.students.index') }}" style="padding:16px 20px; display:flex; flex-wrap:wrap; gap:12px; align-items:end;">
-        <div style="flex:1; min-width:200px;">
+        {{-- Search no longer swallows the row — fixed widths below fit "2026-2027 (current)" etc. --}}
+        <div style="flex:1 1 220px; max-width:420px;">
             <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block;">Search Student</label>
             <input type="text" name="search" value="{{ $search }}"
                 placeholder="Name or email…"
                 class="form-fld" style="padding:8px 12px; font-size:13px;"
-                oninput="debounceFormSubmit(this)">
+                oninput="debounceFormSubmit(this)"
+                @if($search !== '') autofocus onfocus="this.setSelectionRange(this.value.length, this.value.length)" @endif>
         </div>
-        <div style="min-width:160px;">
+        <div style="width:220px;">
             <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block;">Plan Type</label>
-            <select name="plan" class="form-select" style="font-size:13px; padding:8px 12px;">
+            <select name="plan" class="form-select" style="font-size:13px; padding:8px 12px;" onchange="this.form.requestSubmit()">
                 <option value="all"         {{ $planFilter === 'all'         ? 'selected' : '' }}>All Plans</option>
                 <option value="cash"        {{ $planFilter === 'cash'        ? 'selected' : '' }}>Plan A – Cash</option>
                 <option value="installment" {{ $planFilter === 'installment' ? 'selected' : '' }}>Plans B/C/D – Installment</option>
             </select>
         </div>
-        <div style="min-width:150px;">
+        <div style="width:160px;">
             <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block;">Payment Status</label>
-            <select name="status" class="form-select" style="font-size:13px; padding:8px 12px;">
+            <select name="status" class="form-select" style="font-size:13px; padding:8px 12px;" onchange="this.form.requestSubmit()">
                 <option value="all"     {{ $statusFilter === 'all'     ? 'selected' : '' }}>All Status</option>
                 <option value="paid"    {{ $statusFilter === 'paid'    ? 'selected' : '' }}>Fully Paid</option>
                 <option value="partial" {{ $statusFilter === 'partial' ? 'selected' : '' }}>Partial</option>
                 <option value="pending" {{ $statusFilter === 'pending' ? 'selected' : '' }}>Pending</option>
             </select>
         </div>
-        <div style="min-width:150px;">
+        <div style="width:200px;">
             <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block;">School Year</label>
-            <select name="school_year" class="form-select" style="font-size:13px; padding:8px 12px;">
+            <select name="school_year" class="form-select" style="font-size:13px; padding:8px 12px;" onchange="this.form.requestSubmit()">
                 <option value="all" {{ $yearFilter === 'all' ? 'selected' : '' }}>All Years</option>
                 @foreach($schoolYears as $yr)
-                    <option value="{{ $yr }}" {{ $yearFilter === $yr ? 'selected' : '' }}>{{ $yr }}</option>
+                    <option value="{{ $yr }}" {{ $yearFilter === $yr ? 'selected' : '' }}>{{ $yr }}{{ $yr === \App\Models\Setting::getCurrentSchoolYear() ? ' (current)' : '' }}</option>
                 @endforeach
             </select>
         </div>
-        <div style="min-width:150px;">
+        <div style="width:160px;">
             <label style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;display:block;">Sort</label>
-            <select name="sort" class="form-select" style="font-size:13px; padding:8px 12px;">
+            <select name="sort" class="form-select" style="font-size:13px; padding:8px 12px;" onchange="this.form.requestSubmit()">
                 <option value="newest" {{ ($sort ?? 'newest') === 'newest' ? 'selected' : '' }}>Newest First</option>
                 <option value="oldest" {{ ($sort ?? '') === 'oldest' ? 'selected' : '' }}>Oldest First</option>
                 <option value="name_asc" {{ ($sort ?? '') === 'name_asc' ? 'selected' : '' }}>Name (A-Z)</option>
@@ -274,14 +276,4 @@
 
 @endsection
 
-@section('scripts')
-<script>
-// Auto-searches ~600ms after the last keystroke instead of requiring the
-// Search button/Enter — same pattern used elsewhere across the dashboards.
-function debounceFormSubmit(el, ms) {
-    clearTimeout(el._debounceTimer);
-    el._debounceTimer = setTimeout(() => el.form.submit(), ms || 600);
-}
-
-</script>
-@endsection
+{{-- debounceFormSubmit() (search-as-you-type) now lives in finance.layout, shared by every Finance page --}}

@@ -107,9 +107,10 @@
             <div style="flex:1; min-width:140px;">
                 <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">School Year</label>
                 <select name="school_year" class="form-select" style="font-size:13px; padding:8px 12px;" onchange="this.form.submit()">
-                    <option value="all" {{ request('school_year', 'all') === 'all' ? 'selected' : '' }}>All Years</option>
+                    @php $instSy = request('school_year', $currentSchoolYear ?? \App\Models\Setting::getCurrentSchoolYear()); @endphp
+                    <option value="all" {{ $instSy === 'all' ? 'selected' : '' }}>All Years</option>
                     @foreach($schoolYears as $year)
-                        <option value="{{ $year }}" {{ request('school_year') === $year ? 'selected' : '' }}>{{ $year }}</option>
+                        <option value="{{ $year }}" {{ $instSy === $year ? 'selected' : '' }}>{{ $year }}{{ $year === \App\Models\Setting::getCurrentSchoolYear() ? ' (current)' : '' }}</option>
                     @endforeach
                 </select>
             </div>
@@ -132,7 +133,9 @@
             </div>
             <div style="flex:1; min-width:180px;">
                 <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">Search Student</label>
-                <input type="text" name="search" class="form-control" placeholder="Search by name or email..." style="font-size:13px; padding:8px 12px;" value="{{ request('search') }}">
+                <input type="text" name="search" class="form-control" placeholder="Search by name or email..." style="font-size:13px; padding:8px 12px;" value="{{ request('search') }}"
+                    oninput="debounceFormSubmit(this)"
+                    @if(request('search')) autofocus onfocus="this.setSelectionRange(this.value.length, this.value.length)" @endif>
             </div>
             <div style="display:flex; gap:8px;">
                 <button type="submit" class="btn-dash btn-primary" style="padding:8px 16px; font-size:13px;">

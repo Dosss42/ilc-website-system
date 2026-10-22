@@ -157,9 +157,10 @@
                     </div>
                     <div class="col-md-3">
                         <select name="student_schoolyear" class="form-fld" onchange="this.form.requestSubmit()">
-                            <option value="all" {{ (!$studentSchoolYearFilter || $studentSchoolYearFilter === '' || $studentSchoolYearFilter === 'all') ? 'selected' : '' }}>All School Years</option>
+                            @php $smCurSy = \App\Models\Setting::getCurrentSchoolYear(); @endphp
+                            <option value="all" {{ ($studentSchoolYearFilter ?? '') === 'all' ? 'selected' : '' }}>All School Years</option>
                             @foreach(\App\Models\Setting::schoolYearOptions() as $sy)
-                                <option value="{{ $sy }}" {{ ($studentSchoolYearFilter ?? '') === $sy ? 'selected' : '' }}>{{ $sy }}</option>
+                                <option value="{{ $sy }}" {{ ($studentSchoolYearFilter ?? '') === $sy ? 'selected' : '' }}>{{ $sy }}{{ $sy === $smCurSy ? ' (current)' : '' }}</option>
                             @endforeach
                         </select>
                     </div>

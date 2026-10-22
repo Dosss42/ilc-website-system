@@ -105,8 +105,11 @@ class User extends Authenticatable implements MustVerifyEmail
         // 'cancelled' = an undone promotion (see EnrollmentController::
         // undoPromotion()) — excluded so it's never picked up as "the"
         // enrollment across Cashier/Finance/the student portal, all of
-        // which rely on this relation.
-        return $this->hasOne(Enrollment::class)->where('status', '!=', 'cancelled')->latestOfMany();
+        // which rely on this relation. The filter must sit INSIDE ofMany(): a
+        // plain ->where() only runs after MAX(id) is picked, so once a cancelled
+        // row was the newest the student had no latest enrollment at all.
+        return $this->hasOne(Enrollment::class)
+            ->ofMany(['id' => 'max'], fn ($q) => $q->where('status', '!=', 'cancelled'));
     }
 
     public function promotions(): \Illuminate\Database\Eloquent\Relations\HasMany

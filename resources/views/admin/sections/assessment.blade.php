@@ -14,8 +14,10 @@
             // $assessStudents, $assessTotal/$assessPending/$assessDone/$assessByGrade,
             // and $assessGradeFilter/$assessStatusFilter/$assessSearchTerm all come
             // pre-computed + paginated from the controller now.
+            $assessSchoolYear = $assessSchoolYear ?? ($currentSchoolYear ?? '');
             $assessBaseQuery = [
                 'section'       => 'assessment',
+                'assess_sy'     => $assessSchoolYear,
                 'assess_grade'  => $assessGradeFilter ?? 'all',
                 'assess_status' => $assessStatusFilter ?? 'all',
                 'assess_search' => $assessSearchTerm ?? '',
@@ -47,6 +49,18 @@
                 <strong>Not assessed:</strong> Transferees during their first year at ILC — they are assessed next cycle.<br>
                 <strong>Flow:</strong> End of year → Assess → Promoted / Retained / Graduated → Open next S.Y. enrollment → Students re-enroll at new grade level.
             </div>
+        </div>
+
+        {{-- School Year being assessed (server-side; grade/status reset to All) --}}
+        <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;align-items:center;">
+            <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;">School Year:</span>
+            <select id="assessSyFilter" class="form-fld" style="width:auto;min-width:200px;padding:6px 12px;font-size:13px;"
+                onchange="window.location.href = @js(url()->current() . '?section=assessment&assess_sy=') + encodeURIComponent(this.value)">
+                @foreach(\App\Models\Setting::schoolYearOptions() as $sy)
+                    <option value="{{ $sy }}" {{ $assessSchoolYear === $sy ? 'selected' : '' }}>S.Y. {{ $sy }}{{ $sy === ($currentSchoolYear ?? '') ? ' (current)' : '' }}</option>
+                @endforeach
+            </select>
+            <span style="font-size:12px;color:var(--muted);">Students enrolled in S.Y. {{ $assessSchoolYear }} — promoting them creates their S.Y. {{ $assessNextSchoolYear }} enrollment.</span>
         </div>
 
         {{-- Grade filter chips --}}
@@ -116,6 +130,7 @@
             <div style="padding:14px 18px;">
                 <form method="GET" action="{{ url()->current() }}" id="assess-search-form">
                     <input type="hidden" name="section" value="assessment">
+                    <input type="hidden" name="assess_sy" value="{{ $assessSchoolYear }}">
                     <input type="hidden" name="assess_grade" value="{{ $assessGradeFilter ?? 'all' }}">
                     <input type="hidden" name="assess_status" value="{{ $assessStatusFilter ?? 'all' }}">
                     <input type="text" name="assess_search" id="assessSearch" placeholder="Search student name..."
@@ -219,12 +234,20 @@
                                 $asFromSY    = $asEnr ? ($asEnr->school_year ?? '') : '';
                             @endphp
                             <td>
+                                @if($isDone)
+                                    {{-- Already promoted out of this year: re-assessing would just be refused
+                                         ("already has an enrollment"); changing it goes through Undo below. --}}
+                                    <span class="action-btn" title="Already assessed — to change it, use Undo in Assessment History below"
+                                        style="background:#e8f5e9;color:#2e7d32;cursor:default;">
+                                        <i class="bi bi-check2-circle"></i>
+                                    </span>
+                                @else
                                 <button type="button" class="action-btn edit"
-                                    title="{{ $isDone ? 'Re-assess' : 'Assess Student' }}"
-                                    onclick="openSmAssessModal({{ $as->id }}, '{{ addslashes($as->name) }}', '{{ $asGl }}', '{{ $asSection }}', {{ $asTotalFee }}, {{ $asAmtPaid }}, {{ $asBalance }}, '{{ $asPayStatus }}', '{{ $asFromSY }}')"
-                                    style="{{ $isDone ? 'background:#e8f5e9;color:#2e7d32;' : '' }}">
+                                    title="Assess Student"
+                                    onclick="openSmAssessModal({{ $as->id }}, '{{ addslashes($as->name) }}', '{{ $asGl }}', '{{ $asSection }}', {{ $asTotalFee }}, {{ $asAmtPaid }}, {{ $asBalance }}, '{{ $asPayStatus }}', '{{ $asFromSY }}')">
                                     <i class="bi bi-mortarboard-fill"></i>
                                 </button>
+                                @endif
                             </td>
                         </tr>
                         @empty
@@ -232,8 +255,8 @@
                             <td colspan="7" style="text-align:center;padding:60px;color:var(--muted);">
                                 <i class="bi bi-mortarboard" style="font-size:48px;display:block;margin-bottom:12px;opacity:0.3;"></i>
                                 @if($assessTotal === 0)
-                                    No eligible students for assessment.<br>
-                                    <small>Nursery, Kinder, and Grade 1–6 students (excluding transferees) appear here.</small>
+                                    No eligible students for assessment in S.Y. {{ $assessSchoolYear }}.<br>
+                                    <small>Nursery, Kinder, and Grade 1–6 students enrolled in this school year (excluding transferees) appear here.</small>
                                 @else
                                     No students match the current filter.<br>
                                     <small><a href="{{ $assessUrl(['assess_grade' => 'all', 'assess_status' => 'all', 'assess_search' => '', 'assess_page' => 1]) }}">Clear filters</a></small>

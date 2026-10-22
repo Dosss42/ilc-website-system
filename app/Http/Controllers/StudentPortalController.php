@@ -333,15 +333,7 @@ class StudentPortalController extends Controller
         // Setting::getCurrentSchoolYear(), the same single source of truth
         // as the rest of the system now, instead of an independent date
         // calculation. See docs/system-improvement-plan.md.
-        $savedTargetYear = Setting::get('enrollment_target_year', '');
-
-        if ($savedTargetYear) {
-            $targetSchoolYear = $savedTargetYear;
-        } else {
-            preg_match('/^(\d{4})-\d{4}$/', \App\Models\Setting::getCurrentSchoolYear(), $m);
-            $nextStart = (int) $m[1] + 1;
-            $targetSchoolYear = $nextStart . '-' . ($nextStart + 1);
-        }
+        $targetSchoolYear = $this->reenrollmentTargetYear();
 
         $currentSchoolYear  = $targetSchoolYear; // passed to view for display
         $needsReenrollment  = false;
@@ -368,9 +360,10 @@ class StudentPortalController extends Controller
             // "already has this year", or the student is permanently stuck
             // with no way back to the re-enroll screen (submitReenrollment()
             // itself already excludes declined the same way, below).
+            // 'cancelled' (an undone promotion) doesn't count either.
             $hasTargetYear = Enrollment::where('user_id', $user->id)
                 ->where('school_year', $targetSchoolYear)
-                ->whereNotIn('status', ['declined'])
+                ->whereNotIn('status', ['declined', 'cancelled'])
                 ->exists();
 
             if (!$hasTargetYear) {
@@ -437,22 +430,17 @@ class StudentPortalController extends Controller
             return back()->with('error', 'Enrollment is currently closed. Please wait for the school to open the enrollment period.');
         }
 
-        // Determine which school year we're enrolling INTO.
-        // Priority: (1) admin enrollment_target_year setting, (2) the
-        // system's single source of truth for "current school year" —
-        // Setting::getCurrentSchoolYear(), which already falls back
-        // through Section data and date math on its own. See
-        // docs/system-improvement-plan.md.
-        $savedTarget = Setting::get('enrollment_target_year', '');
+        // Determine which school year we're enrolling INTO — the same year the
+        // re-enroll card on the portal shows (it used to fall back to the
+        // CURRENT year here but NEXT year on the portal, so without the
+        // setting the student was told they already had an enrollment).
+        $currentSchoolYear = $this->reenrollmentTargetYear();
 
-        $currentSchoolYear = ($savedTarget && preg_match('/^\d{4}-\d{4}$/', $savedTarget))
-            ? $savedTarget
-            : \App\Models\Setting::getCurrentSchoolYear();
-
-        // Prevent duplicate enrollment for the same target year (allow re-apply if declined)
+        // Prevent duplicate enrollment for the same target year (allow re-apply
+        // if declined, or after an undone promotion left a 'cancelled' row)
         $existing = Enrollment::where('user_id', $user->id)
             ->where('school_year', $currentSchoolYear)
-            ->whereNotIn('status', ['declined'])
+            ->whereNotIn('status', ['declined', 'cancelled'])
             ->first();
 
         if ($existing) {
@@ -525,6 +513,23 @@ class StudentPortalController extends Controller
         ]);
 
         return back()->with('success', 'Re-enrollment application submitted for S.Y. ' . $currentSchoolYear . '. Please wait for admin approval.');
+    }
+
+    /**
+     * School year a returning student re-enrolls INTO: the admin's
+     * enrollment_target_year setting, else the year after the current one.
+     * Used by both the portal's re-enroll card and submitReenrollment().
+     */
+    private function reenrollmentTargetYear(): string
+    {
+        $saved = Setting::get('enrollment_target_year', '');
+        if ($saved && preg_match('/^\d{4}-\d{4}$/', $saved)) {
+            return $saved;
+        }
+
+        preg_match('/^(\d{4})-\d{4}$/', \App\Models\Setting::getCurrentSchoolYear(), $m);
+        $nextStart = (int) $m[1] + 1;
+        return $nextStart . '-' . ($nextStart + 1);
     }
 
     private function getCurrentSchoolYear(): string

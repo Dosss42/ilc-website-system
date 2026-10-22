@@ -422,6 +422,14 @@
         .quick-label { font-size: 13px; font-weight: 700; color: #1e293b; }
         .quick-desc  { font-size: 11px; color: #64748b; margin-top: 3px; }
 
+        /* ── Process Payment list filters ── */
+        .sl-filter {
+            background: #f8faff; border: 1.5px solid #e2e8f0; border-radius: 10px;
+            padding: 8px 12px; font-size: 12.5px; color: #334155; font-family: 'Open Sans', sans-serif;
+            outline: none; cursor: pointer;
+        }
+        .sl-filter:focus { border-color: #2471a3; }
+
         /* ── RECEIPT PREVIEW ── */
         .receipt-mini {
             background: #fff;
@@ -1131,7 +1139,28 @@
                         Approved Students
                         <span id="studentListCount" style="background:#e8f0fb;color:#1a3a6c;font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;margin-left:6px;">0</span>
                     </div>
-                    <div style="display:flex;gap:8px;align-items:center;">
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+                        {{-- Server-side filters (listStudents): each row shows the newest enrollment matching them --}}
+                        <select id="studentListSy" class="sl-filter" onchange="applyStudentListFilters()" title="School Year">
+                            {{-- Opens on the Current School Year (Admin › Settings › Academic) --}}
+                            @php $slCurSy = \App\Models\Setting::getCurrentSchoolYear(); @endphp
+                            <option value="all">All School Years</option>
+                            @foreach(\App\Models\Setting::schoolYearOptions() as $sy)
+                                <option value="{{ $sy }}" {{ $sy === $slCurSy ? 'selected' : '' }}>S.Y. {{ $sy }}{{ $sy === $slCurSy ? ' (current)' : '' }}</option>
+                            @endforeach
+                        </select>
+                        <select id="studentListGrade" class="sl-filter" onchange="applyStudentListFilters()" title="Grade Level">
+                            <option value="all">All Grades</option>
+                            @foreach(['nursery'=>'Nursery','kindergarten'=>'Kindergarten','grade1'=>'Grade 1','grade2'=>'Grade 2','grade3'=>'Grade 3','grade4'=>'Grade 4','grade5'=>'Grade 5','grade6'=>'Grade 6'] as $gv => $gl)
+                                <option value="{{ $gv }}">{{ $gl }}</option>
+                            @endforeach
+                        </select>
+                        <select id="studentListPay" class="sl-filter" onchange="applyStudentListFilters()" title="Payment Status">
+                            <option value="all">All Payment Status</option>
+                            <option value="pending">Unpaid</option>
+                            <option value="partial">Partial</option>
+                            <option value="paid">Paid</option>
+                        </select>
                         <div style="display:flex;align-items:center;gap:8px;background:#f8faff;border:1.5px solid #e2e8f0;border-radius:10px;padding:8px 14px;min-width:260px;">
                             <i class="bi bi-search" style="color:#94a3b8;font-size:14px;flex-shrink:0;"></i>
                             <input type="text" id="studentListFilter" placeholder="Filter by name, grade, ref no…"
@@ -2301,6 +2330,11 @@
         var count = document.getElementById('studentListCount');
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:48px;color:#94a3b8;"><i class="bi bi-arrow-repeat" style="font-size:28px;display:block;margin-bottom:10px;"></i>Loading students…</td></tr>';
         var url = _listUrl + '?page=' + _studentListPage + (_studentListSearch ? '&q=' + encodeURIComponent(_studentListSearch) : '');
+        // Always sent — the server's default year is the current one, so "All" must be explicit
+        [['sy', 'studentListSy'], ['grade', 'studentListGrade'], ['pay', 'studentListPay']].forEach(function (f) {
+            var el = document.getElementById(f[1]);
+            if (el) url += '&' + f[0] + '=' + encodeURIComponent(el.value);
+        });
         fetch(url, {
             credentials: 'same-origin',
             headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': (document.querySelector('meta[name=csrf-token]') || {}).content || '' }
@@ -2317,12 +2351,27 @@
         });
     }
 
+    // School Year / Grade / Payment Status dropdowns — back to page 1 of the filtered list
+    function applyStudentListFilters() {
+        _studentListPage = 1;
+        loadStudentList();
+    }
+
     function renderStudentList(students) {
         var tbody = document.getElementById('studentListBody');
-        var count = document.getElementById('studentListCount');
-        if (count) count.textContent = students.length;
+        // (the count badge is the server's total, set in loadStudentList — it used
+        // to be overwritten here with the number of rows on this page)
         if (!students.length) {
-            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:48px;color:#94a3b8;"><i class="bi bi-inbox" style="font-size:32px;display:block;margin-bottom:10px;"></i>No approved students found.</td></tr>';
+            var filtered = ['studentListGrade', 'studentListPay'].some(function (id) {
+                var el = document.getElementById(id); return el && el.value !== 'all';
+            }) || _studentListSearch;
+            var syEl = document.getElementById('studentListSy');
+            if (!filtered && syEl && syEl.value !== 'all') {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:48px;color:#94a3b8;"><i class="bi bi-inbox" style="font-size:32px;display:block;margin-bottom:10px;"></i>No approved students for S.Y. ' + syEl.value + ' yet. Choose "All School Years" to see other years.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:48px;color:#94a3b8;"><i class="bi bi-inbox" style="font-size:32px;display:block;margin-bottom:10px;"></i>'
+                + (filtered ? 'No students match these filters.' : 'No approved students found.') + '</td></tr>';
             return;
         }
         var payBadge = function(status) {

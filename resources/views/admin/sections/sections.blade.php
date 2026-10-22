@@ -23,11 +23,16 @@
 
             $sections = $sections ?? collect();
 
-            $totalSections = $sections->total();
+            // Whole-year counts from the controller (not just this page of 15)
+            $sectionSyFilter = $sectionSyFilter ?? 'all';
 
-            $activeSections = $sections->where('is_active', true)->count();
+            $totalSections = $sectionStats['total'] ?? $sections->total();
 
-            $totalEnrolled = $sections->sum('current_enrollment');
+            $activeSections = $sectionStats['active'] ?? $sections->where('is_active', true)->count();
+
+            $totalEnrolled = $sectionStats['enrolled'] ?? $sections->sum('current_enrollment');
+
+            $sectionSyLabel = $sectionSyFilter === 'all' ? 'All School Years' : 'S.Y. ' . $sectionSyFilter;
 
         @endphp
 
@@ -90,6 +95,15 @@
         </div>
 
         <div class="module-toolbar">
+            <div class="toolbar-filter">
+                {{-- Server-side: reloads Section Management for the chosen school year --}}
+                <select id="sectionSyFilter" title="School Year" onchange="changeSectionSchoolYear(this.value)">
+                    <option value="all" {{ $sectionSyFilter === 'all' ? 'selected' : '' }}>All School Years</option>
+                    @foreach(\App\Models\Setting::schoolYearOptions() as $sy)
+                        <option value="{{ $sy }}" {{ $sectionSyFilter === $sy ? 'selected' : '' }}>S.Y. {{ $sy }}{{ $sy === ($currentSchoolYear ?? '') ? ' (current)' : '' }}</option>
+                    @endforeach
+                </select>
+            </div>
             <div class="toolbar-search">
                 <i class="bi bi-search"></i>
                 <input type="text" id="sectionSearchInput" placeholder="Search sections..." onkeyup="filterSectionTable()">
@@ -121,7 +135,7 @@
 
             <div class="content-card-header">
 
-                <h6><i class="bi bi-list-ul me-2" style="color:var(--green);"></i>All Sections</h6>
+                <h6><i class="bi bi-list-ul me-2" style="color:var(--green);"></i>Sections — {{ $sectionSyLabel }}</h6>
 
             </div>
 
@@ -271,7 +285,7 @@
 
                         <tr>
 
-                            <td colspan="6" style="text-align:center; padding:60px 20px;">
+                            <td colspan="7" style="text-align:center; padding:60px 20px;">
 
                                 <div style="background:#e8f8f0; width:70px; height:70px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 16px;">
 
@@ -279,13 +293,19 @@
 
                                 </div>
 
+                                @if($sectionSyFilter === 'all')
                                 <div style="font-weight:700; font-size:15px; color:var(--text); margin-bottom:4px;">No Sections Yet</div>
 
                                 <div style="font-size:13px; color:var(--muted); margin-bottom:16px;">Create your first class section to get started.</div>
+                                @else
+                                <div style="font-weight:700; font-size:15px; color:var(--text); margin-bottom:4px;">No sections for {{ $sectionSyLabel }} yet</div>
+
+                                <div style="font-size:13px; color:var(--muted); margin-bottom:16px;">Create this school year's sections so promoted and newly enrolled students can be assigned.</div>
+                                @endif
 
                                 <button class="btn-dash btn-primary" onclick="openSectionModal()">
 
-                                    <i class="bi bi-plus-lg"></i> Add First Section
+                                    <i class="bi bi-plus-lg"></i> {{ $sectionSyFilter === 'all' ? 'Add First Section' : 'Add Section for ' . $sectionSyLabel }}
 
                                 </button>
 

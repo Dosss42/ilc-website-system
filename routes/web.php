@@ -370,6 +370,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::put('/{section}', [SectionController::class, 'update'])->name('update');
         Route::delete('/{section}', [SectionController::class, 'destroy'])->name('destroy');
         Route::post('/{section}/assign-teacher', [SectionController::class, 'assignTeacher'])->name('assignTeacher');
+        Route::get('/{section}/eligible-students', [SectionController::class, 'eligibleStudents'])->name('eligibleStudents');
         Route::post('/{section}/add-student', [SectionController::class, 'addStudent'])->name('addStudent');
         Route::post('/{section}/remove-student', [SectionController::class, 'removeStudent'])->name('removeStudent');
         Route::post('/{section}/transfer-student', [SectionController::class, 'transferStudent'])->name('transferStudent');

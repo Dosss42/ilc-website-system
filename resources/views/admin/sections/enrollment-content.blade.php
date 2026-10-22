@@ -60,7 +60,7 @@
 
                         <div class="stat-value">{{ $enrolledThisYear ?? 0 }}</div>
 
-                        <div class="stat-label">Enrolled This Year</div>
+                        <div class="stat-label">Enrolled · S.Y. {{ $enrolledStatYear ?? '' }}</div>
 
                     </div>
 
@@ -106,14 +106,28 @@
 
         </div>
 
+        {{-- The list opens on one school year — don't let other years' new applications go unnoticed --}}
+        @if(($pendingOtherYears ?? collect())->isNotEmpty())
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:11px 16px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:#1e3a8a;">
+            <i class="bi bi-inbox-fill" style="font-size:16px;color:#2563eb;"></i>
+            <span>Pending applications in other school years:</span>
+            @foreach($pendingOtherYears as $pSy => $pCount)
+                <button type="button" class="btn-dash btn-secondary" style="padding:4px 12px;font-size:12px;"
+                    onclick="document.getElementById('enrollmentSyFilter').value = @js($pSy); document.getElementById('statusFilter').value = 'pending'; filterEnrollments();">
+                    S.Y. {{ $pSy }} · <strong>{{ $pCount }}</strong> pending
+                </button>
+            @endforeach
+        </div>
+        @endif
+
         {{-- React Component Island: Dashboard Charts --}}
 
         <div id="admin-dashboard-charts"></div>
 
         <div class="content-card mb-4">
             <div class="p-3">
-                <div class="row g-3 mb-3">
-                    <div class="col-md-4">
+                <div class="row g-3 mb-3 align-items-center">
+                    <div class="col-md-5">
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-search"></i></span>
                             <input type="text" id="enrollmentSearchInput" class="form-fld"
@@ -128,15 +142,35 @@
                         <button type="button" class="btn-dash btn-secondary w-100" onclick="clearEnrollmentSearch()"><i class="bi bi-x-lg"></i> Clear</button>
                     </div>
                     @endif
+                    <div class="col text-md-end">
+                        <span class="text-muted" style="font-size:13px;">
+                            @if(isset($enrollments))
+                            Showing {{ $enrollments->firstItem() ?? 0 }} to {{ $enrollments->lastItem() ?? 0 }} of {{ $enrollments->total() }} enrollments
+                            @endif
+                        </span>
+                    </div>
                 </div>
+                {{-- Four equal-width filters --}}
                 <div class="row g-3">
+                    <div class="col-md-3">
+                        <select class="form-fld" id="enrollmentSyFilter" title="School Year" onchange="filterEnrollments()">
+                            @php $emCurSy = \App\Models\Setting::getCurrentSchoolYear(); @endphp
+                            <option value="all" {{ ($enrollmentSyFilter ?? '') === 'all' ? 'selected' : '' }}>All School Years</option>
+                            @foreach(\App\Models\Setting::schoolYearOptions() as $sy)
+                                <option value="{{ $sy }}" {{ ($enrollmentSyFilter ?? '') === $sy ? 'selected' : '' }}>S.Y. {{ $sy }}{{ $sy === $emCurSy ? ' (current)' : '' }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                     <div class="col-md-3">
                         <select class="form-fld" id="statusFilter" data-sort="{{ $sort ?? 'newest' }}" data-grade="{{ $gradeFilter ?? 'all' }}" onchange="filterEnrollments()">
                             <option value="all" {{ ($statusFilter ?? 'all') === 'all' ? 'selected' : '' }}>All Status</option>
                             <option value="pending" {{ ($statusFilter ?? 'all') === 'pending' ? 'selected' : '' }}>Pending</option>
                             <option value="approved" {{ ($statusFilter ?? 'all') === 'approved' ? 'selected' : '' }}>Approved</option>
                             <option value="enrolled" {{ ($statusFilter ?? 'all') === 'enrolled' ? 'selected' : '' }}>Enrolled</option>
-                            <option value="rejected" {{ ($statusFilter ?? 'all') === 'rejected' ? 'selected' : '' }}>Rejected</option>
+                            <option value="completed" {{ ($statusFilter ?? 'all') === 'completed' ? 'selected' : '' }}>Completed</option>
+                            {{-- was value="rejected", a status that doesn't exist (always an empty list) --}}
+                            <option value="declined" {{ ($statusFilter ?? 'all') === 'declined' ? 'selected' : '' }}>Declined</option>
+                            <option value="cancelled" {{ ($statusFilter ?? 'all') === 'cancelled' ? 'selected' : '' }}>Cancelled (undone promotion)</option>
                         </select>
                     </div>
                     <div class="col-md-3">
@@ -153,19 +187,12 @@
                         </select>
                     </div>
                     <div class="col-md-3">
-                        <select class="form-fld" id="enrollmentSortFilter" data-status="{{ $statusFilter ?? 'all' }}" data-grade="{{ $gradeFilter ?? 'all' }}">
+                        <select class="form-fld" id="enrollmentSortFilter" data-status="{{ $statusFilter ?? 'all' }}" data-grade="{{ $gradeFilter ?? 'all' }}" onchange="filterEnrollments()">
                             <option value="newest" {{ ($sort ?? 'newest') === 'newest' ? 'selected' : '' }}>Newest First</option>
                             <option value="oldest" {{ ($sort ?? 'newest') === 'oldest' ? 'selected' : '' }}>Oldest First</option>
                             <option value="name_asc" {{ ($sort ?? 'newest') === 'name_asc' ? 'selected' : '' }}>Name (A-Z)</option>
                             <option value="name_desc" {{ ($sort ?? 'newest') === 'name_desc' ? 'selected' : '' }}>Name (Z-A)</option>
                         </select>
-                    </div>
-                    <div class="col-md-3 text-end">
-                        <span class="text-muted" style="font-size:13px;">
-                            @if(isset($enrollments))
-                            Showing {{ $enrollments->firstItem() ?? 0 }} to {{ $enrollments->lastItem() ?? 0 }} of {{ $enrollments->total() }} enrollments
-                            @endif
-                        </span>
                     </div>
                 </div>
             </div>
@@ -188,6 +215,8 @@
                             <th>Name</th>
 
                             <th>Grade</th>
+
+                            <th>School Year</th>
 
                             <th>Status</th>
 
@@ -231,6 +260,8 @@
 
                                 </td>
 
+                                <td style="white-space:nowrap;">{{ $e->school_year ?? '—' }}</td>
+
                                 <td>
 
                                     @php
@@ -240,6 +271,7 @@
                                             'pending'   => 'bi-clock',
                                             'declined'  => 'bi-x-circle-fill',
                                             'completed' => 'bi-archive-fill',
+                                            'cancelled' => 'bi-arrow-counterclockwise',
                                             default     => 'bi-circle',
                                         };
                                     @endphp
@@ -280,11 +312,11 @@
 
                             <tr>
 
-                                <td colspan="6" style="text-align:center; color:var(--text); padding:40px;">
+                                <td colspan="7" style="text-align:center; color:var(--text); padding:40px;">
 
                                     <i class="bi bi-clipboard" style="font-size:36px; display:block; margin-bottom:8px; opacity:0.3;"></i>
 
-                                    No enrollment records yet.
+                                    {{ ($enrollmentSyFilter ?? 'all') !== 'all' ? 'No enrollment records for S.Y. ' . $enrollmentSyFilter . ' match these filters.' : 'No enrollment records yet.' }}
 
                                 </td>
 
@@ -303,6 +335,8 @@
                         'sort' => $sort ?? 'newest',
                         'status' => $statusFilter ?? 'all',
                         'grade' => $gradeFilter ?? 'all',
+                        'enrollment_sy' => $enrollmentSyFilter ?? \App\Models\Setting::getCurrentSchoolYear(),
+                        'enrollment_search' => $enrollmentSearch ?? '',
                     ])->links() }}
                     @endif
                     @if(isset($enrollments) && $enrollments->count() > 0)

@@ -51,9 +51,11 @@
         <div class="module-toolbar">
             <div class="toolbar-filter">
                 <select id="summer-sy-filter" onchange="loadSummerClasses()">
+                    {{-- Opens on the Current School Year (Admin › Settings › Academic) --}}
+                    @php $summerCurSy = \App\Models\Setting::getCurrentSchoolYear(); @endphp
                     <option value="">All School Years</option>
                     @foreach(\App\Models\Setting::schoolYearOptions() as $sy)
-                        <option value="{{ $sy }}">{{ $sy }}</option>
+                        <option value="{{ $sy }}" {{ $sy === $summerCurSy ? 'selected' : '' }}>{{ $sy }}{{ $sy === $summerCurSy ? ' (current)' : '' }}</option>
                     @endforeach
                 </select>
                 <select id="summer-status-filter" onchange="loadSummerClasses()">

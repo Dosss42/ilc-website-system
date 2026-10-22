@@ -2375,6 +2375,15 @@
         <div class="content-card">
             <div class="content-card-header">
                 <h6>All Sections</h6>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                {{-- Opens on the Current School Year (Admin › Settings › Academic) --}}
+                @php $saSecCurSy = \App\Models\Setting::getCurrentSchoolYear(); @endphp
+                <select id="sec-sy-filter" class="form-fld" style="width:210px;" onchange="loadSectionsMgmt()" title="School Year">
+                    <option value="all">All School Years</option>
+                    @foreach(\App\Models\Setting::schoolYearOptions() as $sy)
+                        <option value="{{ $sy }}" {{ $sy === $saSecCurSy ? 'selected' : '' }}>S.Y. {{ $sy }}{{ $sy === $saSecCurSy ? ' (current)' : '' }}</option>
+                    @endforeach
+                </select>
                 <select id="sec-grade-filter" class="form-fld" style="width:180px;" onchange="loadSectionsMgmt()">
                     <option value="">All Grade Levels</option>
                     <option value="nursery">Nursery</option>
@@ -2386,14 +2395,15 @@
                     <option value="grade5">Grade 5</option>
                     <option value="grade6">Grade 6</option>
                 </select>
+                </div>
             </div>
             <div style="overflow-x:auto;">
                 <table class="dash-table">
                     <thead><tr>
-                        <th>Section Name</th><th>Grade Level</th><th>Adviser / Teacher</th><th>Students</th><th>Actions</th>
+                        <th>Section Name</th><th>Grade Level</th><th>School Year</th><th>Adviser / Teacher</th><th>Students</th><th>Actions</th>
                     </tr></thead>
                     <tbody id="sections-tbody">
-                        <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--muted);">
+                        <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted);">
                             <span class="spinner-border spinner-border-sm me-2"></span>Loading…
                         </td></tr>
                     </tbody>
@@ -4068,75 +4078,17 @@
         if (contEl) { contEl.style.display = 'none'; contEl.innerHTML = ''; }
     }
 
-    // Change Section (enrollment detail modal "Change Section" button) —
-    // same function names Admin uses, since both dashboards include the
-    // same admin.enrollments.view-modal partial whose button calls these
-    // exact names.
-    function openChangeSectionModal() {
-        var data = window._currentEnrollmentData;
-        if (!data) { saToast('error', 'No enrollment loaded.'); return; }
-        var gradeLevel = (data.student_data || {}).grade_level;
-
-        var select = document.getElementById('new-section-select');
-        select.innerHTML = '<option value="">Loading sections…</option>';
-        document.getElementById('change-section-enrollment-id').value = data.id;
-
-        fetch('/admin/sections?grade_level=' + encodeURIComponent(gradeLevel || ''), {
-            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken }
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-            var sections = d.sections || [];
-            if (!sections.length) {
-                select.innerHTML = '<option value="">No sections available for this grade level</option>';
-                return;
-            }
-            select.innerHTML = '<option value="">-- Select Section --</option>' +
-                sections.map(function(s) {
-                    var current = data.section && s.name === data.section ? ' (current)' : '';
-                    return '<option value="' + s.id + '">' + s.name + current + '</option>';
-                }).join('');
-        })
-        .catch(function() {
-            select.innerHTML = '<option value="">Failed to load sections</option>';
-        });
-
-        new bootstrap.Modal(document.getElementById('changeSectionModal')).show();
-    }
-
-    function saveSectionChange() {
-        var enrollmentId = document.getElementById('change-section-enrollment-id').value;
-        var sectionId    = document.getElementById('new-section-select').value;
-        if (!sectionId) { saToast('error', 'Please select a section.'); return; }
-
-        var btn = document.querySelector('#changeSectionModal .btn-primary');
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
-
-        fetch('/admin/enrollments/' + enrollmentId + '/change-section', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-            body: JSON.stringify({ section_id: sectionId })
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-check"></i> Save Changes';
-            if (d.success) {
-                bootstrap.Modal.getInstance(document.getElementById('changeSectionModal')).hide();
-                saToast('success', d.message || 'Section changed successfully.');
-                saViewEnrollment(enrollmentId);
-                _loaded['enrollments'] = false;
-            } else {
-                saToast('error', d.message || 'Failed to change section.');
-            }
-        })
-        .catch(function() {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-check"></i> Save Changes';
-            saToast('error', 'Network error while changing section.');
-        });
-    }
+    // Section changes are edited inline in the shared details modal (see
+    // admin/enrollments/view-modal.blade.php). Once it closes after a change,
+    // reload the Enrollments list (same page) so it shows the new section.
+    var _enrollmentListStale = false;
+    window.onEnrollmentSectionChanged = function () { _enrollmentListStale = true; };
+    document.addEventListener('hidden.bs.modal', function (e) {
+        if (e.target && e.target.id === 'enrollmentViewModal' && _enrollmentListStale) {
+            _enrollmentListStale = false;
+            loadEnrollments(_enrPage);
+        }
+    });
 
     function saFormatGradeLevel(grade) {
         var gradeMap = { nursery:'Nursery', kindergarten:'Kindergarten', grade1:'Grade 1', grade2:'Grade 2', grade3:'Grade 3', grade4:'Grade 4', grade5:'Grade 5', grade6:'Grade 6' };
@@ -4162,7 +4114,7 @@
             var sd = data.student_data || {};
             var fmt = function(d) { return d ? new Date(d).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : 'N/A'; };
 
-            // Cached for openChangeSectionModal() — it needs the raw
+            // Cached for evmStartSectionEdit() — it needs the raw
             // grade_level, which isn't otherwise stored anywhere in the DOM.
             window._currentEnrollmentData = data;
 
@@ -4230,7 +4182,8 @@
                 saFetchDocs(data.user_id);
             }
 
-            new bootstrap.Modal(modalEl).show();
+            // Reuse the existing instance — a second `new Modal()` on an open modal leaves a stray backdrop
+            bootstrap.Modal.getOrCreateInstance(modalEl).show();
         })
         .catch(function(error) {
             console.error('Error loading enrollment data:', error);
@@ -5489,16 +5442,18 @@
         _loaded['sections-mgmt'] = true;
         _sectionsPage = page || 1;
         var grade = document.getElementById('sec-grade-filter')?.value || '';
+        var sy    = document.getElementById('sec-sy-filter')?.value || 'all';
         var tbody = document.getElementById('sections-tbody');
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--muted);"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted);"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>';
         try {
-            var url = '/admin/sections?paginated=1&page=' + _sectionsPage + (grade ? '&grade_level=' + grade : '');
+            var url = '/admin/sections?paginated=1&page=' + _sectionsPage + (grade ? '&grade_level=' + grade : '') + '&school_year=' + encodeURIComponent(sy);
             var r = await fetch(url, { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
             var d = await r.json();
             var rows = d.sections || [];
             _sectionsData = rows;
             if (!rows.length) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--muted);"><i class="bi bi-diagram-3" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3;"></i>No sections found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted);"><i class="bi bi-diagram-3" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3;"></i>'
+                    + (sy !== 'all' ? 'No sections for S.Y. ' + sy + ' yet. Use <strong>Add Section</strong> to create them.' : 'No sections found.') + '</td></tr>';
                 document.getElementById('sections-pagination').innerHTML = '';
                 return;
             }
@@ -5509,6 +5464,7 @@
                 return '<tr>' +
                     '<td style="font-weight:700;">' + (s.name || '—') + '</td>' +
                     '<td><span class="status-badge active">' + gl + '</span></td>' +
+                    '<td style="font-size:12.5px;color:var(--muted);white-space:nowrap;">' + (s.school_year || '—') + '</td>' +
                     '<td>' + teacherName + '</td>' +
                     '<td><span style="font-size:13px;font-weight:700;color:var(--blue);">' + studentCount + '</span><span style="font-size:11px;color:var(--muted);"> students</span></td>' +
                     '<td>' +
@@ -5519,7 +5475,7 @@
             }).join('');
             renderPagerControls('sections-pagination', d, 'section(s)', 'goToSectionsPage');
         } catch(e) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--red);">Failed to load sections.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--red);">Failed to load sections.</td></tr>';
         }
     }
 
@@ -5571,6 +5527,9 @@
         document.getElementById('sa-sec-room').value = '';
         document.getElementById('sa-sec-max').value = '30';
         document.getElementById('sa-sec-active').value = '1';
+        // New sections go into the school year being viewed (else the current one)
+        var viewedSy = document.getElementById('sec-sy-filter')?.value;
+        if (viewedSy && viewedSy !== 'all') document.getElementById('sa-sec-sy').value = viewedSy;
         new bootstrap.Modal(document.getElementById('saSectionModal')).show();
     }
 
@@ -5618,6 +5577,9 @@
             if (r.ok) {
                 saToast('success', id ? 'Section updated!' : 'Section created!');
                 bootstrap.Modal.getInstance(document.getElementById('saSectionModal'))?.hide();
+                // Saved into a school year other than the one shown? Switch the list to it.
+                var syFilter = document.getElementById('sec-sy-filter');
+                if (syFilter && syFilter.value !== 'all' && syFilter.value !== body.school_year) syFilter.value = body.school_year;
                 _loaded['sections-mgmt'] = false; loadSectionsMgmt();
             } else {
                 var msg = d.errors ? Object.values(d.errors).flat().join(', ') : (d.message || 'Error saving section.');

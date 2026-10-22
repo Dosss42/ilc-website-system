@@ -185,38 +185,47 @@
 @endpush
 
 {{-- Student Payment Overview --}}
-<div class="content-card mb-4">
+<div class="content-card mb-4" id="student-overview">
     <div class="content-card-header">
         <h6><i class="bi bi-people-fill me-2" style="color:var(--blue);"></i>Student Payment Overview</h6>
     </div>
 
-    <div class="module-toolbar">
+    {{-- Server-side filters (whole list, not just this page); reloads back to this card --}}
+    <form method="GET" action="{{ route('finance.dashboard') }}#student-overview" class="module-toolbar" id="financeOverviewForm">
         <div class="toolbar-search">
             <i class="bi bi-search"></i>
-            <input type="text" id="financeSearchInput" placeholder="Search student name..." onkeyup="filterFinanceTable()">
+            <input type="text" name="ov_search" id="financeSearchInput" placeholder="Search student name or email..."
+                value="{{ $ovSearch ?? '' }}" oninput="debounceFormSubmit(this)"
+                @if(($ovSearch ?? '') !== '') autofocus onfocus="this.setSelectionRange(this.value.length, this.value.length)" @endif>
         </div>
         <div class="toolbar-filter">
-            <select id="financePayFilter" onchange="filterFinanceTable()">
-                <option value="">All Payment Status</option>
-                <option value="paid">Paid</option>
-                <option value="partial">Partial</option>
-                <option value="unpaid">Unpaid</option>
-            </select>
-            <select id="financeSectionFilter" onchange="filterFinanceTable()">
-                <option value="">All Sections</option>
-                @foreach(($sections ?? collect()) as $sec)
-                    <option value="{{ $sec->name }}">{{ $sec->name }}</option>
+            <select name="ov_sy" id="financeYearFilter" onchange="this.form.requestSubmit()" title="School Year">
+                <option value="all" {{ ($ovYear ?? 'all') === 'all' ? 'selected' : '' }}>All School Years</option>
+                @foreach(($schoolYears ?? []) as $sy)
+                    <option value="{{ $sy }}" {{ ($ovYear ?? '') === $sy ? 'selected' : '' }}>S.Y. {{ $sy }}{{ $sy === \App\Models\Setting::getCurrentSchoolYear() ? ' (current)' : '' }}</option>
                 @endforeach
             </select>
-            <select id="financeSortFilter" onchange="changeFinanceSort()">
+            <select name="ov_pay" id="financePayFilter" onchange="this.form.requestSubmit()">
+                <option value="all" {{ ($ovPay ?? 'all') === 'all' ? 'selected' : '' }}>All Payment Status</option>
+                <option value="paid" {{ ($ovPay ?? '') === 'paid' ? 'selected' : '' }}>Paid</option>
+                <option value="partial" {{ ($ovPay ?? '') === 'partial' ? 'selected' : '' }}>Partial</option>
+                <option value="pending" {{ ($ovPay ?? '') === 'pending' ? 'selected' : '' }}>Unpaid</option>
+            </select>
+            <select name="ov_section" id="financeSectionFilter" onchange="this.form.requestSubmit()">
+                <option value="">All Sections</option>
+                @foreach(($sections ?? collect()) as $sec)
+                    <option value="{{ $sec->name }}" {{ ($ovSection ?? '') === $sec->name ? 'selected' : '' }}>{{ $sec->name }}</option>
+                @endforeach
+            </select>
+            <select name="sort" id="financeSortFilter" onchange="this.form.requestSubmit()">
                 <option value="newest" {{ ($sort ?? 'newest') === 'newest' ? 'selected' : '' }}>Newest First</option>
                 <option value="oldest" {{ ($sort ?? '') === 'oldest' ? 'selected' : '' }}>Oldest First</option>
                 <option value="name_asc" {{ ($sort ?? '') === 'name_asc' ? 'selected' : '' }}>Name (A-Z)</option>
                 <option value="name_desc" {{ ($sort ?? '') === 'name_desc' ? 'selected' : '' }}>Name (Z-A)</option>
             </select>
-            <span class="toolbar-count"><span id="financeVisibleCount">{{ ($allStudentsPayment ?? collect())->count() }}</span> of {{ ($allStudentsPayment ?? collect())->count() }} students</span>
+            <span class="toolbar-count">{{ $allStudentsPayment->total() }} student(s)</span>
         </div>
-    </div>
+    </form>
 
     <div style="overflow-x:auto;">
         <table class="dash-table" id="financeStudentTable">
@@ -409,29 +418,7 @@
 
 @section('scripts')
 <script>
-function changeFinanceSort() {
-    const url = new URL(window.location.href);
-    url.searchParams.set('sort', document.getElementById('financeSortFilter').value);
-    window.location.href = url.toString();
-}
-
-function filterFinanceTable() {
-    const search  = (document.getElementById('financeSearchInput').value || '').toLowerCase();
-    const pay     = (document.getElementById('financePayFilter').value || '').toLowerCase();
-    const section = (document.getElementById('financeSectionFilter').value || '').toLowerCase();
-    const rows    = document.querySelectorAll('#financeStudentTable tbody tr[data-search]');
-    let visible   = 0;
-    rows.forEach(row => {
-        const matchSearch  = !search  || row.dataset.search.includes(search);
-        const matchPay     = !pay     || row.dataset.pay === pay;
-        const matchSection = !section || row.dataset.section.toLowerCase() === section;
-        const show = matchSearch && matchPay && matchSection;
-        row.style.display = show ? '' : 'none';
-        if (show) visible++;
-    });
-    const el = document.getElementById('financeVisibleCount');
-    if (el) el.textContent = visible;
-}
+// Student Payment Overview filters/sort are a plain GET form now (#financeOverviewForm)
 
 /* View Installments Modal */
 document.querySelectorAll('.js-view-installments').forEach(btn => {

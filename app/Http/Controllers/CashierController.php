@@ -591,7 +591,24 @@ class CashierController extends Controller
         // default "browse students" table, not just the name-search box), so
         // a student mid-promotion (old enrollment 'completed', new one still
         // 'pending' until approved) was invisible here too, for the same reason.
-        $activeStatuses = fn ($qe) => $qe->whereNotIn('status', ['declined', 'cancelled']);
+        //
+        // Process Payment filters: School Year / Grade / Payment Status. Each row
+        // shows the newest enrollment matching them — so picking an older year
+        // shows (and lets the cashier collect) that year's balance.
+        // School year opens on the Current School Year (Admin › Settings › Academic); "all" = every year
+        $currentSy = \App\Models\Setting::getCurrentSchoolYear();
+        $sy    = (string) $request->get('sy', $currentSy);
+        $grade = (string) $request->get('grade', 'all');
+        $pay   = (string) $request->get('pay', 'all');
+        if ($sy !== 'all' && !in_array($sy, \App\Models\Setting::schoolYearOptions(), true)) $sy = $currentSy;
+        if (!in_array($grade, ['nursery', 'kindergarten', 'grade1', 'grade2', 'grade3', 'grade4', 'grade5', 'grade6'], true)) $grade = 'all';
+        if (!in_array($pay, ['paid', 'partial', 'pending'], true)) $pay = 'all';
+
+        $activeStatuses = fn ($qe) => $qe->whereNotIn('status', ['declined', 'cancelled'])
+            ->when($sy !== 'all', fn ($q) => $q->where('school_year', $sy))
+            ->when($grade !== 'all', fn ($q) => $q->where('grade_level', $grade))
+            ->when($pay === 'pending', fn ($q) => $q->where(fn ($w) => $w->whereNull('payment_status')->orWhereNotIn('payment_status', ['paid', 'partial'])))
+            ->when(in_array($pay, ['paid', 'partial'], true), fn ($q) => $q->where('payment_status', $pay));
 
         $query = User::where('role', 'student')
             ->whereHas('enrollments', $activeStatuses)
@@ -600,7 +617,8 @@ class CashierController extends Controller
             // the cashier having to search for them by name.
             ->withMax(['enrollments as latest_enrollment_at' => $activeStatuses], 'created_at')
             ->with(['enrollments' => function ($qe) use ($activeStatuses) {
-                $activeStatuses($qe)->latest();
+                // id breaks ties — a promotion can create the new enrollment in the same second
+                $activeStatuses($qe)->latest()->orderByDesc('id');
             }]);
 
         if ($search !== '') {

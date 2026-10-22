@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 
 <html lang="en">
 
@@ -1025,6 +1025,7 @@ document.addEventListener('click', function (e) {
 function loadEnrollmentSection(url) {
     const container = document.getElementById('section-enrollment');
     if (!container) return;
+    window._lastEnrollmentUrl = url; // so a refresh keeps the current filters/page
     fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
         .then(r => {
             if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -1503,7 +1504,9 @@ function openWalkInEnrollmentModal() {
     </button>
 
     @php
-        $sidebarAssessCount = ($assessStudents ?? collect())->filter(fn($s) => $s->promotions->isEmpty())->count();
+        // Current school year's students still waiting for assessment (from the
+        // controller — was counted from one 15-row page of the Assessment table)
+        $sidebarAssessCount = $sidebarAssessCount ?? 0;
     @endphp
     <button class="sidebar-link" id="nav-assessment" onclick="showSection('assessment')">
         <i class="bi bi-mortarboard-fill"></i> Assessment &amp; Promotion
@@ -5576,7 +5579,7 @@ function openWalkInEnrollmentModal() {
             const sd = data.student_data || {};
             const fmt = (d) => d ? new Date(d).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' }) : 'N/A';
 
-            // Cached for openChangeSectionModal() — it needs the raw
+            // Cached for evmStartSectionEdit() — it needs the raw
             // grade_level, which isn't otherwise stored anywhere in the DOM
             // (only the human-formatted label is rendered).
             window._currentEnrollmentData = data;
@@ -5638,8 +5641,6 @@ function openWalkInEnrollmentModal() {
                 secCard.style.display = 'block';
                 document.getElementById('modal-current-section').textContent    = data.section || 'Not assigned';
                 document.getElementById('modal-section-grade-level').textContent = formatGradeLevel(sd.grade_level);
-                const csBtn = document.getElementById('change-section-enrollment-id');
-                if (csBtn) csBtn.value = data.id;
             } else { secCard.style.display = 'none'; }
 
             // Action buttons
@@ -5669,9 +5670,9 @@ function openWalkInEnrollmentModal() {
                 }, 300);
             }
 
-            // Show modal
-            const modal = new bootstrap.Modal(modalElement);
-            modal.show();
+            // Show modal — reuse the existing instance; a second `new Modal()` on an
+            // already-open modal adds a backdrop that never goes away (dimmed screen)
+            bootstrap.Modal.getOrCreateInstance(modalElement).show();
         })
         .catch(error => {
             modalElement.classList.remove('loading');
@@ -5702,73 +5703,17 @@ function openWalkInEnrollmentModal() {
         });
     }
 
-    // Change Section (enrollment detail modal "Change Section" button) —
-    // previously dangling: the button called these two functions but
-    // neither was ever defined anywhere in this file.
-    function openChangeSectionModal() {
-        var data = window._currentEnrollmentData;
-        if (!data) { showCustomAlert('error', 'Error', 'No enrollment loaded.'); return; }
-        var gradeLevel = (data.student_data || {}).grade_level;
-
-        var select = document.getElementById('new-section-select');
-        select.innerHTML = '<option value="">Loading sections…</option>';
-        document.getElementById('change-section-enrollment-id').value = data.id;
-
-        fetch('/admin/sections?grade_level=' + encodeURIComponent(gradeLevel || ''), {
-            headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken }
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-            var sections = d.sections || [];
-            if (!sections.length) {
-                select.innerHTML = '<option value="">No sections available for this grade level</option>';
-                return;
-            }
-            select.innerHTML = '<option value="">-- Select Section --</option>' +
-                sections.map(function(s) {
-                    var current = data.section && s.name === data.section ? ' (current)' : '';
-                    return '<option value="' + s.id + '">' + s.name + current + '</option>';
-                }).join('');
-        })
-        .catch(function() {
-            select.innerHTML = '<option value="">Failed to load sections</option>';
-        });
-
-        new bootstrap.Modal(document.getElementById('changeSectionModal')).show();
-    }
-
-    function saveSectionChange() {
-        var enrollmentId = document.getElementById('change-section-enrollment-id').value;
-        var sectionId    = document.getElementById('new-section-select').value;
-        if (!sectionId) { showCustomAlert('warning', 'Warning', 'Please select a section.'); return; }
-
-        var btn = document.querySelector('#changeSectionModal .btn-primary');
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
-
-        fetch('/admin/enrollments/' + enrollmentId + '/change-section', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-            body: JSON.stringify({ section_id: sectionId })
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(d) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-check"></i> Save Changes';
-            if (d.success) {
-                bootstrap.Modal.getInstance(document.getElementById('changeSectionModal')).hide();
-                showCustomAlert('success', 'Success!', d.message || 'Section changed successfully.');
-                viewEnrollmentModal(enrollmentId);
-            } else {
-                showCustomAlert('error', 'Error', d.message || 'Failed to change section.');
-            }
-        })
-        .catch(function() {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-check"></i> Save Changes';
-            showCustomAlert('error', 'Error', 'Network error while changing section.');
-        });
-    }
+    // Section changes are edited inline in the details modal (see
+    // admin/enrollments/view-modal.blade.php). Once the modal closes after a
+    // change, reload the Enrollment list (same filters/page) so it shows the new section.
+    var _enrollmentListStale = false;
+    window.onEnrollmentSectionChanged = function () { _enrollmentListStale = true; };
+    document.addEventListener('hidden.bs.modal', function (e) {
+        if (e.target && e.target.id === 'enrollmentViewModal' && _enrollmentListStale) {
+            _enrollmentListStale = false;
+            loadEnrollmentSection(window._lastEnrollmentUrl || '{{ route("admin.section.enrollment") }}');
+        }
+    });
 
 
 
@@ -9110,7 +9055,10 @@ function openWalkInEnrollmentModal() {
         // (2027-2028), not the current one (2026-2027), which is exactly
         // the mismatch that was still showing up here after the dropdown
         // itself got fixed.
-        document.getElementById('sec-sy').value = {!! json_encode($currentSchoolYear ?? '') !!} || document.getElementById('sec-sy').options[0].value;
+        // When Section Management is filtered to a specific year (e.g. next
+        // year's sections for promoted students), new sections go there.
+        const viewedSy = @js(($sectionSyFilter ?? 'all') !== 'all' ? $sectionSyFilter : null);
+        document.getElementById('sec-sy').value = viewedSy || {!! json_encode($currentSchoolYear ?? '') !!} || document.getElementById('sec-sy').options[0].value;
 
         document.getElementById('sec-active').value = '1';
 
@@ -9138,6 +9086,16 @@ function openWalkInEnrollmentModal() {
 
         new bootstrap.Modal(document.getElementById('sectionModal')).show();
 
+    }
+
+    // Section Management School Year filter — server-side, so stats and pagination follow it
+    function changeSectionSchoolYear(sy) {
+        const params = new URLSearchParams(window.location.search);
+        params.set('section', 'sections');
+        params.set('section_sy', sy || 'all');
+        params.delete('section_page');
+        localStorage.setItem('currentAdminSection', 'sections');
+        window.location.search = params.toString();
     }
 
     function saveSectionRecord(confirmed) {
@@ -9188,7 +9146,11 @@ function openWalkInEnrollmentModal() {
 
             bootstrap.Modal.getInstance(document.getElementById('sectionModal')).hide();
 
-            
+            // Saved into a different school year than the one being viewed? Show that year.
+            const viewingSy = (document.getElementById('sectionSyFilter') || {}).value;
+            const reloadSections = () => (viewingSy && viewingSy !== 'all' && viewingSy !== body.school_year)
+                ? changeSectionSchoolYear(body.school_year)
+                : reloadWithSection();
 
             // If creating a new section, auto-create and assign standard subjects
 
@@ -9290,7 +9252,7 @@ function openWalkInEnrollmentModal() {
 
                             showCustomAlert('success', 'Saved!', `Section created with ${createdCount} standard subjects assigned.`);
 
-                            setTimeout(() => reloadWithSection(), 1000);
+                            setTimeout(reloadSections, 1000);
 
                         })
 
@@ -9298,7 +9260,7 @@ function openWalkInEnrollmentModal() {
 
                             showCustomAlert('success', 'Saved!', 'Section created. Some subjects may not have been assigned.');
 
-                            setTimeout(() => reloadWithSection(), 1000);
+                            setTimeout(reloadSections, 1000);
 
                         });
 
@@ -9306,7 +9268,7 @@ function openWalkInEnrollmentModal() {
 
                         showCustomAlert('success', 'Saved!', 'Section created.');
 
-                        setTimeout(() => reloadWithSection(), 1000);
+                        setTimeout(reloadSections, 1000);
 
                     }
 
@@ -9316,7 +9278,7 @@ function openWalkInEnrollmentModal() {
 
                 showCustomAlert('success', 'Saved!', id ? 'Section updated.' : 'Section created.');
 
-                setTimeout(() => reloadWithSection(), 1000);
+                setTimeout(reloadSections, 1000);
 
             }
 
@@ -9539,49 +9501,18 @@ function openWalkInEnrollmentModal() {
 
         new bootstrap.Modal(document.getElementById('addStudentModal')).show();
 
-        // Fetch section details first to get current students
-
-        fetch(`/admin/sections/${sectionId}`, {
+        // Every eligible student for THIS section (its grade + school year, not yet in a
+        // section of that grade). This used to read page 1 of /admin/students — only 15
+        // of ~180 rows — so unassigned students on later pages never appeared.
+        fetch(`/admin/sections/${sectionId}/eligible-students`, {
             headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             credentials: 'same-origin'
         })
-        .then(r => {
-            if (!r.ok) {
-                return r.text().then(t => { throw new Error('HTTP ' + r.status + ': ' + t.substring(0,200)); });
-            }
-            return r.json();
-        })
-
-        .then(sectionData => {
-
-            const currentStudentIds = (sectionData.students || []).map(s => s.id);
-
-            // Fetch all eligible students
-
-            return fetch('/admin/students?payment_status=paid,partial,approved', {
-
-                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-
-            })
-
-            .then(r => { if (!r.ok) throw new Error('Failed'); return r.json(); })
-
-            .then(d => {
-
-                const allStudents = d.data || d.students || d || [];
-
-                // Filter out students already in this section OR already assigned to any section
-                eligibleStudents = allStudents.filter(s => {
-                    if (currentStudentIds.includes(s.id)) return false;
-                    // Exclude students already assigned to a section (has a section that is not empty/unassigned)
-                    if (s.section && s.section !== 'Unassigned' && s.section !== '') return false;
-                    return true;
-                });
-
-                renderStudentList(eligibleStudents);
-
-            });
-
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(d => {
+            eligibleStudents = d.students || [];
+            window._addStudentContext = d; // for the empty-state note (students waiting in another school year)
+            renderStudentList(eligibleStudents);
         })
 
         .catch(err => {
@@ -9602,9 +9533,22 @@ function openWalkInEnrollmentModal() {
 
         if (!students || students.length === 0) {
 
+            // Same-grade students waiting in ANOTHER school year (typically promoted into next year)
+            const ctx   = window._addStudentContext || {};
+            const gl    = { nursery:'Nursery', kindergarten:'Kindergarten', grade1:'Grade 1', grade2:'Grade 2', grade3:'Grade 3', grade4:'Grade 4', grade5:'Grade 5', grade6:'Grade 6' }[ctx.grade_level] || ctx.grade_level || '';
+            const elsewhere = Object.entries(ctx.waiting_elsewhere || {});
+            const note = elsewhere.length && !(document.getElementById('studentSearchInput').value || '').trim()
+                ? '<div style="margin:18px auto 0; max-width:520px; text-align:left; background:#fffbeb; border:1px solid #fde68a; border-radius:10px; padding:12px 14px; font-size:12.5px; color:#92400e;">' +
+                  '<i class="bi bi-info-circle-fill me-1"></i>' +
+                  elsewhere.map(([sy, c]) => '<strong>' + c + ' ' + escHtml(gl) + ' student' + (c == 1 ? ' is' : 's are') + '</strong> waiting for a section in <strong>S.Y. ' + escHtml(sy) + '</strong>').join('; ') +
+                  '. This section is for S.Y. ' + escHtml(ctx.school_year || '') + ', so they can only be added to a ' + escHtml(gl) + ' section of their own school year — create one in Section Management if it doesn\'t exist yet.' +
+                  elsewhere.map(([sy]) => '<div style="margin-top:8px;"><a href="#" onclick="changeSectionSchoolYear(' + escHtml(JSON.stringify(sy)) + ');return false;" style="color:#92400e;font-weight:700;"><i class="bi bi-arrow-right-circle me-1"></i>Open S.Y. ' + escHtml(sy) + ' sections</a></div>').join('') +
+                  '</div>'
+                : '';
+
             tbody.innerHTML =
 
-                '<tr><td colspan="7" style="text-align:center; padding:60px 20px;"><div style="background:#e8f8f0; width:70px; height:70px; border-radius:50%; display:flex;align-items:center; justify-content:center; margin:0 auto 16px;"><i class="bi bi-people" style="font-size:32px; color:var(--green);"></i></div><div style="font-weight:700; font-size:15px; color:var(--text); margin-bottom:4px;">No eligible students found</div><div style="font-size:13px; color:var(--muted);">Students must be approved or enrolled with payment recorded</div></td></tr>';
+                '<tr><td colspan="7" style="text-align:center; padding:60px 20px;"><div style="background:#e8f8f0; width:70px; height:70px; border-radius:50%; display:flex;align-items:center; justify-content:center; margin:0 auto 16px;"><i class="bi bi-people" style="font-size:32px; color:var(--green);"></i></div><div style="font-weight:700; font-size:15px; color:var(--text); margin-bottom:4px;">No students waiting for a section</div><div style="font-size:13px; color:var(--muted);">Everyone in this grade and school year already has a section.</div>' + note + '</td></tr>';
 
             return;
 
@@ -9632,7 +9576,7 @@ function openWalkInEnrollmentModal() {
 
             const paymentClass = s.payment_status === 'paid' ? 'active' : (s.payment_status === 'partial' ? 'enrolled' : 'pending');
 
-            const paymentLabel = s.payment_status === 'paid' ? 'Paid' : (s.payment_status === 'partial' ? 'Installment' : s.payment_status || '—');
+            const paymentLabel = s.payment_status === 'paid' ? 'Paid' : (s.payment_status === 'partial' ? 'Installment' : (s.payment_status === 'pending' ? 'Unpaid' : s.payment_status || '—'));
 
             html += '<tr class="' + (isSelected ? 'table-row-selected' : '') + '" onclick="selectStudent(' + s.id + ')" data-id="' + s.id + '" data-lrn="' + escHtml((s.lrn || '').toLowerCase()) + '" data-name="' + escHtml((s.name || '').toLowerCase()) + '" data-email="' + escHtml((s.email || '').toLowerCase()) + '">' +
 
@@ -11578,7 +11522,9 @@ function openWalkInEnrollmentModal() {
         const sortValue = document.getElementById('enrollmentSortFilter').value;
         const searchInput = document.getElementById('enrollmentSearchInput');
         const searchValue = searchInput ? searchInput.value.trim() : '';
+        const syInput = document.getElementById('enrollmentSyFilter');
         const params = new URLSearchParams();
+        if (syInput) params.set('enrollment_sy', syInput.value); // missing = the Current School Year
         params.set('status', statusValue);
         params.set('grade', gradeValue);
         params.set('sort', sortValue);
@@ -12675,6 +12621,16 @@ function openWalkInEnrollmentModal() {
         _smAssessGradeRaw  = gradeRaw;
         _smAssessFromSY    = fromSY || '';
 
+        // "Next School Year" defaults to the year after the one being assessed
+        // (it was always current + 1, even when assessing an older year)
+        const fromMatch = /^(\d{4})-\d{4}$/.exec(_smAssessFromSY);
+        if (fromMatch) {
+            const toSel = document.getElementById('sm-assess-to-sy');
+            const nextSY = (+fromMatch[1] + 1) + '-' + (+fromMatch[1] + 2);
+            if (![...toSel.options].some(o => o.value === nextSY)) toSel.add(new Option(nextSY, nextSY), 0);
+            toSel.value = nextSY;
+        }
+
         const gradeDisplay = gradeLabels[gradeRaw] || gradeRaw;
         document.getElementById('sm-assess-subtitle').textContent = studentName + ' — ' + gradeDisplay + (section && section !== '—' ? ' (' + section + ')' : '');
         document.getElementById('sm-assess-submit-btn').style.display = 'none';
@@ -13335,7 +13291,7 @@ function openWalkInEnrollmentModal() {
         document.getElementById('bp-none-eligible').style.display = 'none';
 
         _bpGrade  = grade;
-        _bpFromSY = '{{ $currentSchoolYear }}';
+        _bpFromSY = @js($assessSchoolYear ?? $currentSchoolYear); // year selected on the Assessment tab
         _bpToSY   = '{{ $assessNextSchoolYear }}';
         document.getElementById('bp-to-sy').value = _bpToSY;
 
@@ -13422,8 +13378,11 @@ function openWalkInEnrollmentModal() {
     // untouched; the backend re-checks this independently, this button
     // only shows when the server already told us it would succeed)
     function undoPromotion(promotionId, studentName) {
-        showPromoteConfirm(
-            'Undo this promotion for ' + studentName + '? They will be restored to their previous enrollment, and the new one will be cancelled.',
+        // Its own Undo dialog — showPromoteConfirm() is titled "Confirm Promotion"
+        // with a green "Promote" button, which read as the opposite action.
+        showConfirm(
+            'Undo Promotion',
+            'Undo this promotion for ' + studentName + '? They will be restored to their previous enrollment, and the new one will be cancelled. You can promote them again afterwards.',
             function() {
                 fetch('/admin/promotions/' + promotionId + '/undo', {
                     method: 'POST',
@@ -13445,6 +13404,10 @@ function openWalkInEnrollmentModal() {
                 .catch(err => {
                     showAdminToast('Network error: ' + (err.message || 'Unknown'), 'error');
                 });
+            },
+            {
+                btnText: 'Undo Promotion', btnClass: 'btn btn-warning', btnIcon: 'bi-arrow-counterclockwise',
+                headerBg: 'linear-gradient(135deg,#d97706,#b45309)', headerIcon: 'bi-arrow-counterclockwise'
             }
         );
     }
@@ -13460,7 +13423,7 @@ function openWalkInEnrollmentModal() {
         document.getElementById('aa-none').style.display = 'none';
 
         _aaGrade  = grade;
-        _aaFromSY = '{{ $currentSchoolYear }}';
+        _aaFromSY = @js($assessSchoolYear ?? $currentSchoolYear); // year selected on the Assessment tab
         _aaToSY   = '{{ $assessNextSchoolYear }}';
         document.getElementById('aa-to-sy').value = _aaToSY;
 

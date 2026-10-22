@@ -72,7 +72,7 @@ class DashboardController extends Controller
                 COUNT(CASE WHEN e.payment_status IS NULL OR e.payment_status = 'pending' THEN 1 END) as unpaid_count,
                 COALESCE(SUM(CASE WHEN e.payment_status IN ('paid','partial') THEN e.payment_amount ELSE 0 END), 0) as total_collected
             FROM enrollments e
-            WHERE e.id IN (SELECT MAX(id) FROM enrollments GROUP BY user_id)
+            WHERE e.id IN (SELECT MAX(id) FROM enrollments WHERE status <> 'cancelled' GROUP BY user_id)
         ");
 
         $totalCollected = $financeSummary->total_collected ?? 0;
@@ -80,21 +80,47 @@ class DashboardController extends Controller
         $partialCount   = $financeSummary->partial_count   ?? 0;
         $unpaidCount    = $financeSummary->unpaid_count    ?? 0;
 
-        // Student Payment Overview — paginated, with latest enrollment + installments
-        $sort = $request->get('sort', 'newest');
+        // Student Payment Overview — paginated, with latest enrollment + installments.
+        // Filters are server-side now (they used to hide rows of the current 15-row
+        // page in the browser, and "Unpaid" matched a status that doesn't exist).
+        $sort        = $request->get('sort', 'newest');
+        $ovSearch    = trim((string) $request->get('ov_search', ''));
+        $ovPay       = (string) $request->get('ov_pay', 'all');      // all | paid | partial | pending
+        $ovSection   = (string) $request->get('ov_section', '');
+        // Opens on the Current School Year (Admin › Settings › Academic); "all" = every year
+        $ovYear      = (string) $request->get('ov_sy', $this->formatSchoolYear());
+        if ($ovYear !== 'all' && !in_array($ovYear, $this->getSchoolYears(), true)) {
+            $ovYear = $this->formatSchoolYear();
+        }
+
+        // Each row's enrollment: the newest real one, or the one in the picked year,
+        // narrowed by the payment-status/section filters (cancelled = undone promotion)
+        $ovScope = fn ($q) => $q->where('status', '!=', 'cancelled')
+            ->when($ovYear !== 'all', fn ($q) => $q->where('school_year', $ovYear))
+            ->when($ovPay === 'pending', fn ($q) => $q->where(fn ($w) => $w->whereNull('payment_status')->orWhereNotIn('payment_status', ['paid', 'partial'])))
+            ->when(in_array($ovPay, ['paid', 'partial'], true), fn ($q) => $q->where('payment_status', $ovPay))
+            ->when($ovSection !== '', fn ($q) => $q->where('section', $ovSection));
+        $ovFiltered = $ovYear !== 'all' || $ovPay !== 'all' || $ovSection !== '';
+
         $allStudentsPayment = \App\Models\User::where('role', 'student')
             ->whereNull('deleted_at')
-            ->with(['enrollments' => function ($q) {
-                $q->latest()->with('paymentInstallments');
-            }])
+            ->when($ovFiltered, fn ($q) => $q->whereHas('enrollments', $ovScope))
+            ->when($ovSearch !== '', fn ($q) => $q->where(fn ($w) => $w->where('name', 'like', "%{$ovSearch}%")->orWhere('email', 'like', "%{$ovSearch}%")))
+            ->with(['enrollments' => fn ($q) => $ovScope($q)
+                ->orderByRaw("status = 'declined'")
+                ->orderByDesc('id')
+                ->with('paymentInstallments')])
             ->when($sort === 'name_asc',  fn($q) => $q->orderBy('name', 'asc'))
             ->when($sort === 'name_desc', fn($q) => $q->orderBy('name', 'desc'))
             ->when($sort === 'oldest',    fn($q) => $q->orderBy('created_at', 'asc'))
             ->when(!in_array($sort, ['name_asc', 'name_desc', 'oldest']), fn($q) => $q->orderByDesc('created_at'))
-            ->paginate(15, ['*'], 'student_page');
+            ->paginate(15, ['*'], 'student_page')
+            ->withQueryString();
 
-        // Section list for filter dropdown
-        $sections = \App\Models\Section::orderBy('name')->get();
+        // Section list for filter dropdown — one entry per name (sections repeat each school year)
+        $sections = \App\Models\Section::when($ovYear !== 'all', fn ($q) => $q->where('school_year', $ovYear))
+            ->orderBy('name')->get()->unique('name')->values();
+        $schoolYears = $this->getSchoolYears();
 
         // Monthly collection trend (last 6 months) — one grouped query
         // instead of one sum() per month (was 6 queries, now 1).
@@ -123,7 +149,8 @@ class DashboardController extends Controller
 
         return view('finance.dashboard', compact(
             'totalCollected', 'paidCount', 'partialCount', 'unpaidCount',
-            'allStudentsPayment', 'sections', 'sort',
+            'allStudentsPayment', 'sections', 'sort', 'schoolYears',
+            'ovSearch', 'ovPay', 'ovSection', 'ovYear',
             'fnChMonths', 'fnChCollected', 'fnCash', 'fnGcash', 'fnXendit'
         ));
     }
@@ -230,32 +257,54 @@ class DashboardController extends Controller
      */
     public function payments(Request $request)
     {
-        $search     = $request->input('search');
-        $yearFilter = $request->input('school_year');
+        // Filters — server-side now. They used to hide/show rows of the current
+        // page in the browser using data-year / data-method attributes the rows
+        // never had (so any year or method emptied the table), with status values
+        // that don't exist (approved), and only on the Cash tab.
+        $search       = trim((string) $request->input('search', ''));
+        // Opens on the Current School Year (Admin › Settings › Academic); "all" = every year
+        $yearFilter   = (string) $request->input('school_year', $this->formatSchoolYear());
+        $statusFilter = (string) $request->input('status', 'all');
+        $methodFilter = (string) $request->input('method', 'all');
+        if ($yearFilter !== 'all' && !in_array($yearFilter, $this->getSchoolYears(), true)) {
+            $yearFilter = $this->formatSchoolYear();
+        }
+
+        $applyFilters = function ($q) use ($search, $yearFilter, $statusFilter, $methodFilter) {
+            return $q
+                ->when($yearFilter !== 'all', fn ($q) => $q->whereHas('enrollment', fn ($e) => $e->where('school_year', $yearFilter)))
+                ->when($statusFilter !== 'all', fn ($q) => $q->where('status', $statusFilter))
+                ->when($methodFilter !== 'all', fn ($q) => $q->where('payment_method', $methodFilter))
+                ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w
+                    ->where('reference_number', 'like', "%{$search}%")
+                    ->orWhereHas('user', fn ($u) => $u->where('name', 'like', "%{$search}%")->orWhere('email', 'like', "%{$search}%"))));
+        };
 
         // ── Walk-in Transactions: PaymentTransaction (walkin/admin) ──
-        $walkInTransactions = PaymentTransaction::whereIn('payment_type', ['walkin', 'admin'])
+        $walkInTransactions = $applyFilters(PaymentTransaction::whereIn('payment_type', ['walkin', 'admin']))
             ->whereHas('user')
             ->with(['enrollment', 'user', 'installment', 'processedBy'])
             ->orderByDesc('created_at')
-            ->paginate(15, ['*'], 'walkin_page');
+            ->paginate(15, ['*'], 'walkin_page')
+            ->withQueryString();
 
         // ── Xendit / Online Transactions ──
-        $xenditTransactions = PaymentTransaction::where('payment_type', 'online')
+        $xenditTransactions = $applyFilters(PaymentTransaction::where('payment_type', 'online'))
             ->whereHas('user')
             ->with(['enrollment', 'user', 'processedBy'])
             ->orderByDesc('created_at')
-            ->paginate(15, ['*'], 'xendit_page');
+            ->paginate(15, ['*'], 'xendit_page')
+            ->withQueryString();
 
-        // ── Stats ──
-        $payStatsWalkin = PaymentTransaction::whereIn('payment_type', ['walkin', 'admin', 'downpayment'])
+        // ── Stats (same filters) ──
+        $payStatsWalkin = $applyFilters(PaymentTransaction::whereIn('payment_type', ['walkin', 'admin', 'downpayment']))
             ->selectRaw("COUNT(*) as total, COALESCE(SUM(amount), 0) as total_amount")
             ->first();
-        $payStatsXendit = PaymentTransaction::where('payment_type', 'online')
+        $payStatsXendit = $applyFilters(PaymentTransaction::where('payment_type', 'online'))
             ->selectRaw("COUNT(*) as total, COALESCE(SUM(CASE WHEN status='completed' THEN amount ELSE 0 END),0) as total_amount")
             ->first();
 
-        $statusCounts = PaymentTransaction::whereIn('payment_type', ['walkin', 'admin', 'downpayment', 'online'])
+        $statusCounts = $applyFilters(PaymentTransaction::whereIn('payment_type', ['walkin', 'admin', 'downpayment', 'online']))
             ->selectRaw("status, COUNT(*) as total")
             ->groupBy('status')
             ->pluck('total', 'status');
@@ -273,7 +322,8 @@ class DashboardController extends Controller
         $schoolYears = $this->getSchoolYears();
 
         return view('finance.payments', compact(
-            'walkInTransactions', 'xenditTransactions', 'combinedPayStats', 'schoolYears'
+            'walkInTransactions', 'xenditTransactions', 'combinedPayStats', 'schoolYears',
+            'search', 'yearFilter', 'statusFilter', 'methodFilter'
         ));
     }
 
@@ -359,12 +409,14 @@ class DashboardController extends Controller
             // still edit it, this just saves them re-typing what's on file.
             ->with(['user:id,name,email', 'user.guardian', 'paymentInstallments', 'promissoryNotes']);
 
-        // Filter by school year
-        $yearFilter = $request->input('school_year');
-        if ($yearFilter && $yearFilter !== 'all') {
+        // Undone promotions leave a 'cancelled' enrollment behind — not a real plan
+        $query->where('status', '!=', 'cancelled');
+
+        // Filter by school year — opens on the current one; "All Years" (='all')
+        // really means all of them (it used to fall back to the current year too)
+        $yearFilter = $request->input('school_year', $this->formatSchoolYear());
+        if ($yearFilter !== 'all') {
             $query->where('school_year', $yearFilter);
-        } else {
-            $query->where('school_year', $this->formatSchoolYear());
         }
 
         // Filter by status
@@ -893,15 +945,28 @@ class DashboardController extends Controller
         $search     = $request->input('search', '');
         $planFilter = $request->input('plan', 'all');   // all | cash | installment
         $statusFilter = $request->input('status', 'all'); // all | paid | partial | pending
-        $yearFilter = $request->input('school_year', 'all');
+        // Opens on the Current School Year (Admin › Settings › Academic); "all" = every year
+        $yearFilter = (string) $request->input('school_year', $this->formatSchoolYear());
         $sort       = $request->input('sort', 'newest');
+        if ($yearFilter !== 'all' && !in_array($yearFilter, $this->getSchoolYears(), true)) {
+            $yearFilter = $this->formatSchoolYear();
+        }
+
+        // The enrollment each row shows: the student's newest one, or — with a
+        // School Year picked — their enrollment IN that year. It used to always be
+        // the newest one and then get compared to the year, so a promoted student
+        // (newest = next year's) vanished from their own paid/owing year.
+        // Cancelled rows (undone promotions) never count; a real enrollment wins
+        // over a declined one.
+        $enrollmentScope = fn ($q) => $q->where('status', '!=', 'cancelled')
+            ->when($yearFilter !== 'all', fn ($q) => $q->where('school_year', $yearFilter));
 
         $query = \App\Models\User::where('role', 'student')
             ->whereNull('deleted_at')
-            ->whereHas('enrollments')
-            ->with(['enrollments' => function ($q) {
-                $q->latest()->limit(1);
-            }]);
+            ->whereHas('enrollments', $enrollmentScope)
+            ->with(['enrollments' => fn ($q) => $enrollmentScope($q)
+                ->orderByRaw("status = 'declined'")
+                ->orderByDesc('id')]);
 
         switch ($sort) {
             case 'name_asc':
@@ -928,11 +993,6 @@ class DashboardController extends Controller
 
         $allStudents = $query->get()->map(function ($user) {
             $enrollment = $user->enrollments->first();
-            // Phase 4 (docs/SCHOOL-YEAR-VISIBILITY-PHASED-PLAN.md) — a balance
-            // left on a different (almost always prior-year) enrollment,
-            // otherwise invisible since this list only ever shows whichever
-            // enrollment is current.
-            $prior = \App\Services\PaymentService::priorOutstandingBalance($user->id, $enrollment?->id);
             return (object) [
                 'user'           => $user,
                 'enrollment'     => $enrollment,
@@ -946,12 +1006,12 @@ class DashboardController extends Controller
                 'payment_status' => $enrollment?->payment_status ?? 'pending',
                 'enrollment_id'  => $enrollment?->id,
                 'is_cash'        => $enrollment?->payment_option === 'A' || ($enrollment?->payment_type === 'full' && !in_array($enrollment?->payment_option, ['B','C','D'])),
-                'prior_balance'             => $prior['amount'],
-                'prior_balance_school_year' => $prior['school_year'],
+                'prior_balance'             => 0,
+                'prior_balance_school_year' => null,
             ];
         });
 
-        // Apply filters
+        // Apply filters (school year is already applied by $enrollmentScope)
         if ($planFilter !== 'all') {
             $allStudents = $allStudents->filter(fn($s) =>
                 $planFilter === 'cash'
@@ -961,9 +1021,6 @@ class DashboardController extends Controller
         }
         if ($statusFilter !== 'all') {
             $allStudents = $allStudents->filter(fn($s) => $s->payment_status === $statusFilter);
-        }
-        if ($yearFilter !== 'all') {
-            $allStudents = $allStudents->filter(fn($s) => $s->school_year === $yearFilter);
         }
 
         $stats = [
@@ -992,6 +1049,16 @@ class DashboardController extends Controller
             $page,
             ['path' => $request->url(), 'query' => $request->query()]
         );
+
+        // Phase 4 (docs/SCHOOL-YEAR-VISIBILITY-PHASED-PLAN.md) — a balance left
+        // on a different (almost always prior-year) enrollment, otherwise
+        // invisible since each row shows one enrollment. Only for the rows on
+        // this page (it was one query per student in the whole list, ~250).
+        foreach ($allStudents as $s) {
+            $prior = \App\Services\PaymentService::priorOutstandingBalance($s->user->id, $s->enrollment_id);
+            $s->prior_balance             = $prior['amount'];
+            $s->prior_balance_school_year = $prior['school_year'];
+        }
 
         $schoolYears = $this->getSchoolYears();
 

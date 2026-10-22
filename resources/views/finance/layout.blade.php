@@ -674,6 +674,13 @@
             box.querySelector('#ilc-prompt-ok').onclick = submit;
             overlay.addEventListener('click', function (e) { if (e.target === overlay) close(); });
         }
+
+        // Search boxes submit their filter form shortly after typing stops
+        // (shared by All Students, Installments, Payments and the Dashboard overview)
+        function debounceFormSubmit(el, ms) {
+            clearTimeout(el._debounceTimer);
+            el._debounceTimer = setTimeout(() => el.form.requestSubmit(), ms || 600);
+        }
     </script>
     @yield('scripts')
     @stack('scripts')
