@@ -60,6 +60,78 @@ class PaymentService
     }
 
     /**
+     * Which months belong to which term: the 9 monthly installments (July–March)
+     * split in order across the school's terms (Admin › Settings › Academic ›
+     * Total Terms). 3 terms → Jul–Sep / Oct–Dec / Jan–Mar; 4 → 3/2/2/2.
+     *
+     * @return array<int, string[]>  term number => month names
+     */
+    public static function termMonths(?int $terms = null): array
+    {
+        $terms = max(1, min(4, $terms ?? (int) \App\Models\Setting::get('total_terms', 3) ?: 3));
+        $months = self::MONTHS;
+        $out = [];
+        $offset = 0;
+        for ($t = 1; $t <= $terms; $t++) {
+            $size = (int) ceil((count($months) - $offset) / ($terms - $t + 1));
+            $out[$t] = array_slice($months, $offset, $size);
+            $offset += $size;
+        }
+        return $out;
+    }
+
+    /**
+     * Per-term view of an installment plan — what has to be paid in each term
+     * (1st Term = Jul–Sep, …), how much of it is paid, and by when. Purely a
+     * grouping of the existing monthly installments: amounts, due dates, late
+     * fees and the Exam Permit rule (3 months behind) are unchanged.
+     *
+     * @param  \Illuminate\Support\Collection<int, PaymentInstallment>  $installments
+     * @return array<int, array{term:int,label:string,months:string[],amount:float,paid:float,remaining:float,deadline:?Carbon,status:string,is_next:bool}>
+     */
+    public static function termBreakdown($installments, ?int $terms = null): array
+    {
+        $ordinal = [1 => '1st', 2 => '2nd', 3 => '3rd', 4 => '4th'];
+        $today = Carbon::today();
+        $rows = [];
+        $nextFound = false;
+
+        foreach (self::termMonths($terms) as $t => $monthNames) {
+            $items = collect($installments)->filter(fn ($i) => in_array($i->month_name, $monthNames, true));
+            $amount    = round((float) $items->sum(fn ($i) => (float) $i->total_due), 2);
+            $paid      = round((float) $items->sum(fn ($i) => min((float) $i->amount_paid, (float) $i->total_due)), 2);
+            $remaining = round(max(0, $amount - $paid), 2);
+            $deadline  = $items->max('due_date');
+
+            $status = match (true) {
+                $items->isEmpty()                                              => 'none',
+                $remaining <= 0                                                => 'paid',
+                $items->contains(fn ($i) => $i->status === 'pending_approval') => 'pending',
+                $items->contains(fn ($i) => $i->status !== 'paid' && $i->due_date && $i->due_date->lt($today)) => 'overdue',
+                $paid > 0                                                      => 'partial',
+                default                                                        => 'unpaid',
+            };
+
+            $isNext = !$nextFound && in_array($status, ['overdue', 'partial', 'unpaid', 'pending'], true);
+            $nextFound = $nextFound || $isNext;
+
+            $rows[] = [
+                'term'      => $t,
+                'label'     => ($ordinal[$t] ?? $t . 'th') . ' Term',
+                'months'    => $monthNames,
+                'amount'    => $amount,
+                'paid'      => $paid,
+                'remaining' => $remaining,
+                'deadline'  => $deadline,
+                'status'    => $status,
+                'is_next'   => $isNext,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
      * Create payment installments when enrollment is approved
      */
     public static function createInstallments(Enrollment $enrollment): void

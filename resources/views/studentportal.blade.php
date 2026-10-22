@@ -2769,61 +2769,78 @@
                 </div>
             </div>
 
-            {{-- Payment History (all years) — separate from the Payment Details
-                 modal's history, which only ever shows the current enrollment.
-                 This lets a promoted student look back at a prior year's
-                 transactions, same as Grades/Schedule already let them switch
-                 years. See docs/SCHOOL-YEAR-VISIBILITY-PHASED-PLAN.md Phase 5. --}}
-            <div class="content-card mb-4">
-                <div class="content-card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-                    <h6 style="margin:0;"><i class="bi bi-clock-history me-2" style="color:var(--gold);"></i>Payment History</h6>
-                    <select id="paymentHistorySYFilter" onchange="loadPaymentHistoryForYear()"
-                        style="border:1.5px solid #d1d5db;border-radius:8px;padding:6px 10px;font-size:12.5px;font-weight:600;color:var(--text);background:#fff;cursor:pointer;min-width:120px;">
-                        @foreach($allSYOptions as $syOpt)
-                            <option value="{{ $syOpt }}" {{ $syOpt === $currentSY ? 'selected' : '' }}>{{ $syOpt }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                <div style="padding:16px 20px;" id="paymentHistoryStandaloneList">
-                    <div style="text-align:center;padding:20px;color:#999;">
-                        <div class="spinner-border spinner-border-sm me-2"></div> Loading…
-                    </div>
-                </div>
-            </div>
-
-            {{-- Exam Permit status — only relevant for installment plans --}}
-            @if($examPermitStatus)
+            {{-- Payment per Term — the same monthly installments grouped by term
+                 (1st Term = Jul–Sep, 2nd = Oct–Dec, 3rd = Jan–Mar), placed above
+                 Payment History so parents see first what to settle each term.
+                 Uses the page's existing text styles (h6 / .sum-label / .sum-value). --}}
+            @if($enrollment->payment_type === 'installment' || in_array($enrollment->payment_option, ['B', 'C', 'D']))
             @php
-                $epHeld = $examPermitStatus['held'] ?? false;
-                $epReason = $examPermitStatus['reason'] ?? null;
-                $epMonths = $examPermitStatus['overdue_months'] ?? 0;
-                if ($epReason === 'broken_promise') {
-                    $epTitle = 'Exam Permit Withheld — Promissory Note Broken';
-                    $epMsg = 'The promised payment date on file has passed without payment. Please visit the Finance Office to settle the balance or arrange a new Promissory Note.';
-                } elseif ($epHeld) {
-                    $epTitle = 'Exam Permit Withheld';
-                    $epMsg = "Payments are {$epMonths} consecutive months behind. Please settle the balance or arrange a Promissory Note with the Finance Office to restore the Exam Permit.";
-                } else {
-                    $epTitle = 'Exam Permit Clear';
-                    $epMsg = $examPermitStatus['note'] ?? null
-                        ? 'A Promissory Note is on file and in good standing. Please pay by the promised date to keep the Exam Permit clear.'
-                        : 'No hold on file. The Exam Permit is available for periodic exams.';
-                }
+                $termDp     = $enrollment->downpayment_amount ?? 0;
+                $termDpPaid = $termDp > 0 && ($enrollment->payment_amount ?? 0) >= $termDp;
+                $termRows   = \App\Services\PaymentService::termBreakdown($paymentInstallments ?? collect());
+                $termStyle  = [
+                    'paid'    => ['#e8f5e9', '#2e7d32', 'bi-check-circle-fill', 'Paid'],
+                    'partial' => ['#e3f2fd', '#1565c0', 'bi-pie-chart-fill', 'Partially paid'],
+                    'pending' => ['#fff8e1', '#b26a00', 'bi-hourglass-split', 'Awaiting approval'],
+                    'overdue' => ['#ffebee', '#c62828', 'bi-exclamation-triangle-fill', 'Overdue'],
+                    'unpaid'  => ['#f5f5f5', '#616161', 'bi-circle', 'Not yet paid'],
+                ];
             @endphp
-            <div class="content-card mb-4" style="border-left:4px solid {{ $epHeld ? '#c62828' : '#2e7d32' }};">
-                <div style="padding:16px 20px; display:flex; align-items:flex-start; gap:14px;">
-                    <div style="width:40px;height:40px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:{{ $epHeld ? '#ffebee' : '#e8f5e9' }};">
-                        <i class="bi {{ $epHeld ? 'bi-exclamation-triangle-fill' : 'bi-patch-check-fill' }}" style="font-size:18px;color:{{ $epHeld ? '#c62828' : '#2e7d32' }};"></i>
+            @if(collect($termRows)->where('status', '!=', 'none')->isNotEmpty())
+            <div class="content-card mb-4">
+                <div class="content-card-header">
+                    <h6><i class="bi bi-calendar3-range me-2" style="color:var(--gold);"></i>Payment per Term</h6>
+                    <span style="font-size:12px;color:var(--muted);">Settle each term's amount before its exams</span>
+                </div>
+                <div style="padding:20px;">
+                    @if($termDp > 0)
+                        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 16px;margin-bottom:14px;border:1px dashed #d1d5db;border-radius:10px;font-size:13px;">
+                            <span><i class="bi bi-cash-coin me-1" style="color:var(--gold);"></i><span style="font-weight:600;">Downpayment</span> <span style="color:var(--muted);">— upon enrollment</span></span>
+                            <span style="font-weight:600;">₱{{ number_format($termDp, 2) }}
+                                <span style="margin-left:6px;font-size:12px;color:{{ $termDpPaid ? '#15803d' : '#b45309' }};">{{ $termDpPaid ? 'Paid' : 'Not yet paid' }}</span>
+                            </span>
+                        </div>
+                    @endif
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;">
+                        @foreach($termRows as $tr)
+                            @continue($tr['status'] === 'none')
+                            @php [$tBg, $tFg, $tIcon, $tText] = $termStyle[$tr['status']]; @endphp
+                            <div style="border:1px solid {{ $tr['is_next'] ? $tFg : '#e5e7eb' }};border-radius:10px;padding:14px 16px;background:#fff;position:relative;">
+                                @if($tr['is_next'])
+                                    <span style="position:absolute;top:-9px;right:12px;background:{{ $tFg }};color:#fff;font-size:10.5px;font-weight:600;padding:2px 9px;border-radius:20px;">Pay this next</span>
+                                @endif
+                                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                                    <div style="font-size:14px;font-weight:700;color:var(--text);">{{ $tr['label'] }}</div>
+                                    <span style="display:inline-flex;align-items:center;gap:4px;background:{{ $tBg }};color:{{ $tFg }};font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;">
+                                        <i class="bi {{ $tIcon }}"></i>{{ $tText }}
+                                    </span>
+                                </div>
+                                <div class="sum-label" style="margin:2px 0 10px;">{{ collect($tr['months'])->map(fn ($m) => substr($m, 0, 3))->implode(' · ') }}</div>
+                                <div class="sum-value">₱{{ number_format($tr['amount'], 2) }}</div>
+                                <div style="font-size:12px;color:#6b7280;margin-top:6px;display:flex;justify-content:space-between;gap:8px;">
+                                    <span>Paid <span style="font-weight:600;color:#15803d;">₱{{ number_format($tr['paid'], 2) }}</span></span>
+                                    @if($tr['remaining'] > 0)
+                                        <span>Left <span style="font-weight:600;color:{{ $tr['status'] === 'overdue' ? '#b91c1c' : '#b45309' }};">₱{{ number_format($tr['remaining'], 2) }}</span></span>
+                                    @endif
+                                </div>
+                                @if($tr['deadline'] && $tr['remaining'] > 0)
+                                    <div style="font-size:12px;margin-top:8px;padding-top:8px;border-top:1px solid #f1f5f9;color:{{ $tr['status'] === 'overdue' ? '#b91c1c' : '#6b7280' }};">
+                                        <i class="bi bi-calendar-event me-1"></i>Pay by {{ $tr['deadline']->format('M j, Y') }}
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
                     </div>
-                    <div>
-                        <div style="font-weight:700; font-size:14px; color:{{ $epHeld ? '#c62828' : '#2e7d32' }}; margin-bottom:3px;">{{ $epTitle }}</div>
-                        <div style="font-size:12.5px; color:var(--muted); line-height:1.5;">{{ $epMsg }}</div>
+                    <div style="font-size:12px;color:#6b7280;margin-top:12px;line-height:1.5;">
+                        <i class="bi bi-info-circle me-1"></i>Each term is that term's monthly payments added together; you can still pay month by month.
+                        The Exam Permit is only withheld when payments are 3 months behind.
                     </div>
                 </div>
             </div>
             @endif
+            @endif
 
-            {{-- Installment quick-row + View Schedule button --}}
+            {{-- Payment Timeline (installment plans) — right above Payment History --}}
             @if($enrollment->payment_type === 'installment' || in_array($enrollment->payment_option, ['B', 'C', 'D']))
             @php
                 $instList    = $paymentInstallments ?? collect([]);
@@ -2897,6 +2914,60 @@
                         @elseif($tlOverdueCount === 0)
                             <span style="color:#43a047;font-weight:700;"><i class="bi bi-check-circle-fill me-1"></i>Fully paid</span>
                         @endif
+                    </div>
+                </div>
+            </div>
+            @endif
+
+            {{-- Payment History (all years) — separate from the Payment Details
+                 modal's history, which only ever shows the current enrollment.
+                 This lets a promoted student look back at a prior year's
+                 transactions, same as Grades/Schedule already let them switch
+                 years. See docs/SCHOOL-YEAR-VISIBILITY-PHASED-PLAN.md Phase 5. --}}
+            <div class="content-card mb-4">
+                <div class="content-card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                    <h6 style="margin:0;"><i class="bi bi-clock-history me-2" style="color:var(--gold);"></i>Payment History</h6>
+                    <select id="paymentHistorySYFilter" onchange="loadPaymentHistoryForYear()"
+                        style="border:1.5px solid #d1d5db;border-radius:8px;padding:6px 10px;font-size:12.5px;font-weight:600;color:var(--text);background:#fff;cursor:pointer;min-width:120px;">
+                        @foreach($allSYOptions as $syOpt)
+                            <option value="{{ $syOpt }}" {{ $syOpt === $currentSY ? 'selected' : '' }}>{{ $syOpt }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div style="padding:16px 20px;" id="paymentHistoryStandaloneList">
+                    <div style="text-align:center;padding:20px;color:#999;">
+                        <div class="spinner-border spinner-border-sm me-2"></div> Loading…
+                    </div>
+                </div>
+            </div>
+
+            {{-- Exam Permit status — only relevant for installment plans --}}
+            @if($examPermitStatus)
+            @php
+                $epHeld = $examPermitStatus['held'] ?? false;
+                $epReason = $examPermitStatus['reason'] ?? null;
+                $epMonths = $examPermitStatus['overdue_months'] ?? 0;
+                if ($epReason === 'broken_promise') {
+                    $epTitle = 'Exam Permit Withheld — Promissory Note Broken';
+                    $epMsg = 'The promised payment date on file has passed without payment. Please visit the Finance Office to settle the balance or arrange a new Promissory Note.';
+                } elseif ($epHeld) {
+                    $epTitle = 'Exam Permit Withheld';
+                    $epMsg = "Payments are {$epMonths} consecutive months behind. Please settle the balance or arrange a Promissory Note with the Finance Office to restore the Exam Permit.";
+                } else {
+                    $epTitle = 'Exam Permit Clear';
+                    $epMsg = $examPermitStatus['note'] ?? null
+                        ? 'A Promissory Note is on file and in good standing. Please pay by the promised date to keep the Exam Permit clear.'
+                        : 'No hold on file. The Exam Permit is available for periodic exams.';
+                }
+            @endphp
+            <div class="content-card mb-4" style="border-left:4px solid {{ $epHeld ? '#c62828' : '#2e7d32' }};">
+                <div style="padding:16px 20px; display:flex; align-items:flex-start; gap:14px;">
+                    <div style="width:40px;height:40px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:{{ $epHeld ? '#ffebee' : '#e8f5e9' }};">
+                        <i class="bi {{ $epHeld ? 'bi-exclamation-triangle-fill' : 'bi-patch-check-fill' }}" style="font-size:18px;color:{{ $epHeld ? '#c62828' : '#2e7d32' }};"></i>
+                    </div>
+                    <div>
+                        <div style="font-weight:700; font-size:14px; color:{{ $epHeld ? '#c62828' : '#2e7d32' }}; margin-bottom:3px;">{{ $epTitle }}</div>
+                        <div style="font-size:12.5px; color:var(--muted); line-height:1.5;">{{ $epMsg }}</div>
                     </div>
                 </div>
             </div>
