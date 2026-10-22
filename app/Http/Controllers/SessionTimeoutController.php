@@ -23,10 +23,11 @@ class SessionTimeoutController extends Controller
     {
         // Touching the session is enough. Answers 401 once logged out (e.g. by another window),
         // so a page still showing the old content goes to "You have been logged out".
+        // The current timeout comes back too, so open pages follow a change made in Settings.
         $signedIn = Auth::check() || Auth::guard('finance')->check() || Auth::guard('cashier')->check();
 
         return $signedIn
-            ? response()->noContent()
+            ? response()->json(['minutes' => SecurityPolicy::sessionMinutes()])
             : response()->json(['session_expired' => true], 401);
     }
 
@@ -43,7 +44,7 @@ class SessionTimeoutController extends Controller
         $user = Auth::user() ?? Auth::guard('finance')->user() ?? Auth::guard('cashier')->user();
         if ($user) {
             ActivityLogger::log('logout', $user->name . ' was logged out automatically after '
-                . SecurityPolicy::sessionMinutes() . ' minutes of inactivity', 'User', $user->id);
+                . SecurityPolicy::sessionMinutesLabel() . ' of inactivity', 'User', $user->id);
         }
         foreach (array_keys(self::PORTALS) as $guard) {
             Auth::guard($guard)->logout();

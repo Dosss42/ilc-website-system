@@ -13,7 +13,7 @@
                 Your session has expired, so you were logged out for your security. Please log in again.
             @else
                 For your security, you were logged out automatically after
-                <strong style="color:#334155;">{{ (int) ($notice['minutes'] ?? 15) }} minutes</strong> of inactivity. Please log in again.
+                <strong style="color:#334155;">{{ \App\Support\SecurityPolicy::sessionMinutesLabel((int) ($notice['minutes'] ?? 15)) }}</strong> of inactivity. Please log in again.
             @endif
         </div>
         <button type="button" id="ilc-session-notice-ok"

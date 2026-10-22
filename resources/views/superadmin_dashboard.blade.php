@@ -1400,8 +1400,8 @@
                 <h1>System Logs</h1>
                 <p>Full audit trail of all system activities.</p>
             </div>
-            <a href="#" id="exportLogsBtn" class="btn-dash btn-secondary" onclick="exportLogsCsv(event)">
-                <i class="bi bi-download"></i> Export Logs
+            <a href="#" id="exportLogsBtn" class="btn-dash btn-secondary" onclick="exportLogsPdf(event)">
+                <i class="bi bi-file-earmark-pdf"></i> Export Logs (PDF)
             </a>
         </div>
 
@@ -1416,9 +1416,9 @@
                     </p>
                 </div>
                 <div style="display:flex;gap:8px;align-items:center;">
-                    <select class="form-fld" id="logRetentionSelect" style="min-width:170px;" data-current="{{ $logRetentionMonths }}">
-                        @foreach(\App\Services\AuditLogRetention::OPTIONS as $months => $label)
-                            <option value="{{ $months }}" {{ $logRetentionMonths === $months ? 'selected' : '' }}>Keep {{ $label === 'Never (keep all)' ? 'all (never clear)' : $label }}</option>
+                    <select class="form-fld" id="logRetentionSelect" style="min-width:170px;background-color:#fff;" data-current="{{ $logRetentionPeriod }}">
+                        @foreach(\App\Services\AuditLogRetention::OPTIONS as $period => $label)
+                            <option value="{{ $period }}" {{ $logRetentionPeriod === (string) $period ? 'selected' : '' }}>Keep {{ $label === 'Never (keep all)' ? 'all (never clear)' : $label }}</option>
                         @endforeach
                     </select>
                     <button type="button" class="btn-dash btn-primary" onclick="saveLogRetention()">
@@ -1474,7 +1474,12 @@
                 </form>
                 @if(request('log_search') || request('log_type') || request('log_role') || $logFrom || $logTo)
                 <div style="margin-top:10px;font-size:12px;color:var(--muted);">
-                    <i class="bi bi-funnel-fill me-1"></i>{{ number_format($logs->total()) }} matching log(s) — Export Logs downloads exactly these.
+                    <i class="bi bi-funnel-fill me-1"></i>{{ number_format($logs->total()) }} matching log(s) — Export Logs (PDF) includes exactly these.
+                </div>
+                @endif
+                @if($logs->total() > \App\Http\Controllers\SuperAdminController::LOGS_PDF_MAX_ROWS)
+                <div style="margin-top:6px;font-size:12px;color:#b45309;">
+                    <i class="bi bi-info-circle me-1"></i>A PDF holds up to {{ number_format(\App\Http\Controllers\SuperAdminController::LOGS_PDF_MAX_ROWS) }} logs (the newest). Narrow the dates to export the rest.
                 </div>
                 @endif
             </div>
@@ -3274,7 +3279,12 @@
                 _hiddenAt = Date.now();
             } else {
                 if (_hiddenAt && (Date.now() - _hiddenAt) >= THRESHOLD) {
-                    location.reload();
+                    var reload = function () {
+                        try { sessionStorage.setItem('ilc_idle_auto_reload', '1'); } catch (e) {} // not activity (idle-logout.js)
+                        location.reload();
+                    };
+                    // While "Are you still there?" is due it shows instead; the reload waits for "Stay logged in"
+                    if (!(window.ilcIdleLogout && window.ilcIdleLogout.holdReload(reload))) reload();
                 }
                 _hiddenAt = null;
             }
@@ -3415,25 +3425,27 @@
     // System Logs › Automatic Clearing (Super Admin only). Saving clears older logs right away.
     function saveLogRetention() {
         var sel = document.getElementById('logRetentionSelect');
-        var months = parseInt(sel.value, 10);
-        if (months === parseInt(sel.dataset.current, 10)) { saToast('warning', 'No change — this is already the current setting.'); return; }
+        var period = sel.value; // '1w', '2w', '1'…'12' (months), '0' = never
+        if (period === sel.dataset.current) { saToast('warning', 'No change — this is already the current setting.'); return; }
+        var never = period === '0';
         var label = sel.options[sel.selectedIndex].text;
         saConfirm({
             title: 'Automatic Clearing',
             sub: label,
-            msg: months === 0
+            msg: never
                 ? 'Audit logs will be kept until you change this setting.'
-                : 'Audit logs older than ' + label.replace(/^Keep /, '') + ' will be deleted now, and every day from now on. Deleted logs cannot be recovered — export them first if you need a copy.',
-            icon: months === 0 ? 'bi-infinity' : 'bi-clock-history',
-            gradient: months === 0 ? undefined : 'linear-gradient(135deg,#b45309,#d97706)',
+                : 'Audit logs older than ' + label.replace(/^Keep /, '') + ' will be deleted now, and every day from now on. Deleted logs cannot be recovered — export them first if you need a copy.'
+                  + (/w$/.test(period) ? ' With weeks, a payment problem reported later than that can no longer be checked in the logs.' : ''),
+            icon: never ? 'bi-infinity' : 'bi-clock-history',
+            gradient: never ? undefined : 'linear-gradient(135deg,#b45309,#d97706)',
             btnLabel: 'Save',
-            btnColor: months === 0 ? undefined : '#d97706',
+            btnColor: never ? undefined : '#d97706',
             onConfirm: async function () {
                 try {
                     var r = await fetch('{{ route("superadmin.logs.retention") }}', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-                        body: JSON.stringify({ months: months })
+                        body: JSON.stringify({ period: period })
                     });
                     var d = await r.json();
                     if (!r.ok || !d.success) { saToast('error', d.message || 'Could not save the setting.'); return; }
@@ -3886,7 +3898,7 @@
         return params;
     }
 
-    function exportLogsCsv(e) {
+    function exportLogsPdf(e) {
         e.preventDefault();
         var params = currentLogFilterParams();
         window.location.href = '{{ route("superadmin.logs.export") }}?' + params.toString();

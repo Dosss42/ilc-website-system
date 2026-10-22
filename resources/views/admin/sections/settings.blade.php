@@ -183,7 +183,8 @@
                         <div class="row g-3">
                             <div class="col-md-3">
                                 <label class="form-lbl">Session Timeout (min)</label>
-                                <input type="number" id="set-session_timeout" class="form-fld" min="5" placeholder="120">
+                                <input type="number" id="set-session_timeout" class="form-fld" min="{{ \App\Support\SecurityPolicy::SESSION_MINUTES_MIN }}" max="{{ \App\Support\SecurityPolicy::SESSION_MINUTES_MAX }}" placeholder="120">
+                                <div style="font-size:11px;color:var(--muted);margin-top:3px;">{{ \App\Support\SecurityPolicy::SESSION_MINUTES_MIN }}–{{ number_format(\App\Support\SecurityPolicy::SESSION_MINUTES_MAX) }} minutes of no activity. Open pages follow the new value right away.</div>
                             </div>
                             <div class="col-md-3">
                                 <label class="form-lbl">Max Login Attempts</label>

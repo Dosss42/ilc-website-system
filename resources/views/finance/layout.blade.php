@@ -714,7 +714,12 @@
                     _hiddenAt = Date.now();
                 } else {
                     if (_hiddenAt && (Date.now() - _hiddenAt) >= THRESHOLD) {
-                        location.reload();
+                        var reload = function () {
+                            try { sessionStorage.setItem('ilc_idle_auto_reload', '1'); } catch (e) {} // not activity (idle-logout.js)
+                            location.reload();
+                        };
+                        // While "Are you still there?" is due it shows instead; the reload waits for "Stay logged in"
+                        if (!(window.ilcIdleLogout && window.ilcIdleLogout.holdReload(reload))) reload();
                     }
                     _hiddenAt = null;
                 }

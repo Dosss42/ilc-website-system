@@ -5197,7 +5197,12 @@ function openWalkInEnrollmentModal() {
                 _hiddenAt = Date.now();
             } else {
                 if (_hiddenAt && (Date.now() - _hiddenAt) >= THRESHOLD) {
-                    reloadWithSection();
+                    var reload = function () {
+                        try { sessionStorage.setItem('ilc_idle_auto_reload', '1'); } catch (e) {} // not activity (idle-logout.js)
+                        reloadWithSection();
+                    };
+                    // While "Are you still there?" is due it shows instead; the reload waits for "Stay logged in"
+                    if (!(window.ilcIdleLogout && window.ilcIdleLogout.holdReload(reload))) reload();
                 }
                 _hiddenAt = null;
             }
@@ -12668,7 +12673,11 @@ function openWalkInEnrollmentModal() {
         })
         .then(r => r.json())
         .then(d => {
-            if (d.success) showAdminToast('Settings saved successfully.', 'success');
+            if (d.success) {
+                showAdminToast('Settings saved successfully.', 'success');
+                // A new Session Timeout applies to this page (and the other open tabs) right away
+                if (group === 'security' && window.ilcIdleLogout && window.ilcIdleLogout.refresh) window.ilcIdleLogout.refresh();
+            }
             else showAdminToast(d.message || 'Failed to save settings.', 'error');
         })
         .catch(() => showAdminToast('Network error saving settings.', 'error'));

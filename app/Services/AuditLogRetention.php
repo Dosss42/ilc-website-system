@@ -18,47 +18,54 @@ use Illuminate\Support\Carbon;
  */
 class AuditLogRetention
 {
+    /** Holds the period code below (named "months" from before weeks were added). */
     public const SETTING = 'audit_log_retention_months';
     private const LAST_RUN = 'audit_log_last_cleared_on';
 
-    /** Months to keep => label. 0 = never clear. Weeks aren't offered: payment disputes
-     * can surface weeks later, and the log must still be there to settle them. */
+    /** Period code => label: "Nw" = N weeks, a number = that many months, "0" = never clear.
+     * Weeks are for a school that wants the log small; a payment dispute that surfaces later
+     * than that can no longer be checked against it (the confirm dialog says so). */
     public const OPTIONS = [
-        1  => '1 month',
-        3  => '3 months',
-        6  => '6 months',
-        9  => '9 months',
-        12 => '12 months',
-        0  => 'Never (keep all)',
+        '1w' => '1 week',
+        '2w' => '2 weeks',
+        '1'  => '1 month',
+        '3'  => '3 months',
+        '6'  => '6 months',
+        '9'  => '9 months',
+        '12' => '12 months',
+        '0'  => 'Never (keep all)',
     ];
 
-    public const DEFAULT_MONTHS = 12;
+    public const DEFAULT_PERIOD = '12';
 
     /** Rows deleted per statement, so a big clear never locks the table for long. */
     private const BATCH = 1000;
 
-    public static function months(): int
+    /** The saved period code ('1w', '12', '0', …); anything unknown falls back to 12 months. */
+    public static function period(): string
     {
-        $months = Setting::get(self::SETTING);
-        $months = ($months === null || $months === '') ? self::DEFAULT_MONTHS : (int) $months;
-        return array_key_exists($months, self::OPTIONS) ? $months : self::DEFAULT_MONTHS;
+        $period = (string) Setting::get(self::SETTING);
+        return array_key_exists($period, self::OPTIONS) ? $period : self::DEFAULT_PERIOD;
     }
 
-    public static function label(?int $months = null): string
+    public static function label(?string $period = null): string
     {
-        return self::OPTIONS[$months ?? self::months()];
+        return self::OPTIONS[$period ?? self::period()];
     }
 
     /** Entries older than this are cleared; null when set to keep everything. */
     public static function cutoff(): ?Carbon
     {
-        $months = self::months();
-        return $months > 0 ? now()->subMonths($months) : null;
+        $period = self::period();
+        if (str_ends_with($period, 'w')) {
+            return now()->subWeeks((int) $period);
+        }
+        return (int) $period > 0 ? now()->subMonths((int) $period) : null;
     }
 
-    public static function setMonths(int $months): void
+    public static function setPeriod(string $period): void
     {
-        Setting::set(self::SETTING, $months, 'integer');
+        Setting::set(self::SETTING, $period, 'string');
     }
 
     /** Clear old entries unless that already ran today. Returns how many were deleted. */

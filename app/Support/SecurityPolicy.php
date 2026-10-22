@@ -23,9 +23,20 @@ class SecurityPolicy
         return self::clamp((int) Setting::get('lockout_duration', 15), 1, 1440);
     }
 
+    /** Session Timeout: 1–1440 minutes of inactivity (a value outside is brought into range). */
+    public const SESSION_MINUTES_MIN = 1;
+    public const SESSION_MINUTES_MAX = 1440;
+
     public static function sessionMinutes(): int
     {
-        return self::clamp((int) Setting::get('session_timeout', 120), 5, 1440);
+        return self::clamp((int) Setting::get('session_timeout', 120), self::SESSION_MINUTES_MIN, self::SESSION_MINUTES_MAX);
+    }
+
+    /** "1 minute" / "15 minutes", for the logout notice and the audit log. */
+    public static function sessionMinutesLabel(?int $minutes = null): string
+    {
+        $minutes ??= self::sessionMinutes();
+        return $minutes . ' ' . ($minutes === 1 ? 'minute' : 'minutes');
     }
 
     public static function passwordMinLength(): int

@@ -57,13 +57,13 @@ class SessionTimeoutTest extends TestCase
             ->where('description', 'Cashier Ana was logged out automatically after 15 minutes of inactivity')->exists());
 
         $this->actingAs($cashier, 'cashier')->get('/cashier/dashboard')->assertOk();
-        $this->getJson('/session/ping')->assertNoContent();
+        $this->getJson('/session/ping')->assertOk()->assertJson(['minutes' => 15]);
     }
 
     public function test_keep_alive_reports_a_logout_from_another_window(): void
     {
         $admin = User::factory()->admin()->create();
-        $this->actingAs($admin, 'web')->getJson('/session/ping')->assertNoContent();
+        $this->actingAs($admin, 'web')->getJson('/session/ping')->assertOk();
 
         // Another window/tab logs out the shared session…
         $this->postJson('/session/expire')->assertOk();
@@ -136,7 +136,7 @@ class SessionTimeoutTest extends TestCase
         $this->assertSame($tenMinAgo, session($key));
 
         // The in-page activity ping does
-        $this->get('/session/ping', ['Sec-Fetch-Mode' => 'cors'])->assertNoContent();
+        $this->get('/session/ping', ['Sec-Fetch-Mode' => 'cors'])->assertOk();
         $this->assertGreaterThanOrEqual(time() - 2, session($key));
 
         // Opening a page does
@@ -145,6 +145,41 @@ class SessionTimeoutTest extends TestCase
 
         // Within the limit nothing happens
         $this->assertAuthenticatedAs($cashier, 'cashier');
+    }
+
+    public function test_short_timeouts_are_used_as_set_and_open_pages_learn_a_new_value(): void
+    {
+        $admin = User::factory()->admin()->create(['name' => 'Admin Bea']);
+        $key = \App\Http\Middleware\EnforceIdleTimeout::KEY;
+
+        // 2 minutes is used as 2 (it used to become 5 without saying so); below 1 becomes 1
+        Setting::set('session_timeout', 2, 'integer');
+        $this->assertSame(2, \App\Support\SecurityPolicy::sessionMinutes());
+        Setting::set('session_timeout', 0, 'integer');
+        $this->assertSame(1, \App\Support\SecurityPolicy::sessionMinutes());
+        Setting::set('session_timeout', 2, 'integer');
+
+        // The page carries 2, and the in-page ping reports the current value
+        $this->actingAs($admin, 'web')->get('/admin/dashboard')->assertSee('data-minutes="2"', false);
+        $this->getJson('/session/ping')->assertOk()->assertJson(['minutes' => 2]);
+        Setting::set('session_timeout', 3, 'integer'); // changed in Settings while the page is open
+        $this->getJson('/session/ping')->assertOk()->assertJson(['minutes' => 3]);
+        Setting::set('session_timeout', 2, 'integer');
+
+        // The server enforces 2 minutes too: 1.5 min idle is fine, 2.5 min is logged out
+        $this->withSession([$key => time() - 90])->get('/admin/dashboard', ['Sec-Fetch-Mode' => 'navigate'])->assertOk();
+        $this->withSession([$key => time() - 150])->get('/admin/dashboard', ['Sec-Fetch-Mode' => 'navigate'])
+            ->assertRedirect(route('session.expired', ['portal' => 'web']));
+        $this->assertTrue(ActivityLog::where('description', 'Admin Bea was logged out automatically after 2 minutes of inactivity')->exists());
+
+        // "1 minute", not "1 minutes"
+        $this->assertSame('1 minute', \App\Support\SecurityPolicy::sessionMinutesLabel(1));
+        $this->get('/session-expired?portal=web');
+        $this->get(route('login'))->assertSee('2 minutes');
+
+        // The Settings field allows 1–1440
+        $this->actingAs(User::factory()->admin()->create(), 'web')->get('/admin/dashboard')
+            ->assertSee('id="set-session_timeout" class="form-fld" min="1" max="1440"', false);
     }
 
     public function test_a_login_form_left_open_too_long_just_reloads(): void

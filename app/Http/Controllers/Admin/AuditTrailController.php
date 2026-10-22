@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
 use App\Services\AuditLogRetention;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 /**
  * Admin › Audit Trail — what every role did, except the Super Admin (who sits above the
@@ -34,6 +35,11 @@ class AuditTrailController extends Controller
 
         // Everything but Super Admin entries ("System" rows have no role and stay visible)
         $base = ActivityLog::where(fn ($q) => $q->whereNull('user_role')->orWhere('user_role', '!=', 'superadmin'));
+        // Counted as all rows minus the Super Admin's: both use an index, while counting the
+        // "null or not superadmin" condition reads the whole table (3.5 s at ~330,000 rows)
+        $total = ActivityLog::count() - ActivityLog::where('user_role', 'superadmin')->count();
+        $filtered = $search !== '' || isset(ActivityLog::EVENT_TYPES[$type]) || isset($this->roles()[$role])
+            || $this->isDate($from) || $this->isDate($to);
 
         $query = (clone $base)
             ->when($search !== '', function ($q) use ($search) {
@@ -42,11 +48,12 @@ class AuditTrailController extends Controller
             })
             ->when(isset(ActivityLog::EVENT_TYPES[$type]), fn ($q) => $q->where('event_type', $type))
             ->when(isset($this->roles()[$role]), fn ($q) => $q->where('user_role', $role))
-            ->when($this->isDate($from), fn ($q) => $q->whereDate('created_at', '>=', $from))
-            ->when($this->isDate($to), fn ($q) => $q->whereDate('created_at', '<=', $to))
+            // Date ranges, not DATE(created_at), so the created_at index is used
+            ->when($this->isDate($from), fn ($q) => $q->where('created_at', '>=', $from . ' 00:00:00'))
+            ->when($this->isDate($to), fn ($q) => $q->where('created_at', '<', Carbon::parse($to)->addDay()->toDateString() . ' 00:00:00'))
             ->orderByDesc('created_at')->orderByDesc('id');
 
-        $logs = $query->paginate(20, ['*'], 'audit_page')->withQueryString();
+        $logs = $query->paginate(20, ['*'], 'audit_page', null, $filtered ? null : $total)->withQueryString();
 
         return view('admin.sections.audit-content', [
             'logs'        => $logs,
@@ -56,8 +63,8 @@ class AuditTrailController extends Controller
             'auditFrom'   => $from,
             'auditTo'     => $to,
             'stats'       => [
-                'total'  => (clone $base)->count(),
-                'today'  => (clone $base)->whereDate('created_at', today())->count(),
+                'total'  => $total,
+                'today'  => (clone $base)->where('created_at', '>=', today())->count(),
                 'failed' => (clone $base)->whereIn('event_type', ['failed_login', 'denied'])->where('created_at', '>=', now()->subDays(7))->count(),
             ],
             'retention'   => AuditLogRetention::label(),

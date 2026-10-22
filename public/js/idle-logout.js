@@ -11,35 +11,66 @@
  *  - At the limit: POST /session/expire (logs out + audit entry), then this portal's login
  *    form with a "You have been logged out" notice in front of it (/session-expired).
  *  - All open tabs share one timer (localStorage), so working in one keeps the others in.
- *  - While active, the server session is refreshed (GET /session/ping) at most once a minute,
- *    so it never expires under someone who is working.
+ *  - While active, the server session is refreshed (GET /session/ping) at most once a minute
+ *    (more often for a limit under 3 minutes), so it never expires under someone who is working.
+ *    The ping answers with the current limit: a new value saved in Settings applies to pages
+ *    that are already open, in every tab.
  *  - A request answered 419 / 401 (session already gone) goes to the same page.
+ *  - Opening or refreshing a page counts as activity, but not the automatic reload the
+ *    dashboards do when you come back to the tab (they set sessionStorage ilc_idle_auto_reload
+ *    first) — otherwise looking away and back restarted the timer and it took much longer.
+ *  - That automatic reload doesn't happen while the warning is due — the warning shows instead
+ *    and the reload runs after "Stay logged in" (holdReload).
+ *  - Only real input counts: a mousemove where the pointer really moved (browsers also send
+ *    mousemoves for a page loading or content moving under a still cursor), no scroll events
+ *    (code scrolls too), nothing dispatched by scripts.
  */
 (function () {
     var el = document.currentScript;
     if (!el || window.__ilcIdleLogout) return;
     window.__ilcIdleLogout = true;
 
-    var LIMIT_MS   = Math.max(1, parseInt(el.dataset.minutes, 10) || 15) * 60000;
-    var WARN_MS    = Math.min(60000, LIMIT_MS / 2);
-    var PING_EVERY = 60000;
+    var LIMIT_MS, WARN_MS, PING_EVERY;
     var expireUrl  = el.dataset.expireUrl;
     var pingUrl    = el.dataset.pingUrl;
     var expiredUrl = el.dataset.expiredUrl;
     var csrf       = el.dataset.csrf || '';
     var K_ACTIVE = 'ilc_idle_last_active', K_PING = 'ilc_idle_last_ping', K_OUT = 'ilc_idle_logged_out';
+    var K_MINUTES = 'ilc_idle_minutes';        // the current Session Timeout, shared with the other tabs
+    var K_AUTO_RELOAD = 'ilc_idle_auto_reload'; // sessionStorage, set by the dashboards' auto-reload
 
     var store = {
         get: function (k) { try { return parseInt(localStorage.getItem(k), 10) || 0; } catch (e) { return 0; } },
         set: function (k, v) { try { localStorage.setItem(k, String(v)); } catch (e) {} }
     };
+
+    // The limit can change while the page is open (Settings › Security): every ping answers with
+    // the current value, and a tab that learns a new one tells the others (storage event).
+    function setMinutes(minutes, share) {
+        minutes = Math.max(1, parseInt(minutes, 10) || 15);
+        LIMIT_MS = minutes * 60000;
+        WARN_MS = Math.min(60000, LIMIT_MS / 2);
+        // Ping often enough that the server (EnforceIdleTimeout) always sees an active user
+        // well inside the limit, even a 1-minute one
+        PING_EVERY = Math.min(60000, LIMIT_MS / 3);
+        if (share) store.set(K_MINUTES, minutes);
+        if (window.ilcIdleLogout) { window.ilcIdleLogout.limitMs = LIMIT_MS; window.ilcIdleLogout.warnMs = WARN_MS; }
+    }
+    setMinutes(el.dataset.minutes, true); // fresh from the server with this page
+    var autoReload = false;
+    try { autoReload = sessionStorage.getItem(K_AUTO_RELOAD) === '1'; sessionStorage.removeItem(K_AUTO_RELOAD); } catch (e) {}
+
     var loadedAt = Date.now(), localActive = loadedAt, localPing = loadedAt, leaving = false;
     // Instant "logged out" message to the other windows/tabs of this browser (all share one login)
     var channel = null;
     try { if (typeof BroadcastChannel !== 'undefined') channel = new BroadcastChannel('ilc-idle-logout'); } catch (e) {}
     if (channel) channel.onmessage = function (e) { if (e && e.data === 'logged-out') goToExpiredPage(); };
-    store.set(K_ACTIVE, localActive);  // this page load is activity
-    store.set(K_PING, localPing);      // ... and refreshed the server session
+    if (autoReload && store.get(K_ACTIVE)) {
+        localActive = store.get(K_ACTIVE); // keep counting from the last real activity
+    } else {
+        store.set(K_ACTIVE, localActive);  // this page load is activity
+    }
+    store.set(K_PING, localPing);          // ... the load refreshed the server session either way
 
     function lastActive() { return Math.max(localActive, store.get(K_ACTIVE)); }
 
@@ -47,9 +78,14 @@
         localPing = Date.now();
         store.set(K_PING, localPing);
         try {
-            nativeFetch(pingUrl, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
-                .then(function (res) { if (res.status === 401 || res.status === 419) goToExpiredPage(); }, function () {});
-        } catch (e) {}
+            return nativeFetch(pingUrl, { credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+                .then(function (res) {
+                    if (res.status === 401 || res.status === 419) return goToExpiredPage();
+                    return res.json().then(function (d) {
+                        if (d && d.minutes && d.minutes * 60000 !== LIMIT_MS) { setMinutes(d.minutes, true); tick(); }
+                    }, function () {});
+                }, function () {});
+        } catch (e) { return Promise.resolve(); }
     }
 
     var lastWrite = 0;
@@ -57,8 +93,16 @@
 
     // Mouse/keyboard/scroll before the warning resets the timer. Once the warning is showing
     // it is ignored — only "Stay logged in" confirms the user is really there (stay()).
-    function activity() {
-        if (leaving || warningVisible()) return;
+    var lastX = null, lastY = null;
+    function activity(e) {
+        if (leaving || warningVisible() || (e && e.isTrusted === false)) return;
+        if (e && e.type === 'mousemove') {
+            // The first one only records where the pointer is: Chrome sends one by itself when a
+            // page loads under a still cursor
+            var moved = lastX !== null && Math.abs(e.screenX - lastX) + Math.abs(e.screenY - lastY) >= 2;
+            lastX = e.screenX; lastY = e.screenY;
+            if (!moved) return;
+        }
         markActive();
     }
     function markActive(force) {
@@ -71,8 +115,21 @@
         if (leaving) return;
         markActive(true); // tell the server and the other tabs right away
         hideWarning();
+        if (heldReload) { var run = heldReload; heldReload = null; run(); } // the refresh they came back to
     }
-    ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart', 'wheel'].forEach(function (ev) {
+
+    // The Admin/Super Admin/Cashier/Finance pages reload when you come back to the tab. They ask
+    // first: while the "Are you still there?" warning is due (or time is up) the warning shows
+    // instead, and the reload waits for "Stay logged in".
+    var heldReload = null;
+    function holdReload(reload) {
+        tick();
+        if (leaving) return true;
+        if (!warningVisible()) return false;
+        heldReload = reload;
+        return true;
+    }
+    ['mousedown', 'mousemove', 'keydown', 'touchstart', 'wheel'].forEach(function (ev) {
         window.addEventListener(ev, activity, { passive: true, capture: true });
     });
 
@@ -133,12 +190,15 @@
         if (store.get(K_OUT) > loadedAt) return goToExpiredPage();
         var idle = Date.now() - lastActive();
         if (idle >= LIMIT_MS) return expire();
-        if (idle >= LIMIT_MS - WARN_MS) showWarning(Math.ceil((LIMIT_MS - idle) / 1000));
-        else hideWarning();
+        if (idle >= LIMIT_MS - WARN_MS) return showWarning(Math.ceil((LIMIT_MS - idle) / 1000));
+        hideWarning();
+        // "Stay logged in" was clicked in another tab → this one does the refresh it held back
+        if (heldReload) { var run = heldReload; heldReload = null; run(); }
     }
     setInterval(tick, 1000);
     window.addEventListener('storage', function (e) {
         if (e.key === K_OUT && parseInt(e.newValue, 10) > loadedAt) return goToExpiredPage();
+        if (e.key === K_MINUTES && parseInt(e.newValue, 10) > 0) { setMinutes(e.newValue, false); tick(); }
         if (e.key === K_ACTIVE) tick();
     });
     // Background tabs get their timers slowed or frozen — check again the moment the tab is back
@@ -163,5 +223,6 @@
     };
 
     // For tests / debugging
-    window.ilcIdleLogout = { tick: tick, limitMs: LIMIT_MS, warnMs: WARN_MS };
+    // refresh(): ask the server for the current timeout now (Settings calls it after saving)
+    window.ilcIdleLogout = { tick: tick, limitMs: LIMIT_MS, warnMs: WARN_MS, holdReload: holdReload, refresh: ping };
 })();

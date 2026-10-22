@@ -53,7 +53,9 @@ class AppServiceProvider extends ServiceProvider
         // Admin > Settings > Security: password rules and session timeout.
         Password::defaults(fn () => SecurityPolicy::passwordRule());
         try {
-            config(['session.lifetime' => SecurityPolicy::sessionMinutes()]);
+            // At least 5: with a very short timeout the session itself must not run out between
+            // the activity pings — the inactivity logout is idle-logout.js + EnforceIdleTimeout
+            config(['session.lifetime' => max(5, SecurityPolicy::sessionMinutes())]);
         } catch (\Throwable $e) {
             // settings table not available yet (fresh install / migrations) — keep SESSION_LIFETIME
         }

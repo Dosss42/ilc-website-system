@@ -72,7 +72,7 @@ class SuperAdminController extends Controller
         ];
 
         \App\Services\AuditLogRetention::clearIfDue();
-        $logRetentionMonths = \App\Services\AuditLogRetention::months();
+        $logRetentionPeriod = \App\Services\AuditLogRetention::period();
         $paymentAutomation  = \App\Services\PaymentService::automationEnabled();
         $schedulerLastRun   = self::schedulerLastRun();
 
@@ -85,7 +85,7 @@ class SuperAdminController extends Controller
         return view('superadmin_dashboard', compact(
             'users', 'dashboardUsers', 'userManagementUsers',
             'stats', 'sort', 'roleFilter', 'userSearch', 'logs', 'section', 'backups',
-            'announcements', 'newsArticles', 'logRetentionMonths', 'paymentAutomation', 'schedulerLastRun'
+            'announcements', 'newsArticles', 'logRetentionPeriod', 'paymentAutomation', 'schedulerLastRun'
         ));
     }
 
@@ -123,12 +123,15 @@ class SuperAdminController extends Controller
      */
     public function updateLogRetention(Request $request)
     {
+        // 'period' = a code from AuditLogRetention::OPTIONS ('1w', '2w', '1'…'12', '0');
+        // 'months' is the older name for the same field
+        $request->mergeIfMissing(['period' => $request->input('months')]);
         $validated = $request->validate([
-            'months' => ['required', 'integer', \Illuminate\Validation\Rule::in(array_keys(\App\Services\AuditLogRetention::OPTIONS))],
+            'period' => ['required', \Illuminate\Validation\Rule::in(array_map('strval', array_keys(\App\Services\AuditLogRetention::OPTIONS)))],
         ]);
 
         $old = \App\Services\AuditLogRetention::label();
-        \App\Services\AuditLogRetention::setMonths((int) $validated['months']);
+        \App\Services\AuditLogRetention::setPeriod((string) $validated['period']);
         $new = \App\Services\AuditLogRetention::label();
         ActivityLogger::log('update', "Audit log automatic clearing changed from {$old} to {$new}", 'Setting');
 
@@ -157,11 +160,12 @@ class SuperAdminController extends Controller
             $like = '%' . addcslashes(trim($filters['search']), '%_\\') . '%';
             $query->where(fn ($q) => $q->where('description', 'like', $like)->orWhere('user_name', 'like', $like));
         }
+        // Date ranges, not DATE(created_at), so the created_at index is used
         if ($isDate($filters['from'] ?? null)) {
-            $query->whereDate('created_at', '>=', $filters['from']);
+            $query->where('created_at', '>=', $filters['from'] . ' 00:00:00');
         }
         if ($isDate($filters['to'] ?? null)) {
-            $query->whereDate('created_at', '<=', $filters['to']);
+            $query->where('created_at', '<', \Carbon\Carbon::parse($filters['to'])->addDay()->toDateString() . ' 00:00:00');
         }
         if (isset(ActivityLog::ROLES[$filters['role'] ?? ''])) {
             $query->where('user_role', $filters['role']);
@@ -172,7 +176,7 @@ class SuperAdminController extends Controller
         return $query;
     }
 
-    /** The System Logs filter values from a request — the page, CSV export and PDF all use these. */
+    /** The System Logs filter values from a request — the page and the PDF exports use these. */
     private function logFilters(Request $request): array
     {
         return [
@@ -190,33 +194,71 @@ class SuperAdminController extends Controller
     }
 
     /**
-     * Real CSV export — the "Export Logs" button used to be a dead `href="#"`
-     * link. Exports every row matching the current filters, not just the
-     * 200 shown on screen.
+     * System Logs › Export Logs: a PDF of every row matching the current filters
+     * (not just the page shown), with the filters printed under the title.
      */
     public function exportLogs(Request $request)
     {
-        $logs = $this->buildLogsQuery($this->logFilters($request))->get();
+        return $this->logsPdf($this->logFilters($request), 'System Logs', 'system-logs');
+    }
 
-        ActivityLogger::log('update', 'System logs exported (' . $logs->count() . ' rows)', 'ActivityLog');
+    /**
+     * Most rows one logs PDF holds. Dompdf needs memory and time for every row: measured locally,
+     * 1,500 rows ≈ 11 s / 292 MB and 2,000 ≈ 16 s / 364 MB of the 512 MB it gets — a slower
+     * server must still finish inside the request time limit. More than this → the newest ones,
+     * and the PDF says to narrow the filters for the rest.
+     */
+    public const LOGS_PDF_MAX_ROWS = 1500;
 
-        $filename = 'activity_logs_' . now()->format('Y-m-d_His') . '.csv';
+    private function logsPdf(array $filters, string $title, string $filePrefix)
+    {
+        $query = $this->buildLogsQuery($filters);
+        $matching = (clone $query)->count();
+        $logs = $query->limit(self::LOGS_PDF_MAX_ROWS)->get();
 
-        return response()->streamDownload(function () use ($logs) {
-            $out = fopen('php://output', 'w');
-            fputcsv($out, ['Date & Time', 'Event Type', 'Description', 'User', 'Role', 'IP Address']);
-            foreach ($logs as $log) {
-                fputcsv($out, [
-                    $log->created_at?->format('Y-m-d H:i:s'),
-                    $log->event_type,
-                    $log->description,
-                    $log->user_name ?? 'System',
-                    $log->user_role ?? '',
-                    $log->ip_address ?? '',
-                ]);
-            }
-            fclose($out);
-        }, $filename, ['Content-Type' => 'text/csv']);
+        ActivityLogger::log('update', $title . ' exported as PDF (' . $logs->count()
+            . ($matching > $logs->count() ? ' of ' . $matching : '') . ' rows)', 'ActivityLog');
+
+        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Super Admin'), [
+            'reportTitle'    => $title,
+            'dateRangeLabel' => $this->logFiltersLabel($filters),
+            'logs'           => $logs,
+            'matching'       => $matching,
+        ]);
+
+        return $this->schoolPdfOptions(
+            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.superadmin.audit-log-report', $pdfData),
+            $pdfData
+        )->download($filePrefix . '-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    /** e.g. "Oct 01, 2026 – Oct 23, 2026 · Cashier · Cash Payment · “Ben”", or "All activity". */
+    private function logFiltersLabel(array $filters): string
+    {
+        $isDate = fn ($v) => is_string($v) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $v);
+        $day = fn ($v) => \Carbon\Carbon::parse($v)->format('M d, Y');
+        $from = $isDate($filters['from'] ?? null) ? $filters['from'] : null;
+        $to = $isDate($filters['to'] ?? null) ? $filters['to'] : null;
+
+        $parts = [];
+        if ($from && $to) {
+            $parts[] = $from === $to ? $day($from) : $day($from) . ' – ' . $day($to);
+        } elseif ($from || $to) {
+            $parts[] = ($from ? 'From ' . $day($from) : 'Up to ' . $day($to));
+        }
+        if (isset(ActivityLog::ROLES[$filters['role'] ?? ''])) {
+            $parts[] = ActivityLog::ROLES[$filters['role']];
+        } elseif (($filters['role'] ?? '') === 'system') {
+            $parts[] = 'System';
+        }
+        if (isset(ActivityLog::EVENT_TYPES[$filters['type'] ?? ''])) {
+            $parts[] = ActivityLog::EVENT_TYPES[$filters['type']];
+        }
+        if (trim((string) ($filters['search'] ?? '')) !== '') {
+            $parts[] = '“' . trim($filters['search']) . '”';
+        }
+
+        return $parts ? implode(' · ', $parts) : 'All activity';
     }
 
     /**
@@ -799,28 +841,10 @@ class SuperAdminController extends Controller
         )->download('user-report-' . now()->format('Y-m-d') . '.pdf');
     }
 
-    /**
-     * Same buildLogsQuery()/filters as exportLogs()'s CSV export above —
-     * same data, same columns, just rendered as a PDF table.
-     */
+    /** Reports › Audit Log Report — same PDF as System Logs › Export Logs. */
     public function downloadAuditLogReportPdf(Request $request)
     {
-        $filters = $this->logFilters($request);
-        $logs = $this->buildLogsQuery($filters)->get();
-
-        ActivityLogger::log('update', 'Audit log PDF exported (' . $logs->count() . ' rows)', 'ActivityLog');
-
-        $hasFilters = array_filter($filters);
-        $pdfData = array_merge($this->schoolPdfLetterhead(Auth::user()->name ?? 'Super Admin'), [
-            'reportTitle'    => 'Audit Log Report',
-            'dateRangeLabel' => $hasFilters ? 'Filtered results' : 'All activity',
-            'logs'           => $logs,
-        ]);
-
-        return $this->schoolPdfOptions(
-            \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.superadmin.audit-log-report', $pdfData),
-            $pdfData
-        )->download('audit-log-report-' . now()->format('Y-m-d') . '.pdf');
+        return $this->logsPdf($this->logFilters($request), 'Audit Log Report', 'audit-log-report');
     }
 
     /**
