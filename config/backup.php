@@ -10,6 +10,15 @@ return [
     'mysqldump_path' => env('MYSQLDUMP_PATH'),
     'mysql_path'      => env('MYSQL_PATH'),
 
+    // How backups are made: 'auto' uses mysqldump when it works and otherwise the app's
+    // own PHP dump (Railway's container has no mysqldump); 'php' always uses the PHP dump;
+    // 'mysqldump' never falls back. Restores always run through PHP (no mysql client needed).
+    'driver' => env('BACKUP_DRIVER', 'auto'),
+
+    // CA certificate list for HTTPS to Google Drive when PHP has none configured (a
+    // "cURL error 60" on Windows). Left blank, XAMPP's bundled list is used if present.
+    'ca_bundle' => env('BACKUP_CA_BUNDLE'),
+
     // How many days of backups to keep in the primary (local) folder.
     // Ransomware-resilience note: this is deliberately NOT the only copy —
     // see 'secondary_path' and the Google Drive settings below. A local-only
@@ -29,7 +38,14 @@ return [
 
     'google_drive' => [
         'enabled'          => env('BACKUP_GDRIVE_ENABLED', false),
-        // Path to the downloaded service-account JSON key file.
+        // Sign in as a normal Google account (OAuth) — needed for a personal Gmail Drive,
+        // since Google gives service accounts no storage of their own. Get these with
+        // `php artisan backup:google-drive-setup` (see docs/GOOGLE_DRIVE_BACKUP.md).
+        'client_id'        => env('BACKUP_GDRIVE_CLIENT_ID'),
+        'client_secret'    => env('BACKUP_GDRIVE_CLIENT_SECRET'),
+        'refresh_token'    => env('BACKUP_GDRIVE_REFRESH_TOKEN'),
+        // Or a service account (only works with a Google Workspace shared drive):
+        // path to the downloaded service-account JSON key file.
         'credentials_path' => env('BACKUP_GDRIVE_CREDENTIALS_PATH', storage_path('app/google-drive-credentials.json')),
         // The target Drive folder's id (from its URL), shared with the
         // service account's email as Editor.

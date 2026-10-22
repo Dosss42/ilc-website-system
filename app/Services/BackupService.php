@@ -30,9 +30,41 @@ class BackupService
         return $dir;
     }
 
+    /** backup_<date>_<time>.sql, optionally tagged: _uploaded (Restore from File) or
+     * _before-restore (the automatic safety copy made just before a restore). */
     public static function isValidBackupFilename(string $file): bool
     {
-        return (bool) preg_match('/^backup_\d{4}-\d{2}-\d{2}_\d{6}\.sql$/', basename($file));
+        return (bool) preg_match('/^backup_\d{4}-\d{2}-\d{2}_\d{6}(_(uploaded|before-restore))?\.sql$/', basename($file));
+    }
+
+    /** Does this file look like a database backup (mysqldump or the app's PHP backup)? */
+    public static function looksLikeBackup(string $path): bool
+    {
+        $head = (string) @file_get_contents($path, false, null, 0, 65536);
+        return (bool) preg_match('/^-- (MySQL dump|MariaDB dump|ILC SYSTEM database backup)/m', $head)
+            && str_contains($head, 'CREATE TABLE');
+    }
+
+    /**
+     * Restore a backup, first saving the current data as a "before-restore" backup so a
+     * wrong restore can be undone by restoring that copy. With $requireSafety (the web
+     * page), the restore doesn't go ahead if the safety copy can't be made; the server
+     * command can skip it when the database is too broken to back up.
+     *
+     * @return array{statements: int, safety: ?string}
+     */
+    public static function restoreSafely(string $path, bool $requireSafety = true): array
+    {
+        @set_time_limit(600);
+        $safety = self::createDump('before-restore');
+        if (!$safety['success'] && $requireSafety) {
+            throw new \RuntimeException('Could not save the current data first (' . $safety['message'] . ') — nothing was restored.');
+        }
+
+        $statements = self::restore($path);
+        \App\Models\Setting::clearCache(); // cached settings would otherwise outlive the restore by up to an hour
+
+        return ['statements' => $statements, 'safety' => $safety['success'] ? $safety['filename'] : null];
     }
 
     /**
@@ -73,48 +105,209 @@ class BackupService
     }
 
     /**
-     * Create a fresh mysqldump into the primary backup folder.
+     * Create a fresh backup (.sql) in the primary backup folder — with mysqldump when it is
+     * available and works (XAMPP), otherwise with the app's own PHP dump (Railway's
+     * container has no mysqldump). Both produce a plain .sql file that restore() reads.
      *
      * @return array{success: bool, filename: ?string, path: ?string, message: ?string}
      */
-    public static function createDump(): array
+    public static function createDump(?string $tag = null): array
     {
-        try {
-            $db   = config('database.connections.' . config('database.default'));
-            $host = $db['host']     ?? '127.0.0.1';
-            $port = $db['port']     ?? 3306;
-            $user = $db['username'] ?? 'root';
-            $pass = $db['password'] ?? '';
-            $name = $db['database'] ?? '';
+        $filename = 'backup_' . now()->format('Y-m-d_His') . ($tag ? '_' . $tag : '') . '.sql';
+        $path     = self::backupDir() . DIRECTORY_SEPARATOR . $filename;
+        $driver   = config('backup.driver', 'auto');
 
-            $filename = 'backup_' . now()->format('Y-m-d_His') . '.sql';
-            $path     = self::backupDir() . DIRECTORY_SEPARATOR . $filename;
-
-            $passPart = $pass ? '-p' . escapeshellarg($pass) : '';
-            $cmd = sprintf(
-                '%s --host=%s --port=%s -u%s %s %s > %s 2>&1',
-                escapeshellarg(self::mysqldumpBin()),
-                escapeshellarg($host),
-                escapeshellarg((string) $port),
-                escapeshellarg($user),
-                $passPart,
-                escapeshellarg($name),
-                escapeshellarg($path)
-            );
-
-            exec($cmd, $output, $code);
-
-            if ($code !== 0 || !File::exists($path) || File::size($path) < 100) {
-                File::delete($path);
-                Log::error('mysqldump failed', ['code' => $code, 'output' => implode("\n", $output)]);
-                return ['success' => false, 'filename' => null, 'path' => null, 'message' => 'Backup failed. mysqldump not found or errored — set MYSQLDUMP_PATH in .env if it is installed somewhere other than the default XAMPP location.'];
+        if ($driver !== 'php') {
+            $error = self::mysqldumpTo($path);
+            if ($error === null) {
+                return ['success' => true, 'filename' => $filename, 'path' => $path, 'message' => null];
             }
+            File::delete($path);
+            if ($driver === 'mysqldump') {
+                return ['success' => false, 'filename' => null, 'path' => null, 'message' => 'Backup failed: ' . $error];
+            }
+            Log::info('mysqldump unavailable, using the PHP backup instead', ['reason' => $error]);
+        }
 
+        try {
+            self::phpDumpTo($path);
             return ['success' => true, 'filename' => $filename, 'path' => $path, 'message' => null];
         } catch (\Throwable $e) {
-            Log::error('Backup dump failed', ['error' => $e->getMessage()]);
-            return ['success' => false, 'filename' => null, 'path' => null, 'message' => 'Error: ' . $e->getMessage()];
+            File::delete($path);
+            Log::error('PHP backup failed', ['error' => $e->getMessage()]);
+            return ['success' => false, 'filename' => null, 'path' => null, 'message' => 'Backup failed: ' . $e->getMessage()];
         }
+    }
+
+    /** Run mysqldump into $path. Returns null on success, or why it failed. */
+    private static function mysqldumpTo(string $path): ?string
+    {
+        $db = config('database.connections.' . config('database.default'));
+        $pass = $db['password'] ?? '';
+        $errFile = $path . '.err';
+        // stderr goes to its own file: a warning written into the dump would corrupt it
+        $cmd = sprintf(
+            '%s --host=%s --port=%s -u%s %s %s > %s 2> %s',
+            escapeshellarg(self::mysqldumpBin()),
+            escapeshellarg($db['host'] ?? '127.0.0.1'),
+            escapeshellarg((string) ($db['port'] ?? 3306)),
+            escapeshellarg($db['username'] ?? 'root'),
+            $pass ? '-p' . escapeshellarg($pass) : '',
+            escapeshellarg($db['database'] ?? ''),
+            escapeshellarg($path),
+            escapeshellarg($errFile)
+        );
+        try {
+            exec($cmd, $output, $code);
+        } catch (\Throwable $e) {
+            return $e->getMessage();
+        }
+        $stderr = File::exists($errFile) ? trim(File::get($errFile)) : '';
+        File::delete($errFile);
+
+        if ($code !== 0 || !File::exists($path) || File::size($path) < 100
+            || !str_contains(File::get($path, false), '-- Dump completed')) {
+            return 'mysqldump exited with code ' . $code . ($stderr !== '' ? ': ' . $stderr : '');
+        }
+        return null;
+    }
+
+    /**
+     * A separate database connection for backup/restore work, so its session settings
+     * (UTC time zone, foreign key checks off, a read snapshot) never leak into the
+     * connection the rest of the request uses.
+     */
+    private static function sideConnection(?string $database = null): \Illuminate\Database\Connection
+    {
+        $default = config('database.default');
+        config(['database.connections.backup_side' => array_merge(
+            config('database.connections.' . $default),
+            $database ? ['database' => $database] : []
+        )]);
+        \Illuminate\Support\Facades\DB::purge('backup_side');
+        return \Illuminate\Support\Facades\DB::connection('backup_side');
+    }
+
+    /**
+     * Dump every table (structure + rows) to $path in plain SQL, without mysqldump.
+     * Times are written in UTC (TIME_ZONE '+00:00', like mysqldump) so a restore puts
+     * TIMESTAMP values back exactly; rows are read from one consistent snapshot.
+     */
+    public static function phpDumpTo(string $path): void
+    {
+        $conn = self::sideConnection();
+        $pdo  = $conn->getPdo();
+        $fh   = fopen($path, 'wb');
+        if (!$fh) {
+            throw new \RuntimeException('Cannot write ' . basename($path));
+        }
+
+        try {
+            $pdo->exec("SET SESSION time_zone = '+00:00'");
+            $pdo->exec('SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+            $pdo->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT');
+
+            $database = $conn->getDatabaseName();
+            fwrite($fh, "-- ILC SYSTEM database backup (made by the app's PHP backup, no mysqldump needed)\n"
+                . "-- Database: {$database}   Created: " . now()->format('Y-m-d H:i:s T') . "\n\n"
+                . "SET NAMES utf8mb4;\nSET TIME_ZONE='+00:00';\nSET FOREIGN_KEY_CHECKS=0;\nSET UNIQUE_CHECKS=0;\n"
+                . "SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';\n\n");
+
+            $tables = array_map(fn ($r) => array_values((array) $r)[0], $conn->select("SHOW FULL TABLES WHERE Table_type = 'BASE TABLE'"));
+            foreach ($tables as $table) {
+                $q = '`' . str_replace('`', '``', $table) . '`';
+                $create = array_values((array) $conn->selectOne("SHOW CREATE TABLE {$q}"))[1];
+                fwrite($fh, "--\n-- Table {$table}\n--\n\nDROP TABLE IF EXISTS {$q};\n{$create};\n\n");
+
+                // Generated columns are computed by the database and can't be inserted
+                $columns = array_values(array_filter($conn->select("SHOW COLUMNS FROM {$q}"),
+                    fn ($c) => !preg_match('/\b(VIRTUAL|STORED|PERSISTENT)\b/i', (string) $c->Extra)));
+                if (!$columns) {
+                    continue;
+                }
+                $names  = implode(',', array_map(fn ($c) => '`' . str_replace('`', '``', $c->Field) . '`', $columns));
+                $binary = array_map(fn ($c) => (bool) preg_match('/blob|binary|^bit/i', (string) $c->Type), $columns);
+
+                $stmt = $pdo->query("SELECT {$names} FROM {$q}");
+                $batch = [];
+                $size = 0;
+                while (($row = $stmt->fetch(\PDO::FETCH_NUM)) !== false) {
+                    $values = [];
+                    foreach ($row as $i => $v) {
+                        $values[] = $v === null ? 'NULL' : ($binary[$i] ? '0x' . bin2hex($v) : $pdo->quote((string) $v));
+                    }
+                    $batch[] = '(' . implode(',', $values) . ')';
+                    $size += strlen(end($batch));
+                    if (count($batch) >= 200 || $size > 500000) {
+                        fwrite($fh, "INSERT INTO {$q} ({$names}) VALUES\n" . implode(",\n", $batch) . ";\n");
+                        $batch = [];
+                        $size = 0;
+                    }
+                }
+                $stmt->closeCursor();
+                if ($batch) {
+                    fwrite($fh, "INSERT INTO {$q} ({$names}) VALUES\n" . implode(",\n", $batch) . ";\n");
+                }
+                fwrite($fh, "\n");
+            }
+
+            fwrite($fh, "SET FOREIGN_KEY_CHECKS=1;\nSET UNIQUE_CHECKS=1;\n\n-- Dump completed " . now()->format('Y-m-d H:i:s') . "\n");
+            $pdo->exec('COMMIT');
+        } finally {
+            fclose($fh);
+            \Illuminate\Support\Facades\DB::purge('backup_side');
+        }
+    }
+
+    /**
+     * Restore a backup file (mysqldump or PHP backup) into the database — or into
+     * $database when given, which is how restores are tested without touching the real
+     * data. Runs each statement through PHP, so no mysql client program is needed.
+     *
+     * @return int statements executed
+     */
+    public static function restore(string $path, ?string $database = null): int
+    {
+        if (!self::looksLikeBackup($path)) {
+            throw new \RuntimeException(basename($path) . ' is not a database backup file.');
+        }
+        $conn = self::sideConnection($database);
+        $pdo  = $conn->getPdo();
+        $fh   = fopen($path, 'rb');
+        if (!$fh) {
+            throw new \RuntimeException('Cannot read ' . basename($path));
+        }
+
+        $count = 0;
+        $statement = '';
+        try {
+            // Both formats keep every string literal on one line (newlines are escaped as \n),
+            // so a line ending in ";" always ends a statement.
+            while (($line = fgets($fh)) !== false) {
+                $trimmed = rtrim($line, "\r\n");
+                if ($statement === '' && ($trimmed === '' || str_starts_with($trimmed, '--'))) {
+                    continue;
+                }
+                if ($statement === '' && stripos($trimmed, 'DELIMITER') === 0) {
+                    throw new \RuntimeException('Backups with triggers/routines (DELIMITER) are not supported by the PHP restore.');
+                }
+                $statement .= $line;
+                if (str_ends_with(rtrim($trimmed), ';')) {
+                    $pdo->exec($statement);
+                    $count++;
+                    $statement = '';
+                }
+            }
+            if (trim($statement) !== '') {
+                $pdo->exec($statement);
+                $count++;
+            }
+        } finally {
+            fclose($fh);
+            \Illuminate\Support\Facades\DB::purge('backup_side');
+        }
+
+        return $count;
     }
 
     /**
@@ -146,8 +339,12 @@ class BackupService
      * Upload a completed backup to Google Drive, if configured. Silently
      * skipped if disabled/not configured — see BACKUP_SETUP.md.
      */
+    /** Why the last Google Drive upload failed (shown in the Backup Log), or null. */
+    public static ?string $lastDriveError = null;
+
     public static function uploadToGoogleDrive(string $path, string $filename): bool
     {
+        self::$lastDriveError = null;
         if (!config('backup.google_drive.enabled')) {
             return false;
         }
@@ -155,6 +352,7 @@ class BackupService
         try {
             return app(GoogleDriveBackupUploader::class)->upload($path, $filename);
         } catch (\Throwable $e) {
+            self::$lastDriveError = \Illuminate\Support\Str::limit($e->getMessage(), 300);
             Log::warning('Google Drive backup upload failed', ['error' => $e->getMessage()]);
             return false;
         }
@@ -187,11 +385,12 @@ class BackupService
         );
 
         return [
-            'success'   => true,
-            'filename'  => $dump['filename'],
-            'message'   => 'Backup created: ' . $dump['filename'],
-            'secondary' => $secondaryOk,
-            'drive'     => $driveOk,
+            'success'     => true,
+            'filename'    => $dump['filename'],
+            'message'     => 'Backup created: ' . $dump['filename'],
+            'secondary'   => $secondaryOk,
+            'drive'       => $driveOk,
+            'drive_error' => self::$lastDriveError,
         ];
     }
 

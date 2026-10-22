@@ -29,6 +29,19 @@ php artisan storage:link || true
     done
 ) &
 
+# Start the Laravel scheduler (routes/console.php: 2 AM backup, audit log clearing, and —
+# only when a Super Admin switches them on — payment reminders/late fees). Railway has no
+# cron, so `schedule:work` runs it every minute itself; supervised like the queue worker.
+# Runs as www-data (the PHP-FPM user) so files it creates — today's log, backups, cache —
+# stay writable by the web app.
+(
+    while true; do
+        # stdout dropped: it prints a line every minute; errors (stderr) still reach the deploy logs
+        su -s /bin/sh www-data -c "cd /var/www && php artisan schedule:work > /dev/null"
+        sleep 5
+    done
+) &
+
 # Start PHP-FPM in background
 php-fpm -D
 

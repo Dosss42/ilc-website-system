@@ -1604,15 +1604,29 @@
                 <div class="content-card">
                     <div class="content-card-header">
                         <h6>Backup History ({{ count($backups) }} file{{ count($backups) !== 1 ? 's' : '' }})</h6>
-                        <button class="btn-dash btn-primary" style="padding:7px 16px;font-size:12px;" onclick="runBackup()" id="btnCreateBackup">
-                            <i class="bi bi-database-add"></i> Create Backup Now
-                        </button>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                            <button class="btn-dash btn-primary" style="padding:7px 16px;font-size:12px;" onclick="runBackup()" id="btnCreateBackup">
+                                <i class="bi bi-database-add"></i> Create Backup Now
+                            </button>
+                            {{-- Upload a .sql downloaded earlier (Railway wipes its disk on every deploy) --}}
+                            <button class="btn-dash btn-secondary" style="padding:7px 16px;font-size:12px;" onclick="document.getElementById('restoreFileInput').click()" id="btnRestoreFromFile">
+                                <i class="bi bi-upload"></i> Restore from File
+                            </button>
+                            <input type="file" id="restoreFileInput" accept=".sql" style="display:none;" onchange="restoreFromFile(this)">
+                        </div>
                     </div>
                     <div class="p-3">
                         @forelse($backups as $bk)
                         <div class="backup-card" id="bk-{{ Str::slug($bk['name']) }}">
                             <div style="flex:1;min-width:0;">
-                                <div class="backup-info-name" style="font-size:13px;font-weight:700;color:var(--text);word-break:break-all;">{{ $bk['name'] }}</div>
+                                <div class="backup-info-name" style="font-size:13px;font-weight:700;color:var(--text);word-break:break-all;">
+                                    {{ $bk['name'] }}
+                                    @if(str_ends_with($bk['name'], '_before-restore.sql'))
+                                        <span class="status-badge pending" style="margin-left:4px;" title="Saved automatically just before a restore — restore this to undo it">Safety copy before restore</span>
+                                    @elseif(str_ends_with($bk['name'], '_uploaded.sql'))
+                                        <span class="status-badge active" style="margin-left:4px;">Uploaded</span>
+                                    @endif
+                                </div>
                                 <div class="backup-info-meta" style="font-size:11px;color:var(--muted);margin-top:3px;">
                                     <i class="bi bi-clock me-1"></i>{{ $bk['created'] }} &nbsp;·&nbsp;
                                     <i class="bi bi-hdd me-1"></i>{{ $bk['size'] }}
@@ -1658,7 +1672,13 @@
                         </div>
                         <div style="background:#fff8ec;border:1px solid #fde68a;border-radius:8px;padding:10px;font-size:12px;color:#92400e;margin-top:6px;">
                             <i class="bi bi-exclamation-triangle-fill me-1"></i>
-                            Restoring a backup will <strong>overwrite all current data</strong>. This cannot be undone.
+                            Restoring a backup <strong>overwrites all current data</strong>. The current data is saved first as a
+                            <strong>safety copy</strong> — restore that copy to undo.
+                        </div>
+                        <div style="background:#f8fafc;border-radius:8px;padding:10px;font-size:12px;color:var(--muted);margin-top:8px;line-height:1.55;">
+                            <i class="bi bi-cloud-arrow-down me-1"></i>
+                            <strong>Download</strong> important backups to your computer: the online server's storage is cleared on every update.
+                            <strong>Restore from File</strong> brings them back.
                         </div>
                     </div>
                 </div>
@@ -2639,6 +2659,43 @@
                             <i class="bi bi-exclamation-triangle-fill me-1" style="color:var(--orange);"></i>
                             When ON, the Student and Teacher portals show a maintenance notice.
                             The public website, Cashier, and Finance portals are not affected.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Automatic Payment Reminders & Late Fees -->
+            @php
+                $schedOk = $schedulerLastRun && $schedulerLastRun->gt(now()->subMinutes(5));
+            @endphp
+            <div class="col-md-6">
+                <div class="content-card">
+                    <div class="content-card-header">
+                        <h6><i class="bi bi-alarm-fill me-2" style="color:var(--blue);"></i>Automatic Payment Reminders &amp; Late Fees</h6>
+                    </div>
+                    <div class="p-4">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                            <div>
+                                <div style="font-size:14px;font-weight:700;color:var(--text);">Daily at 8:00 AM</div>
+                                <div style="font-size:12px;color:var(--muted);margin-top:3px;" id="payauto-toggle-desc"></div>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:12px;">
+                                <span id="payauto-toggle-label" style="font-size:12px;font-weight:700;"></span>
+                                <button id="btn-toggle-payauto" onclick="togglePaymentAutomation()" data-enabled="{{ $paymentAutomation ? '1' : '0' }}"
+                                    style="padding:9px 20px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;">
+                                    Toggle
+                                </button>
+                            </div>
+                        </div>
+                        <div style="font-size:12px;color:var(--muted);background:#f8fafc;border-radius:8px;padding:10px 14px;line-height:1.6;">
+                            When <strong>On</strong>: a reminder email 3 days before each installment is due; a warning email at 1 week overdue,
+                            a reminder at 2 weeks, and a <strong>₱{{ number_format(\App\Services\PaymentService::LATE_FEE_AMOUNT) }} late fee</strong> at 3 weeks.
+                            Keep it <strong>Off</strong> while the system holds test data, so no one receives emails or fees that aren't real.
+                        </div>
+                        <div style="margin-top:10px;font-size:12px;color:{{ $schedOk ? 'var(--green)' : 'var(--red)' }};">
+                            <i class="bi bi-{{ $schedOk ? 'check-circle-fill' : 'exclamation-triangle-fill' }} me-1"></i>
+                            Scheduler {{ $schedOk ? 'running' : 'not running' }}@if($schedulerLastRun) — last run {{ $schedulerLastRun->diffForHumans() }}@else — no run recorded yet @endif
+                            <span style="color:var(--muted);">(also runs the 2:00 AM backup and audit log clearing)</span>
                         </div>
                     </div>
                 </div>
@@ -3842,7 +3899,8 @@
             if (d.success) {
                 backupLog('✓ ' + d.message);
                 backupLog(d.secondary ? '✓ Copied to secondary drive' : '— Secondary drive not configured, skipped');
-                backupLog(d.drive ? '✓ Uploaded to Google Drive' : '— Google Drive not configured, skipped');
+                backupLog(d.drive ? '✓ Uploaded to Google Drive'
+                    : (d.drive_error ? '✗ Google Drive upload failed: ' + d.drive_error : '— Google Drive not configured, skipped'));
                 saToast('success', 'Backup created!', d.filename + (d.secondary || d.drive ? ' (+ off-machine copy)' : ' — consider setting up a secondary/cloud copy, see BACKUP_SETUP.md'));
                 setTimeout(() => location.reload(), 1500);
             } else {
@@ -3888,10 +3946,60 @@
         } catch(e) { saToast('error', 'Network error.'); }
     }
 
+    // Restore from File: upload a .sql (e.g. downloaded earlier) and restore it
+    function restoreFromFile(input) {
+        var file = input.files && input.files[0];
+        input.value = ''; // so choosing the same file again still triggers change
+        if (!file) return;
+        if (!/\.sql$/i.test(file.name)) { saToast('warning', 'Choose a .sql backup file.'); return; }
+        if (file.size > 50 * 1024 * 1024) { saToast('warning', 'The backup file is larger than 50 MB.'); return; }
+        var size = file.size >= 1048576 ? (file.size / 1048576).toFixed(2) + ' MB' : (file.size / 1024).toFixed(1) + ' KB';
+        saConfirm({
+            title: 'Restore from File',
+            sub: file.name + ' · ' + size,
+            msg: 'Upload "' + file.name + '" and RESTORE the database from it? All current data will be replaced. The current data is saved first as a safety copy, so you can undo this.',
+            icon: 'bi-upload',
+            gradient: 'linear-gradient(135deg,#b91c1c,#dc2626)',
+            btnLabel: 'Upload & Restore',
+            btnColor: '#dc2626',
+            onConfirm: function () { doRestoreFromFile(file); }
+        });
+    }
+
+    async function doRestoreFromFile(file) {
+        var btn = document.getElementById('btnRestoreFromFile');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Restoring…';
+        backupLog('Uploading ' + file.name + ' and restoring… this may take a moment.');
+        try {
+            var fd = new FormData();
+            fd.append('backup_file', file);
+            var r = await fetch('{{ route("superadmin.backup.upload-restore") }}', {
+                method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }, body: fd
+            });
+            var d = await r.json().catch(function () { return { success: false, message: 'HTTP ' + r.status }; });
+            if (r.ok && d.success) {
+                if (d.safety) backupLog('✓ Previous data saved as ' + d.safety);
+                backupLog('✓ Restore complete!');
+                saToast('success', 'Database restored!', d.message);
+                setTimeout(function () { location.reload(); }, 2500);
+            } else {
+                var msg = d.message || (d.errors ? Object.values(d.errors).flat().join(' ') : 'Restore failed.');
+                backupLog('✗ ' + msg);
+                saToast('error', 'Restore failed', msg);
+            }
+        } catch (e) {
+            backupLog('✗ ' + e.message);
+            saToast('error', 'Network error during restore.');
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-upload"></i> Restore from File';
+    }
+
     function restoreBackup(filename) {
         saConfirm({
             title: 'Restore Database',
-            msg: 'RESTORE DATABASE from "' + filename + '"? This will OVERWRITE all current data. This cannot be undone — are you absolutely sure?',
+            msg: 'RESTORE DATABASE from "' + filename + '"? All current data will be replaced. The current data is saved first as a safety copy, so you can undo this.',
             icon: 'bi-exclamation-triangle-fill',
             gradient: 'linear-gradient(135deg,#b91c1c,#dc2626)',
             btnLabel: 'Restore & Overwrite',
@@ -3909,8 +4017,10 @@
             });
             var d = await r.json();
             if (d.success) {
+                if (d.safety) backupLog('✓ Previous data saved as ' + d.safety);
                 backupLog('✓ Restore complete!');
-                saToast('success', 'Database restored successfully!', filename);
+                saToast('success', 'Database restored successfully!', d.message || filename);
+                setTimeout(function () { location.reload(); }, 2500);
             } else {
                 backupLog('✗ Restore failed: ' + d.message);
                 saToast('error', 'Restore failed', d.message);
@@ -6387,6 +6497,51 @@
                 saToast('success', _sysSiteMaintenanceOn ? 'Website maintenance mode ENABLED.' : 'Website maintenance mode DISABLED.');
             } else { saToast('error', d.message || 'Toggle failed.'); }
         } catch(e) { saToast('error', 'Network error.'); }
+    }
+
+    // ── Automatic Payment Reminders & Late Fees (Super Admin only) ──
+    function updatePaymentAutomationUI(on) {
+        var label = document.getElementById('payauto-toggle-label');
+        var btn   = document.getElementById('btn-toggle-payauto');
+        var desc  = document.getElementById('payauto-toggle-desc');
+        if (!label || !btn) return;
+        btn.dataset.enabled = on ? '1' : '0';
+        label.textContent = on ? 'ON' : 'OFF';
+        label.style.color = on ? 'var(--green)' : 'var(--muted)';
+        btn.textContent = on ? 'Turn Off' : 'Turn On';
+        btn.style.background = on ? 'linear-gradient(135deg,#92400e,#d97706)' : 'linear-gradient(135deg,#14532d,#16a34a)';
+        btn.style.color = '#fff';
+        if (desc) desc.textContent = on ? 'Reminder emails and late fees are sent automatically.' : 'No payment emails or late fees are sent.';
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+        var btn = document.getElementById('btn-toggle-payauto');
+        if (btn) updatePaymentAutomationUI(btn.dataset.enabled === '1');
+    });
+
+    function togglePaymentAutomation() {
+        var enabling = document.getElementById('btn-toggle-payauto').dataset.enabled !== '1';
+        saConfirm({
+            title    : enabling ? 'Turn On Payment Automation' : 'Turn Off Payment Automation',
+            sub      : 'Reminders, warnings & late fees',
+            msg      : enabling
+                ? 'From tomorrow 8:00 AM, families with installments due or overdue will be emailed, and a ₱{{ \App\Services\PaymentService::LATE_FEE_AMOUNT }} late fee will be added to installments 3+ weeks overdue. Only turn this on with real student data and email addresses.'
+                : 'No more payment reminder emails or late fees will be sent automatically.',
+            icon     : 'bi-alarm-fill',
+            gradient : enabling ? 'linear-gradient(135deg,#92400e,#d97706)' : 'linear-gradient(135deg,#1a3a6c,#2563eb)',
+            btnLabel : enabling ? 'Turn On' : 'Turn Off',
+            btnColor : enabling ? '#d97706' : undefined,
+            onConfirm: async function () {
+                try {
+                    var r = await fetch('{{ route("superadmin.settings.payment-automation") }}', {
+                        method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
+                    });
+                    var d = await r.json();
+                    if (!r.ok || !d.success) { saToast('error', d.message || 'Toggle failed.'); return; }
+                    updatePaymentAutomationUI(d.enabled);
+                    saToast('success', d.message);
+                } catch (e) { saToast('error', 'Network error.'); }
+            }
+        });
     }
 
     // ══ Chart.js ══

@@ -24,7 +24,8 @@ class RunDatabaseBackup extends Command
 
         $this->info($result['message']);
         $this->line('Secondary drive copy: ' . ($result['secondary'] ? 'yes' : 'skipped/not configured'));
-        $this->line('Google Drive copy: ' . ($result['drive'] ? 'yes' : 'skipped/not configured'));
+        $this->line('Google Drive copy: ' . ($result['drive'] ? 'yes'
+            : ($result['drive_error'] ? 'FAILED — ' . $result['drive_error'] : 'skipped/not configured')));
 
         return self::SUCCESS;
     }

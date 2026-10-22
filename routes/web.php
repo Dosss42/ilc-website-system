@@ -258,6 +258,7 @@ Route::middleware(['auth', 'superadmin'])->prefix('superadmin')->name('superadmi
     // System Logs
     Route::get('/logs/export', [SuperAdminController::class, 'exportLogs'])->name('logs.export');
     Route::post('/logs/retention', [SuperAdminController::class, 'updateLogRetention'])->name('logs.retention');
+    Route::post('/settings/payment-automation', [SuperAdminController::class, 'togglePaymentAutomation'])->name('settings.payment-automation');
 
     // Reports tab PDFs — shared pdf.shared.* design (see
     // app/Support/Traits/BuildsSchoolPdf.php).
@@ -274,6 +275,7 @@ Route::middleware(['auth', 'superadmin'])->prefix('superadmin')->name('superadmi
     Route::get('/backup/download/{file}',  [SuperAdminController::class, 'downloadBackup'])->name('backup.download');
     Route::delete('/backup/{file}',        [SuperAdminController::class, 'deleteBackup'])->name('backup.destroy');
     Route::post('/backup/restore/{file}',  [SuperAdminController::class, 'restoreBackup'])->middleware('throttle:3,1')->name('backup.restore');
+    Route::post('/backup/upload-restore',  [SuperAdminController::class, 'uploadRestoreBackup'])->middleware('throttle:3,1')->name('backup.upload-restore');
 
     // Settings
     Route::put('/settings/password', [SuperAdminController::class, 'updatePassword'])->name('settings.password');

@@ -72,6 +72,8 @@ class SuperAdminController extends Controller
 
         \App\Services\AuditLogRetention::clearIfDue();
         $logRetentionMonths = \App\Services\AuditLogRetention::months();
+        $paymentAutomation  = \App\Services\PaymentService::automationEnabled();
+        $schedulerLastRun   = self::schedulerLastRun();
 
         $logs    = $this->getSystemLogs($this->logFilters($request))->withQueryString();
         $backups = $this->listBackups();
@@ -82,8 +84,35 @@ class SuperAdminController extends Controller
         return view('superadmin_dashboard', compact(
             'users', 'dashboardUsers', 'userManagementUsers',
             'stats', 'sort', 'roleFilter', 'userSearch', 'logs', 'section', 'backups',
-            'announcements', 'newsArticles', 'logRetentionMonths'
+            'announcements', 'newsArticles', 'logRetentionMonths', 'paymentAutomation', 'schedulerLastRun'
         ));
+    }
+
+    /** When the scheduler last ran (its every-minute heartbeat in routes/console.php), or null. */
+    private static function schedulerLastRun(): ?\Illuminate\Support\Carbon
+    {
+        $at = \App\Models\Setting::get('scheduler_last_run');
+        return $at ? \Illuminate\Support\Carbon::parse($at) : null;
+    }
+
+    /**
+     * Super Admin only: let the daily scheduler send payment reminder/warning emails and
+     * apply the ₱500 late fee (app:check-payment-due-dates, payments:check-overdue). Off by
+     * default — on test data it would email made-up addresses and charge fake late fees.
+     */
+    public function togglePaymentAutomation()
+    {
+        $enabled = !\App\Services\PaymentService::automationEnabled();
+        \App\Models\Setting::set(\App\Services\PaymentService::AUTOMATION_SETTING, $enabled, 'boolean');
+        ActivityLogger::log('update', 'Automatic payment reminders & late fees turned ' . ($enabled ? 'ON' : 'OFF'), 'Setting');
+
+        return response()->json([
+            'success' => true,
+            'enabled' => $enabled,
+            'message' => $enabled
+                ? 'Automatic payment reminders & late fees are ON — they run every morning at 8:00 AM.'
+                : 'Automatic payment reminders & late fees are OFF — no payment emails or late fees will be sent.',
+        ]);
     }
 
     /**
@@ -676,6 +705,7 @@ class SuperAdminController extends Controller
             'filename'  => $result['filename'],
             'secondary' => $result['secondary'],
             'drive'     => $result['drive'],
+            'drive_error' => $result['drive_error'] ?? null,
         ]);
     }
 
@@ -720,36 +750,57 @@ class SuperAdminController extends Controller
                 return response()->json(['success' => false, 'message' => 'Backup file not found.']);
             }
 
-            $db   = config('database.connections.' . config('database.default'));
-            $host = $db['host']     ?? '127.0.0.1';
-            $port = $db['port']     ?? 3306;
-            $user = $db['username'] ?? 'root';
-            $pass = $db['password'] ?? '';
-            $name = $db['database'] ?? '';
-
-            $passPart = $pass ? '-p' . escapeshellarg($pass) : '';
-            $cmd = sprintf(
-                '%s --host=%s --port=%s -u%s %s %s < %s 2>&1',
-                escapeshellarg(\App\Services\BackupService::mysqlBin()),
-                escapeshellarg($host),
-                escapeshellarg((string) $port),
-                escapeshellarg($user),
-                $passPart,
-                escapeshellarg($name),
-                escapeshellarg($path)
-            );
-
-            exec($cmd, $output, $code);
-
-            if ($code !== 0) {
-                return response()->json(['success' => false, 'message' => 'Restore failed: ' . implode(' ', $output)]);
-            }
-
-            ActivityLogger::log('update', 'Database restored from backup: ' . basename($file), 'Backup');
-            return response()->json(['success' => true, 'message' => 'Database restored from ' . basename($file)]);
+            return $this->restoreFrom($path, basename($file));
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
         }
+    }
+
+    /**
+     * Backup & Restore › Restore from File: upload a .sql backup (e.g. one downloaded
+     * earlier — Railway's disk is wiped on every deploy, so the server may have none left)
+     * and restore it. The file is kept in the backup list as backup_<date>_uploaded.sql.
+     */
+    public function uploadRestoreBackup(Request $request)
+    {
+        $request->validate(['backup_file' => 'required|file|max:51200'], [
+            'backup_file.max' => 'The backup file is larger than 50 MB.',
+        ]);
+        $upload = $request->file('backup_file');
+        if (strtolower($upload->getClientOriginalExtension()) !== 'sql') {
+            return response()->json(['success' => false, 'message' => 'Choose a .sql backup file.'], 422);
+        }
+
+        $name = 'backup_' . now()->format('Y-m-d_His') . '_uploaded.sql';
+        $upload->move($this->backupDir(), $name);
+        $path = $this->backupDir() . DIRECTORY_SEPARATOR . $name;
+        if (!\App\Services\BackupService::looksLikeBackup($path)) {
+            File::delete($path);
+            return response()->json(['success' => false, 'message' => 'That file is not a database backup (.sql from Create Backup or mysqldump).'], 422);
+        }
+
+        return $this->restoreFrom($path, $upload->getClientOriginalName() . ' (saved as ' . $name . ')');
+    }
+
+    /** Shared by Restore and Restore from File: safety copy first, then restore (see BackupService). */
+    private function restoreFrom(string $path, string $label)
+    {
+        try {
+            $result = \App\Services\BackupService::restoreSafely($path);
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => 'Restore failed: ' . $e->getMessage()]);
+        }
+
+        // Logged after the restore: anything written before it was replaced with the backup's own log
+        ActivityLogger::log('update', 'Database restored from backup: ' . $label
+            . ($result['safety'] ? ' — the previous data was saved first as ' . $result['safety'] : ''), 'Backup');
+
+        return response()->json([
+            'success' => true,
+            'safety'  => $result['safety'],
+            'message' => 'Database restored from ' . $label . '.'
+                . ($result['safety'] ? ' Your previous data was saved as ' . $result['safety'] . ' — restore it to undo.' : ''),
+        ]);
     }
 
     public function enrollmentsData(Request $request)

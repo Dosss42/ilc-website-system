@@ -43,6 +43,10 @@ RUN mkdir -p storage/framework/views storage/framework/cache/data \
 # Copy nginx config
 COPY docker/nginx.conf /etc/nginx/sites-enabled/default
 
+# Upload limits to match nginx's client_max_body_size (50M) — PHP's default is 2M, too small
+# for Super Admin › Backup & Restore › Restore from File
+RUN printf "upload_max_filesize=50M\npost_max_size=55M\n" > /usr/local/etc/php/conf.d/uploads.ini
+
 # Copy PHP-FPM pool config — the base image's default (pm.max_children = 5)
 # caps the whole app at 5 concurrent requests; see docker/www.conf.
 COPY docker/www.conf /usr/local/etc/php-fpm.d/www.conf

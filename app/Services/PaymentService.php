@@ -30,6 +30,16 @@ class PaymentService
     // months 1-2, this is the next step up in consequence.
     const EXAM_PERMIT_HOLD_MONTHS = 3;
 
+    /** Setting (Super Admin › System Settings) that lets the daily scheduler send payment
+     * reminder/warning emails and apply late fees. OFF by default: on test data it would
+     * email made-up addresses and charge late fees that aren't real. */
+    const AUTOMATION_SETTING = 'payment_automation_enabled';
+
+    public static function automationEnabled(): bool
+    {
+        return (bool) \App\Models\Setting::get(self::AUTOMATION_SETTING, false);
+    }
+
     /**
      * Check and process all overdue payments.
      * Sends the week-1 warning / week-2 reminder emails and applies the
