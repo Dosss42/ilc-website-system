@@ -4658,12 +4658,15 @@ class EnrollmentController extends Controller
         // string, which is the only record of where they were that year. See
         // DATABASE_NORMALIZATION_PLAN.md Phase 4.
         $latestEnrollmentId = $user->latestEnrollment?->id;
+        $advisers = [];
         foreach ($enrollments as $enr) {
             $section = ($enr->id === $latestEnrollmentId ? $user->current_section : null)
                 ?? \App\Models\Section::where('name', $enr->section)
                     ->where('grade_level', $enr->grade_level)
                     ->first();
             $enr->setRelation('subjects', $section ? $section->subjects()->orderBy('name')->get() : collect());
+            $advisers[$enr->id] = $section?->advisory_teacher?->name
+                ?? ($section?->teacher_id ? User::find($section->teacher_id)?->name : null);
         }
 
         // All grades for this student — approved only. SF10 is the official
@@ -4737,12 +4740,65 @@ class EnrollmentController extends Controller
             'guardianPhone'       => $guardian->contact     ?? $sd['guardian_phone']  ?? '',
         ];
 
+        // ── Official SF10-ES: one Scholastic Record block per school year ──
+        $gradeLabels = ['nursery' => 'Nursery', 'kindergarten' => 'Kindergarten', 'grade1' => '1', 'grade2' => '2',
+                        'grade3' => '3', 'grade4' => '4', 'grade5' => '5', 'grade6' => '6'];
+        $nextGrade   = ['nursery' => 'Kindergarten', 'kindergarten' => '1', 'grade1' => '2', 'grade2' => '3',
+                        'grade3' => '4', 'grade4' => '5', 'grade5' => '6', 'grade6' => ''];
+        $data['records'] = $enrollments->map(function ($enr) use ($grades, $gradeLabels, $advisers) {
+            $isDescriptive = \App\Models\Grade::isNurseryKinder($enr->grade_level ?? '');
+            $rows = $enr->subjects->map(function ($sub) use ($grades, $enr, $isDescriptive) {
+                $mine  = $grades->where('subject_id', $sub->id)->where('school_year', $enr->school_year);
+                $terms = array_map(function ($n) use ($mine, $isDescriptive) {
+                    $g = $mine->firstWhere('term', $n);
+                    return $isDescriptive ? $g?->descriptive_grade : $g?->grade;
+                }, [1, 2, 3]);
+                // Final Rating only once all 3 terms are in (numeric grades only)
+                $final = (!$isDescriptive && !in_array(null, $terms, true)) ? (int) round(array_sum($terms) / 3) : null;
+                return [
+                    'name'    => $sub->name,
+                    'terms'   => $terms,
+                    'final'   => $final,
+                    'remarks' => $final === null ? '' : ($final >= 75 ? 'Passed' : 'Failed'),
+                ];
+            })->values()->all();
+            $finals = array_column($rows, 'final');
+            $ga = ($finals && !in_array(null, $finals, true)) ? (int) round(array_sum($finals) / count($finals)) : null;
+            return [
+                'grade'      => $gradeLabels[$enr->grade_level] ?? ucfirst((string) $enr->grade_level),
+                'gradeLevel' => $enr->grade_level,
+                'section'    => $enr->section,
+                'schoolYear' => $enr->school_year,
+                'adviser'    => $advisers[$enr->id] ?? '',
+                'rows'       => $rows,
+                'ga'         => $ga,
+                'gaRemarks'  => $ga === null ? '' : ($ga >= 75 ? 'Passed' : 'Failed'),
+            ];
+        })->values()->all();
+
+        // Eligibility for Elementary School Enrolment: Kinder done here, or the school they came from
+        $kinderHere = $enrollments->firstWhere('grade_level', 'kindergarten');
+        $prev = $user->previousSchool;
+        $data['eligibility'] = [
+            'kinderProgressReport' => (bool) $kinderHere,
+            'schoolName'    => $kinderHere ? $data['schoolName'] : ($prev->school_name ?? ''),
+            'schoolAddress' => $kinderHere ? $data['schoolAddress'] : ($prev->school_address ?? ''),
+        ];
+
+        // Certification: eligible for the next grade when the latest year's General Average passed
+        $last = end($data['records']) ?: null;
+        $data['eligibleForGrade'] = ($last && $last['ga'] !== null && $last['ga'] >= 75) ? ($nextGrade[$last['gradeLevel']] ?? '') : '';
+        $data['lastSchoolYear']   = $last['schoolYear'] ?? '';
+        $data['lrn']              = $user->lrn ?? '';
+        $data['schoolId']         = \App\Models\Setting::get('school_id') ?: '';
+
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.sf10', $data);
-        $pdf->setPaper('letter', 'portrait');
+        // Official SF10-ES is printed on legal-size paper
+        $pdf->setPaper('legal', 'portrait');
         $pdf->setOptions([
             'isHtml5ParserEnabled' => true,
             'isRemoteEnabled'      => false,
-            'defaultPaperSize'     => 'letter',
+            'defaultPaperSize'     => 'legal',
             'marginTop'            => 1,
             'marginRight'          => 1,
             'marginBottom'         => 1,
@@ -4751,6 +4807,7 @@ class EnrollmentController extends Controller
 
         $filename = 'SF10_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', $user->name) . '_' . date('Ymd') . '.pdf';
 
-        return $pdf->download($filename);
+        // ?print=1: shown in the browser for its print window (which can also save as PDF)
+        return request()->boolean('print') ? $pdf->stream($filename) : $pdf->download($filename);
     }
 }

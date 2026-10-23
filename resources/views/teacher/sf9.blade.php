@@ -2,401 +2,296 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>SF9 — {{ $student->name }} — {{ $schoolYear }}</title>
+<title>SF9 — Learner's Performance Report — {{ $student->name }}</title>
 <style>
-    /* dompdf applies its own default page margin on top of whatever CSS
-       specifies — leaving that unset here made the full-page-sized .page
-       box below overflow onto a wasted, entirely blank second page on
-       every single generated SF9. Zeroing it here and letting .page's own
-       padding provide the visual margin instead is the fix. */
+    /* Official SF9 (Learner's Performance Report) layout: one letter-size landscape sheet,
+       the report on the left half and attendance / comments / signatures on the right half.
+       dompdf's own page margin is zeroed; .page's padding is the visible margin. No width on
+       .page — width:100% tables inside a full-width box overflow under dompdf's table layout. */
     @page { margin: 0; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-        font-family: Arial, sans-serif;
-        font-size: 9pt;
-        color: #000;
-        background: #fff;
-    }
+    body { font-family: "Times New Roman", Times, serif; font-size: 10pt; color: #000; background: #fff; }
+    .page { padding: 7mm 9mm; }
 
-    .page {
-        /* No min-height: a box asked to be exactly one physical page tall
-           overflows by a hair under dompdf's own rounding and pushes an
-           entirely blank extra page onto every PDF. Content naturally
-           fills the page anyway.
-           No explicit width either: dompdf's table layout computes a
-           width:100% child against this box's OUTER (border-box) width
-           instead of its content width, so pinning .page to the exact
-           physical page width made every width:100% table inside it
-           (and the padding meant to inset them) overflow past the right
-           edge with zero visible margin there. Leaving width unset lets
-           the standard CSS auto-width algorithm size .page to the
-           container minus its own padding, which every descendant then
-           correctly measures percentages against. */
-        margin: 0 auto;
-        padding: 10mm 12mm;
-    }
+    table.halves { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    table.halves > tbody > tr > td { width: 50%; vertical-align: top; }
+    td.left-half  { padding-right: 7mm; }
+    td.right-half { padding-left: 7mm; border-left: 1px solid #000; }
 
-    /* ── HEADER ── */
-    .header-table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
-    .header-table td { vertical-align: middle; }
-    .header-logo { width: 55px; text-align: center; }
-    .header-logo img { width: 50px; height: 50px; object-fit: contain; }
-    .header-center { text-align: center; padding: 0 6px; }
-    .header-center .republic { font-size: 7.5pt; }
-    .header-center .deped    { font-size: 8pt; font-weight: bold; }
-    .header-center .school   { font-size: 10pt; font-weight: bold; text-transform: uppercase; }
-    .header-center .address  { font-size: 7.5pt; }
-    .header-right { width: 55px; text-align: center; }
-    .header-right img { width: 50px; height: 50px; object-fit: contain; }
+    /* Header */
+    table.hdr { width: 100%; border-collapse: collapse; }
+    table.hdr td { vertical-align: middle; text-align: center; }
+    table.hdr td.logo { width: 14%; }
+    table.hdr td.logo img { width: 58px; height: 58px; }
+    .hdr-text { font-size: 10.5pt; line-height: 1.25; white-space: nowrap; }
 
-    .form-title {
-        text-align: center;
-        font-size: 9pt;
-        font-weight: bold;
-        border: 1.5px solid #000;
-        padding: 3px;
-        margin: 6px 0 4px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
+    .fill { display: inline-block; border-bottom: 1px solid #000; text-align: center; font-weight: bold; }
+    .center { text-align: center; }
+    .title { font-size: 12pt; font-weight: bold; text-align: center; margin-top: 7px; }
+    .heading { font-size: 10pt; font-weight: bold; text-align: center; margin: 7px 0 4px; }
 
-    .subtitle {
-        text-align: center;
-        font-size: 8pt;
-        margin-bottom: 6px;
-        font-style: italic;
-    }
+    table.info { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    table.info td { padding: 2px 3px 2px 0; white-space: nowrap; font-size: 9.5pt; }
+    table.info td.val { border-bottom: 1px solid #000; font-weight: bold; text-align: center; white-space: normal; }
 
-    /* ── STUDENT INFO ── */
-    .info-table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
-    .info-table td {
-        border: 0.5px solid #000;
-        padding: 2px 4px;
-        font-size: 8pt;
-        vertical-align: bottom;
-    }
-    .info-label { font-size: 6.5pt; color: #333; display: block; }
-    .info-value { font-size: 9pt; font-weight: bold; border-bottom: 0.5px solid #000; min-height: 14px; display: block; }
+    .letter { margin-top: 7px; font-size: 9.5pt; line-height: 1.3; text-align: justify; }
+    .letter .indent { text-indent: 26px; }
 
-    /* ── GRADES TABLE ── */
-    .section-header {
-        background: #1a3a6c;
-        color: #fff;
-        font-weight: bold;
-        font-size: 8pt;
-        padding: 3px 6px;
-        margin-top: 6px;
-        margin-bottom: 0;
-        letter-spacing: 0.5px;
-        text-transform: uppercase;
-    }
+    /* Learning progress table */
+    table.grid { width: 100%; border-collapse: collapse; }
+    table.grid th, table.grid td { border: 1px solid #000; padding: 2px 4px; font-size: 9.5pt; }
+    table.grid th { font-weight: bold; text-align: center; }
+    table.grid td.num { text-align: center; width: 7%; }
+    table.grid td.final { text-align: center; width: 13%; font-weight: bold; }
+    table.grid td.rem { text-align: center; width: 15%; }
+    table.grid tr.blank td { height: 16px; }
+    td.ga-label { text-align: right; font-weight: bold; border-left: 1px solid #000; }
 
-    .grades-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 6px;
-        font-size: 8pt;
-    }
-    .grades-table th {
-        background: #d9e1f2;
-        border: 0.5px solid #000;
-        padding: 3px 4px;
-        text-align: center;
-        font-size: 7.5pt;
-        font-weight: bold;
-    }
-    .grades-table td {
-        border: 0.5px solid #000;
-        padding: 2px 4px;
-        font-size: 8pt;
-    }
-    .grades-table td.subject-name { font-weight: 500; }
-    .grades-table td.grade-cell   { text-align: center; font-weight: bold; }
-    .grades-table td.remarks-cell { text-align: center; font-size: 7.5pt; }
-    .grades-table tr:nth-child(even) { background: #f7f8fc; }
+    table.desc { width: 92%; margin: 0 auto; border-collapse: collapse; }
+    table.desc th, table.desc td { text-align: center; font-size: 9pt; padding: 0 2px; }
+    table.desc th { font-weight: bold; }
 
-    .passed  { color: #155724; }
-    .failed  { color: #721c24; }
-    .pending { color: #856404; font-style: italic; }
+    /* Right half */
+    table.att { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    table.att th, table.att td { border: 1px solid #000; text-align: center; font-size: 8pt; padding: 2px 1px; }
+    table.att th { font-weight: normal; }
+    table.att th.month, table.att td.lbl { width: 15%; }
+    table.att th.month { font-weight: bold; }
+    table.att td.lbl { font-size: 7.5pt; line-height: 1.1; }
+    table.att td { height: 24px; }
 
-    /* ── ATTENDANCE ── */
-    .attendance-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 6px;
-        font-size: 8pt;
-    }
-    .attendance-table th {
-        background: #d9e1f2;
-        border: 0.5px solid #000;
-        padding: 3px 4px;
-        text-align: center;
-        font-size: 7.5pt;
-        font-weight: bold;
-    }
-    .attendance-table td {
-        border: 0.5px solid #000;
-        padding: 2px 4px;
-        text-align: center;
-        font-size: 8pt;
-    }
+    table.comments { width: 100%; border-collapse: collapse; }
+    table.comments td { border: 1px solid #000; height: 60px; vertical-align: top; padding: 3px 7px; }
 
-    /* ── REMARKS / ACTION TAKEN ── */
-    .action-box {
-        border: 0.5px solid #000;
-        padding: 4px 6px;
-        margin-bottom: 5px;
-        font-size: 8pt;
-    }
-    .action-box table { width: 100%; }
-    .action-box td { padding: 1px 4px; font-size: 8pt; vertical-align: middle; }
-    .checkbox-cell { width: 14px; text-align: center; }
-    .checkbox { display: inline-block; width: 10px; height: 10px; border: 1px solid #000; vertical-align: middle; text-align: center; line-height: 10px; font-size: 8pt; }
-    .checkbox.checked::after { content: '✓'; font-weight: bold; }
+    table.sig { width: 76%; margin: 0 auto; border-collapse: collapse; }
+    table.sig td { padding: 3px 0; font-size: 9.5pt; }
+    table.sig td.line { border-bottom: 1px solid #000; width: 82%; }
 
-    /* ── SIGNATURE ── */
-    .sig-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
-    .sig-table td { padding: 2px 6px; font-size: 8pt; vertical-align: bottom; width: 50%; }
-    .sig-line { border-top: 0.5px solid #000; margin-top: 24px; text-align: center; padding-top: 2px; font-size: 7.5pt; }
-    .sig-label { font-size: 7pt; color: #555; text-align: center; }
+    .para { font-size: 9.5pt; line-height: 1.3; margin-top: 3px; }
+    table.lines { width: 100%; border-collapse: collapse; margin-top: 6px; }
+    table.lines td { padding: 2px 0; font-size: 9.5pt; white-space: nowrap; }
+    table.lines td.line { border-bottom: 1px solid #000; width: 100%; font-weight: bold; text-align: center; white-space: normal; }
 
-    .footer-note {
-        font-size: 7pt;
-        color: #555;
-        margin-top: 6px;
-        text-align: center;
-        font-style: italic;
-    }
-
-    /* ── PRINT ── */
-    @media print {
-        body { margin: 0; }
-        .page { margin: 0; padding: 8mm 10mm; }
-        .no-print { display: none !important; }
-    }
+    table.approve { width: 100%; border-collapse: collapse; margin-top: 4px; }
+    table.approve td { vertical-align: bottom; font-size: 9.5pt; text-align: center; }
+    .sign-line { border-top: 1px solid #000; padding-top: 1px; }
+    .adviser-name { font-weight: bold; text-decoration: underline; text-transform: uppercase; }
 </style>
 </head>
 <body>
+@php
+    // Left: DepEd seal when public/images/deped_logo.png is added, else the IEMELIF seal. Right: the school logo.
+    $sealPath   = file_exists(public_path('images/deped_logo.png')) ? public_path('images/deped_logo.png') : public_path('images/logo1.png');
+    $schoolLogo = public_path('images/logo.png');
+    $img = fn ($p) => file_exists($p) ? 'data:image/png;base64,' . base64_encode(file_get_contents($p)) : null;
 
-{{-- Print button (hidden on print) --}}
-<div class="no-print" style="background:#1a3a6c;padding:8px 16px;display:flex;align-items:center;gap:12px;">
-    <button onclick="window.print()" style="background:#f5a623;color:#fff;border:none;border-radius:6px;padding:7px 20px;font-size:13px;font-weight:700;cursor:pointer;">
-        🖨 Print / Save as PDF
-    </button>
-    <button onclick="window.close()" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:7px 16px;font-size:13px;cursor:pointer;">
-        ✕ Close
-    </button>
-    <span style="color:rgba(255,255,255,0.7);font-size:12px;">SF9 — Learner's Progress Report Card | {{ $student->name }} | S.Y. {{ $schoolYear }}</span>
-</div>
+    $sfSchoolName    = \App\Models\Setting::get('school_name') ?: 'IEMELIF Learning Center';
+    $sfSchoolAddress = \App\Models\Setting::get('school_address') ?: 'General Tinio, Nueva Ecija';
+
+    $learnerName = $profile
+        ? strtoupper(trim("{$profile->last_name}, {$profile->first_name} " . ($profile->middle_name ?? '') . ' ' . ($profile->suffix ?? '')))
+        : strtoupper($student->name);
+    $sex = $profile?->gender ? ucfirst($profile->gender) : '';
+
+    // At least this many learning-area rows, so the table keeps the form's height like the printed SF9
+    $minRows = 10;
+    // Ratings print as whole numbers like on the form (90.00 → 90, 87.5 stays 87.5)
+    $fmt = fn ($v) => $v === null || $v === '' ? '' : rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.');
+@endphp
 
 <div class="page">
+<table class="halves"><tr>
 
-    {{-- ── HEADER ── --}}
-    <table class="header-table">
+{{-- ════════════ LEFT HALF ════════════ --}}
+<td class="left-half">
+
+    <table class="hdr"><tr>
+        <td class="logo">@if($img($sealPath))<img src="{{ $img($sealPath) }}" alt="">@endif</td>
+        <td class="hdr-text">
+            Republic of the Philippines<br>
+            Department of Education<br>
+            Region III<br>
+            <b>SCHOOLS DIVISION OFFICE OF</b> <span class="fill" style="width:105px;">NUEVA ECIJA</span><br>
+            District <span class="fill" style="min-width:60px;">&nbsp;</span><br>
+            {{ $sfSchoolAddress }}
+        </td>
+        <td class="logo">@if($img($schoolLogo))<img src="{{ $img($schoolLogo) }}" alt="">@endif</td>
+    </tr></table>
+
+    <div class="center" style="margin-top:7px;">School: <span class="fill" style="width:62%;">{{ strtoupper($sfSchoolName) }}</span></div>
+
+    <div class="title">LEARNER'S PERFORMANCE REPORT</div>
+    <div class="center" style="font-size:10pt;">School Year {{ $schoolYear }}</div>
+
+    <table class="info">
         <tr>
-            <td class="header-logo">
-                @php $logoPath = public_path('images/logo.png'); @endphp
-                @if(file_exists($logoPath))
-                <img src="data:image/png;base64,{{ base64_encode(file_get_contents($logoPath)) }}" alt="ILC">
-                @endif
-            </td>
-            @php
-                // Admin > Settings > School Info
-                $sfSchoolName    = \App\Models\Setting::get('school_name') ?: 'IEMELIF Learning Center';
-                $sfSchoolAddress = \App\Models\Setting::get('school_address') ?: 'General Tinio, Nueva Ecija';
-            @endphp
-            <td class="header-center">
-                <div class="republic">Republic of the Philippines</div>
-                <div class="deped">Department of Education</div>
-                <div style="font-size:7.5pt;">Region III — Central Luzon | Schools Division of Nueva Ecija</div>
-                <div class="school">{{ $sfSchoolName }}</div>
-                <div class="address">{{ $sfSchoolAddress }}</div>
-            </td>
-            <td class="header-right">
-                {{-- DepEd logo placeholder --}}
-                <div style="width:50px;height:50px;border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:6pt;color:#999;text-align:center;">DepEd Logo</div>
-            </td>
+            <td style="width:9%;">Name:</td><td class="val" style="width:40%;">{{ $learnerName }}</td>
+            <td style="width:3%;"></td>
+            <td style="width:8%;">Age:</td><td class="val" style="width:12%;">{{ $age ?? '' }}</td>
+            <td style="width:3%;"></td>
+            <td style="width:10%;">Sex:</td><td class="val" style="width:15%;">{{ $sex }}</td>
+        </tr>
+        <tr>
+            <td>LRN:</td><td class="val">{{ $student->lrn ?? '' }}</td>
+            <td></td>
+            <td>Grade:</td><td class="val">{{ $gradeLabel }}</td>
+            <td></td>
+            <td>Section:</td><td class="val">{{ $sectionName }}</td>
+        </tr>
+        <tr>
+            <td colspan="2">Track (SHS only) <span class="fill" style="width:58%;">&nbsp;</span></td>
+            <td colspan="6"></td>
         </tr>
     </table>
 
-    <div class="form-title">School Form 9 (SF9) — Learner's Progress Report Card</div>
-    <div class="subtitle">MATATAG K to 6 Curriculum — School Year {{ $schoolYear }}</div>
-
-    {{-- ── LEARNER INFO ── --}}
-    <table class="info-table">
-        <tr>
-            <td style="width:45%;">
-                <span class="info-label">Learner's Name (Last, First, Middle)</span>
-                <span class="info-value">{{ $profile ? strtoupper("{$profile->last_name}, {$profile->first_name} {$profile->middle_name}") : strtoupper($student->name) }}</span>
-            </td>
-            <td style="width:20%;">
-                <span class="info-label">Learner Reference No. (LRN)</span>
-                <span class="info-value">{{ $student->lrn ?? '—' }}</span>
-            </td>
-            <td style="width:10%;">
-                <span class="info-label">Grade</span>
-                <span class="info-value">{{ $gradeLabel }}</span>
-            </td>
-            <td style="width:25%;">
-                <span class="info-label">Section</span>
-                <span class="info-value">{{ $sectionName }}</span>
-            </td>
-        </tr>
-        <tr>
-            <td>
-                <span class="info-label">Complete Address</span>
-                <span class="info-value" style="font-size:8pt;">{{ $address ?? '—' }}</span>
-            </td>
-            <td>
-                <span class="info-label">Date of Birth</span>
-                <span class="info-value">{{ $profile?->birthdate ? \Carbon\Carbon::parse($profile->birthdate)->format('F d, Y') : '—' }}</span>
-            </td>
-            <td>
-                <span class="info-label">Age</span>
-                <span class="info-value">{{ $age ?? '—' }}</span>
-            </td>
-            <td>
-                <span class="info-label">Sex</span>
-                <span class="info-value">{{ $profile ? ucfirst($profile->gender ?? '—') : '—' }}</span>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2">
-                <span class="info-label">Parent / Guardian Name</span>
-                <span class="info-value">{{ $guardian?->name ?? '—' }}</span>
-            </td>
-            <td colspan="2">
-                <span class="info-label">Relationship / Contact</span>
-                <span class="info-value">{{ ($guardian?->relationship ?? '—') . ' / ' . ($guardian?->contact ?? '—') }}</span>
-            </td>
-        </tr>
-    </table>
-
-    {{-- ── GRADES ── --}}
-    <div class="section-header">Academic Performance</div>
-
-    @if($isDescriptive)
-    {{-- NURSERY / KINDER: Descriptive ratings --}}
-    <table class="grades-table">
-        <thead>
-            <tr>
-                <th style="text-align:left;width:38%;">Learning Area / Subject</th>
-                <th style="width:20%;">Term 1</th>
-                <th style="width:20%;">Term 2</th>
-                <th style="width:22%;">Term 3</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($subjects as $sub)
-            <tr>
-                <td class="subject-name">{{ $sub['name'] }}</td>
-                <td class="grade-cell">{{ $sub['term1_desc'] ?? '—' }}</td>
-                <td class="grade-cell">{{ $sub['term2_desc'] ?? '—' }}</td>
-                <td class="grade-cell">{{ $sub['term3_desc'] ?? '—' }}</td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
-    <div style="font-size:7pt;color:#555;margin-bottom:4px;">
-        Rating Scale: <strong>O</strong> — Outstanding &nbsp;|&nbsp; <strong>VS</strong> — Very Satisfactory &nbsp;|&nbsp; <strong>S</strong> — Satisfactory &nbsp;|&nbsp; <strong>FS</strong> — Fairly Satisfactory &nbsp;|&nbsp; <strong>DNME</strong> — Did Not Meet Expectations
+    <div class="letter">
+        Dear Parents,
+        <div class="indent">This Performance Report shows the ability and progress your child has made in the different learning areas as well as his/her core values.</div>
+        <div class="indent">The school welcomes you should you desire to know more about your child's progress.</div>
     </div>
 
-    @else
-    {{-- GRADE 1-6: Numerical grades --}}
-    <table class="grades-table">
+    <div class="heading">LEARNING PROGRESS AND ACHIEVEMENT</div>
+    <table class="grid">
         <thead>
             <tr>
-                <th style="text-align:left;width:34%;">Learning Area / Subject</th>
-                <th style="width:12%;">Term 1</th>
-                <th style="width:12%;">Term 2</th>
-                <th style="width:12%;">Term 3</th>
-                <th style="width:14%;">Final Grade</th>
-                <th style="width:16%;">Remarks</th>
+                <th rowspan="2" style="width:44%;">Learning Areas</th>
+                <th colspan="3">TERM</th>
+                <th rowspan="2">Final<br>Grade</th>
+                <th rowspan="2">Remarks</th>
             </tr>
+            <tr><th>1</th><th>2</th><th>3</th></tr>
         </thead>
         <tbody>
             @foreach($subjects as $sub)
-            @php
-                $grades  = array_filter([$sub['term1'], $sub['term2'], $sub['term3']], fn($v) => $v !== null);
-                $final   = count($grades) ? round(array_sum($grades) / count($grades)) : null;
-                $remarks = $final !== null ? \App\Models\Grade::getRemarks($final) : '—';
-                $cls     = $final === null ? 'pending' : ($final >= 75 ? 'passed' : 'failed');
-            @endphp
             <tr>
-                <td class="subject-name">{{ $sub['name'] }}</td>
-                <td class="grade-cell {{ $sub['term1'] !== null ? ($sub['term1'] >= 75 ? 'passed' : 'failed') : 'pending' }}">{{ $sub['term1'] ?? '—' }}</td>
-                <td class="grade-cell {{ $sub['term2'] !== null ? ($sub['term2'] >= 75 ? 'passed' : 'failed') : 'pending' }}">{{ $sub['term2'] ?? '—' }}</td>
-                <td class="grade-cell {{ $sub['term3'] !== null ? ($sub['term3'] >= 75 ? 'passed' : 'failed') : 'pending' }}">{{ $sub['term3'] ?? '—' }}</td>
-                <td class="grade-cell {{ $cls }}">{{ $final ?? '—' }}</td>
-                <td class="remarks-cell {{ $cls }}">{{ $remarks }}</td>
+                <td>{{ $sub['name'] }}</td>
+                @if($isDescriptive)
+                    <td class="num">{{ $sub['term1_desc'] ?? '' }}</td>
+                    <td class="num">{{ $sub['term2_desc'] ?? '' }}</td>
+                    <td class="num">{{ $sub['term3_desc'] ?? '' }}</td>
+                    <td class="final"></td>
+                    <td class="rem"></td>
+                @else
+                    <td class="num">{{ $fmt($sub['term1']) }}</td>
+                    <td class="num">{{ $fmt($sub['term2']) }}</td>
+                    <td class="num">{{ $fmt($sub['term3']) }}</td>
+                    <td class="final">{{ $sub['final'] ?? '' }}</td>
+                    <td class="rem">{{ $sub['remarks'] ?? '' }}</td>
+                @endif
             </tr>
             @endforeach
-
-            {{-- GWA row --}}
-            @if($gwa !== null)
-            <tr style="background:#e8f0fb;font-weight:bold;">
-                <td><strong>General Weighted Average (GWA)</strong></td>
-                <td class="grade-cell">{{ $term1Avg ?? '—' }}</td>
-                <td class="grade-cell">{{ $term2Avg ?? '—' }}</td>
-                <td class="grade-cell">{{ $term3Avg ?? '—' }}</td>
-                <td class="grade-cell" style="font-size:10pt;">{{ $gwa }}</td>
-                <td class="remarks-cell {{ $gwa >= 75 ? 'passed' : 'failed' }}">{{ \App\Models\Grade::getRemarks($gwa) }}</td>
+            @for($i = count($subjects); $i < $minRows; $i++)
+            <tr class="blank"><td></td><td class="num"></td><td class="num"></td><td class="num"></td><td class="final"></td><td class="rem"></td></tr>
+            @endfor
+            <tr>
+                <td colspan="4" class="ga-label">General Average</td>
+                <td class="final">{{ $isDescriptive ? '' : ($gwa ?? '') }}</td>
+                <td class="rem">{{ (!$isDescriptive && $gwa !== null) ? ($gwa >= 75 ? 'Passed' : 'Failed') : '' }}</td>
             </tr>
-            @endif
         </tbody>
+    </table>
+
+    <div class="heading">PERFORMANCE DESCRIPTORS</div>
+    @if($isDescriptive)
+    <table class="desc">
+        <tr><th>Rating</th><th>Description</th></tr>
+        <tr><td>O</td><td>Outstanding</td></tr>
+        <tr><td>VS</td><td>Very Satisfactory</td></tr>
+        <tr><td>S</td><td>Satisfactory</td></tr>
+        <tr><td>FS</td><td>Fairly Satisfactory</td></tr>
+        <tr><td>DNME</td><td>Did Not Meet Expectations</td></tr>
+    </table>
+    @else
+    <table class="desc">
+        <tr><th>Grading Scale</th><th>Description</th><th>Remarks</th></tr>
+        <tr><td>90-100</td><td>Advancing</td><td>Passed</td></tr>
+        <tr><td>80-89</td><td>Benchmarking</td><td>Passed</td></tr>
+        <tr><td>75-79</td><td>Connecting</td><td>Passed</td></tr>
+        <tr><td>65-74</td><td>Developing</td><td>Failed</td></tr>
+        <tr><td>0-64</td><td>Emerging</td><td>Failed</td></tr>
     </table>
     @endif
+</td>
 
-    {{-- ── ACTION TAKEN ── --}}
-    <div class="section-header">Action Taken</div>
-    <div class="action-box">
-        <table>
-            <tr>
-                <td class="checkbox-cell"><div class="checkbox {{ $actionTaken === 'Promoted' ? 'checked' : '' }}"></div></td>
-                <td style="width:22%;">Promoted to Grade {{ $nextGradeLabel }}</td>
-                <td class="checkbox-cell"><div class="checkbox {{ $actionTaken === 'Retained' ? 'checked' : '' }}"></div></td>
-                <td style="width:22%;">Retained in Grade {{ $gradeLabel }}</td>
-                <td class="checkbox-cell"><div class="checkbox {{ $actionTaken === 'Graduated' ? 'checked' : '' }}"></div></td>
-                <td style="width:22%;">Graduated</td>
-                <td class="checkbox-cell"><div class="checkbox {{ $actionTaken === 'Dropped' ? 'checked' : '' }}"></div></td>
-                <td>Dropped</td>
-            </tr>
-        </table>
-    </div>
+{{-- ════════════ RIGHT HALF ════════════ --}}
+<td class="right-half">
 
-    {{-- ── CERTIFICATION ── --}}
-    <div class="section-header">Certification</div>
-    <div style="border:0.5px solid #000;padding:4px 6px;font-size:8pt;margin-bottom:5px;">
-        I certify that the information contained in this form is true and accurate based on official records maintained by this school.
-    </div>
-
-    <table class="sig-table">
+    <div class="heading" style="margin-top:2px;">ATTENDANCE RECORD</div>
+    <table class="att">
         <tr>
-            <td>
-                <div class="sig-line">{{ $teacherName }}</div>
-                <div class="sig-label">Signature over Printed Name of Class Adviser</div>
-            </td>
-            <td>
-                <div class="sig-line">&nbsp;</div>
-                <div class="sig-label">Signature of Parent / Guardian</div>
-            </td>
+            <th class="month">Month</th>
+            @foreach(array_keys($attendance) as $m)<th>{{ $m }}</th>@endforeach
+            <th>Total</th>
         </tr>
         <tr>
-            <td style="padding-top:10px;">
-                <div class="sig-line">&nbsp;</div>
-                <div class="sig-label">Date</div>
+            <td class="lbl">No. of Class Days</td>
+            @foreach($attendance as $a)<td>{{ $a['days'] ?? '' }}</td>@endforeach
+            <td>{{ $attendanceTotal['days'] ?? '' }}</td>
+        </tr>
+        <tr>
+            <td class="lbl">No. of Days Present</td>
+            @foreach($attendance as $a)<td>{{ $a['present'] ?? '' }}</td>@endforeach
+            <td>{{ $attendanceTotal['present'] ?? '' }}</td>
+        </tr>
+        <tr>
+            <td class="lbl">No. of Days Absent</td>
+            @foreach($attendance as $a)<td>{{ $a['absent'] ?? '' }}</td>@endforeach
+            <td>{{ $attendanceTotal['absent'] ?? '' }}</td>
+        </tr>
+    </table>
+
+    <div class="heading" style="margin-top:12px;">TEACHER'S COMMENTS/REMARKS</div>
+    <table class="comments">
+        <tr><td><b>Term 1</b></td></tr>
+        <tr><td><b>Term 2</b></td></tr>
+        <tr><td><b>Term 3</b></td></tr>
+    </table>
+
+    <div class="heading" style="margin-top:12px;">PARENTS/GUARDIAN'S SIGNATURE</div>
+    <table class="sig">
+        <tr><td>Term 1</td><td class="line">&nbsp;</td></tr>
+        <tr><td>Term 2</td><td class="line">&nbsp;</td></tr>
+        <tr><td>Term 3</td><td class="line">&nbsp;</td></tr>
+    </table>
+
+    <div class="heading" style="margin-top:12px;">CERTIFICATE OF TRANSFER</div>
+    <div class="para">This is to certify that the above-named learner has satisfactorily completed the requirements for the grade level indicated.</div>
+    <table class="lines">
+        <tr><td style="width:1%;">Admitted to Grade:&nbsp;</td><td class="line" style="width:45%;">{{ $gradeLabel }}</td><td style="width:40%;"></td></tr>
+    </table>
+    <table class="lines" style="margin-top:2px;">
+        <tr><td style="width:1%;">Eligible for Admission to Grade:&nbsp;</td><td class="line" style="width:35%;">{{ in_array($actionTaken, ['Promoted']) ? $nextGradeLabel : '' }}</td><td style="width:35%;"></td></tr>
+    </table>
+
+    <div style="margin-top:8px;font-weight:bold;">Approved:</div>
+    <table class="approve">
+        <tr>
+            <td style="width:42%;">
+                <div style="height:16px;font-weight:bold;">{{ $schoolHead }}</div>
+                <div class="sign-line">School Head</div>
             </td>
-            <td style="padding-top:10px;">
-                <div class="sig-line">&nbsp;</div>
-                <div class="sig-label">Principal's Signature over Printed Name</div>
+            <td style="width:16%;"></td>
+            <td style="width:42%;">
+                <div class="adviser-name">{{ $teacherName ?: ' ' }}</div>
+                <div>Adviser</div>
             </td>
         </tr>
     </table>
 
-    <div class="footer-note">
-        Generated by {{ $sfSchoolName }} Student Information System &mdash; {{ now()->format('F d, Y h:i A') }}
-    </div>
+    <div class="heading" style="margin-top:12px;">CANCELLATION OF ELIGIBILITY TO TRANSFER</div>
+    <table class="lines">
+        <tr>
+            <td style="width:1%;">Admitted in:&nbsp;</td><td class="line" style="width:40%;">&nbsp;</td>
+            <td style="width:14%;"></td>
+            <td style="width:1%;">Date:&nbsp;</td><td class="line" style="width:30%;">&nbsp;</td>
+        </tr>
+    </table>
+    <table class="approve" style="margin-top:14px;">
+        <tr><td style="width:42%;"><div style="height:12px;"></div><div class="sign-line">School Head</div></td><td></td></tr>
+    </table>
+</td>
 
-</div>{{-- /page --}}
+</tr></table>
+</div>
 </body>
 </html>

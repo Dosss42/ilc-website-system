@@ -5341,7 +5341,7 @@
                     '<button class="action-btn view" title="View" onclick="viewStudentDetails(' + s.id + ')"><i class="bi bi-eye-fill"></i></button>' +
                     '<button class="action-btn edit" title="Edit" onclick="editStudent(' + s.id + ')"><i class="bi bi-pencil-fill"></i></button>' +
                     '<button class="action-btn" title="Transaction History" style="background:#eef2ff;color:#4338ca;" onclick="openStudentTransactions(' + s.id + ')"><i class="bi bi-receipt"></i></button>' +
-                    '<a href="/admin/students/' + s.id + '/sf10" target="_blank" class="action-btn" title="Download SF10" style="background:#e8f8f0;color:#1a6b2d;"><i class="bi bi-file-earmark-pdf-fill"></i></a>' +
+                    '<a href="/admin/students/' + s.id + '/sf10" onclick="return ilcPrintPdf(this.href)" class="action-btn" title="Print SF10" style="background:#e8f8f0;color:#1a6b2d;"><i class="bi bi-printer-fill"></i></a>' +
                     '<button class="action-btn" title="Change Status" style="background:#f0f4f8;color:#555;" onclick="openChangeStatusModal(' + s.id + ',' + (s.enrollment_id || 'null') + ',' + saEsc(JSON.stringify(s.status)) + ',' + jsName + ')"><i class="bi bi-arrow-left-right"></i></button>' +
                     '<button class="action-btn" title="Archive Student" style="background:#fff8e1;color:#b45309;" onclick="saArchiveStudent(' + s.id + ',' + jsName + ')"><i class="bi bi-archive-fill"></i></button>' +
                 '</td></tr>';
@@ -7466,6 +7466,7 @@
 </script>
 <script src="{{ asset('js/section-summary.js') }}?v={{ @filemtime(public_path('js/section-summary.js')) }}"></script>
 <script src="{{ asset('js/section-tools.js') }}?v={{ @filemtime(public_path('js/section-tools.js')) }}"></script>
+<script src="{{ asset('js/print-pdf.js') }}?v={{ @filemtime(public_path('js/print-pdf.js')) }}"></script>
 @include('partials.idle-logout', ['portal' => 'web'])
 </body>
 </html>

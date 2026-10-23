@@ -2,341 +2,200 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>SF10 - {{ $student->name }}</title>
+<title>SF10-ES — {{ $lastName }}, {{ $firstName }}</title>
 <style>
+    /* Official SF10-ES (Learner Permanent Record for Elementary School, formerly Form 137), legal size.
+       dompdf's own page margin is zeroed; .page's padding is the visible margin. No width on .page —
+       width:100% tables inside a full-width box overflow the right edge under dompdf's table layout. */
+    @page { margin: 0; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: Arial, Helvetica, sans-serif; font-size: 10px; color: #000; background: #fff; }
-    .page { width: 100%; padding: 1px; }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 7pt; color: #000; background: #fff; }
+    .page { padding: 7mm 9mm; }
+    .page-break { page-break-before: always; }
 
-    /* ── Header ── */
-    .sf-header { display: table; width: 100%; border-bottom: 3px double #000; padding-bottom: 8px; margin-bottom: 6px; }
-    .sf-header-logo { display: table-cell; width: 65px; vertical-align: middle; text-align: center; }
-    .sf-header-logo img { width: 55px; height: 55px; }
-    .sf-header-center { display: table-cell; vertical-align: middle; text-align: center; }
-    .sf-header-center .republic { font-size: 9px; }
-    .sf-header-center .deped { font-size: 10px; font-weight: bold; }
-    .sf-header-center .region { font-size: 9px; }
-    .sf-header-center .school-name { font-size: 13px; font-weight: bold; margin-top: 3px; text-transform: uppercase; }
-    .sf-header-center .school-addr { font-size: 9px; }
-    .sf-header-deped { display: table-cell; width: 65px; vertical-align: middle; text-align: center; }
-    .sf-header-deped img { width: 55px; height: 55px; }
+    /* Header */
+    .form-code { font-size: 6.5pt; font-weight: bold; }
+    table.hdr { width: 100%; border-collapse: collapse; }
+    table.hdr td { vertical-align: middle; text-align: center; }
+    table.hdr td.logo { width: 16%; }
+    table.hdr td.logo img { width: 52px; height: 52px; }
+    .hdr-small { font-size: 8pt; line-height: 1.25; }
+    .hdr-title { font-size: 12pt; font-weight: bold; margin-top: 4px; }
+    .hdr-sub { font-size: 7.5pt; font-style: italic; }
 
-    /* ── Form Title ── */
-    .form-title-bar { text-align: center; margin: 4px 0; }
-    .form-title-bar .form-code { font-size: 11px; font-weight: bold; }
-    .form-title-bar .form-name { font-size: 13px; font-weight: bold; text-transform: uppercase; }
-    .form-title-bar .form-sub { font-size: 9px; font-style: italic; }
+    .bar { background: #d9d9d9; border: 1px solid #000; text-align: center; font-weight: bold; font-size: 7.5pt; padding: 1px 0; margin-top: 4px; }
 
-    /* ── Section headings ── */
-    .part-label {
-        background: #003087;
-        color: #fff;
-        font-size: 9px;
-        font-weight: bold;
-        padding: 3px 8px;
-        margin: 6px 0 3px;
-        text-transform: uppercase;
-    }
+    /* Label + underlined value rows */
+    table.f { width: 100%; border-collapse: collapse; }
+    table.f td { padding: 3px 2px 1px 0; white-space: nowrap; font-size: 7.5pt; vertical-align: bottom; }
+    table.f td.v { border-bottom: 1px solid #000; font-weight: bold; white-space: normal; padding-left: 3px; }
+    table.f td.gap { width: 8px; }
+    .box { border: 1px solid #000; padding: 2px 4px; margin-top: 2px; }
+    .chk { display: inline-block; width: 8px; height: 8px; border: 1px solid #000; text-align: center; font-size: 7px; line-height: 7px; margin-right: 3px; }
 
-    /* ── Field rows ── */
-    .field-row { display: table; width: 100%; border-collapse: collapse; }
-    .field-cell { display: table-cell; padding: 2px 4px; border: 1px solid #999; vertical-align: bottom; }
-    .field-label { font-size: 8px; color: #444; display: block; }
-    .field-value { font-size: 10px; font-weight: bold; border-bottom: 1px solid #000; min-height: 16px; display: block; padding: 1px 2px; }
-    .field-empty { border-bottom: 1px solid #000; min-height: 16px; display: block; }
+    /* Scholastic record blocks, two per row */
+    table.blocks { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 3px; }
+    table.blocks > tbody > tr > td { width: 50%; vertical-align: top; padding: 0; }
+    table.blocks > tbody > tr > td.l { padding-right: 3px; }
+    table.blocks > tbody > tr > td.r { padding-left: 3px; }
+    .block { border: 1px solid #000; padding: 2px 3px 3px; }
 
-    /* ── Inline table rows ── */
-    table.info-tbl { width: 100%; border-collapse: collapse; margin-bottom: 2px; }
-    table.info-tbl td { border: 1px solid #aaa; padding: 2px 4px; font-size: 10px; vertical-align: top; }
-    table.info-tbl .lbl { font-size: 7.5px; color: #555; display: block; margin-bottom: 1px; }
-    table.info-tbl .val { font-weight: bold; }
-
-    /* ── Academic Record Table ── */
-    table.grade-tbl { width: 100%; border-collapse: collapse; margin-top: 4px; }
-    table.grade-tbl th { background: #003087; color: #fff; font-size: 8.5px; padding: 4px 3px; text-align: center; border: 1px solid #002060; }
-    table.grade-tbl td { border: 1px solid #aaa; padding: 3px 4px; font-size: 9px; text-align: center; vertical-align: middle; }
-    table.grade-tbl td.subj { text-align: left; font-size: 9px; }
-    table.grade-tbl tr:nth-child(even) td { background: #f5f8ff; }
-    table.grade-tbl .avg-row td { background: #e8edff; font-weight: bold; font-size: 9.5px; }
-    table.grade-tbl .section-hdr td { background: #d0d9f0; font-weight: bold; font-size: 8.5px; text-align: left; padding: 2px 4px; }
-
-    /* ── Signature block ── */
-    .sig-block { margin-top: 14px; display: table; width: 100%; }
-    .sig-cell { display: table-cell; width: 33%; text-align: center; padding: 0 8px; vertical-align: bottom; }
-    .sig-line { border-top: 1px solid #000; margin-top: 30px; padding-top: 3px; font-size: 9px; font-weight: bold; }
-    .sig-sub { font-size: 8px; color: #555; }
-
-    /* ── Footer note ── */
-    .footer-note { margin-top: 6px; font-size: 7.5px; color: #555; border-top: 1px solid #ccc; padding-top: 4px; }
-
-    /* ── Pass/Fail color ── */
-    .grade-pass { color: #1a6b2d; }
-    .grade-fail { color: #c0392b; }
-    .grade-desc { color: #1a3a6c; }
-
-    .page-break { page-break-after: always; }
-
-    .two-col { display: table; width: 100%; }
-    .two-col-left { display: table-cell; width: 50%; padding-right: 4px; }
-    .two-col-right { display: table-cell; width: 50%; padding-left: 4px; }
+    table.g { width: 100%; border-collapse: collapse; margin-top: 2px; table-layout: fixed; }
+    table.g th, table.g td { border: 1px solid #000; font-size: 7pt; padding: 1px 2px; height: 15px; }
+    table.g th { text-align: center; font-weight: bold; }
+    table.g td.n { text-align: center; }
+    table.g td.subj { font-weight: bold; font-size: 6.5pt; line-height: 1.1; }
+    table.g td.ga { font-weight: bold; }
 </style>
 </head>
 <body>
+@php
+    $img = fn ($p) => file_exists($p) ? 'data:image/png;base64,' . base64_encode(file_get_contents($p)) : null;
+    // Left: DepEd seal when public/images/deped_logo.png is added, else the IEMELIF seal. Right: the school logo.
+    $seal = $img(public_path('images/deped_logo.png')) ?? $img(public_path('images/logo1.png'));
+    $logo = $img(public_path('images/logo.png'));
+
+    // Ratings print as whole numbers like on the form (90.00 → 90)
+    $fmt = fn ($v) => $v === null || $v === '' ? '' : (is_numeric($v) ? rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.') : $v);
+
+    // 8 Scholastic Record blocks (4 per page) like the printed form; more pages when there are more school years
+    $blocks = $records;
+    $total  = max(8, (int) ceil(count($blocks) / 4) * 4);
+    for ($i = count($blocks); $i < $total; $i++) $blocks[] = null;
+    $blockRows = array_chunk($blocks, 2);
+    $subjectRows = 14; // learning-area lines per block (the form's list length)
+
+    $division = 'Nueva Ecija';
+    $region   = 'III';
+@endphp
+
+@php
+/* One Scholastic Record block (empty when $r is null) */
+$renderBlock = function ($r) use ($fmt, $schoolName, $schoolId, $division, $region, $subjectRows) {
+    // &nbsp; keeps an empty underline at its set width (dompdf shrinks empty cells)
+    $v = fn ($x) => ($x ?? '') === '' ? '&nbsp;' : e($x);
+    $isDesc = $r && in_array($r['gradeLevel'], ['nursery', 'kindergarten']);
+    $html  = '<div class="block">';
+    $html .= '<table class="f"><tr><td>School:</td><td class="v" style="width:62%;">' . ($r ? e(strtoupper($schoolName)) : '') . '</td><td class="gap"></td><td>School ID:</td><td class="v" style="width:18%;">' . ($r ? e($schoolId) : '') . '</td></tr></table>';
+    $html .= '<table class="f"><tr><td>District:</td><td class="v" style="width:24%;"></td><td class="gap"></td><td>Division:</td><td class="v" style="width:26%;">' . ($r ? e($division) : '') . '</td><td class="gap"></td><td>Region:</td><td class="v" style="width:14%;">' . ($r ? e($region) : '') . '</td></tr></table>';
+    $html .= '<table class="f"><tr><td>Classified as Grade:</td><td class="v" style="width:17%;">' . $v($r['grade'] ?? null) . '</td><td class="gap"></td><td>Section:</td><td class="v" style="width:20%;">' . $v($r['section'] ?? null) . '</td><td class="gap"></td><td>School Year:</td><td class="v" style="width:20%;white-space:nowrap;">' . $v($r['schoolYear'] ?? null) . '</td></tr></table>';
+    $html .= '<table class="f"><tr><td>Name of Adviser/Teacher:</td><td class="v" style="width:44%;">' . $v($r['adviser'] ?? null) . '</td><td class="gap"></td><td>Signature:</td><td class="v" style="width:22%;"></td></tr></table>';
+
+    $html .= '<table class="g"><thead>'
+        . '<tr><th rowspan="2" style="width:40%;">LEARNING AREAS</th><th colspan="3" style="width:27%;">Term Rating</th><th rowspan="2" style="width:12%;">Final<br>Rating</th><th rowspan="2" style="width:21%;">Remarks</th></tr>'
+        . '<tr><th>1</th><th>2</th><th>3</th></tr></thead><tbody>';
+    $rows = $r['rows'] ?? [];
+    for ($i = 0; $i < max($subjectRows, count($rows)); $i++) {
+        $row = $rows[$i] ?? null;
+        $html .= '<tr><td class="subj">' . $v($row['name'] ?? null) . '</td>';
+        foreach ([0, 1, 2] as $t) $html .= '<td class="n">' . e($fmt($row['terms'][$t] ?? null)) . '</td>';
+        $html .= '<td class="n">' . e($fmt($row['final'] ?? null)) . '</td><td class="n">' . $v($row['remarks'] ?? null) . '</td></tr>';
+    }
+    $html .= '<tr><td class="ga" colspan="4">General Average</td><td class="n" style="font-weight:bold;">' . ($isDesc ? '' : e($fmt($r['ga'] ?? null))) . '</td><td class="n">' . ($isDesc ? '' : $v($r['gaRemarks'] ?? null)) . '</td></tr>';
+    $html .= '</tbody></table>';
+
+    $html .= '<table class="g" style="margin-top:0;border-top:0;">'
+        . '<tr><th style="width:26%;border-top:0;">Remedial Classes</th><th colspan="4" style="text-align:left;border-top:0;font-weight:normal;">Conducted from: ______________ to ______________</th></tr>'
+        . '<tr><th style="width:26%;">Learning Areas</th><th style="width:17%;">Final Rating</th><th style="width:19%;">Remedial Class Mark</th><th style="width:19%;">Recomputed Final Grade</th><th style="width:19%;">Remarks</th></tr>'
+        . '<tr><td></td><td></td><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td><td></td><td></td></tr></table>';
+    return $html . '</div>';
+};
+@endphp
+
 <div class="page">
+    <div class="form-code">SF10-ES</div>
+    <table class="hdr"><tr>
+        <td class="logo">@if($seal)<img src="{{ $seal }}" alt="">@endif</td>
+        <td>
+            <div class="hdr-small">Republic of the Philippines<br>Department of Education</div>
+            <div class="hdr-title">Learner Permanent Record for Elementary School (SF10-ES)</div>
+            <div class="hdr-sub">(Formerly Form 137)</div>
+        </td>
+        <td class="logo">@if($logo)<img src="{{ $logo }}" alt="">@endif</td>
+    </tr></table>
 
-    {{-- ═══════════════════════ HEADER ═══════════════════════ --}}
-    <div class="sf-header">
-        <div class="sf-header-logo">
-            @if($schoolLogoBase64)
-                <img src="{{ $schoolLogoBase64 }}" alt="School Logo" style="width:55px;height:55px;object-fit:contain;">
-            @else
-                <div style="width:55px;height:55px;border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:7px;color:#666;text-align:center;">School<br>Logo</div>
-            @endif
-        </div>
-        <div class="sf-header-center">
-            <div class="republic">Republic of the Philippines</div>
-            <div class="deped">Department of Education</div>
-            <div class="region">Region III – Central Luzon · Schools Division of Nueva Ecija</div>
-            <div class="school-name">{{ $schoolName }}</div>
-            <div class="school-addr">{{ $schoolAddress }}</div>
-        </div>
-        <div class="sf-header-deped">
-            @if($depedLogoBase64)
-                <img src="{{ $depedLogoBase64 }}" alt="DepEd Logo" style="width:55px;height:55px;object-fit:contain;">
-            @else
-                <div style="width:55px;height:55px;border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:7px;color:#666;text-align:center;">DepEd<br>Logo</div>
-            @endif
-        </div>
+    {{-- ── LEARNER'S PERSONAL INFORMATION ── --}}
+    <div class="bar">LEARNER'S PERSONAL INFORMATION</div>
+    <table class="f">
+        <tr>
+            <td>LAST NAME:</td><td class="v" style="width:21%;">{{ strtoupper($lastName) }}</td><td class="gap"></td>
+            <td>FIRST NAME:</td><td class="v" style="width:21%;">{{ strtoupper($firstName) }}</td><td class="gap"></td>
+            <td>NAME EXTN. (Jr,I,II):</td><td class="v" style="width:6%;">{{ strtoupper($suffix) }}</td><td class="gap"></td>
+            <td>MIDDLE NAME:</td><td class="v" style="width:17%;">{{ strtoupper($middleName) }}</td>
+        </tr>
+    </table>
+    <table class="f">
+        <tr>
+            <td>Learner Reference Number (LRN):</td><td class="v" style="width:22%;">{{ $lrn }}</td><td class="gap"></td>
+            <td>Birthdate (mm/dd/yyyy):</td><td class="v" style="width:18%;">{{ $birthdate !== '—' ? $birthdate : '' }}</td><td class="gap"></td>
+            <td>Sex:</td><td class="v" style="width:14%;">{{ ucfirst($gender) }}</td>
+        </tr>
+    </table>
+
+    {{-- ── ELIGIBILITY FOR ELEMENTARY SCHOOL ENROLMENT ── --}}
+    <div class="bar">ELIGIBILITY FOR ELEMENTARY SCHOOL ENROLMENT</div>
+    <div class="box" style="font-style:italic;">
+        <table class="f"><tr>
+            <td>Credential Presented for Grade 1:</td><td style="width:6%;"></td>
+            <td><span class="chk">{{ $eligibility['kinderProgressReport'] ? 'X' : '' }}</span>Kinder Progress Report</td><td style="width:6%;"></td>
+            <td><span class="chk"></span>ECCD Checklist</td><td style="width:6%;"></td>
+            <td><span class="chk"></span>Kindergarten Certificate of Completion</td><td style="width:20%;"></td>
+        </tr></table>
+        <table class="f"><tr>
+            <td>Name of School:</td><td class="v" style="width:30%;font-style:normal;">{{ $eligibility['schoolName'] }}</td><td class="gap"></td>
+            <td>School ID:</td><td class="v" style="width:12%;font-style:normal;">{{ $eligibility['kinderProgressReport'] ? $schoolId : '' }}</td><td class="gap"></td>
+            <td>Address of School:</td><td class="v" style="width:28%;font-style:normal;">{{ $eligibility['schoolAddress'] }}</td>
+        </tr></table>
     </div>
+    <div style="margin-top:2px;">Other Credential Presented</div>
+    <table class="f"><tr>
+        <td style="padding-left:12px;"><span class="chk"></span>PEPT Passer</td><td style="width:2%;"></td>
+        <td>Rating:</td><td class="v" style="width:9%;"></td><td class="gap"></td>
+        <td>Date of Examination/Assessment (mm/dd/yyyy):</td><td class="v" style="width:13%;"></td><td style="width:3%;"></td>
+        <td><span class="chk"></span>Others (Pls. Specify):</td><td class="v" style="width:15%;"></td>
+    </tr></table>
+    <table class="f"><tr>
+        <td style="padding-left:12px;">Name and Address of Testing Center:</td><td class="v" style="width:45%;"></td><td class="gap"></td>
+        <td>Remark:</td><td class="v" style="width:18%;"></td>
+    </tr></table>
 
-    {{-- Form Title --}}
-    <div class="form-title-bar">
-        <div class="form-code">School Form 10 (SF10)</div>
-        <div class="form-name">Learner's Permanent Academic Record</div>
-        <div class="form-sub">(For Kinder to Grade 6)</div>
+    {{-- ── SCHOLASTIC RECORD ── --}}
+    <div class="bar">SCHOLASTIC RECORD</div>
+    @foreach($blockRows as $i => $pair)
+        @if($i > 0 && $i % 2 === 0)
+            </div><div class="page page-break">
+        @endif
+        <table class="blocks"><tr>
+            <td class="l">{!! $renderBlock($pair[0]) !!}</td>
+            <td class="r">{!! $renderBlock($pair[1] ?? null) !!}</td>
+        </tr></table>
+    @endforeach
+
+    {{-- ── CERTIFICATION ── --}}
+    <div class="bar" style="margin-top:6px;">CERTIFICATION</div>
+    <div class="box" style="padding:5px 6px;">
+        <table class="f"><tr>
+            <td>I CERTIFY that this is a true record of</td><td class="v" style="width:30%;">{{ strtoupper(trim($firstName . ' ' . $middleName . ' ' . $lastName . ' ' . $suffix)) }}</td>
+            <td>&nbsp;with LRN</td><td class="v" style="width:15%;">{{ $lrn }}</td>
+            <td>&nbsp;and that he/she is eligible for admission to Grade</td><td class="v" style="width:7%;">{{ $eligibleForGrade }}</td><td>.</td>
+        </tr></table>
+        <table class="f" style="margin-top:2px;"><tr>
+            <td>Name of School:</td><td class="v" style="width:28%;">{{ strtoupper($schoolName) }}</td><td class="gap"></td>
+            <td>School ID:</td><td class="v" style="width:10%;">{{ $schoolId }}</td><td class="gap"></td>
+            <td>Division:</td><td class="v" style="width:13%;">{{ $division }}</td><td class="gap"></td>
+            <td>Last School Year Attended:</td><td class="v" style="width:13%;white-space:nowrap;">{{ $lastSchoolYear }}</td>
+        </tr></table>
+        <table style="width:100%;border-collapse:collapse;margin-top:16px;"><tr>
+            <td style="width:24%;text-align:center;"><div style="border-top:1px solid #000;padding-top:1px;">Date</div></td>
+            <td style="width:6%;"></td>
+            <td style="width:40%;text-align:center;">
+                <div style="font-weight:bold;">{{ strtoupper($principalName ?? '') }}</div>
+                <div style="border-top:1px solid #000;padding-top:1px;">Signature of Principal/School Head over Printed Name</div>
+            </td>
+            <td style="width:6%;"></td>
+            <td style="width:24%;text-align:center;font-style:italic;color:#555;">(Affix School Seal here)</td>
+        </tr></table>
     </div>
-
-    {{-- ═══════════ PART I — SCHOOL INFORMATION ═══════════ --}}
-    <div class="part-label">Part I &nbsp;–&nbsp; School Information</div>
-    <table class="info-tbl">
-        <tr>
-            <td style="width:22%"><span class="lbl">School ID</span><span class="val">—</span></td>
-            <td style="width:55%"><span class="lbl">School Name</span><span class="val">{{ $schoolName }}</span></td>
-            <td style="width:23%"><span class="lbl">School Year</span><span class="val">{{ $schoolYear }}</span></td>
-        </tr>
-        <tr>
-            <td colspan="2"><span class="lbl">School Address</span><span class="val">{{ $schoolAddress }}</span></td>
-            <td><span class="lbl">Division</span><span class="val">Nueva Ecija</span></td>
-        </tr>
-    </table>
-
-    {{-- ═══════════ PART II — LEARNER'S BASIC INFORMATION ═══════════ --}}
-    <div class="part-label">Part II &nbsp;–&nbsp; Learner's Basic Information</div>
-
-    <table class="info-tbl">
-        <tr>
-            <td style="width:30%"><span class="lbl">Learner Reference Number (LRN)</span><span class="val">{{ $student->lrn ?: '—' }}</span></td>
-            <td style="width:70%" colspan="3">
-                <span class="lbl">Name (Last Name, First Name, Middle Name)</span>
-                <span class="val">{{ strtoupper($lastName) }}, {{ strtoupper($firstName) }} {{ strtoupper($middleName) }}{{ $suffix ? ' '.$suffix : '' }}</span>
-            </td>
-        </tr>
-        <tr>
-            <td><span class="lbl">Date of Birth (mm/dd/yyyy)</span><span class="val">{{ $birthdate }}</span></td>
-            <td><span class="lbl">Place of Birth</span><span class="val">{{ $placeOfBirth ?: '—' }}</span></td>
-            <td><span class="lbl">Sex</span><span class="val">{{ ucfirst($gender) }}</span></td>
-            <td><span class="lbl">Mother Tongue</span><span class="val">{{ $motherTongue }}</span></td>
-        </tr>
-    </table>
-
-    {{-- Address --}}
-    <table class="info-tbl" style="margin-top:2px;">
-        <tr>
-            <td colspan="4"><span class="lbl">Home Address</span></td>
-        </tr>
-        <tr>
-            <td style="width:30%"><span class="lbl">House No. / Street</span><span class="val">{{ $streetAddress ?: '—' }}</span></td>
-            <td style="width:25%"><span class="lbl">Barangay</span><span class="val">{{ $barangay ?: '—' }}</span></td>
-            <td style="width:25%"><span class="lbl">Municipality / City</span><span class="val">{{ $city ?: '—' }}</span></td>
-            <td style="width:20%"><span class="lbl">Province</span><span class="val">{{ $province ?: '—' }}</span></td>
-        </tr>
-    </table>
-
-    {{-- Parents / Guardian --}}
-    <table class="info-tbl" style="margin-top:2px;">
-        <tr>
-            <td style="width:33%"><span class="lbl">Name of Mother (Last, First, Middle)</span><span class="val">{{ $motherName ?: '—' }}</span></td>
-            <td style="width:33%"><span class="lbl">Name of Father (Last, First, Middle)</span><span class="val">{{ $fatherName ?: '—' }}</span></td>
-            <td style="width:34%"><span class="lbl">Guardian's Name (if not parent)</span><span class="val">{{ $guardianName ?: '—' }}</span></td>
-        </tr>
-        <tr>
-            <td>&nbsp;</td>
-            <td>&nbsp;</td>
-            <td>
-                <span class="lbl">Relationship to Learner</span><span class="val">{{ $guardianRelation ?: '—' }}</span>
-            </td>
-        </tr>
-        <tr>
-            <td colspan="2">
-                <span class="lbl">Contact Number (of Mother / Father / Guardian)</span>
-                <span class="val">{{ $guardianPhone ?: '—' }}</span>
-            </td>
-            <td>
-                <span class="lbl">Religious Affiliation</span>
-                <span class="val">{{ $religiousAffiliation ?: '—' }}</span>
-            </td>
-        </tr>
-    </table>
-
-    {{-- Health Info --}}
-    <table class="info-tbl" style="margin-top:2px;">
-        <tr>
-            <td style="width:20%"><span class="lbl">Blood Type</span><span class="val">{{ $bloodType ?: '—' }}</span></td>
-            <td style="width:40%"><span class="lbl">Allergies / Special Medical Conditions</span><span class="val">{{ $allergies ?: 'None' }}</span></td>
-            <td style="width:40%"><span class="lbl">Last School Attended (for transferees)</span><span class="val">{{ $lastSchool ?: '—' }}</span></td>
-        </tr>
-    </table>
-
-    {{-- ═══════════ PART III — ACADEMIC RECORD ═══════════ --}}
-    <div class="part-label">Part III &nbsp;–&nbsp; Academic Record (Current Enrollment)</div>
-
-    @if($enrollments->isEmpty())
-        <p style="font-size:10px; color:#666; padding:8px;">No enrollment record found for this student.</p>
-    @else
-        @foreach($enrollments as $enr)
-            @php
-                $sd = $enr->student_data ?? [];
-                $grLevel = $enr->grade_level ?? ($sd['grade_level'] ?? '');
-                $grMap = ['nursery'=>'Nursery','kindergarten'=>'Kindergarten','grade1'=>'Grade 1','grade2'=>'Grade 2','grade3'=>'Grade 3','grade4'=>'Grade 4','grade5'=>'Grade 5','grade6'=>'Grade 6'];
-                $grDisplay = $grMap[$grLevel] ?? ucfirst($grLevel);
-                $isDescriptive = in_array($grLevel, ['nursery','kindergarten']);
-                $termCount = (int)$totalTerms;
-
-                // Group grades for this enrollment by subject
-                $enrGrades = $grades->where('enrollment_id', $enr->id)->groupBy('subject_id');
-            @endphp
-
-            <table class="grade-tbl">
-                <thead>
-                    <tr>
-                        <th colspan="{{ 3 + $termCount }}" style="text-align:left; font-size:10px; background:#001f5e;">
-                            {{ $grDisplay }} &nbsp;|&nbsp; Section: {{ $enr->section ?? '—' }} &nbsp;|&nbsp; S.Y. {{ $enr->school_year }} &nbsp;|&nbsp; Status: {{ ucfirst($enr->status) }}
-                        </th>
-                    </tr>
-                    <tr>
-                        <th style="width:5%; text-align:center;">#</th>
-                        <th style="text-align:left; width:45%;">Learning Area / Subject</th>
-                        @for($t = 1; $t <= $termCount; $t++)
-                            <th>{{ $t }}{{ $t==1?'st':($t==2?'nd':'rd') }} Term</th>
-                        @endfor
-                        <th>Final Rating</th>
-                        <th>Remarks</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @php $rowNum = 0; $passCount = 0; $failCount = 0; $totalFinal = 0; $gradeCount = 0; @endphp
-                    @forelse($enr->subjects ?? [] as $subj)
-                        @php
-                            $rowNum++;
-                            $subjGrades = $enrGrades->get($subj->id, collect());
-                            $termGrades = [];
-                            for($t = 1; $t <= $termCount; $t++) {
-                                $g = $subjGrades->firstWhere('term', $t);
-                                $termGrades[$t] = $g;
-                            }
-                            // Compute final rating
-                            $numericVals = [];
-                            foreach($termGrades as $tg) {
-                                if($tg) {
-                                    if($isDescriptive && $tg->descriptive_grade) {
-                                        // skip numeric avg for descriptive
-                                    } elseif($tg->grade !== null) {
-                                        $numericVals[] = (float)$tg->grade;
-                                    }
-                                }
-                            }
-                            $finalRating = count($numericVals) ? round(array_sum($numericVals)/count($numericVals), 2) : null;
-                            $remarks = '';
-                            if($finalRating !== null) {
-                                $remarks = $finalRating >= 75 ? 'Passed' : 'Failed';
-                                if($finalRating >= 75) $passCount++; else $failCount++;
-                                $totalFinal += $finalRating;
-                                $gradeCount++;
-                            }
-                        @endphp
-                        <tr>
-                            <td>{{ $rowNum }}</td>
-                            <td class="subj">{{ $subj->name }}</td>
-                            @for($t = 1; $t <= $termCount; $t++)
-                                @php $tg = $termGrades[$t]; @endphp
-                                <td>
-                                    @if($tg)
-                                        @if($isDescriptive && $tg->descriptive_grade)
-                                            <span class="grade-desc">{{ $tg->descriptive_grade }}</span>
-                                        @elseif($tg->grade !== null)
-                                            <span class="{{ $tg->grade >= 75 ? 'grade-pass' : 'grade-fail' }}">{{ number_format($tg->grade, 0) }}</span>
-                                        @else
-                                            <span style="color:#999;">—</span>
-                                        @endif
-                                    @else
-                                        <span style="color:#ccc;">—</span>
-                                    @endif
-                                </td>
-                            @endfor
-                            <td>
-                                @if($finalRating !== null)
-                                    <strong class="{{ $finalRating >= 75 ? 'grade-pass' : 'grade-fail' }}">{{ number_format($finalRating, 0) }}</strong>
-                                @else
-                                    —
-                                @endif
-                            </td>
-                            <td>
-                                @if($remarks)
-                                    <span class="{{ $remarks === 'Passed' ? 'grade-pass' : 'grade-fail' }}">{{ $remarks }}</span>
-                                @else —
-                                @endif
-                            </td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="{{ 3 + $termCount }}" style="text-align:center; color:#999; padding:6px;">No subjects on record.</td></tr>
-                    @endforelse
-
-                    @if($gradeCount > 0)
-                    <tr class="avg-row">
-                        <td colspan="2" style="text-align:right;">General Average</td>
-                        @for($t = 1; $t <= $termCount; $t++)<td>—</td>@endfor
-                        <td><strong>{{ number_format($totalFinal / $gradeCount, 2) }}</strong></td>
-                        <td><span class="{{ ($totalFinal/$gradeCount) >= 75 ? 'grade-pass' : 'grade-fail' }}">{{ ($totalFinal/$gradeCount) >= 75 ? 'Promoted' : 'Retained' }}</span></td>
-                    </tr>
-                    @endif
-                </tbody>
-            </table>
-            <div style="height:6px;"></div>
-        @endforeach
-    @endif
-
-    {{-- ═══════════ SIGNATURE BLOCK ═══════════ --}}
-    <div class="sig-block">
-        <div class="sig-cell">
-            <div class="sig-line">{{ $student->name }}</div>
-            <div class="sig-sub">Learner / Parent / Guardian Signature over Printed Name</div>
-        </div>
-        <div class="sig-cell">
-            <div class="sig-line">{{ $principalName ?: '______________________________' }}</div>
-            <div class="sig-sub">School Principal / Head Teacher</div>
-        </div>
-        <div class="sig-cell">
-            <div style="font-size:9px; text-align:right; color:#555;">Date Printed: {{ now()->format('F d, Y') }}</div>
-            <div style="font-size:9px; text-align:right; color:#555; margin-top:2px;">Printed by: Admin</div>
-        </div>
-    </div>
-
-    {{-- Footer --}}
-    <div class="footer-note">
-        This document is an official record of {{ $schoolName }}. Unauthorized alteration of this form is punishable by law.
-        &nbsp;|&nbsp; SF10 – Learner's Permanent Academic Record &nbsp;|&nbsp; {{ $schoolYear }}
-    </div>
-
 </div>
 </body>
 </html>

@@ -2137,31 +2137,71 @@ class DashboardController extends Controller
             $gwa  = count($avgs) ? round(array_sum($avgs) / count($avgs)) : null;
         }
 
+        // Official SF9: a subject's Final Grade only once all 3 terms are in, and the
+        // General Average only once every subject has its Final Grade.
+        if (!$isDescriptive) {
+            $subjects = array_map(function ($s) {
+                $terms = [$s['term1'], $s['term2'], $s['term3']];
+                $s['final'] = in_array(null, $terms, true) ? null : (int) round(array_sum($terms) / 3);
+                $s['remarks'] = $s['final'] === null ? '' : ($s['final'] >= 75 ? 'Passed' : 'Failed');
+                return $s;
+            }, $subjects);
+            $finals = array_column($subjects, 'final');
+            $gwa = ($finals && !in_array(null, $finals, true)) ? (int) round(array_sum($finals) / count($finals)) : null;
+        }
+
         // Action taken based on GWA
         $actionTaken = null;
         if (!$isDescriptive && $gwa !== null) {
             $actionTaken = $gwa >= 75 ? ($gradeLevel === 'grade6' ? 'Graduated' : 'Promoted') : 'Retained';
         }
 
-        // Teacher name
-        $teacherName = $teacher->name;
+        // The section's adviser (not whoever is printing — an admin can print this too)
+        $section = Section::where('name', $sectionName)->where('grade_level', $gradeLevel)->where('school_year', $schoolYear)->first();
+        $teacherName = $section?->advisory_teacher?->name
+            ?? ($section?->teacher_id ? User::find($section->teacher_id)?->name : null)
+            ?? ($teacher->role === 'teacher' ? $teacher->name : '');
+
+        // Attendance Record: June to April of this school year
+        $startYear  = (int) substr($schoolYear, 0, 4);
+        $attendance = [];
+        foreach (['Jun' => 6, 'Jul' => 7, 'Aug' => 8, 'Sep' => 9, 'Oct' => 10, 'Nov' => 11, 'Dec' => 12, 'Jan' => 1, 'Feb' => 2, 'Mar' => 3, 'Apr' => 4] as $label => $m) {
+            $year = $m >= 6 ? $startYear : $startYear + 1;
+            $classDays = $section
+                ? Attendance::where('section_id', $section->id)->whereYear('date', $year)->whereMonth('date', $m)->distinct()->count('date')
+                : 0;
+            $present = Attendance::where('student_id', $student->id)->whereYear('date', $year)->whereMonth('date', $m)
+                ->whereIn('status', ['present', 'late'])->distinct()->count('date');
+            $attendance[$label] = $classDays
+                ? ['days' => $classDays, 'present' => $present, 'absent' => max(0, $classDays - $present)]
+                : ['days' => null, 'present' => null, 'absent' => null];
+        }
+        $attendanceTotal = collect($attendance)->every(fn ($a) => $a['days'] === null) ? null : [
+            'days'    => collect($attendance)->sum('days'),
+            'present' => collect($attendance)->sum('present'),
+            'absent'  => collect($attendance)->sum('absent'),
+        ];
+
+        $schoolHead = \App\Models\Setting::get('principal_name') ?: '';
 
         $data = compact(
             'student', 'profile', 'guardian', 'address', 'age',
             'gradeLabel', 'nextGradeLabel', 'sectionName', 'schoolYear',
             'isDescriptive', 'subjects', 'gwa', 'term1Avg', 'term2Avg', 'term3Avg',
-            'actionTaken', 'teacherName'
+            'actionTaken', 'teacherName', 'attendance', 'attendanceTotal', 'schoolHead'
         );
 
         $html = view('teacher.sf9', $data)->render();
 
+        // Official SF9 layout: one landscape sheet, report on the left, attendance/signatures on the right
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html)
-            ->setPaper('letter', 'portrait')
+            ->setPaper('letter', 'landscape')
             ->setOptions(['defaultFont' => 'Arial', 'isHtml5ParserEnabled' => true, 'isRemoteEnabled' => true, 'defaultMediaType' => 'print']);
 
         $filename = 'SF9_' . str_replace(' ', '_', $student->name) . '_' . str_replace('-', '_', $schoolYear) . '.pdf';
 
-        return $pdf->download($filename);
+        // ?print=1: shown in the browser for its print window (which can also save as PDF)
+        return $request->boolean('print') ? $pdf->stream($filename) : $pdf->download($filename);
     }
 
     // ── SF5: Report on Promotions and Level of Proficiency (Excel) ──
@@ -2292,7 +2332,8 @@ class DashboardController extends Controller
 
         $filename = 'SF5_' . preg_replace('/[^A-Za-z0-9\-]/', '-', $section->name) . '_' . str_replace('-', '_', $schoolYear) . '.pdf';
 
-        return $pdf->download($filename);
+        // ?print=1: shown in the browser for its print window (which can also save as PDF)
+        return $request->boolean('print') ? $pdf->stream($filename) : $pdf->download($filename);
     }
 
     protected function passwordSettingsTab(): string

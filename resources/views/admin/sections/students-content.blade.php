@@ -312,10 +312,10 @@
                                         <i class="bi bi-receipt"></i>
                                     </a>
 
-                                    <a href="{{ route('admin.students.sf10', $s->id) }}" target="_blank"
-                                       class="action-btn" title="Download SF10"
+                                    <a href="{{ route('admin.students.sf10', $s->id) }}" onclick="return ilcPrintPdf(this.href)"
+                                       class="action-btn" title="Print SF10"
                                        style="background:#e8f8f0;color:#1a6b2d;">
-                                        <i class="bi bi-file-earmark-pdf-fill"></i>
+                                        <i class="bi bi-printer-fill"></i>
                                     </a>
 
                                     <a href="#" class="action-btn" title="Change Status"

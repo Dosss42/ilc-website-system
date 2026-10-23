@@ -148,10 +148,10 @@
 
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
 
-                <a id="sv-sf10-btn" href="#" target="_blank"
+                <a id="sv-sf10-btn" href="#" onclick="return ilcPrintPdf(this.href)"
                    class="btn btn-success"
                    style="display:none; background:#1a6b2d; border-color:#1a6b2d;">
-                    <i class="bi bi-file-earmark-pdf-fill me-1"></i> Download SF10
+                    <i class="bi bi-printer-fill me-1"></i> Print SF10
                 </a>
 
                 <button type="button" class="btn btn-primary" id="sv-reenroll-btn" onclick="reEnrollStudent()" style="display:none;"><i class="bi bi-arrow-repeat me-1"></i> Re-Enroll</button>

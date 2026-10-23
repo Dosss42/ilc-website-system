@@ -177,10 +177,10 @@
                                        title="Restore Student" style="background:#e8f8f0;color:#1a6b2d;">
                                         <i class="bi bi-arrow-counterclockwise"></i>
                                     </a>
-                                    <a href="{{ route('admin.students.sf10', $arc->id) }}" target="_blank"
-                                       class="action-btn" title="Download SF10"
+                                    <a href="{{ route('admin.students.sf10', $arc->id) }}" onclick="return ilcPrintPdf(this.href)"
+                                       class="action-btn" title="Print SF10"
                                        style="background:#eef2ff;color:#3730a3;">
-                                        <i class="bi bi-file-earmark-pdf-fill"></i>
+                                        <i class="bi bi-printer-fill"></i>
                                     </a>
                                     <a href="#" class="action-btn js-student-force-delete"
                                        data-id="{{ $arc->id }}" data-name="{{ addslashes($arc->name) }}"

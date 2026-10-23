@@ -1301,8 +1301,8 @@
 
                     <div style="width:1px;height:36px;background:var(--border);"></div>
 
-                    <button class="btn-dash" style="background:#c0392b;color:#fff;" onclick="exportSF5()" title="Download SF5 — Report on Promotions (PDF)">
-                        <i class="bi bi-file-earmark-pdf-fill"></i> SF5
+                    <button class="btn-dash" style="background:#c0392b;color:#fff;" onclick="exportSF5()" title="Print SF5 — Report on Promotions">
+                        <i class="bi bi-printer-fill"></i> SF5
                     </button>
 
                 </div>
@@ -1318,20 +1318,12 @@
                             <div id="ms-draft-count-text" style="font-size:12px;color:var(--muted);margin-top:2px;"></div>
                         </div>
                     </div>
-                    <div style="display:flex;gap:8px;flex-shrink:0;">
-                        <button class="btn-dash btn-secondary" style="padding:8px 14px;" onclick="discardDraft()">
-                            <i class="bi bi-x-circle"></i> Discard Draft
-                        </button>
-                        <button class="btn-dash btn-success" style="padding:8px 14px;" onclick="submitDraft()">
-                            <i class="bi bi-check-circle-fill"></i> Submit Grades
-                        </button>
-                    </div>
                 </div>
                 <div style="margin-top:10px;padding:10px 14px;background:#fff;border-radius:8px;border:1px solid #f5a623;font-size:12px;color:#7f4f00;">
                     <strong>How to review:</strong>
                     Draft grades are shown in the <strong>Grade</strong> column with an <span style="background:#fff8ec;border:1px solid #f5a623;border-radius:4px;padding:1px 6px;font-weight:700;">amber highlight</span>.
-                    You can still edit any grade in the input cells.
-                    When you're satisfied, click <strong>Submit Grades</strong> to make them visible to students.
+                    You can still edit any grade — the button above the table changes to <strong>Save as Draft</strong> until you save.
+                    When you're satisfied, click <strong>Submit Grades</strong> above the table to make them visible to students.
                 </div>
             </div>
 
@@ -1346,8 +1338,10 @@
                 <div class="content-card-header">
                     <h6 id="ms-table-title">Loading...</h6>
                     <div style="display:flex;gap:8px;align-items:center;">
-                        <span style="font-size:11px;color:var(--muted);">Enter grades below, then save as draft to review before submitting.</span>
-                        <button id="btn-save-draft" class="btn-dash btn-secondary" style="padding:7px 16px;font-size:12px;" onclick="saveManualGrades()">
+                        <span id="ms-grade-action-hint" style="font-size:11px;color:var(--muted);">Enter grades below, then save as draft to review before submitting.</span>
+                        {{-- One button that follows the grades: Save as Draft while there are unsaved changes
+                             (typed or just imported), Submit Grades once the draft is saved, hidden otherwise --}}
+                        <button id="btn-save-draft" class="btn-dash btn-secondary" style="padding:7px 16px;font-size:12px;display:none;" onclick="gradeActionClick()">
                             <i class="bi bi-floppy-fill"></i> Save as Draft
                         </button>
                     </div>
@@ -2180,8 +2174,49 @@
         msCurrentSectionLabel = '';
     }
 
+    // ── The grade table's action button ──
+    // Save as Draft while there are unsaved changes (typed, or just imported → review then save),
+    // Submit Grades once the draft is saved with no new changes, hidden when there is nothing to do.
+    let msGradesDirty   = false; // grades changed since the table was loaded / last saved
+    let msDraftCount    = 0;     // saved drafts waiting to be submitted
+    let msHasEditable   = false; // any grade in the table not yet posted (still editable)
+    let msImportPending = false; // the next table load follows an import
+
+    function markGradesDirty() {
+        if (msGradesDirty) return;
+        msGradesDirty = true;
+        updateGradeActionButton();
+    }
+
+    function updateGradeActionButton() {
+        const btn  = document.getElementById('btn-save-draft');
+        const hint = document.getElementById('ms-grade-action-hint');
+        if (!btn) return;
+        if (msHasEditable && msGradesDirty) {
+            btn.className = 'btn-dash btn-secondary';
+            btn.innerHTML = '<i class="bi bi-floppy-fill"></i> Save as Draft';
+            btn.style.display = '';
+            hint.textContent = 'You have unsaved changes — save them as a draft to review before submitting.';
+        } else if (msDraftCount > 0) {
+            btn.className = 'btn-dash btn-success';
+            btn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Submit Grades';
+            btn.style.display = '';
+            hint.textContent = 'Draft saved. Review the grades, then submit them.';
+        } else {
+            btn.style.display = 'none';
+            hint.textContent = msHasEditable ? 'Enter grades below, then save as draft to review before submitting.' : '';
+        }
+    }
+
+    function gradeActionClick() {
+        if (msHasEditable && msGradesDirty) saveManualGrades();
+        else if (msDraftCount > 0) submitDraft();
+    }
+
     function loadGradeView() {
         if (!msCurrentSection) return;
+        msGradesDirty = false; msDraftCount = 0; msHasEditable = false;
+        updateGradeActionButton();
         const term = parseInt(document.getElementById('ms-term').value);
         const schoolYear = document.getElementById('ms-sy').value;
         // Keep subtitle in sync whenever term or SY changes
@@ -2235,6 +2270,7 @@
                 // Posted grades (submitted/approved) can't be re-edited from this table anymore —
                 // 'rejected' stays editable so a returned grade can be corrected and resubmitted.
                 const isLocked = s.grade_status === 'submitted' || s.grade_status === 'approved';
+                if (!isLocked) msHasEditable = true;
 
                 let inputHtml, remarks;
 
@@ -2300,7 +2336,7 @@
                     + '<td>' + inputHtml + '</td>'
                     + '<td class="remarks-cell" style="font-size:12px;">' + (remarks ? '<span class="status-badge ' + remarksBadgeColor + '">' + remarks + '</span>' : '<span style="color:var(--muted);">—</span>') + '</td>'
                     + '<td style="font-size:12px;">' + (statusBadge || draftBadge) + '</td>'
-                    + '<td><a href="' + sf9Url + '" target="_blank" title="Download SF9 Report Card" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:#c0392b;color:#fff;border-radius:5px;font-size:11px;font-weight:600;text-decoration:none;"><i class="bi bi-file-earmark-pdf-fill"></i> SF9</a></td>'
+                    + '<td><a href="' + sf9Url + '" onclick="return ilcPrintPdf(this.href)" title="Print SF9 Report Card" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:#c0392b;color:#fff;border-radius:5px;font-size:11px;font-weight:600;text-decoration:none;"><i class="bi bi-printer-fill"></i> SF9</a></td>'
                     + '</tr>';
             });
             tbody.innerHTML = html;
@@ -2319,6 +2355,11 @@
             if (data.draft_count > 0) {
                 showDraftNotice(data.draft_count);
             }
+
+            msDraftCount = data.draft_count || 0;
+            // Imported grades are saved as drafts already, but get reviewed first: Save as Draft, then Submit
+            if (msImportPending) { msGradesDirty = true; msImportPending = false; }
+            updateGradeActionButton();
         })
         .catch(function(err) {
             tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--red);">Error loading students.</td></tr>';
@@ -2339,6 +2380,7 @@
     }
 
     function updateRemarks(input) {
+        markGradesDirty();
         const v = parseFloat(input.value);
         input.classList.remove('passed', 'failed');
         const td = input.closest('tr').querySelector('.remarks-cell');
@@ -2354,6 +2396,7 @@
 
     const DESCRIPTIVE_LABELS_JS = { O:'Outstanding', VS:'Very Satisfactory', S:'Satisfactory', FS:'Fairly Satisfactory', DNME:'Did Not Meet Expectations' };
     function updateDescriptiveRemarks(sel) {
+        markGradesDirty();
         const v  = sel.value;
         const td = sel.closest('tr').querySelector('.remarks-cell');
         if (v) {
@@ -2504,7 +2547,7 @@
         if (!msCurrentSection) { showToast('Please select a section first.', 'error'); return; }
         const schoolYear = document.getElementById('ms-sy').value;
         const params = new URLSearchParams({ section_id: msCurrentSection, school_year: schoolYear });
-        window.location.href = '/teacher/sf5?' + params.toString();
+        ilcPrintPdf('/teacher/sf5?' + params.toString());
     }
 
     function importGrades(input) {
@@ -2541,7 +2584,7 @@
                 document.getElementById('ms-import-errors').style.display = '';
             }
             // Only reload if still viewing the same section
-            if (msCurrentSection === importSectionId) loadGradeView();
+            if (msCurrentSection === importSectionId) { msImportPending = true; loadGradeView(); }
         })
         .catch(function() { showToast('Network error during import.', 'error'); });
     }
@@ -2560,6 +2603,9 @@
         if (!msCurrentSection) return;
         const term       = document.getElementById('ms-term').value;
         const schoolYear = document.getElementById('ms-sy').value;
+        const btn = document.getElementById('btn-save-draft');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Submitting…';
         fetch('/teacher/grades/submit-draft', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
@@ -2568,30 +2614,14 @@
         })
         .then(r => r.json())
         .then(data => {
+            btn.disabled = false;
             if (data.success) { showToast(data.message || 'Grades submitted!', 'success'); loadGradeView(); }
-            else showToast(data.message || 'Submit failed.', 'error');
-        });
-    }
-
-    function discardDraft() {
-        if (!msCurrentSection) return;
-        showConfirm('Discard all draft grades for this subject and term?', doDiscardDraft,
-            { title: 'Discard Draft', confirmLabel: 'Discard', danger: true });
-    }
-
-    function doDiscardDraft() {
-        const term       = document.getElementById('ms-term').value;
-        const schoolYear = document.getElementById('ms-sy').value;
-        fetch('/teacher/grades/discard-draft', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-            credentials: 'same-origin',
-            body: JSON.stringify({ section_id: msCurrentSection, subject_id: msCurrentSubject, term: term, school_year: schoolYear })
+            else { showToast(data.message || 'Submit failed.', 'error'); updateGradeActionButton(); }
         })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) { showToast('Draft discarded.', 'warning'); loadGradeView(); }
-            else showToast(data.message || 'Discard failed.', 'error');
+        .catch(function () {
+            btn.disabled = false;
+            updateGradeActionButton();
+            showToast('Network error. Please try again.', 'error');
         });
     }
 
@@ -3041,6 +3071,7 @@
         });
     })();
 </script>
+<script src="{{ asset('js/print-pdf.js') }}?v={{ @filemtime(public_path('js/print-pdf.js')) }}"></script>
 @include('partials.idle-logout', ['portal' => 'web'])
 </body>
 </html>

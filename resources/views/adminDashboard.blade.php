@@ -1495,7 +1495,7 @@ function downloadPromotionSF5() {
     }
     var url = '{{ route("teacher.sf5") }}?section_id=' + encodeURIComponent(sel.value)
         + '&school_year=' + encodeURIComponent('{{ $currentSchoolYear }}');
-    window.open(url, '_blank');
+    ilcPrintPdf(url);
 }
 
 function openWalkInEnrollmentModal() {
@@ -6006,7 +6006,8 @@ function openWalkInEnrollmentModal() {
 
     // Restore archived student
     function restoreStudent(studentId, studentName) {
-        showDeleteConfirm(
+        showConfirm(
+            'Confirm Restore',
             'Restore "' + (studentName || 'this student') + '" back to active students?',
             function() {
                 const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -6024,9 +6025,19 @@ function openWalkInEnrollmentModal() {
                     }
                 })
                 .catch(() => showCustomAlert('error', 'Error', 'Failed to restore student.'));
-            }
+            },
+            RESTORE_CONFIRM_STYLE
         );
     }
+
+    // Green "Restore" look for the restore confirmations (not the red delete one)
+    var RESTORE_CONFIRM_STYLE = {
+        btnText: 'Restore',
+        btnClass: 'btn btn-success',
+        btnIcon: 'bi-arrow-counterclockwise',
+        headerBg: 'linear-gradient(135deg,#14532d,#16a34a)',
+        headerIcon: 'bi-arrow-counterclockwise'
+    };
 
     // Toggle the archives panel at the bottom of Student Management
     function toggleArchivesPanel() {
@@ -7075,7 +7086,8 @@ function openWalkInEnrollmentModal() {
 
     // Restore an archived teacher
     function restoreTeacher(id, name) {
-        showDeleteConfirm(
+        showConfirm(
+            'Confirm Restore',
             'Restore "' + (name || 'this teacher') + '" back to active teachers?',
             function() {
                 fetch(`/admin/teachers/${id}/restore`, {
@@ -7092,7 +7104,8 @@ function openWalkInEnrollmentModal() {
                     }
                 })
                 .catch(() => showCustomAlert('error', 'Error', 'Failed to restore teacher.'));
-            }
+            },
+            RESTORE_CONFIRM_STYLE
         );
     }
 
@@ -14268,6 +14281,7 @@ function openWalkInEnrollmentModal() {
 </script>
 
 <script src="{{ asset('js/section-summary.js') }}?v={{ @filemtime(public_path('js/section-summary.js')) }}"></script>
+<script src="{{ asset('js/print-pdf.js') }}?v={{ @filemtime(public_path('js/print-pdf.js')) }}"></script>
 @include('partials.idle-logout', ['portal' => 'web'])
 </body>
 

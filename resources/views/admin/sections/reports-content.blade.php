@@ -1119,7 +1119,7 @@
                             @endforeach
                         </select>
                         <button type="button" class="btn-dash btn-secondary btn-sm" onclick="downloadPromotionSF5()">
-                            <i class="bi bi-download"></i> Download SF5
+                            <i class="bi bi-printer-fill"></i> Print SF5
                         </button>
                     </div>
                     <div style="overflow-x:auto;">
