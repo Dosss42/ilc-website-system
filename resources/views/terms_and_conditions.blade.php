@@ -117,7 +117,7 @@
         <h2>2. Eligibility</h2>
         <p>The ILC Online Enrollment System is available to:</p>
         <ul>
-            <li>Students seeking enrollment at Immaculate Learning Center</li>
+            <li>Students seeking enrollment at IEMELIF Learning Center</li>
             <li>Parents or legal guardians of students</li>
             <li>Authorized school staff and administrators</li>
         </ul>
@@ -241,7 +241,7 @@
         <p>ILC is committed to protecting your personal information. Our Privacy Policy, which can be found separately, details how we collect, use, store, and protect your data. By using this system, you consent to our data practices as outlined in our Privacy Policy.</p>
 
         <h2>9. Intellectual Property</h2>
-        <p>All content on the ILC Online Enrollment System, including text, graphics, logos, and software, is the property of Immaculate Learning Center and is protected by copyright laws. Users may not reproduce, distribute, or create derivative works without explicit permission.</p>
+        <p>All content on the ILC Online Enrollment System, including text, graphics, logos, and software, is the property of IEMELIF Learning Center and is protected by copyright laws. Users may not reproduce, distribute, or create derivative works without explicit permission.</p>
 
         <h2>10. Communication</h2>
         <p>By enrolling, you agree to receive communications from ILC through:</p>
@@ -274,18 +274,18 @@
         <h2>15. Contact Information</h2>
         <p>For questions about these Terms and Conditions or the enrollment process, please contact:</p>
         <div class="highlight">
-            <strong>Immaculate Learning Center</strong><br>
+            <strong>IEMELIF Learning Center</strong><br>
             Address: Brgy Poblacion Central General Tinio Nueva Ecija<br>
             Phone: 0951-989-9685<br>
             Email: Iemelif_learningcenter@gmail.com<br>
-            Office Hours: Monday – Friday 7:30 AM – 5:00 PM
+            Office Hours: Monday – Friday 7:30 AM – 4:00 PM
         </div>
 
         <h2>16. Agreement</h2>
         <p>By clicking "I Agree" or using the ILC Online Enrollment System, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions.</p>
 
         <p class="last-updated">
-            <strong>Immaculate Learning Center</strong><br>
+            <strong>IEMELIF Learning Center</strong><br>
             These Terms and Conditions were last updated on {{ now()->format('F j, Y') }}.
         </p>
     </div>

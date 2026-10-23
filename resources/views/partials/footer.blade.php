@@ -79,7 +79,7 @@
             {{-- Col 4: Office Hours + Visitor Counter --}}
             <div class="col-md-4">
                 <h6>Office Hours</h6>
-                <div class="office-hours-row"><span>Monday – Friday</span><span>7:30 AM – 5:00 PM</span></div>
+                <div class="office-hours-row"><span>Monday – Friday</span><span>7:30 AM – 4:00 PM</span></div>
                 <div class="office-hours-row"><span>Saturday - Sunday</span><span style="color:var(--ilc-gold);">Closed</span></div>
                 <h6 class="mt-3">Visitor Counter</h6>
                 <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px 14px;margin-top:8px;">

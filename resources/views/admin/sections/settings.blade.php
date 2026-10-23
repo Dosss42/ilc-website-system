@@ -66,6 +66,11 @@
                                 <label class="form-lbl">School Name</label>
                                 <input type="text" id="set-school_name" class="form-fld" placeholder="Enter school name">
                             </div>
+                            <div class="col-md-6">
+                                <label class="form-lbl">School Motto</label>
+                                <input type="text" id="set-school_motto" class="form-fld" maxlength="120" placeholder="Nurturing Faith, Excellence, and Learning">
+                                <small class="text-muted" style="font-size:11px;">Shown under "Welcome to ILC!" on the home page. Leave blank for the default.</small>
+                            </div>
                         </div>
                         <div class="stg-section-label">Contact &amp; Location</div>
                         <div class="row g-3">

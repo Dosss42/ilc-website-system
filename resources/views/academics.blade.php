@@ -184,62 +184,68 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
 {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      LEFT SIDEBAR QUICK NAVIGATION
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+{{-- Top bar under the page banner; sticks to the top while scrolling so it never covers the content --}}
 <nav id="acad-quicknav">
-    <div class="qnav-label">Quick Nav</div>
+    <div class="container qnav-inner">
+        <span class="qnav-label">Quick Nav</span>
 
-    <a href="#sec-overview" class="qnav-link" data-sec="sec-overview">
-        <i class="bi bi-book-fill"></i>
-        <span>Overview</span>
-    </a>
-
-    <a href="#sec-grades" class="qnav-link" data-sec="sec-grades">
-        <i class="bi bi-mortarboard-fill"></i>
-        <span>Grade Levels</span>
-    </a>
-
-    {{-- Calendar with click-toggle sub-links --}}
-    <a href="#sec-calendar" class="qnav-link" data-sec="sec-calendar" id="qnav-cal-btn" onclick="toggleCalSub(event)">
-        <i class="bi bi-calendar3"></i>
-        <span>Academic Calendar</span>
-        <i class="bi bi-chevron-down qnav-chevron" id="qnav-chevron"></i>
-    </a>
-    <div id="qnav-cal-sub">
-        <a href="#sec-term1" class="qnav-sub-link">
-            <i class="bi bi-circle-fill" style="font-size:6px;color:#1d4ed8;"></i> Term 1
+        <a href="#sec-overview" class="qnav-link" data-sec="sec-overview">
+            <i class="bi bi-book-fill"></i>
+            <span>Overview</span>
         </a>
-        <a href="#sec-term2" class="qnav-sub-link">
-            <i class="bi bi-circle-fill" style="font-size:6px;color:#2563eb;"></i> Term 2
+
+        <a href="#sec-grades" class="qnav-link" data-sec="sec-grades">
+            <i class="bi bi-mortarboard-fill"></i>
+            <span>Grade Levels</span>
         </a>
-        <a href="#sec-term3" class="qnav-sub-link">
-            <i class="bi bi-circle-fill" style="font-size:6px;color:#0ea5e9;"></i> Term 3
+
+        {{-- Calendar with a dropdown of the three terms --}}
+        <div class="qnav-cal-wrap">
+            <a href="#sec-calendar" class="qnav-link" data-sec="sec-calendar" id="qnav-cal-btn" onclick="toggleCalSub(event)">
+                <i class="bi bi-calendar3"></i>
+                <span>Academic Calendar</span>
+                <i class="bi bi-chevron-down qnav-chevron" id="qnav-chevron"></i>
+            </a>
+            <div id="qnav-cal-sub">
+                <a href="#sec-calendar" class="qnav-sub-link">
+                    <i class="bi bi-calendar3" style="font-size:11px;color:#1a3a6c;"></i> Whole Calendar
+                </a>
+                <a href="#sec-term1" class="qnav-sub-link">
+                    <i class="bi bi-circle-fill" style="font-size:6px;color:#1d4ed8;"></i> Term 1
+                </a>
+                <a href="#sec-term2" class="qnav-sub-link">
+                    <i class="bi bi-circle-fill" style="font-size:6px;color:#2563eb;"></i> Term 2
+                </a>
+                <a href="#sec-term3" class="qnav-sub-link">
+                    <i class="bi bi-circle-fill" style="font-size:6px;color:#0ea5e9;"></i> Term 3
+                </a>
+            </div>
+        </div>
+
+        <a href="#sec-grading" class="qnav-link" data-sec="sec-grading">
+            <i class="bi bi-bar-chart-fill"></i>
+            <span>Grading System</span>
         </a>
     </div>
-
-    <a href="#sec-grading" class="qnav-link" data-sec="sec-grading">
-        <i class="bi bi-bar-chart-fill"></i>
-        <span>Grading System</span>
-    </a>
 </nav>
 
 <style>
 #acad-quicknav {
-    position: fixed;
-    left: 16px;
-    top: 50%;
-    transform: translateY(-50%);
+    position: sticky;
+    top: 0;
     z-index: 998;
     background: #fff;
-    border-radius: 14px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.06);
-    padding: 10px 0 12px;
-    width: 172px;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
+    border-bottom: 1px solid #e8edf5;
+    box-shadow: 0 2px 10px rgba(26,58,108,0.06);
 }
-
-/* Hide on small screens */
-@media (max-width: 1100px) { #acad-quicknav { display: none; } }
+.qnav-inner {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
 
 .qnav-label {
     font-size: 9.5px;
@@ -247,65 +253,119 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
     color: #9ca3af;
     text-transform: uppercase;
     letter-spacing: 1.5px;
-    padding: 2px 16px 8px;
-    border-bottom: 1px solid #f3f4f6;
-    margin-bottom: 4px;
+    margin-right: 8px;
 }
 
 .qnav-link {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 9px;
-    padding: 10px 16px;
-    font-size: 12px;
+    gap: 7px;
+    padding: 8px 14px;
+    font-size: 12.5px;
     font-weight: 600;
     color: #4b5563;
     text-decoration: none;
-    border-left: 3px solid transparent;
-    border-radius: 0 8px 8px 0;
-    transition: color 0.2s, border-color 0.2s, background 0.2s;
+    border-radius: 20px;
+    transition: color 0.2s, background 0.2s;
     font-family: 'Open Sans', sans-serif;
     cursor: pointer;
-    position: relative;
+    white-space: nowrap;
 }
 .qnav-link i:first-child { font-size: 13px; flex-shrink: 0; }
-.qnav-link span { flex: 1; line-height: 1.3; }
 .qnav-chevron {
     font-size: 10px;
     transition: transform 0.25s;
     flex-shrink: 0;
 }
 .qnav-link:hover { color: #1a3a6c; background: #f0f4f8; }
-.qnav-link.active {
-    color: #1a3a6c;
-    background: #eef2fb;
-    border-left-color: #1a3a6c;
-    font-weight: 700;
-}
+.qnav-link.active { color: #fff; background: #1a3a6c; }
 
-/* Calendar sub-links */
+/* Calendar dropdown */
+.qnav-cal-wrap { position: relative; }
 #qnav-cal-sub {
     display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 170px;
     flex-direction: column;
-    padding: 0 0 4px 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease;
+    padding: 6px 0;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.05);
+    z-index: 999;
 }
 #qnav-cal-sub.open { display: flex; }
 .qnav-sub-link {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 16px 8px 38px;
-    font-size: 11.5px;
+    padding: 8px 16px;
+    font-size: 12px;
     font-weight: 600;
     color: #6b7280;
     text-decoration: none;
-    border-left: 3px solid transparent;
     transition: color 0.15s, background 0.15s;
     font-family: 'Open Sans', sans-serif;
 }
 .qnav-sub-link:hover { color: #1a3a6c; background: #f0f4f8; }
+
+@media (max-width: 576px) {
+    .qnav-label { display: none; }
+    .qnav-link { padding: 7px 10px; font-size: 12px; }
+}
+
+/* Wide screens: floating panel on the left side. The page content moves right by
+   --qnav-shift (set by the script below) so the panel never covers any text. */
+@media (min-width: 1100px) {
+    #acad-quicknav {
+        position: fixed;
+        left: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 144px;
+        border: none;
+        border-radius: 14px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.06);
+        transition: opacity 0.25s;
+    }
+    #acad-quicknav.qnav-hidden { opacity: 0; pointer-events: none; }
+    #acad-quicknav .qnav-inner {
+        max-width: none;
+        flex-direction: column;
+        align-items: stretch;
+        flex-wrap: nowrap;
+        gap: 2px;
+        padding: 10px 0 12px;
+    }
+    .qnav-label {
+        margin: 0 0 4px;
+        padding: 2px 12px 8px;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    .qnav-link {
+        display: flex;
+        gap: 8px;
+        padding: 9px 10px 9px 12px;
+        font-size: 12px;
+        white-space: normal;
+        border-left: 3px solid transparent;
+        border-radius: 0 8px 8px 0;
+    }
+    .qnav-link span { flex: 1; line-height: 1.3; }
+    .qnav-link.active { color: #1a3a6c; background: #eef2fb; border-left-color: #1a3a6c; font-weight: 700; }
+    #qnav-cal-sub {
+        position: static;
+        min-width: 0;
+        padding: 0 0 4px;
+        background: none;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    .qnav-sub-link { padding: 7px 10px 7px 33px; font-size: 11.5px; }
+
+    #real-content section > .container { padding-left: calc(var(--bs-gutter-x, 1.5rem) * .5 + var(--qnav-shift, 0px)); }
+}
 </style>
 
 {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -1254,7 +1314,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
             {{-- Col 4: Office Hours + Visitor Counter --}}
             <div class="col-md-4">
                 <h6>Office Hours</h6>
-                <div class="office-hours-row"><span>Monday &ndash; Friday</span><span>7:30 AM &ndash; 5:00 PM</span></div>
+                <div class="office-hours-row"><span>Monday &ndash; Friday</span><span>7:30 AM &ndash; 4:00 PM</span></div>
                 <div class="office-hours-row"><span>Saturday - Sunday</span><span style="color:var(--ilc-gold);">Closed</span></div>
                 <h6 class="mt-3">Visitor Counter</h6>
                 <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px 14px;margin-top:8px;">
@@ -1289,10 +1349,36 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
 (function () {
     var sections = ['sec-overview','sec-grades','sec-calendar','sec-grading'];
     var links    = document.querySelectorAll('.qnav-link[data-sec]');
+    var bar      = document.getElementById('acad-quicknav');
+    function isSide() { return bar && getComputedStyle(bar).position === 'fixed'; }
+    // Space the top bar takes over the content (none when it is the side panel)
+    function barHeight() { return bar && !isSide() ? bar.offsetHeight : 0; }
+
+    // Side panel: move the content right just enough that the panel never covers it
+    function makeRoom() {
+        var root = document.documentElement;
+        root.style.setProperty('--qnav-shift', '0px');
+        var box = document.querySelector('#sec-overview > .container');
+        if (!isSide() || !box) return;
+        var need = bar.getBoundingClientRect().right + 14 - box.getBoundingClientRect().left;
+        root.style.setProperty('--qnav-shift', Math.max(0, Math.ceil(need)) + 'px');
+    }
+    makeRoom();
+    window.addEventListener('resize', makeRoom);
+    window.addEventListener('load', makeRoom);
+    setTimeout(makeRoom, 700); // the content fades in after the loading placeholder
+
+    // Side panel fades out while the footer is on screen, so it doesn't sit on top of it
+    var footer = document.querySelector('.site-footer');
+    if (footer && 'IntersectionObserver' in window) {
+        new IntersectionObserver(function (entries) {
+            bar.classList.toggle('qnav-hidden', entries[0].isIntersecting);
+        }).observe(footer);
+    }
 
     // â”€â”€ Active highlight on scroll â”€â”€
     function setActive() {
-        var scrollY = window.scrollY + 120;
+        var scrollY = window.scrollY + barHeight() + 60;
         var current = sections[0];
         sections.forEach(function(id) {
             var el = document.getElementById(id);
@@ -1308,14 +1394,29 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
     // â”€â”€ Smooth scroll (no offset needed &mdash; sidebar doesn't block content) â”€â”€
     document.querySelectorAll('a[href^="#sec-"]').forEach(function(a) {
         a.addEventListener('click', function(e) {
+            if (e.defaultPrevented) return; // first click on Academic Calendar only opens its dropdown
             var target = document.getElementById(this.getAttribute('href').slice(1));
             if (!target) return;
             e.preventDefault();
-            var top = target.getBoundingClientRect().top + window.scrollY - 24;
+            closeCalSub();
+            // Land below the sticky Quick Nav bar
+            var top = target.getBoundingClientRect().top + window.scrollY - barHeight() - 16;
             window.scrollTo({ top: top, behavior: 'smooth' });
         });
     });
+
+    // Close the calendar dropdown when clicking anywhere else
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.qnav-cal-wrap')) closeCalSub();
+    });
 })();
+
+function closeCalSub() {
+    var sub = document.getElementById('qnav-cal-sub');
+    var chevron = document.getElementById('qnav-chevron');
+    if (sub) sub.classList.remove('open');
+    if (chevron) chevron.style.transform = 'rotate(0deg)';
+}
 
 // â”€â”€ Calendar sub-links click toggle â”€â”€
 function toggleCalSub(e) {

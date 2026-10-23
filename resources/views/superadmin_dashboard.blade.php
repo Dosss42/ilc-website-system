@@ -326,6 +326,18 @@
         .status-badge.pending  { background: #fff8ec; color: #d68910; }
         .status-badge.suspended { background: #fdecea; color: var(--red); }
         .status-badge.primary  { background: var(--blue-pale); color: var(--blue); }
+        /* Student Management — the same colors as Admin (public/css/adminDashboard.css) */
+        .status-badge.approved    { background: #e3f2fd; color: #1565c0; }
+        .status-badge.declined    { background: #fdecea; color: #c0392b; }
+        .status-badge.completed   { background: #ede7f6; color: #512da8; }
+        .status-badge.dropped     { background: #fff3e0; color: #bf360c; }
+        .status-badge.ghost       { background: #f5f5f5; color: #546e7a; }
+        .status-badge.transferred { background: #e0f7fa; color: #006064; }
+        .status-badge.paid        { background: #e8f8f0; color: #1a7a44; }
+        .status-badge.partial     { background: #fff3e0; color: #e65100; }
+        .status-badge.unpaid      { background: #fdecea; color: #c0392b; }
+        #section-students .status-badge.inactive { background: #f5f5f5; color: #757575; } /* "Not Enrolled", grey as on Admin */
+        .fs-12 { font-size: 12px; }
 
         /* SA TOAST */
         #sa-toast-wrap { position:fixed;top:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:10px;pointer-events:none; }
@@ -742,6 +754,9 @@
     <button class="sidebar-link {{ $section === 'enrollments' ? 'active' : '' }}" id="nav-enrollments" onclick="showSection('enrollments')">
         <i class="bi bi-clipboard-check-fill"></i> Enrollments
     </button>
+    <button class="sidebar-link {{ $section === 'students' ? 'active' : '' }}" id="nav-students" onclick="showSection('students')">
+        <i class="bi bi-people-fill"></i> Students
+    </button>
     <button class="sidebar-link {{ $section === 'teachers' ? 'active' : '' }}" id="nav-teachers" onclick="showSection('teachers')">
         <i class="bi bi-person-video3"></i> Teachers
     </button>
@@ -800,7 +815,7 @@
         $__bcLabels = [
             'dashboard' => 'Dashboard', 'users' => 'User Management', 'roles' => 'Roles & Permissions',
             'logs' => 'Activity Logs', 'backup' => 'Backup & Restore', 'reports' => 'Reports', 'settings' => 'Settings',
-            'enrollments' => 'Enrollment Oversight', 'teachers' => 'Teacher Management', 'subjects' => 'Subject Management',
+            'enrollments' => 'Enrollment Oversight', 'students' => 'Student Management', 'teachers' => 'Teacher Management', 'subjects' => 'Subject Management',
             'sections-mgmt' => 'Section Management', 'schedules' => 'Schedule Management', 'sys-settings' => 'System Settings',
             'announcements' => 'Announcements', 'news' => 'News Management',
         ];
@@ -1755,6 +1770,12 @@
                             <label class="form-lbl-sm">Cover Image (optional)</label>
                             <input type="file" name="image" class="dash-input" accept="image/jpeg,image/png,image/webp">
                         </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:#555;margin-bottom:10px;">
+                                <input type="checkbox" name="is_highlight" value="1" style="width:16px;height:16px;accent-color:#c5a059;">
+                                <i class="bi bi-star-fill" style="color:#c5a059;"></i> Show in Highlights on the home page
+                            </label>
+                        </div>
                         <div class="col-12">
                             <label class="form-lbl-sm">Content <span style="color:#e53935;">*</span></label>
                             <textarea name="content" class="dash-input" rows="4" placeholder="Write the announcement here…" required style="resize:vertical;"></textarea>
@@ -1805,6 +1826,9 @@
                                 <span class="status-badge {{ $ann->is_active ? 'active' : 'inactive' }}">
                                     {{ $ann->is_active ? 'Active' : 'Hidden' }}
                                 </span>
+                                @if($ann->is_highlight)
+                                <span style="display:inline-block;margin-top:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#fdf6e3;color:#a07a2c;white-space:nowrap;"><i class="bi bi-star-fill me-1"></i>Highlight</span>
+                                @endif
                             </td>
                             <td>
                                 <div style="display:flex;gap:6px;">
@@ -1812,6 +1836,12 @@
                                         onclick="openEditAnnouncementModal({{ $ann->id }}, {{ \Illuminate\Support\Js::from($ann->title) }}, {{ \Illuminate\Support\Js::from($ann->content) }}, {{ \Illuminate\Support\Js::from($ann->category) }}, {{ \Illuminate\Support\Js::from($ann->audience) }}, {{ \Illuminate\Support\Js::from($ann->created_at->format('Y-m-d\TH:i')) }})">
                                         <i class="bi bi-pencil-fill"></i>
                                     </button>
+                                    <form method="POST" action="{{ route('superadmin.announcements.highlight', $ann) }}" style="margin:0;">
+                                        @csrf
+                                        <button type="submit" class="action-btn lock" title="{{ $ann->is_highlight ? 'Remove from Highlights' : 'Add to Highlights' }}">
+                                            <i class="bi bi-star{{ $ann->is_highlight ? '-fill' : '' }}"></i>
+                                        </button>
+                                    </form>
                                     <form method="POST" action="{{ route('superadmin.announcements.toggle', $ann) }}" style="margin:0;">
                                         @csrf
                                         <button type="submit" class="action-btn {{ $ann->is_active ? 'edit' : 'view' }}" title="{{ $ann->is_active ? 'Hide' : 'Show' }}">
@@ -1882,6 +1912,12 @@
                             <input type="file" name="image" class="dash-input" accept="image/jpeg,image/png,image/webp">
                         </div>
                         <div class="col-12">
+                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;color:#555;margin:0;">
+                                <input type="checkbox" name="is_highlight" value="1" style="width:16px;height:16px;accent-color:#c5a059;">
+                                <i class="bi bi-star-fill" style="color:#c5a059;"></i> Show in Highlights on the home page
+                            </label>
+                        </div>
+                        <div class="col-12">
                             <label class="form-lbl-sm">Body <span style="color:#e53935;">*</span></label>
                             <textarea name="body" class="dash-input" rows="5" placeholder="Write the news article here…" required style="resize:vertical;"></textarea>
                         </div>
@@ -1929,6 +1965,9 @@
                                 <span class="status-badge {{ $article->is_active ? 'active' : 'inactive' }}">
                                     {{ $article->is_active ? 'Published' : 'Hidden' }}
                                 </span>
+                                @if($article->is_highlight)
+                                <span style="display:inline-block;margin-top:4px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#fdf6e3;color:#a07a2c;white-space:nowrap;"><i class="bi bi-star-fill me-1"></i>Highlight</span>
+                                @endif
                             </td>
                             <td>
                                 <div style="display:flex;gap:6px;">
@@ -1936,6 +1975,12 @@
                                         onclick="openEditNewsModal({{ $article->id }}, {{ \Illuminate\Support\Js::from($article->title) }}, {{ \Illuminate\Support\Js::from($article->body) }}, {{ \Illuminate\Support\Js::from($article->category) }}, {{ \Illuminate\Support\Js::from($article->created_at->format('Y-m-d\TH:i')) }})">
                                         <i class="bi bi-pencil-fill"></i>
                                     </button>
+                                    <form method="POST" action="{{ route('superadmin.news.highlight', $article) }}" style="margin:0;">
+                                        @csrf
+                                        <button type="submit" class="action-btn lock" title="{{ $article->is_highlight ? 'Remove from Highlights' : 'Add to Highlights' }}">
+                                            <i class="bi bi-star{{ $article->is_highlight ? '-fill' : '' }}"></i>
+                                        </button>
+                                    </form>
                                     <form method="POST" action="{{ route('superadmin.news.toggle', $article) }}" style="margin:0;">
                                         @csrf
                                         <button type="submit" class="action-btn {{ $article->is_active ? 'edit' : 'view' }}" title="{{ $article->is_active ? 'Hide' : 'Show' }}">
@@ -2194,31 +2239,48 @@
                 </button>
             </div>
         </div>
+        {{-- Status counts, plus Admin's two money cards — all for the chosen school year --}}
+        {{-- Three per row (Admin's money cards are a third wide too): enough room for a peso amount --}}
         <div class="row g-3 mb-4" id="enr-stats">
-            <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon gold"><i class="bi bi-hourglass-split"></i></div><div><div class="stat-value" id="enr-cnt-pending">—</div><div class="stat-label">Pending</div></div></div></div>
-            <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon blue"><i class="bi bi-check-circle-fill"></i></div><div><div class="stat-value" id="enr-cnt-approved">—</div><div class="stat-label">Approved</div></div></div></div>
-            <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon green"><i class="bi bi-person-check-fill"></i></div><div><div class="stat-value" id="enr-cnt-enrolled">—</div><div class="stat-label">Enrolled</div></div></div></div>
-            <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div><div><div class="stat-value" id="enr-cnt-declined">—</div><div class="stat-label">Declined</div></div></div></div>
+            <div class="col-6 col-md-4"><div class="stat-card"><div class="stat-icon gold"><i class="bi bi-hourglass-split"></i></div><div><div class="stat-value" id="enr-cnt-pending">—</div><div class="stat-label">Pending</div></div></div></div>
+            <div class="col-6 col-md-4"><div class="stat-card"><div class="stat-icon blue"><i class="bi bi-check-circle-fill"></i></div><div><div class="stat-value" id="enr-cnt-approved">—</div><div class="stat-label">Approved</div></div></div></div>
+            <div class="col-6 col-md-4"><div class="stat-card"><div class="stat-icon green"><i class="bi bi-person-check-fill"></i></div><div><div class="stat-value" id="enr-cnt-enrolled">—</div><div class="stat-label">Enrolled</div></div></div></div>
+            <div class="col-6 col-md-4"><div class="stat-card"><div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div><div><div class="stat-value" id="enr-cnt-declined">—</div><div class="stat-label">Declined</div></div></div></div>
+            <div class="col-6 col-md-4"><div class="stat-card"><div class="stat-icon gold"><i class="bi bi-cash-stack"></i></div><div style="min-width:0;"><div class="stat-value" id="enr-fees-collected" style="white-space:nowrap;">—</div><div class="stat-label">Total Fees Collected</div></div></div></div>
+            <div class="col-6 col-md-4"><div class="stat-card"><div class="stat-icon red"><i class="bi bi-exclamation-circle-fill"></i></div><div><div class="stat-value" id="enr-pending-payments">—</div><div class="stat-label">Pending Payments</div></div></div></div>
         </div>
         <div class="content-card mb-3">
             <div class="p-3">
                 <div class="row g-3 mb-3">
-                    <div class="col-md-4">
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="bi bi-search"></i></span>
-                            <input type="text" id="enr-search" class="form-fld" placeholder="Search by name, email, or reference number..."
+                    <div class="col-md-5">
+                        {{-- Same search box as Teachers / Subjects (the input-group version put the icon above the field) --}}
+                        <div class="dash-search" style="width:100%;">
+                            <i class="bi bi-search"></i>
+                            <input type="text" id="enr-search" placeholder="Search by name, email, or reference number..."
                                    oninput="clearTimeout(window._enrSearchTimer); window._enrSearchTimer=setTimeout(function(){ _loaded['enrollments']=false; loadEnrollments(1); }, 400);">
                         </div>
                     </div>
                 </div>
                 <div class="row g-3">
+                    {{-- Same filters as Admin's Enrollment Management; opens on the current school year --}}
+                    @php $saEnrCurSy = \App\Models\Setting::getCurrentSchoolYear(); @endphp
+                    <div class="col-md-3">
+                        <select id="enr-sy-filter" class="form-fld" title="School Year" onchange="_loaded['enrollments']=false; loadEnrollments(1);">
+                            <option value="all">All School Years</option>
+                            @foreach(\App\Models\Setting::schoolYearOptions() as $sy)
+                                <option value="{{ $sy }}" {{ $sy === $saEnrCurSy ? 'selected' : '' }}>S.Y. {{ $sy }}{{ $sy === $saEnrCurSy ? ' (current)' : '' }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                     <div class="col-md-3">
                         <select id="enr-status-filter" class="form-fld" onchange="_loaded['enrollments']=false; loadEnrollments(1);">
                             <option value="all">All Status</option>
                             <option value="pending">Pending</option>
                             <option value="approved">Approved</option>
                             <option value="enrolled">Enrolled</option>
+                            <option value="completed">Completed</option>
                             <option value="declined">Declined</option>
+                            <option value="cancelled">Cancelled (undone promotion)</option>
                         </select>
                     </div>
                     <div class="col-md-3">
@@ -2245,16 +2307,18 @@
                 </div>
             </div>
         </div>
+        {{-- Pending applications in other school years (filled by loadEnrollments) --}}
+        <div id="enr-other-years" style="display:none;background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:11px 16px;margin-bottom:16px;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:#1e3a8a;"></div>
         <div class="content-card">
             <div class="content-card-header"><h6>Enrollment Applications</h6></div>
             <div style="overflow-x:auto;">
                 <table class="dash-table">
                     <thead><tr>
-                        <th>Ref #</th><th>Student Name</th><th>Grade Level</th>
+                        <th>Ref #</th><th>Student Name</th><th>Grade Level</th><th>School Year</th>
                         <th>Date</th><th>Status</th><th>Payment</th><th>Actions</th>
                     </tr></thead>
                     <tbody id="enr-tbody">
-                        <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted);">
+                        <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted);">
                             <span class="spinner-border spinner-border-sm me-2"></span>Loading…
                         </td></tr>
                     </tbody>
@@ -2323,6 +2387,137 @@
     </div>
 
     <!-- ═══════════════════════════
+         SECTION: STUDENTS — the same list, filters, cards and actions as Admin's Student
+         Management (data: EnrollmentController::studentsData; windows: admin/students/*)
+    ═══════════════════════════ -->
+    <div id="section-students" class="dash-section" style="display:none;">
+        <div class="section-header">
+            <div>
+                <h1>Student Management</h1>
+                <p>View and manage all student records.</p>
+            </div>
+            <div style="display:flex;gap:10px;">
+                <button class="btn-dash btn-secondary" onclick="loadStudentsMgmt(_studentsPage)">
+                    <i class="bi bi-arrow-clockwise"></i> Refresh
+                </button>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            @foreach([['total', 'blue', 'bi-people-fill', 'Total Students'], ['enrolled', 'green', 'bi-check-circle-fill', 'Enrolled'], ['approved', 'teal', 'bi-check2-square', 'Approved'], ['pending', 'gold', 'bi-hourglass-split', 'Pending'], ['not_enrolled', 'red', 'bi-x-circle-fill', 'Not Enrolled'], ['paid', 'green', 'bi-cash-stack', 'Fully Paid'], ['balance', 'red', 'bi-exclamation-triangle-fill', 'With Balance']] as [$k, $color, $icon, $label])
+            <div class="col-md-2 col-sm-4 col-6">
+                <div class="stat-card">
+                    <div class="stat-icon {{ $color }}"><i class="bi {{ $icon }}"></i></div>
+                    <div><div class="stat-value" id="stm-cnt-{{ $k }}">—</div><div class="stat-label">{{ $label }}</div></div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+
+        {{-- Status Legend (as on Admin) --}}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;padding:12px 16px;background:#fff;border:1px solid #e5e7eb;border-radius:10px;font-size:12px;">
+            <span style="font-weight:600;color:#555;margin-right:4px;">Enrollment:</span>
+            @foreach([['#e8f8f0', '#27ae60', 'Enrolled'], ['#e3f2fd', '#1565c0', 'Approved'], ['#fff8ec', '#f5a623', 'Pending'], ['#fdecea', '#e74c3c', 'Declined'], ['#ede7f6', '#512da8', 'Completed'], ['#fff3e0', '#bf360c', 'Dropped'], ['#f5f5f5', '#546e7a', 'Ghost'], ['#e0f7fa', '#006064', 'Transferred']] as [$bg, $bd, $lbl])
+                <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;background:{{ $bg }};border:1px solid {{ $bd }};border-radius:3px;display:inline-block;"></span> {{ $lbl }}</span>
+            @endforeach
+            <span style="width:1px;height:16px;background:#ddd;margin:0 6px;"></span>
+            <span style="font-weight:600;color:#555;margin-right:4px;">Payment:</span>
+            @foreach([['#e8f8f0', '#27ae60', 'Paid'], ['#fff3e0', '#e65100', 'Partial'], ['#fdecea', '#e74c3c', 'Unpaid']] as [$bg, $bd, $lbl])
+                <span style="display:flex;align-items:center;gap:5px;"><span style="width:12px;height:12px;background:{{ $bg }};border:1px solid {{ $bd }};border-radius:3px;display:inline-block;"></span> {{ $lbl }}</span>
+            @endforeach
+        </div>
+
+        <div class="content-card mb-4">
+            <div class="p-3">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <input type="text" id="stm-search" class="form-fld" placeholder="Search student name, LRN, or email..."
+                               oninput="clearTimeout(window._stmSearchTimer); window._stmSearchTimer = setTimeout(function () { loadStudentsMgmt(1); }, 400);">
+                    </div>
+                    <div class="col-md-2">
+                        <select id="stm-grade" class="form-fld" onchange="loadStudentsMgmt(1)">
+                            <option value="all">All Grades</option>
+                            <option value="nursery">Nursery</option>
+                            <option value="kindergarten">Kindergarten</option>
+                            <option value="grade1">Grade 1</option>
+                            <option value="grade2">Grade 2</option>
+                            <option value="grade3">Grade 3</option>
+                            <option value="grade4">Grade 4</option>
+                            <option value="grade5">Grade 5</option>
+                            <option value="grade6">Grade 6</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select id="stm-status" class="form-fld" onchange="loadStudentsMgmt(1)">
+                            <option value="all">All Status</option>
+                            <option value="enrolled">Enrolled</option>
+                            <option value="approved">Approved</option>
+                            <option value="pending">Pending</option>
+                            <option value="completed">Completed</option>
+                            <option value="dropped">Dropped</option>
+                            <option value="ghost">Ghost</option>
+                            <option value="transferred">Transferred</option>
+                            <option value="declined">Declined</option>
+                            <option value="not_enrolled">Not Enrolled</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select id="stm-payment" class="form-fld" onchange="loadStudentsMgmt(1)">
+                            <option value="all">All Payment</option>
+                            <option value="paid">Paid</option>
+                            <option value="partial">Partial</option>
+                            <option value="unpaid">Not Paid</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <select id="stm-sort" class="form-fld" onchange="loadStudentsMgmt(1)">
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                            <option value="name_asc">Name (A-Z)</option>
+                            <option value="name_desc">Name (Z-A)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        @php $stmCurSy = \App\Models\Setting::getCurrentSchoolYear(); @endphp
+                        <select id="stm-sy" class="form-fld" onchange="loadStudentsMgmt(1)">
+                            <option value="all">All School Years</option>
+                            @foreach(\App\Models\Setting::schoolYearOptions() as $sy)
+                                <option value="{{ $sy }}" {{ $sy === $stmCurSy ? 'selected' : '' }}>{{ $sy }}{{ $sy === $stmCurSy ? ' (current)' : '' }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <div class="content-card-header"><h6>All Students</h6></div>
+            <div style="overflow-x:auto;">
+                <table class="dash-table">
+                    <thead><tr>
+                        <th>Student</th><th>Grade</th><th>Section</th><th>Contact</th><th>Status</th><th>Payment</th><th>Actions</th>
+                    </tr></thead>
+                    <tbody id="stm-tbody">
+                        <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted);"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div id="stm-pagination" class="p-3 border-top" style="border-color:var(--border);"></div>
+        </div>
+    </div><!-- /section-students -->
+
+    {{-- Student windows shared with Admin; their buttons call the same-named functions defined below --}}
+    @include('admin.students.view-modal')
+    @include('admin.students.edit-modal')
+    @include('admin.students.change-status-modal')
+    @include('admin.students.transactions-modal')
+    <script src="/js/official-receipt.js?v={{ @filemtime(public_path('js/official-receipt.js')) }}"></script>
+    <script>
+        // Edit Student address cascade (same shared library + field IDs as Admin)
+        PHAddress.initCascade({ region: 'se-region', province: 'se-province', city: 'se-city', barangay: 'se-brgy' });
+    </script>
+
+    <!-- ═══════════════════════════
          SECTION: TEACHERS
     ═══════════════════════════ -->
     <div id="section-teachers" class="dash-section" style="display:none;">
@@ -2340,21 +2535,36 @@
                 </button>
             </div>
         </div>
+        {{-- Same cards as Admin's Teacher Management (filled by loadTeachers) --}}
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon purple"><i class="bi bi-person-badge-fill"></i></div><div><div class="stat-value" id="tch-cnt-total">—</div><div class="stat-label">Total Teachers</div></div></div></div>
+            <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div><div><div class="stat-value" id="tch-cnt-active">—</div><div class="stat-label">Active</div></div></div></div>
+            <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div><div><div class="stat-value" id="tch-cnt-inactive">—</div><div class="stat-label">Inactive</div></div></div></div>
+            <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon gold"><i class="bi bi-calendar3"></i></div><div><div class="stat-value" id="tch-cnt-schedules">—</div><div class="stat-label">With Schedules</div></div></div></div>
+        </div>
         <div class="content-card">
             <div class="content-card-header">
                 <h6>All Teachers</h6>
-                <div class="dash-search" style="width:220px;">
-                    <i class="bi bi-search"></i>
-                    <input type="text" placeholder="Search teachers…" oninput="filterTeachersTable(this.value)">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <div class="dash-search" style="width:220px;">
+                        <i class="bi bi-search"></i>
+                        <input type="text" id="tch-search" placeholder="Search teachers…"
+                               oninput="clearTimeout(window._tchSearchTimer); window._tchSearchTimer = setTimeout(function () { loadTeachers(1); }, 400);">
+                    </div>
+                    <select id="tch-status-filter" class="form-fld" style="width:150px;" onchange="loadTeachers(1)">
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                    </select>
                 </div>
             </div>
             <div style="overflow-x:auto;">
                 <table class="dash-table">
                     <thead><tr>
-                        <th>Name</th><th>Email</th><th>Status</th><th>Actions</th>
+                        <th>Name</th><th>Email</th><th>Sections Handled</th><th>Status</th><th>Actions</th>
                     </tr></thead>
                     <tbody id="teachers-tbody">
-                        <tr><td colspan="4" style="text-align:center;padding:40px;color:var(--muted);">
+                        <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--muted);">
                             <span class="spinner-border spinner-border-sm me-2"></span>Loading…
                         </td></tr>
                     </tbody>
@@ -2382,28 +2592,46 @@
                 </button>
             </div>
         </div>
+        {{-- Same cards as Admin's Subject Management (filled by loadSubjects) --}}
+        <div class="row g-3 mb-4">
+            <div class="col-md-4"><div class="stat-card"><div class="stat-icon blue"><i class="bi bi-book-fill"></i></div><div><div class="stat-value" id="subj-cnt-total">—</div><div class="stat-label">Total Subjects</div></div></div></div>
+            <div class="col-md-4"><div class="stat-card"><div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div><div><div class="stat-value" id="subj-cnt-active">—</div><div class="stat-label">Active</div></div></div></div>
+            <div class="col-md-4"><div class="stat-card"><div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div><div><div class="stat-value" id="subj-cnt-inactive">—</div><div class="stat-label">Inactive</div></div></div></div>
+        </div>
         <div class="content-card">
             <div class="content-card-header">
                 <h6>All Subjects</h6>
-                <select id="subj-grade-filter" class="form-fld" style="width:180px;" onchange="loadSubjects()">
-                    <option value="">All Grade Levels</option>
-                    <option value="nursery">Nursery</option>
-                    <option value="kindergarten">Kindergarten</option>
-                    <option value="grade1">Grade 1</option>
-                    <option value="grade2">Grade 2</option>
-                    <option value="grade3">Grade 3</option>
-                    <option value="grade4">Grade 4</option>
-                    <option value="grade5">Grade 5</option>
-                    <option value="grade6">Grade 6</option>
-                </select>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <div class="dash-search" style="width:200px;">
+                        <i class="bi bi-search"></i>
+                        <input type="text" id="subj-search" placeholder="Search subjects…"
+                               oninput="clearTimeout(window._subjSearchTimer); window._subjSearchTimer = setTimeout(function () { loadSubjects(1); }, 400);">
+                    </div>
+                    <select id="subj-grade-filter" class="form-fld" style="width:170px;" onchange="loadSubjects()">
+                        <option value="">All Grade Levels</option>
+                        <option value="nursery">Nursery</option>
+                        <option value="kindergarten">Kindergarten</option>
+                        <option value="grade1">Grade 1</option>
+                        <option value="grade2">Grade 2</option>
+                        <option value="grade3">Grade 3</option>
+                        <option value="grade4">Grade 4</option>
+                        <option value="grade5">Grade 5</option>
+                        <option value="grade6">Grade 6</option>
+                    </select>
+                    <select id="subj-status-filter" class="form-fld" style="width:140px;" onchange="loadSubjects()">
+                        <option value="">All Status</option>
+                        <option value="1">Active</option>
+                        <option value="0">Inactive</option>
+                    </select>
+                </div>
             </div>
             <div style="overflow-x:auto;">
                 <table class="dash-table">
                     <thead><tr>
-                        <th>Name</th><th>Code</th><th>Grade Level</th><th>Status</th><th>Actions</th>
+                        <th>Name</th><th>Code</th><th>Grade Level</th><th>In Schedule</th><th>Status</th><th>Actions</th>
                     </tr></thead>
                     <tbody id="subjects-tbody">
-                        <tr><td colspan="5" style="text-align:center;padding:40px;color:var(--muted);">
+                        <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted);">
                             <span class="spinner-border spinner-border-sm me-2"></span>Loading…
                         </td></tr>
                     </tbody>
@@ -2423,6 +2651,9 @@
                 <p>Manage class sections, teacher assignments, and student lists.</p>
             </div>
             <div style="display:flex;gap:10px;">
+                <button class="btn-dash btn-secondary" onclick="ilcSectionTools.autoAssign(function () { loadSectionsMgmt(_sectionsPage); })">
+                    <i class="bi bi-magic"></i> Auto-Assign
+                </button>
                 <button class="btn-dash btn-primary" onclick="openSectionModal()">
                     <i class="bi bi-plus-lg"></i> Add Section
                 </button>
@@ -2430,6 +2661,12 @@
                     <i class="bi bi-arrow-clockwise"></i> Refresh
                 </button>
             </div>
+        </div>
+        {{-- Same cards as Admin's Section Management, for the chosen school year (filled by loadSectionsMgmt) --}}
+        <div class="row g-3 mb-4">
+            <div class="col-md-4"><div class="stat-card"><div class="stat-icon green"><i class="bi bi-diagram-3-fill"></i></div><div><div class="stat-value" id="sec-cnt-total">—</div><div class="stat-label">Total Sections</div></div></div></div>
+            <div class="col-md-4"><div class="stat-card"><div class="stat-icon blue"><i class="bi bi-check-circle-fill"></i></div><div><div class="stat-value" id="sec-cnt-active">—</div><div class="stat-label">Active Sections</div></div></div></div>
+            <div class="col-md-4"><div class="stat-card"><div class="stat-icon gold"><i class="bi bi-people-fill"></i></div><div><div class="stat-value" id="sec-cnt-enrolled">—</div><div class="stat-label">Total Enrolled</div></div></div></div>
         </div>
         <div class="content-card">
             <div class="content-card-header">
@@ -2454,15 +2691,20 @@
                     <option value="grade5">Grade 5</option>
                     <option value="grade6">Grade 6</option>
                 </select>
+                <select id="sec-status-filter" class="form-fld" style="width:140px;" onchange="loadSectionsMgmt()">
+                    <option value="">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                </select>
                 </div>
             </div>
             <div style="overflow-x:auto;">
                 <table class="dash-table">
                     <thead><tr>
-                        <th>Section Name</th><th>Grade Level</th><th>School Year</th><th>Adviser / Teacher</th><th>Students</th><th>Actions</th>
+                        <th>Section Name</th><th>Grade Level</th><th>School Year</th><th>Adviser / Teacher</th><th>Subjects / Schedules</th><th style="text-align:center;">Enrollment</th><th>Status</th><th style="text-align:center;">Actions</th>
                     </tr></thead>
                     <tbody id="sections-tbody">
-                        <tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted);">
+                        <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted);">
                             <span class="spinner-border spinner-border-sm me-2"></span>Loading…
                         </td></tr>
                     </tbody>
@@ -2560,9 +2802,14 @@
         <div id="scheduleGridContainer" class="content-card" style="display:none;">
             <div class="content-card-header">
                 <h6 id="scheduleInfoText">Schedule</h6>
-                <a href="#" id="saSchedulePdfLink" target="_blank" class="btn-dash btn-primary" style="display:inline-flex;align-items:center;gap:7px;text-decoration:none;">
-                    <i class="bi bi-file-earmark-pdf-fill"></i> Download PDF
-                </a>
+                <div style="display:flex;gap:8px;">
+                    <button type="button" class="btn-dash btn-secondary" onclick="saExportScheduleCsv()" style="display:inline-flex;align-items:center;gap:7px;">
+                        <i class="bi bi-file-earmark-spreadsheet-fill"></i> Export CSV
+                    </button>
+                    <a href="#" id="saSchedulePdfLink" target="_blank" class="btn-dash btn-primary" style="display:inline-flex;align-items:center;gap:7px;text-decoration:none;">
+                        <i class="bi bi-file-earmark-pdf-fill"></i> Download PDF
+                    </a>
+                </div>
             </div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:0 16px 12px;font-size:11.5px;color:#64748b;">
                 <i class="bi bi-exclamation-triangle-fill" style="color:#dc2626;font-size:11px;"></i>Red = schedule conflict
@@ -3173,7 +3420,7 @@
 <script>
     const sections = [
         'dashboard','users','roles','logs','backup','reports','settings',
-        'enrollments','teachers','subjects','sections-mgmt','schedules','sys-settings',
+        'enrollments','students','teachers','subjects','sections-mgmt','schedules','sys-settings',
         'announcements','news','archives'
     ];
 
@@ -3184,7 +3431,7 @@
     const BREADCRUMB_LABELS = {
         dashboard: 'Dashboard', users: 'User Management', roles: 'Roles & Permissions',
         logs: 'Activity Logs', backup: 'Backup & Restore', reports: 'Reports', settings: 'Settings',
-        enrollments: 'Enrollment Oversight', teachers: 'Teacher Management', subjects: 'Subject Management',
+        enrollments: 'Enrollment Oversight', students: 'Student Management', teachers: 'Teacher Management', subjects: 'Subject Management',
         'sections-mgmt': 'Section Management', schedules: 'Schedule Management', 'sys-settings': 'System Settings',
         announcements: 'Announcements', news: 'News Management', archives: 'Archives',
     };
@@ -3221,6 +3468,7 @@
         if (!_loaded[name]) {
             _loaded[name] = true;
             if (name === 'enrollments')   loadEnrollments();
+            if (name === 'students')      loadStudentsMgmt();
             if (name === 'teachers')      loadTeachers();
             if (name === 'subjects')      loadSubjects();
             if (name === 'sections-mgmt') loadSectionsMgmt();
@@ -4067,6 +4315,12 @@
 
     var _enrPage = 1;
 
+    // HTML-escape text from the database (names, emails…) before it goes into innerHTML
+    function saEsc(v) {
+        return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
     async function loadEnrollments(page) {
         _loaded['enrollments'] = true;
         _enrPage = page || 1;
@@ -4074,10 +4328,11 @@
         var grade  = document.getElementById('enr-grade-filter')?.value || 'all';
         var sort   = document.getElementById('enr-sort-filter')?.value || 'newest';
         var search = document.getElementById('enr-search')?.value || '';
+        var sy     = document.getElementById('enr-sy-filter')?.value || 'all';
         var tbody = document.getElementById('enr-tbody');
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted);"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted);"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>';
         try {
-            var qs = new URLSearchParams({ status: status, grade: grade, sort: sort, search: search, page: _enrPage });
+            var qs = new URLSearchParams({ status: status, grade: grade, sort: sort, search: search, school_year: sy, page: _enrPage });
             var r = await fetch('/superadmin/enrollments-data?' + qs.toString(), {
                 headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken }
             });
@@ -4089,45 +4344,80 @@
                 var el = document.getElementById('enr-cnt-' + s);
                 if (el) el.textContent = counts[s] || 0;
             });
+            var fc = document.getElementById('enr-fees-collected');
+            if (fc) fc.textContent = '₱' + Number(d.fees_collected || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            var pp = document.getElementById('enr-pending-payments');
+            if (pp) pp.textContent = d.pending_payments != null ? d.pending_payments : '—';
             // Enrollment open/closed badge
             _saEnrollmentOpen = !!d.enrollment_open;
             saRenderEnrollmentWindowBadge();
+            renderEnrollmentsOtherYears(d.pending_other_years || {});
             renderEnrollmentsTable(_enrData);
             renderPagerControls('enr-pagination', d, 'enrollment(s)', 'goToEnrollmentsPage');
         } catch(e) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--red);">Failed to load enrollments.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--red);">Failed to load enrollments.</td></tr>';
         }
     }
 
     function goToEnrollmentsPage(p) { loadEnrollments(p); }
 
+    // The list opens on one school year — don't let other years' new applications go unnoticed (same as Admin)
+    function renderEnrollmentsOtherYears(pending) {
+        var box = document.getElementById('enr-other-years');
+        var years = Object.keys(pending || {});
+        if (!box) return;
+        if (!years.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+        box.innerHTML = '<i class="bi bi-inbox-fill" style="font-size:16px;color:#2563eb;"></i><span>Pending applications in other school years:</span>' +
+            years.map(function (sy) {
+                return '<button type="button" class="btn-dash btn-secondary" style="padding:4px 12px;font-size:12px;" data-sy="' + saEsc(sy) + '" onclick="saShowPendingYear(this.dataset.sy)">' +
+                    'S.Y. ' + saEsc(sy) + ' · <strong>' + parseInt(pending[sy], 10) + '</strong> pending</button>';
+            }).join('');
+        box.style.display = 'flex';
+    }
+
+    function saShowPendingYear(sy) {
+        document.getElementById('enr-sy-filter').value = sy;
+        document.getElementById('enr-status-filter').value = 'pending';
+        _loaded['enrollments'] = false;
+        loadEnrollments(1);
+    }
+
     function renderEnrollmentsTable(rows) {
         var tbody = document.getElementById('enr-tbody');
         if (!rows.length) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted);"><i class="bi bi-inbox" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3;"></i>No enrollments found.</td></tr>';
+            var sy = document.getElementById('enr-sy-filter')?.value || 'all';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted);"><i class="bi bi-inbox" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3;"></i>' +
+                (sy !== 'all' ? 'No enrollments for S.Y. ' + saEsc(sy) + ' match these filters.' : 'No enrollments found.') + '</td></tr>';
             return;
         }
-        var statusBadge = { pending:'pending', approved:'active', enrolled:'enrolled', declined:'inactive' };
-        var statusLabel = { pending:'Pending', approved:'Approved', enrolled:'Enrolled', declined:'Declined' };
+        var statusBadge = { pending:'pending', approved:'active', enrolled:'enrolled', declined:'inactive', completed:'primary', cancelled:'inactive' };
+        var statusLabel = { pending:'Pending', approved:'Approved', enrolled:'Enrolled', declined:'Declined', completed:'Completed', cancelled:'Cancelled' };
+        // Installment payers are 'partial' — they used to show as "Unpaid"
+        var payBadge = {
+            paid:    '<span class="status-badge enrolled">Paid</span>',
+            partial: '<span class="status-badge active">Partial</span>'
+        };
+        var typeBadge = {
+            returning:  '<span style="display:inline-flex;align-items:center;gap:4px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;margin-left:4px;vertical-align:middle;"><i class="bi bi-arrow-repeat"></i> Re-Enroll</span>',
+            transferee: '<span style="display:inline-flex;align-items:center;gap:4px;background:#f0fdf4;color:#15803d;border:1px solid #86efac;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700;margin-left:4px;vertical-align:middle;"><i class="bi bi-box-arrow-in-right"></i> Transferee</span>'
+        };
         tbody.innerHTML = rows.map(function(e) {
-            var name = (e.last_name + ', ' + e.first_name).trim().replace(/^,\s*/, '') || '—';
+            var name = ((e.last_name || '') + ', ' + (e.first_name || '')).trim().replace(/^,\s*/, '').replace(/,\s*$/, '') || '—';
             var grade = e.grade_level ? e.grade_level.replace('grade', 'Grade ').replace(/^(\w)/, function(m) { return m.toUpperCase(); }) : '—';
             var statusCls = statusBadge[e.status] || 'active';
-            var payBadge = e.payment_status === 'paid'
-                ? '<span class="status-badge enrolled">Paid</span>'
-                : '<span class="status-badge pending">Unpaid</span>';
             var actions = '<button class="action-btn view" title="View Application Details" onclick="saViewEnrollment(' + e.id + ')"><i class="bi bi-eye"></i></button>';
             if (e.status === 'pending') {
                 actions += '<button class="action-btn edit" title="Approve" onclick="saApproveEnrollment(' + e.id + ')"><i class="bi bi-check-lg"></i></button>';
                 actions += '<button class="action-btn delete" title="Decline" onclick="saDeclineEnrollment(' + e.id + ')"><i class="bi bi-x-lg"></i></button>';
             }
             return '<tr>' +
-                '<td style="font-size:12px;font-weight:700;color:var(--blue);">' + (e.reference_number || '—') + '</td>' +
-                '<td>' + name + '</td>' +
-                '<td>' + grade + '</td>' +
-                '<td style="font-size:12px;color:var(--muted);">' + (e.created_at || '—') + '</td>' +
-                '<td><span class="status-badge ' + statusCls + '">' + (statusLabel[e.status] || e.status) + '</span></td>' +
-                '<td>' + payBadge + '</td>' +
+                '<td style="font-size:12px;font-weight:700;color:var(--blue);">' + saEsc(e.reference_number || '—') + '</td>' +
+                '<td>' + saEsc(name) + (typeBadge[e.student_type] || '') + '</td>' +
+                '<td>' + saEsc(grade) + '</td>' +
+                '<td style="white-space:nowrap;">' + saEsc(e.school_year || '—') + '</td>' +
+                '<td style="font-size:12px;color:var(--muted);">' + saEsc(e.created_at || '—') + '</td>' +
+                '<td><span class="status-badge ' + statusCls + '">' + saEsc(statusLabel[e.status] || e.status) + '</span></td>' +
+                '<td>' + (payBadge[e.payment_status] || '<span class="status-badge pending">Unpaid</span>') + '</td>' +
                 '<td>' + actions + '</td>' +
                 '</tr>';
         }).join('');
@@ -4368,7 +4658,7 @@
             }
 
             if (data.user_id) {
-                saFetchDocs(data.user_id);
+                saFetchDocs(data.user_id, 'evm');
             }
 
             // Reuse the existing instance — a second `new Modal()` on an open modal leaves a stray backdrop
@@ -4388,10 +4678,13 @@
         { key: 'two_by_two_picture', label: '2x2 ID Picture',       icon: 'bi-person-bounding-box'      },
     ];
     var _saRejectDocId = null;
+    // Which window the cards are in: 'evm' = Enrollment details, 'sv' = Student details
+    var _saDocsPrefix = 'evm';
 
-    function saFetchDocs(userId) {
-        var loadEl = document.getElementById('evm-docs-loading');
-        var contEl = document.getElementById('evm-docs-content');
+    function saFetchDocs(userId, prefix) {
+        if (prefix) _saDocsPrefix = prefix;
+        var loadEl = document.getElementById(_saDocsPrefix + '-docs-loading');
+        var contEl = document.getElementById(_saDocsPrefix + '-docs-content');
         loadEl.style.display = 'block';
         contEl.style.display = 'none';
         contEl.innerHTML = '';
@@ -4401,7 +4694,7 @@
             loadEl.style.display = 'none';
             contEl.innerHTML = saBuildDocCards(data.documents || [], userId);
             contEl.style.display = 'block';
-            var badge = document.getElementById('evm-doc-count');
+            var badge = _saDocsPrefix === 'evm' ? document.getElementById('evm-doc-count') : null;
             if (badge) {
                 var uploaded = (data.documents || []).filter(function(d) { return SA_DOC_TYPES.some(function(t) { return t.key === d.document_type; }); });
                 badge.textContent = uploaded.length + '/4';
@@ -4982,6 +5275,361 @@
     }
 
     // ══════════════════════════════════════════════════════════
+    // STUDENTS PANEL — Admin's Student Management: the same list, filters and cards
+    // (/admin/section/students-data, built by the same query as Admin's page) and the same
+    // windows (admin/students/*). The functions those windows call (seTab, saveStudent,
+    // confirmChangeStatus, loadStudentTransactions, reEnrollStudent) have Admin's names.
+    // ══════════════════════════════════════════════════════════
+    var _studentsPage = 1, _studentsData = [];
+
+    async function loadStudentsMgmt(page) {
+        _loaded['students'] = true;
+        _studentsPage = page || 1;
+        var tbody = document.getElementById('stm-tbody');
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted);"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>';
+        var val = function (id, def) { var el = document.getElementById(id); return el ? el.value : def; };
+        var qs = new URLSearchParams({
+            student_page: _studentsPage, student_search: val('stm-search', ''), student_grade: val('stm-grade', 'all'),
+            student_status: val('stm-status', 'all'), student_payment: val('stm-payment', 'all'), sort: val('stm-sort', 'newest'),
+            student_schoolyear: val('stm-sy', 'all')
+        });
+        try {
+            var r = await fetch('/admin/section/students-data?' + qs.toString(), { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            var d = await r.json();
+            _studentsData = d.students || [];
+            var s = d.stats || {};
+            ['total', 'enrolled', 'approved', 'pending', 'not_enrolled', 'paid', 'balance'].forEach(function (k) {
+                var el = document.getElementById('stm-cnt-' + k);
+                if (el) el.textContent = s[k] != null ? s[k] : '—';
+            });
+            renderStudentsTable(_studentsData);
+            renderPagerControls('stm-pagination', d, 'student(s)', 'goToStudentsPage');
+        } catch (e) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--red);">Failed to load students.</td></tr>';
+        }
+    }
+
+    function goToStudentsPage(p) { loadStudentsMgmt(p); }
+
+    function renderStudentsTable(rows) {
+        var tbody = document.getElementById('stm-tbody');
+        if (!rows.length) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted);"><i class="bi bi-people" style="font-size:36px;display:block;margin-bottom:8px;opacity:.3;"></i>No students match these filters.</td></tr>';
+            return;
+        }
+        var label = { enrolled: 'Enrolled', approved: 'Approved', pending: 'Pending', declined: 'Declined', completed: 'Completed', dropped: 'Dropped', ghost: 'Ghost', transferred: 'Transferred' };
+        var pay = function (p) {
+            if (p === 'paid') return '<span class="status-badge paid"><i class="bi bi-check-circle-fill"></i> Paid</span>';
+            if (p === 'partial' || p === 'partially_paid') return '<span class="status-badge partial"><i class="bi bi-hourglass-split"></i> Partial</span>';
+            if (p === 'pending') return '<span class="status-badge pending"><i class="bi bi-clock"></i> Pending</span>';
+            return '<span class="status-badge unpaid"><i class="bi bi-exclamation-circle-fill"></i> Unpaid</span>';
+        };
+        tbody.innerHTML = rows.map(function (s) {
+            var cls = label[s.status] ? s.status : 'inactive';
+            var jsName = saEsc(JSON.stringify(s.name || ''));
+            return '<tr>' +
+                '<td><div class="user-row-name"><div class="user-row-avatar">' + saEsc((s.name || '').substring(0, 2).toUpperCase()) + '</div><div>' +
+                    '<div style="font-weight:600;">' + saEsc(s.name) + '</div>' +
+                    '<div class="user-row-sub">' + saEsc(s.reference_number || ('ID: ' + s.id)) + '</div></div></div></td>' +
+                '<td>' + saEsc(s.grade_label) + '</td>' +
+                '<td>' + (s.section ? saEsc(s.section) : '<span style="color:var(--muted);">—</span>') + '</td>' +
+                '<td class="fs-12">' + saEsc(s.email) + '</td>' +
+                '<td><span class="status-badge ' + cls + '">' + (label[s.status] || 'Not Enrolled') + '</span></td>' +
+                '<td>' + pay(s.payment_status) + '</td>' +
+                '<td style="white-space:nowrap;">' +
+                    '<button class="action-btn view" title="View" onclick="viewStudentDetails(' + s.id + ')"><i class="bi bi-eye-fill"></i></button>' +
+                    '<button class="action-btn edit" title="Edit" onclick="editStudent(' + s.id + ')"><i class="bi bi-pencil-fill"></i></button>' +
+                    '<button class="action-btn" title="Transaction History" style="background:#eef2ff;color:#4338ca;" onclick="openStudentTransactions(' + s.id + ')"><i class="bi bi-receipt"></i></button>' +
+                    '<a href="/admin/students/' + s.id + '/sf10" target="_blank" class="action-btn" title="Download SF10" style="background:#e8f8f0;color:#1a6b2d;"><i class="bi bi-file-earmark-pdf-fill"></i></a>' +
+                    '<button class="action-btn" title="Change Status" style="background:#f0f4f8;color:#555;" onclick="openChangeStatusModal(' + s.id + ',' + (s.enrollment_id || 'null') + ',' + saEsc(JSON.stringify(s.status)) + ',' + jsName + ')"><i class="bi bi-arrow-left-right"></i></button>' +
+                    '<button class="action-btn" title="Archive Student" style="background:#fff8e1;color:#b45309;" onclick="saArchiveStudent(' + s.id + ',' + jsName + ')"><i class="bi bi-archive-fill"></i></button>' +
+                '</td></tr>';
+        }).join('');
+    }
+
+    function formatStudentType(type) {
+        return { 'new': 'New Student', 'transferee': 'Transferee', 'returning': 'Returning Student' }[type] || type || 'N/A';
+    }
+
+    // View (Admin's student details window)
+    function viewStudentDetails(studentId) {
+        fetch('/admin/students/' + studentId, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function (r) { if (!r.ok) throw new Error('Failed to load'); return r.json(); })
+        .then(function (d) {
+            var sd = d.student_data || {}, prof = d.profile || {}, grd = d.guardian || {}, addr = d.address || {}, enr = d.enrollment || {};
+            var set = function (id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
+            var cap = function (v) { return String(v).replace(/^\w/, function (c) { return c.toUpperCase(); }); };
+            set('sv-name', d.name);
+            set('sv-ref', enr.reference_number || 'No enrollment');
+            set('sv-email', d.email);
+            set('sv-lrn', d.lrn || 'N/A');
+            set('sv-gender', cap(prof.gender || sd.gender || 'N/A'));
+            var bdate = prof.birthdate || sd.birthdate || '';
+            set('sv-birthdate', bdate ? new Date(bdate).toLocaleDateString('en-PH', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A');
+            if (bdate) {
+                var today = new Date(), b = new Date(bdate), age = today.getFullYear() - b.getFullYear();
+                if (today.getMonth() < b.getMonth() || (today.getMonth() === b.getMonth() && today.getDate() < b.getDate())) age--;
+                set('sv-age', age + ' yrs old');
+            } else { set('sv-age', 'N/A'); }
+            set('sv-pob', sd.place_of_birth || 'N/A');
+            set('sv-type', formatStudentType(sd.student_type));
+            set('sv-joined', d.created_at);
+            set('sv-grade', enr.grade_level || 'N/A');
+            set('sv-section', (enr.section && enr.section !== 'Unassigned') ? enr.section : '—');
+            set('sv-status', cap(enr.status || 'N/A'));
+            set('sv-payment', cap(enr.payment_status || 'unpaid'));
+            set('sv-amount', '₱' + parseFloat(enr.payment_amount || 0).toFixed(2));
+            set('sv-guardian', grd.name || sd.guardian_name || 'N/A');
+            set('sv-relation', grd.relationship || sd.guardian_relationship || 'N/A');
+            set('sv-gphone', grd.contact || sd.guardian_phone || 'N/A');
+            set('sv-street', addr.street || sd.street_address || 'N/A');
+            set('sv-brgy', addr.barangay || sd.barangay || 'N/A');
+            set('sv-city', addr.municipality || sd.city || 'N/A');
+            set('sv-province', addr.province || sd.province || 'N/A');
+            var sf10 = document.getElementById('sv-sf10-btn');
+            if (sf10) { sf10.href = '/admin/students/' + studentId + '/sf10'; sf10.style.display = 'inline-block'; }
+            var re = document.getElementById('sv-reenroll-btn');
+            if (re) {
+                re.style.display = (enr.status && ['approved', 'enrolled'].indexOf(enr.status) !== -1) ? 'none' : 'inline-block';
+                re.dataset.studentId = studentId;
+            }
+            saFetchDocs(studentId, 'sv');
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('studentViewModal')).show();
+        })
+        .catch(function () { saToast('error', 'Failed to load student details. Please try again.'); });
+    }
+
+    // "Re-Enroll" in the details window → walk-in enrollment, pre-filled (as on Admin)
+    function reEnrollStudent() {
+        var btn = document.getElementById('sv-reenroll-btn');
+        var studentId = btn ? btn.dataset.studentId : null;
+        if (!studentId) return;
+        var vm = bootstrap.Modal.getInstance(document.getElementById('studentViewModal'));
+        if (vm) vm.hide();
+        fetch('/admin/students/' + studentId, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function (r) { if (!r.ok) throw new Error('Failed'); return r.json(); })
+        .then(function (d) {
+            openWalkInEnrollmentModal();
+            setTimeout(function () {
+                var parts = (d.name || '').trim().split(/\s+/);
+                var last = document.getElementById('walkin-last-name'), first = document.getElementById('walkin-first-name'), middle = document.getElementById('walkin-middle-name');
+                if (last && parts.length) last.value = parts.pop() || '';
+                if (first && parts.length) first.value = parts.shift() || '';
+                if (middle && parts.length) middle.value = parts.join(' ');
+                var flag = document.getElementById('walkin-reenroll');
+                if (flag) flag.value = studentId;
+                var title = document.querySelector('#walkInEnrollmentModal .modal-header-styled h5');
+                if (title) title.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i>Re-Enrollment';
+            }, 300);
+        })
+        .catch(function () { saToast('error', 'Failed to load student data for re-enrollment.'); });
+    }
+
+    // Edit (Admin's 4-tab window)
+    function seTab(name) {
+        ['personal', 'guardian', 'enrollment', 'address'].forEach(function (t) {
+            var pane = document.getElementById('se-pane-' + t), btn = document.getElementById('se-tab-btn-' + t);
+            if (!pane || !btn) return;
+            var on = t === name;
+            pane.style.display = on ? 'block' : 'none';
+            btn.style.color = on ? '#2563eb' : '#64748b';
+            btn.style.fontWeight = on ? '700' : '600';
+            btn.style.borderBottomColor = on ? '#2563eb' : 'transparent';
+        });
+    }
+
+    function editStudent(studentId) {
+        fetch('/admin/students/' + studentId, { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(function (r) { if (!r.ok) throw new Error('Failed to load'); return r.json(); })
+        .then(function (d) {
+            var sd = d.student_data || {}, prof = d.profile || {}, grd = d.guardian || {}, addr = d.address || {}, enr = d.enrollment || {};
+            var put = function (id, v) { var el = document.getElementById(id); if (el) el.value = v; };
+            seTab('personal');
+            var hn = document.getElementById('se-header-name');
+            if (hn) hn.textContent = d.name || 'Student';
+            put('se-id', d.id); put('se-name', d.name); put('se-email', d.email); put('se-lrn', d.lrn || '');
+            put('se-gender', prof.gender || sd.gender || ''); put('se-birthdate', prof.birthdate || sd.birthdate || '');
+            put('se-pob', sd.place_of_birth || ''); put('se-type', sd.student_type || ''); put('se-active', d.is_active ? '1' : '0');
+            put('se-guardian-name', grd.name || sd.guardian_name || ''); put('se-guardian-rel', grd.relationship || sd.guardian_relationship || '');
+            put('se-guardian-phone', grd.contact || sd.guardian_phone || ''); put('se-guardian-occ', grd.occupation || sd.guardian_occupation || '');
+            if (enr.grade_level) put('se-grade', enr.grade_level.toLowerCase().replace(/\s/g, ''));
+            put('se-section', enr.section || ''); put('se-enroll-status', enr.status || '');
+            put('se-pay-status', enr.payment_status || ''); put('se-pay-amount', enr.payment_amount || '');
+            put('se-street', addr.street || sd.street_address || ''); put('se-zip', addr.zip_code || sd.zip_code || '');
+            PHAddress.setValues(
+                { region: 'se-region', province: 'se-province', city: 'se-city', barangay: 'se-brgy' },
+                { region: sd.region || addr.region || '', province: addr.province || sd.province || '', city: addr.municipality || sd.city || '', barangay: addr.barangay || sd.barangay || '' }
+            );
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('studentEditModal')).show();
+        })
+        .catch(function () { saToast('error', 'Failed to load student data.'); });
+    }
+
+    function saveStudent(confirmed) {
+        if (!confirmed) {
+            saConfirm({ title: 'Save Student', msg: 'Are you sure you want to save these changes?', icon: 'bi-floppy-fill', btnLabel: 'Save Changes', onConfirm: function () { saveStudent(true); } });
+            return;
+        }
+        var v = function (id) { var el = document.getElementById(id); return el ? el.value : ''; };
+        var btn = document.querySelector('#studentEditModal [onclick*="saveStudent"]');
+        if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Saving...'; }
+        fetch('/admin/students/' + v('se-id'), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+            body: JSON.stringify({
+                name: v('se-name'), email: v('se-email'), lrn: v('se-lrn'), is_active: v('se-active') === '1',
+                gender: v('se-gender'), birthdate: v('se-birthdate'), place_of_birth: v('se-pob'), student_type: v('se-type'),
+                guardian_name: v('se-guardian-name'), guardian_relationship: v('se-guardian-rel'), guardian_phone: v('se-guardian-phone'), guardian_occupation: v('se-guardian-occ'),
+                grade_level: v('se-grade') || null, section: v('se-section'), enrollment_status: v('se-enroll-status'),
+                payment_status: v('se-pay-status'), payment_amount: v('se-pay-amount'),
+                street: v('se-street'), region: v('se-region'), barangay: v('se-brgy'), city: v('se-city'), province: v('se-province'), zip_code: v('se-zip')
+            })
+        })
+        .then(function (r) { if (!r.ok) throw new Error('Failed'); return r.json(); })
+        .then(function (d) {
+            if (d.success) {
+                bootstrap.Modal.getInstance(document.getElementById('studentEditModal')).hide();
+                saToast('success', 'Student updated', d.message);
+                loadStudentsMgmt(_studentsPage);
+            } else { saToast('error', d.message || 'Update failed.'); }
+        })
+        .catch(function () { saToast('error', 'Failed to update student.'); })
+        .finally(function () { if (btn) { btn.disabled = false; btn.innerHTML = '<i class="bi bi-floppy-fill me-1"></i>Save Changes'; } });
+    }
+
+    // Change Status (Admin's window)
+    var _csEnrollmentId = null;
+    function openChangeStatusModal(userId, enrollmentId, currentStatus, studentName) {
+        if (!enrollmentId) { saToast('warning', 'This student has no enrollment to change.'); return; }
+        _csEnrollmentId = enrollmentId;
+        document.getElementById('cs-student-name').textContent = studentName;
+        document.getElementById('cs-new-status').value = currentStatus || 'pending';
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('changeStatusModal')).show();
+    }
+
+    function confirmChangeStatus() {
+        if (!_csEnrollmentId) { saToast('error', 'No enrollment selected.'); return; }
+        fetch('/admin/enrollment/' + _csEnrollmentId + '/change-status', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+            body: JSON.stringify({ status: document.getElementById('cs-new-status').value })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            if (d.success) {
+                saToast('success', d.message);
+                bootstrap.Modal.getInstance(document.getElementById('changeStatusModal')).hide();
+                loadStudentsMgmt(_studentsPage);
+            } else { saToast('error', d.message || 'Failed to update status.'); }
+        })
+        .catch(function () { saToast('error', 'Network error.'); });
+    }
+
+    // Transaction History (Admin's window; receipts print with the shared Official Receipt)
+    var _stxStudentId = null, _stxRows = [], _stxStudent = null;
+    function openStudentTransactions(userId) {
+        _stxStudentId = userId;
+        var sel = document.getElementById('stx-sy');
+        sel.innerHTML = '<option value="all">All School Years</option>';
+        sel.value = 'all';
+        document.getElementById('stx-subtitle').textContent = 'Loading…';
+        loadStudentTransactions();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('studentTransactionsModal')).show();
+    }
+
+    function loadStudentTransactions() {
+        var sel = document.getElementById('stx-sy'), body = document.getElementById('stx-body');
+        body.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted);"><span class="spinner-border spinner-border-sm me-2"></span>Loading transactions…</td></tr>';
+        fetch('/admin/students/' + _stxStudentId + '/transactions?school_year=' + encodeURIComponent(sel.value || 'all'), { headers: { 'Accept': 'application/json' } })
+            .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+            .then(renderStudentTransactions)
+            .catch(function () { body.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--red);">Could not load the transaction history. Please try again.</td></tr>'; });
+    }
+
+    function renderStudentTransactions(d) {
+        var esc = saEsc;
+        var peso = function (n) { return '₱' + Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+        var grade = function (g) { return ({ nursery: 'Nursery', kindergarten: 'Kindergarten' })[g] || String(g || '—').replace(/^grade(\d)$/, 'Grade $1'); };
+        _stxRows = d.transactions || [];
+        _stxStudent = d.student || {};
+        document.getElementById('stx-subtitle').textContent = (_stxStudent.name || '') + (_stxStudent.lrn ? ' · LRN ' + _stxStudent.lrn : '') + (_stxStudent.email ? ' · ' + _stxStudent.email : '');
+        var sel = document.getElementById('stx-sy');
+        if (sel.options.length === 1) {
+            (d.school_years || []).forEach(function (y) { sel.add(new Option('S.Y. ' + y.school_year + ' — ' + grade(y.grade_level), y.school_year)); });
+        }
+        sel.value = d.school_year || 'all';
+        var yr = d.school_year !== 'all' ? (d.school_years || []).find(function (y) { return y.school_year === d.school_year; }) : (d.school_years || [])[0];
+        var tile = function (icon, color, value, lbl, sub) {
+            return '<div class="col-md-3 col-6"><div class="stat-card h-100" style="padding:14px 16px;">' +
+                '<div class="stat-icon ' + color + '" style="width:40px;height:40px;"><i class="bi ' + icon + '"></i></div>' +
+                '<div><div class="stat-value" style="font-size:18px;">' + value + '</div><div class="stat-label">' + lbl + '</div>' + (sub ? '<div style="font-size:11px;color:var(--muted);">' + sub + '</div>' : '') + '</div></div></div>';
+        };
+        document.getElementById('stx-summary').innerHTML =
+            tile('bi-receipt', 'blue', d.summary.count, 'Transactions', d.summary.pending ? d.summary.pending + ' pending' : '') +
+            tile('bi-cash-stack', 'green', peso(d.summary.total_paid), 'Total Paid', 'completed payments') +
+            (yr ? (yr.total_fee > 0
+                ? tile('bi-wallet2', 'gold', peso(yr.total_fee), 'Total Fee', 'S.Y. ' + esc(yr.school_year)) +
+                  tile('bi-hourglass-split', yr.balance > 0 ? 'red' : 'green', peso(yr.balance), 'Balance', 'S.Y. ' + esc(yr.school_year) + (yr.plan ? ' · Plan ' + esc(yr.plan) : ''))
+                : tile('bi-wallet2', 'gold', 'Not set', 'Total Fee', 'S.Y. ' + esc(yr.school_year) + ' — no fee recorded') +
+                  tile('bi-hourglass-split', 'blue', '—', 'Balance', 'S.Y. ' + esc(yr.school_year) + (yr.plan ? ' · Plan ' + esc(yr.plan) : ''))) : '');
+        var body = document.getElementById('stx-body');
+        if (!_stxRows.length) {
+            body.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted);"><i class="bi bi-inbox" style="font-size:28px;display:block;margin-bottom:8px;opacity:.4;"></i>No transactions' + (d.school_year !== 'all' ? ' for S.Y. ' + esc(d.school_year) : '') + ' yet.</td></tr>';
+            return;
+        }
+        var badge = function (s) {
+            var m = { completed: ['active', 'Completed'], pending: ['pending', 'Pending'], rejected: ['declined', 'Rejected'], expired: ['inactive', 'Expired'], failed: ['declined', 'Failed'] }[s] || ['inactive', s];
+            return '<span class="status-badge ' + m[0] + '">' + esc(m[1]) + '</span>';
+        };
+        body.innerHTML = _stxRows.map(function (t, i) {
+            return '<tr>' +
+                '<td style="white-space:nowrap;">' + esc(t.date) + '<div style="font-size:11px;color:var(--muted);">' + esc(t.time) + '</div></td>' +
+                '<td style="font-size:11.5px;">' + esc(t.reference) + '</td>' +
+                '<td>' + esc(t.description) + '</td>' +
+                '<td style="white-space:nowrap;">' + esc(t.school_year) + '</td>' +
+                '<td>' + esc(t.method) + '</td>' +
+                '<td style="font-size:12px;">' + esc(t.processed_by) + '</td>' +
+                '<td style="text-align:right;font-weight:700;white-space:nowrap;">' + peso(t.amount) + '</td>' +
+                '<td>' + badge(t.status) + '</td>' +
+                '<td style="text-align:center;">' + (t.status === 'completed'
+                    ? '<button type="button" class="action-btn view" title="Print Official Receipt" onclick="printStudentTransactionReceipt(' + i + ')"><i class="bi bi-printer-fill"></i></button>'
+                    : '<span style="color:#cbd5e1;">—</span>') + '</td>' +
+                '</tr>';
+        }).join('');
+    }
+
+    function printStudentTransactionReceipt(i) {
+        var t = _stxRows[i];
+        if (!t) return;
+        printOfficialReceipt({
+            or_no: t.reference, date: t.date, time: t.time, type: t.channel,
+            student_name: _stxStudent.name || '', grade_level: t.grade_level, school_year: t.school_year,
+            description: t.description, method: t.method, received_by: t.processed_by, amount: t.amount
+        });
+    }
+
+    // Archive (kept in Archives, can be restored) — the server asks for the password, as on Admin
+    function saArchiveStudent(studentId, studentName) {
+        showPrompt('Archive "' + (studentName || 'this student') + '"? Their records are kept and can be restored from Archives. Enter your password to confirm.', function (password) {
+            fetch('/admin/students/' + studentId, {
+                method: 'DELETE',
+                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                body: JSON.stringify({ password: password })
+            })
+            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+            .then(function (res) {
+                if (res.ok && res.d.success) {
+                    saToast('success', 'Student archived', res.d.message);
+                    if (typeof saAdjustArchivedBadge === 'function') saAdjustArchivedBadge(1);
+                    loadStudentsMgmt(_studentsPage);
+                } else { saToast('error', res.d.message || 'Archive failed.'); }
+            })
+            .catch(function () { saToast('error', 'Network error. Please try again.'); });
+        }, { title: 'Archive Student', confirmLabel: 'Archive', placeholder: 'Your password', inputType: 'password' });
+    }
+
+    // ══════════════════════════════════════════════════════════
     // TEACHERS PANEL
     // ══════════════════════════════════════════════════════════
     var _teachersData = [];
@@ -4992,48 +5640,133 @@
         _loaded['teachers'] = true;
         _teachersPage = page || 1;
         var tbody = document.getElementById('teachers-tbody');
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--muted);"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--muted);"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>';
         try {
-            var r = await fetch('/admin/teachers?paginated=1&page=' + _teachersPage, { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
+            // include_inactive: a deactivated teacher stays listed so they can be activated again;
+            // search/status run on the server, so they cover every page (not just this one)
+            var qs = new URLSearchParams({
+                paginated: 1, include_inactive: 1, with_sections: 1, page: _teachersPage,
+                search: document.getElementById('tch-search')?.value || '',
+                status: document.getElementById('tch-status-filter')?.value || ''
+            });
+            var r = await fetch('/admin/teachers?' + qs.toString(), { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
             var d = await r.json();
             _teachersData = d.teachers || [];
+            var s = d.stats || {};
+            [['total', 'total'], ['active', 'active'], ['inactive', 'inactive'], ['schedules', 'with_schedules']].forEach(function (k) {
+                var el = document.getElementById('tch-cnt-' + k[0]);
+                if (el) el.textContent = s[k[1]] != null ? s[k[1]] : '—';
+            });
             renderTeachersTable(_teachersData);
             renderPagerControls('teachers-pagination', d, 'teacher(s)', 'goToTeachersPage');
         } catch(e) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--red);">Failed to load teachers.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--red);">Failed to load teachers.</td></tr>';
         }
     }
 
     function goToTeachersPage(p) { loadTeachers(p); }
 
+    var _saGradeShort = { nursery:'Nursery', kindergarten:'Kinder', grade1:'G1', grade2:'G2', grade3:'G3', grade4:'G4', grade5:'G5', grade6:'G6' };
+
+    // Same chips as Admin's "Sections Handled": star = advisory, calendar = teaches there
+    function _saSectionChips(t) {
+        var chip = function (s, icon, bg, fg, border, tip) {
+            return '<span title="' + tip + saEsc(s.name) + ' · S.Y. ' + saEsc(s.school_year || '') + '" style="display:inline-flex;align-items:center;gap:3px;background:' + bg + ';color:' + fg + ';border:1px solid ' + border + ';border-radius:12px;padding:2px 8px;font-size:11px;font-weight:600;margin:2px 2px 2px 0;white-space:nowrap;">' +
+                '<i class="bi ' + icon + '" style="font-size:9px;"></i>' + saEsc(s.name) +
+                ' <span style="font-size:10px;opacity:0.75;">(' + saEsc(_saGradeShort[s.grade_level] || s.grade_level || '') + ')</span></span>';
+        };
+        var adv = t.advisory_sections || [], teach = t.teaching_sections || [];
+        if (!adv.length && !teach.length) return '<span style="color:#bbb;font-size:12px;">— Not assigned</span>';
+        return adv.map(function (s) { return chip(s, 'bi-star-fill', '#e0f2fe', '#0369a1', '#bae6fd', 'Advisory: '); }).join('') +
+            teach.slice(0, 4).map(function (s) { return chip(s, 'bi-calendar3', '#e8f5e9', '#166534', '#bbf7d0', 'Teaches in: '); }).join('') +
+            (teach.length > 4 ? '<span style="background:#eee;border-radius:12px;padding:2px 8px;font-size:11px;color:#555;">+' + (teach.length - 4) + ' more</span>' : '');
+    }
+
     function renderTeachersTable(rows) {
         var tbody = document.getElementById('teachers-tbody');
         if (!rows.length) {
-            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:40px;color:var(--muted);"><i class="bi bi-person-x" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3;"></i>No teachers found.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--muted);"><i class="bi bi-person-x" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3;"></i>No teachers found.</td></tr>';
             return;
         }
         tbody.innerHTML = rows.map(function(t) {
-            var initials = (t.name || 'T').substring(0, 2).toUpperCase();
-            var isActive = t.is_active || t.is_active === 1;
+            var initials = saEsc((t.name || 'T').substring(0, 2).toUpperCase());
+            var isActive = t.is_active === true || t.is_active === 1;
+            var jsName = saEsc(JSON.stringify(t.name || ''));
             return '<tr>' +
-                '<td><div class="user-row-name"><div class="user-row-avatar">' + initials + '</div><div><div style="font-size:13px;font-weight:600;">' + (t.name || '—') + '</div></div></div></td>' +
-                '<td style="font-size:12px;color:var(--muted);">' + (t.email || '—') + '</td>' +
+                '<td><div class="user-row-name"><div class="user-row-avatar">' + initials + '</div><div><div style="font-size:13px;font-weight:600;">' + saEsc(t.name || '—') + '</div></div></div></td>' +
+                '<td style="font-size:12px;color:var(--muted);">' + saEsc(t.email || '—') + '</td>' +
+                '<td style="max-width:280px;">' + _saSectionChips(t) + '</td>' +
                 '<td><span class="status-badge ' + (isActive ? 'active' : 'inactive') + '">' + (isActive ? 'Active' : 'Inactive') + '</span></td>' +
-                '<td>' +
+                '<td style="white-space:nowrap;">' +
                 '<button class="action-btn edit" title="Edit" onclick="openEditTeacherModal(' + t.id + ')"><i class="bi bi-pencil-fill"></i></button>' +
-                '<button class="action-btn lock" title="Reset Password" onclick="saResetTeacherPwd(' + t.id + ',\'' + (t.name || '').replace(/'/g, "\\'") + '\')"><i class="bi bi-key-fill"></i></button>' +
+                '<button class="action-btn" title="Assign Advisory" style="background:#e0f2fe;color:#0369a1;" onclick="saAssignAdvisory(' + t.id + ',' + jsName + ')"><i class="bi bi-star-fill"></i></button>' +
+                '<button class="action-btn" title="Add Schedule" style="background:#e8f5e9;color:#166534;" onclick="showSection(\'schedules\'); setTimeout(function () { openScheduleModal(); }, 200);"><i class="bi bi-calendar-plus-fill"></i></button>' +
+                '<button class="action-btn lock" title="Reset Password" onclick="saResetTeacherPwd(' + t.id + ',' + jsName + ')"><i class="bi bi-key-fill"></i></button>' +
                 '<button class="action-btn ' + (isActive ? 'delete' : 'view') + '" title="' + (isActive ? 'Deactivate' : 'Activate') + '" onclick="saToggleTeacher(' + t.id + ',' + (isActive ? 'true' : 'false') + ')"><i class="bi bi-' + (isActive ? 'person-dash-fill' : 'person-check-fill') + '"></i></button>' +
-                '<button class="action-btn delete" title="Delete" onclick="saDeleteTeacher(' + t.id + ',\'' + (t.name || '').replace(/'/g, "\\'") + '\')"><i class="bi bi-trash3-fill"></i></button>' +
+                '<button class="action-btn delete" title="Delete" onclick="saDeleteTeacher(' + t.id + ',' + jsName + ')"><i class="bi bi-trash3-fill"></i></button>' +
                 '</td>' +
                 '</tr>';
         }).join('');
     }
 
-    function filterTeachersTable(q) {
-        q = (q || '').toLowerCase();
-        document.querySelectorAll('#teachers-tbody tr').forEach(function(row) {
-            row.style.display = !q || row.textContent.toLowerCase().includes(q) ? '' : 'none';
+    // Assign Advisory — Admin's button: makes the teacher the adviser of a section
+    // (same endpoint and rules as Admin's Advisory Teacher Assignments)
+    function saAssignAdvisory(teacherId, teacherName) {
+        document.getElementById('saAdvisoryModal')?.remove();
+        var years = @json(\App\Models\Setting::schoolYearOptions());
+        var cur = @json(\App\Models\Setting::getCurrentSchoolYear());
+        document.body.insertAdjacentHTML('beforeend',
+            '<div class="modal fade" id="saAdvisoryModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered" style="max-width:480px;"><div class="modal-content" style="border:0;border-radius:16px;overflow:hidden;">' +
+            '<div class="modal-header" style="background:linear-gradient(135deg, #0056b3, #003d82); padding:18px 24px; border:none;"><h5 class="modal-title" style="color:#fff;font-weight:700;font-size:16px;"><i class="bi bi-star-fill me-2"></i>Assign Advisory — <span id="sa-adv-name"></span></h5><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div>' +
+            '<div class="modal-body" style="padding:20px 24px;">' +
+            '<label class="form-lbl">School Year</label><select id="sa-adv-sy" class="form-fld mb-3">' + years.map(function (y) { return '<option value="' + saEsc(y) + '"' + (y === cur ? ' selected' : '') + '>' + saEsc(y) + (y === cur ? ' (current)' : '') + '</option>'; }).join('') + '</select>' +
+            '<label class="form-lbl">Section</label><select id="sa-adv-section" class="form-fld"><option value="">Loading…</option></select>' +
+            '<div style="font-size:12px;color:var(--muted);margin-top:8px;"><i class="bi bi-info-circle me-1"></i>The teacher becomes this section\'s adviser for that school year.</div>' +
+            '</div><div style="padding:12px 24px;background:#f8faff;border-top:1.5px solid #e2e8f0;display:flex;gap:10px;justify-content:flex-end;">' +
+            '<button type="button" class="btn-dash btn-secondary" data-bs-dismiss="modal">Cancel</button>' +
+            '<button type="button" class="btn-dash btn-primary" id="sa-adv-save"><i class="bi bi-check-lg me-1"></i>Save Assignment</button></div></div></div></div>');
+        document.getElementById('sa-adv-name').textContent = teacherName;
+        var loadSections = function () {
+            var sel = document.getElementById('sa-adv-section');
+            sel.innerHTML = '<option value="">Loading…</option>';
+            fetch('/admin/sections?school_year=' + encodeURIComponent(document.getElementById('sa-adv-sy').value), { headers: { 'Accept': 'application/json' } })
+                .then(function (r) { return r.json(); })
+                .then(function (d) {
+                    var list = (d.sections || []).filter(function (s) { return s.is_active; });
+                    sel.innerHTML = list.length
+                        ? '<option value="">— Select section —</option>' + list.map(function (s) {
+                            return '<option value="' + s.id + '">' + saEsc(s.name) + ' (' + saEsc(_saGradeShort[s.grade_level] || s.grade_level) + ')' + (s.teacher ? ' — adviser: ' + saEsc(s.teacher.name) : '') + '</option>';
+                          }).join('')
+                        : '<option value="">No active sections in this school year</option>';
+                })
+                .catch(function () { sel.innerHTML = '<option value="">Failed to load sections</option>'; });
+        };
+        document.getElementById('sa-adv-sy').addEventListener('change', loadSections);
+        document.getElementById('sa-adv-save').addEventListener('click', function () {
+            var sectionId = document.getElementById('sa-adv-section').value;
+            if (!sectionId) { saToast('warning', 'Choose a section first.'); return; }
+            var btn = this;
+            btn.disabled = true;
+            fetch('/admin/teacher-assignments', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                body: JSON.stringify({ teacher_id: teacherId, section_id: parseInt(sectionId, 10), school_year: document.getElementById('sa-adv-sy').value, is_advisory: 1 })
+            })
+            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+            .then(function (res) {
+                if (res.ok && res.d.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('saAdvisoryModal')).hide();
+                    saToast('success', 'Advisory assigned', teacherName);
+                    loadTeachers(_teachersPage);
+                } else {
+                    btn.disabled = false;
+                    saToast('error', res.d.message || Object.values(res.d.errors || {}).flat().join(' ') || 'Could not save the assignment.');
+                }
+            })
+            .catch(function () { btn.disabled = false; saToast('error', 'Network error.'); });
         });
+        loadSections();
+        new bootstrap.Modal(document.getElementById('saAdvisoryModal')).show();
     }
 
     function saToggleTeacher(userId, isActive) {
@@ -5494,38 +6227,59 @@
         _subjectsPage = page || 1;
         var grade = document.getElementById('subj-grade-filter')?.value || '';
         var tbody = document.getElementById('subjects-tbody');
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--muted);"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted);"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>';
         try {
-            var url = '/admin/subjects?paginated=1&page=' + _subjectsPage + (grade ? '&grade_level=' + grade : '');
-            var r = await fetch(url, { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
+            // search/status run on the server, so they cover every page
+            var qs = new URLSearchParams({ paginated: 1, with_counts: 1, page: _subjectsPage, search: document.getElementById('subj-search')?.value || '' });
+            if (grade) qs.set('grade_level', grade);
+            var st = document.getElementById('subj-status-filter')?.value || '';
+            if (st !== '') qs.set('is_active', st);
+            var r = await fetch('/admin/subjects?' + qs.toString(), { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
             var d = await r.json();
             _subjectsData = d.subjects || [];
+            var s = d.stats || {};
+            ['total', 'active', 'inactive'].forEach(function (k) {
+                var el = document.getElementById('subj-cnt-' + k);
+                if (el) el.textContent = s[k] != null ? s[k] : '—';
+            });
             renderSubjectsTable(_subjectsData);
             renderPagerControls('subjects-pagination', d, 'subject(s)', 'goToSubjectsPage');
         } catch(e) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--red);">Failed to load subjects.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--red);">Failed to load subjects.</td></tr>';
         }
     }
 
     function goToSubjectsPage(p) { loadSubjects(p); }
 
+    // "Add to Schedule" (same as Admin): Schedule Management opened on the subject's grade
+    function saScheduleForGrade(grade) {
+        showSection('schedules');
+        setTimeout(function () { if (grade) quickSelectScheduleGrade(grade); }, 300);
+    }
+
     function renderSubjectsTable(rows) {
         var tbody = document.getElementById('subjects-tbody');
         if (!rows.length) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--muted);"><i class="bi bi-book" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3;"></i>No subjects found.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted);"><i class="bi bi-book" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3;"></i>No subjects found.</td></tr>';
             return;
         }
         tbody.innerHTML = rows.map(function(s) {
             var gl = (s.grade_level || '').replace('grade', 'Grade ').replace(/^(\w)/, function(m) { return m.toUpperCase(); });
-            var isActive = s.is_active || s.is_active === 1;
+            var isActive = s.is_active === true || s.is_active === 1;
+            var n = parseInt(s.schedules_count, 10) || 0;
+            var inSchedule = n > 0
+                ? '<span style="font-size:12px;font-weight:600;color:#166534;"><i class="bi bi-calendar3 me-1"></i>' + n + ' schedule(s)</span>'
+                : '<span style="font-size:11px;color:#bbb;"><i class="bi bi-calendar-x me-1"></i>Not scheduled</span>';
             return '<tr>' +
-                '<td style="font-weight:600;">' + (s.name || '—') + '</td>' +
-                '<td style="font-size:12px;"><code style="background:#f0f4f8;padding:2px 7px;border-radius:4px;">' + (s.code || '—') + '</code></td>' +
-                '<td>' + gl + '</td>' +
+                '<td style="font-weight:600;">' + saEsc(s.name || '—') + '</td>' +
+                '<td style="font-size:12px;"><span style="background:#f0f4f8;padding:2px 7px;border-radius:4px;font-weight:600;">' + saEsc(s.code || '—') + '</span></td>' +
+                '<td>' + saEsc(gl) + '</td>' +
+                '<td>' + inSchedule + '</td>' +
                 '<td><span class="status-badge ' + (isActive ? 'active' : 'inactive') + '">' + (isActive ? 'Active' : 'Inactive') + '</span></td>' +
-                '<td>' +
+                '<td style="white-space:nowrap;">' +
                 '<button class="action-btn edit" title="Edit" onclick="openEditSubjectModal(' + s.id + ')"><i class="bi bi-pencil-fill"></i></button>' +
-                '<button class="action-btn delete" title="Delete" onclick="saDeleteSubject(' + s.id + ',\'' + (s.name || '').replace(/'/g, "\\'") + '\')"><i class="bi bi-trash-fill"></i></button>' +
+                '<button class="action-btn" title="Add to Schedule" style="background:#e8f5e9;color:#166534;" onclick="saScheduleForGrade(' + saEsc(JSON.stringify(s.grade_level || '')) + ')"><i class="bi bi-calendar-plus-fill"></i></button>' +
+                '<button class="action-btn delete" title="Delete" onclick="saDeleteSubject(' + s.id + ',' + saEsc(JSON.stringify(s.name || '')) + ')"><i class="bi bi-trash-fill"></i></button>' +
                 '</td></tr>';
         }).join('');
     }
@@ -5630,46 +6384,69 @@
     async function loadSectionsMgmt(page) {
         _loaded['sections-mgmt'] = true;
         _sectionsPage = page || 1;
-        var grade = document.getElementById('sec-grade-filter')?.value || '';
-        var sy    = document.getElementById('sec-sy-filter')?.value || 'all';
+        var grade  = document.getElementById('sec-grade-filter')?.value || '';
+        var sy     = document.getElementById('sec-sy-filter')?.value || 'all';
+        var status = document.getElementById('sec-status-filter')?.value || '';
         var tbody = document.getElementById('sections-tbody');
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted);"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted);"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>';
         try {
-            var url = '/admin/sections?paginated=1&page=' + _sectionsPage + (grade ? '&grade_level=' + grade : '') + '&school_year=' + encodeURIComponent(sy);
-            var r = await fetch(url, { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
+            var qs = new URLSearchParams({ paginated: 1, with_counts: 1, page: _sectionsPage, school_year: sy });
+            if (grade) qs.set('grade_level', grade);
+            if (status) qs.set('status', status);
+            var r = await fetch('/admin/sections?' + qs.toString(), { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
             var d = await r.json();
             var rows = d.sections || [];
             _sectionsData = rows;
+            var st = d.stats || {};
+            ['total', 'active', 'enrolled'].forEach(function (k) {
+                var el = document.getElementById('sec-cnt-' + k);
+                if (el) el.textContent = st[k] != null ? st[k] : '—';
+            });
             if (!rows.length) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--muted);"><i class="bi bi-diagram-3" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3;"></i>'
-                    + (sy !== 'all' ? 'No sections for S.Y. ' + sy + ' yet. Use <strong>Add Section</strong> to create them.' : 'No sections found.') + '</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted);"><i class="bi bi-diagram-3" style="font-size:32px;display:block;margin-bottom:10px;opacity:.3;"></i>'
+                    + (sy !== 'all' ? 'No sections for S.Y. ' + saEsc(sy) + ' match these filters. Use <strong>Add Section</strong> to create them.' : 'No sections found.') + '</td></tr>';
                 document.getElementById('sections-pagination').innerHTML = '';
                 return;
             }
             tbody.innerHTML = rows.map(function(s) {
                 var gl = (s.grade_level || '').replace('grade', 'Grade ').replace(/^(\w)/, function(m) { return m.toUpperCase(); });
-                var teacherName = s.teacher ? s.teacher.name : '<span style="color:var(--muted);font-size:12px;">Unassigned</span>';
-                var studentCount = Array.isArray(s.students) ? s.students.length : (s.students_count || 0);
+                var teacherName = s.teacher ? saEsc(s.teacher.name) : '<span style="color:var(--muted);font-size:12px;">Unassigned</span>';
+                // Same capacity bar as Admin (enrolled students in the section / its maximum)
+                var enrolled = Array.isArray(s.students) ? s.students.length : (s.students_count || 0);
+                var max = s.max_students || 30;
+                var pct = max > 0 ? Math.min(100, Math.round(enrolled / max * 100)) : 0;
+                var color = pct >= 90 ? 'red' : (pct >= 70 ? 'gold' : 'green');
+                var subj = parseInt(s.subjects_count, 10) || 0, slots = parseInt(s.schedules_count, 10) || 0;
+                var jsName = saEsc(JSON.stringify(s.name || ''));
                 return '<tr>' +
-                    '<td style="font-weight:700;">' + (s.name || '—') + '</td>' +
-                    '<td><span class="status-badge active">' + gl + '</span></td>' +
-                    '<td style="font-size:12.5px;color:var(--muted);white-space:nowrap;">' + (s.school_year || '—') + '</td>' +
+                    '<td style="font-weight:700;">' + saEsc(s.name || '—') + (s.room_number ? '<div style="font-size:11px;color:var(--muted);font-weight:400;">Room ' + saEsc(s.room_number) + '</div>' : '') + '</td>' +
+                    '<td><span class="status-badge active">' + saEsc(gl) + '</span></td>' +
+                    '<td style="font-size:12.5px;color:var(--muted);white-space:nowrap;">' + saEsc(s.school_year || '—') + '</td>' +
                     '<td>' + teacherName + '</td>' +
-                    '<td><span style="font-size:13px;font-weight:700;color:var(--blue);">' + studentCount + '</span><span style="font-size:11px;color:var(--muted);"> students</span></td>' +
-                    '<td style="white-space:nowrap;">' +
+                    '<td style="font-size:12px;">' + subj + ' subject(s)<div style="font-size:11px;color:' + (slots ? '#166534' : '#bbb') + ';"><i class="bi bi-calendar3 me-1"></i>' + (slots ? slots + ' slot(s)' : 'No schedule yet') + '</div></td>' +
+                    '<td style="text-align:center;"><div style="font-size:12px;font-weight:700;color:var(--' + color + ');margin-bottom:3px;">' + enrolled + '/' + max + '</div>' +
+                    '<div style="height:5px;background:#e2e8f0;border-radius:4px;overflow:hidden;width:72px;margin:0 auto;"><div style="height:100%;background:var(--' + color + ');width:' + pct + '%;border-radius:4px;"></div></div></td>' +
+                    '<td>' + (s.is_active ? '<span class="status-badge active">Active</span>' : '<span class="status-badge inactive">Inactive</span>') + '</td>' +
+                    '<td style="text-align:center;white-space:nowrap;">' +
+                    '<button class="action-btn view" title="View Students" onclick="ilcSectionTools.viewStudents(' + s.id + ',' + jsName + ', saReloadSections)"><i class="bi bi-people-fill"></i></button>' +
                     '<button class="action-btn view" title="Section Summary" onclick="saSectionSummary(' + s.id + ')"><i class="bi bi-clipboard-data-fill"></i></button>' +
+                    '<button class="action-btn edit" title="Manage Subjects" onclick="ilcSectionTools.manageSubjects(' + s.id + ',' + jsName + ',' + saEsc(JSON.stringify(s.grade_level || '')) + ', saReloadSections)"><i class="bi bi-book-fill"></i></button>' +
+                    '<button class="action-btn" title="Add Student" style="background:#e8f5e9;color:#166534;" onclick="ilcSectionTools.addStudent(' + s.id + ',' + jsName + ',' + enrolled + ',' + max + ', saReloadSections)"><i class="bi bi-person-plus-fill"></i></button>' +
                     '<button class="action-btn edit" title="Edit" onclick="editSaSection(' + s.id + ')"><i class="bi bi-pencil-fill"></i></button>' +
-                    '<button class="action-btn delete" title="Delete" onclick="saDeleteSection(' + s.id + ',\'' + (s.name || '').replace(/'/g, "\\'") + '\')"><i class="bi bi-trash3-fill"></i></button>' +
+                    '<button class="action-btn delete" title="Delete" onclick="saDeleteSection(' + s.id + ',' + jsName + ')"><i class="bi bi-trash3-fill"></i></button>' +
                     '</td>' +
                     '</tr>';
             }).join('');
             renderPagerControls('sections-pagination', d, 'section(s)', 'goToSectionsPage');
         } catch(e) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--red);">Failed to load sections.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--red);">Failed to load sections.</td></tr>';
         }
     }
 
     function goToSectionsPage(p) { loadSectionsMgmt(p); }
+
+    // After View Students / Add Student / Manage Subjects change something: refresh this page of the list
+    function saReloadSections() { loadSectionsMgmt(_sectionsPage); }
 
     // Section Summary — same window as Admin's (public/js/section-summary.js)
     function saSectionSummary(sectionId) {
@@ -5844,6 +6621,34 @@
         '1': { name: 'Term 1' }, '2': { name: 'Term 2' }, '3': { name: 'Term 3' },
     };
     var _saScheduleCache = [];
+
+    // Export CSV — same columns and order as Admin's (the schedule currently shown)
+    function saExportScheduleCsv() {
+        var grade = document.getElementById('scheduleGradeFilter').value;
+        if (!grade) { saToast('warning', 'Select a grade level first.'); return; }
+        if (!_saScheduleCache.length) { saToast('warning', 'Nothing to export', 'Load a schedule first, then export it.'); return; }
+        var dayOrder = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 7 };
+        var rows = _saScheduleCache.slice().sort(function (a, b) {
+            var d = (dayOrder[a.day_of_week] || 99) - (dayOrder[b.day_of_week] || 99);
+            return d !== 0 ? d : (a.start_time || '').localeCompare(b.start_time || '');
+        });
+        var cell = function (v) { v = String(v == null ? '' : v); return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+        var lines = [['Day', 'Start Time', 'End Time', 'Section', 'Subject Code', 'Subject Name', 'Teacher', 'Room'].map(cell).join(',')];
+        rows.forEach(function (s) {
+            lines.push([s.day_of_week, (s.start_time || '').substring(0, 5), (s.end_time || '').substring(0, 5),
+                s.section ? s.section.name : '', s.subject ? (s.subject.code || '') : '', s.subject ? s.subject.name : '',
+                s.teacher ? s.teacher.name : '', s.room || ''].map(cell).join(','));
+        });
+        var secSel = document.getElementById('scheduleSectionFilter');
+        var secLabel = secSel && secSel.selectedIndex > 0 ? secSel.options[secSel.selectedIndex].text : 'all-sections';
+        var name = ('schedule-' + grade + '-' + secLabel + '-' + schedSelectedYear() + '-term' + document.getElementById('scheduleTermFilter').value)
+            .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '.csv';
+        var url = URL.createObjectURL(new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' }));
+        var a = document.createElement('a');
+        a.href = url; a.download = name;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
 
     function quickSelectScheduleGrade(grade) {
         document.getElementById('scheduleGradeFilter').value = grade;
@@ -6660,6 +7465,7 @@
     }
 </script>
 <script src="{{ asset('js/section-summary.js') }}?v={{ @filemtime(public_path('js/section-summary.js')) }}"></script>
+<script src="{{ asset('js/section-tools.js') }}?v={{ @filemtime(public_path('js/section-tools.js')) }}"></script>
 @include('partials.idle-logout', ['portal' => 'web'])
 </body>
 </html>

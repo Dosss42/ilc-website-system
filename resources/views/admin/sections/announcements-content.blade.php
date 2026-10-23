@@ -50,6 +50,12 @@
                             <label class="form-lbl">Image (optional)</label>
                             <input type="file" name="image" class="form-fld" accept="image/jpg,image/jpeg,image/png,image/webp">
                         </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <label class="form-lbl" style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:10px;">
+                                <input type="checkbox" name="is_highlight" value="1" style="width:16px;height:16px;accent-color:#c5a059;">
+                                <i class="bi bi-star-fill" style="color:#c5a059;"></i> Show in Highlights on the home page
+                            </label>
+                        </div>
                         <div class="col-12">
                             <button type="submit" class="btn-dash btn-primary">
                                 <i class="bi bi-send-fill"></i> Post Announcement
@@ -81,6 +87,9 @@
                         @if(!$ann->is_active)
                         <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#f3f4f6;color:#6b7280;">Hidden</span>
                         @endif
+                        @if($ann->is_highlight)
+                        <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#fdf6e3;color:#a07a2c;"><i class="bi bi-star-fill me-1"></i>Highlight</span>
+                        @endif
                     </div>
                     <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px;">{{ $ann->title }}</div>
                     <div style="font-size:12px;color:var(--muted);">{{ Str::limit($ann->content, 100) }}</div>
@@ -92,6 +101,13 @@
                         style="padding:6px 10px;border-radius:8px;border:1.5px solid #e2e8f0;background:#f0f4ff;color:#1a3a6c;cursor:pointer;font-size:13px;">
                         <i class="bi bi-pencil"></i>
                     </button>
+                    <form method="POST" action="{{ route('admin.announcements.highlight', $ann) }}" style="margin:0;">
+                        @csrf
+                        <button type="submit" title="{{ $ann->is_highlight ? 'Remove from Highlights' : 'Add to Highlights' }}"
+                            style="padding:6px 10px;border-radius:8px;border:1.5px solid {{ $ann->is_highlight ? '#c5a059' : '#e2e8f0' }};background:{{ $ann->is_highlight ? '#fdf6e3' : '#fff' }};color:{{ $ann->is_highlight ? '#a07a2c' : '#94a3b8' }};cursor:pointer;font-size:13px;">
+                            <i class="bi bi-star{{ $ann->is_highlight ? '-fill' : '' }}"></i>
+                        </button>
+                    </form>
                     <form method="POST" action="{{ route('admin.announcements.toggle', $ann) }}" style="margin:0;">
                         @csrf
                         <button type="submit" title="{{ $ann->is_active ? 'Hide' : 'Show' }}"

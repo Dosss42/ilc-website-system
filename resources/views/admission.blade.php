@@ -932,7 +932,7 @@ body, div, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select
                 </div>
                 <div style="font-size:12px; color:#555; line-height:1.6;">
                     {{-- CHANGE: Update enrollment schedule --}}
-                    Office hours: Monday to Friday, 7:30 AM &ndash; 5:00 PM &nbsp;|&nbsp;
+                    Office hours: Monday to Friday, 7:30 AM &ndash; 4:00 PM &nbsp;|&nbsp;
                     Saturday-Sunday: Closed 
                 </div>
             </div>

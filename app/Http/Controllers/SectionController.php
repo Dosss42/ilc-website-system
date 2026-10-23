@@ -114,11 +114,23 @@ class SectionController extends Controller
         if ($request->filled('school_year') && $request->school_year !== 'all') {
             $query->where('school_year', $request->school_year);
         }
+        // Super Admin's Section Management, same as Admin's: Active/Inactive filter, and
+        // (?with_counts=1) the number of schedules and subjects per section
+        if (in_array($request->input('status'), ['active', 'inactive'], true)) {
+            $query->where('is_active', $request->input('status') === 'active');
+        }
+        if ($request->boolean('with_counts')) {
+            $query->withCount(['schedules', 'subjects']);
+        }
 
         // Pagination is opt-in (?paginated=1) — other callers (dropdown
         // population elsewhere, the dedicated Section Management page) need
         // the full list, so the default response stays unpaginated.
         if ($request->boolean('paginated')) {
+            $statsBase = fn () => Section::query()->when(
+                $request->filled('school_year') && $request->school_year !== 'all',
+                fn ($q) => $q->where('school_year', $request->school_year)
+            );
             $page = $query->paginate((int) $request->input('per_page', 15));
             return response()->json([
                 'sections'     => $page->items(),
@@ -128,6 +140,12 @@ class SectionController extends Controller
                 'total'        => $page->total(),
                 'from'         => $page->firstItem(),
                 'to'           => $page->lastItem(),
+                // Admin's cards: sections and enrolled students of the chosen school year
+                'stats'        => $request->boolean('with_counts') ? [
+                    'total'    => $statsBase()->count(),
+                    'active'   => $statsBase()->where('is_active', true)->count(),
+                    'enrolled' => DB::table('section_student')->whereIn('section_id', $statsBase()->select('id'))->count(),
+                ] : null,
             ]);
         }
 

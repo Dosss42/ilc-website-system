@@ -104,7 +104,14 @@ Route::get('/', function () {
     $latestNews          = \App\Models\News::where('is_active', true)->latest()->limit(3)->get();
     $latestAnnouncements = \App\Models\Announcement::where('is_active', true)->where('audience', 'all')->latest()->limit(3)->get();
 
-    return view('home', compact('enrollmentOpen', 'visitorCount', 'latestNews', 'latestAnnouncements'));
+    // Posts Admin / Super Admin starred for the Highlights column — newest 5 across both.
+    $highlightPosts = \App\Models\News::where('is_active', true)->where('is_highlight', true)->latest()->limit(5)->get()
+        ->map(fn ($n) => ['type' => 'News', 'title' => $n->title, 'text' => $n->body, 'image' => $n->image, 'date' => $n->created_at])
+        ->concat(\App\Models\Announcement::where('is_active', true)->where('audience', 'all')->where('is_highlight', true)->latest()->limit(5)->get()
+        ->map(fn ($a) => ['type' => 'Announcement', 'title' => $a->title, 'text' => $a->content, 'image' => $a->image, 'date' => $a->created_at]))
+        ->sortByDesc('date')->take(5)->values();
+
+    return view('home', compact('enrollmentOpen', 'visitorCount', 'latestNews', 'latestAnnouncements', 'highlightPosts'));
 })->name('home');
 Route::get('/about',         fn() => view('about',         ['visitorCount' => (int) \App\Models\Setting::get('visitor_count', 0)]))->name('about');
 Route::get('/aims',          fn() => view('aims'))->name('aims');
@@ -313,12 +320,14 @@ Route::middleware(['auth', 'superadmin'])->prefix('superadmin')->name('superadmi
     Route::post('/announcements',                        [SuperAdminController::class, 'storeAnnouncement'])->name('announcements.store');
     Route::put('/announcements/{announcement}',          [SuperAdminController::class, 'updateAnnouncement'])->name('announcements.update');
     Route::post('/announcements/{announcement}/toggle',  [SuperAdminController::class, 'toggleAnnouncement'])->name('announcements.toggle');
+    Route::post('/announcements/{announcement}/highlight', [SuperAdminController::class, 'toggleAnnouncementHighlight'])->name('announcements.highlight');
     Route::delete('/announcements/{announcement}',       [SuperAdminController::class, 'destroyAnnouncement'])->name('announcements.destroy');
 
     // News
     Route::post('/news',                [SuperAdminController::class, 'storeNews'])->name('news.store');
     Route::put('/news/{news}',          [SuperAdminController::class, 'updateNews'])->name('news.update');
     Route::post('/news/{news}/toggle',  [SuperAdminController::class, 'toggleNews'])->name('news.toggle');
+    Route::post('/news/{news}/highlight', [SuperAdminController::class, 'toggleNewsHighlight'])->name('news.highlight');
     Route::delete('/news/{news}',       [SuperAdminController::class, 'destroyNews'])->name('news.destroy');
 
     // Academic management data (proxies to admin JSON endpoints)
@@ -342,6 +351,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/section/archives', [EnrollmentController::class, 'sectionArchives'])->name('section.archives');
     Route::get('/section/enrollment', [EnrollmentController::class, 'sectionEnrollment'])->name('section.enrollment');
     Route::get('/section/students', [EnrollmentController::class, 'sectionStudents'])->name('section.students');
+    Route::get('/section/students-data', [EnrollmentController::class, 'studentsData'])->name('section.students-data');
     Route::get('/section/subjects', [EnrollmentController::class, 'sectionSubjects'])->name('section.subjects');
     Route::get('/section/reports', [EnrollmentController::class, 'sectionReports'])->name('section.reports');
     Route::get('/section/audit', [\App\Http\Controllers\Admin\AuditTrailController::class, 'section'])->name('section.audit');
@@ -554,12 +564,14 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/announcements',                       [\App\Http\Controllers\SuperAdminController::class, 'storeAnnouncement'])->name('announcements.store');
     Route::put('/announcements/{announcement}',         [\App\Http\Controllers\SuperAdminController::class, 'updateAnnouncement'])->name('announcements.update');
     Route::post('/announcements/{announcement}/toggle', [\App\Http\Controllers\SuperAdminController::class, 'toggleAnnouncement'])->name('announcements.toggle');
+    Route::post('/announcements/{announcement}/highlight', [\App\Http\Controllers\SuperAdminController::class, 'toggleAnnouncementHighlight'])->name('announcements.highlight');
     Route::delete('/announcements/{announcement}',      [\App\Http\Controllers\SuperAdminController::class, 'destroyAnnouncement'])->name('announcements.destroy');
 
     // NEWS (admin can post/manage)
     Route::post('/news',               [\App\Http\Controllers\SuperAdminController::class, 'storeNews'])->name('news.store');
     Route::put('/news/{news}',         [\App\Http\Controllers\SuperAdminController::class, 'updateNews'])->name('news.update');
     Route::post('/news/{news}/toggle', [\App\Http\Controllers\SuperAdminController::class, 'toggleNews'])->name('news.toggle');
+    Route::post('/news/{news}/highlight', [\App\Http\Controllers\SuperAdminController::class, 'toggleNewsHighlight'])->name('news.highlight');
     Route::delete('/news/{news}',      [\App\Http\Controllers\SuperAdminController::class, 'destroyNews'])->name('news.destroy');
 
     // SCHEDULE CLEANUP — list all schedules with delete buttons

@@ -217,7 +217,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
                     <h5>Office Hours</h5>
                     {{-- CHANGE: Update with your actual hours --}}
                     <p>
-                        Mon – Fri: 7:30 AM – 3:00 PM<br>
+                        Mon – Fri: 7:30 AM – 4:00 PM<br>
                         Saturday - Sunday: <strong style="color:var(--ilc-gold);">Closed</strong>
                     </p>
                 </div>
@@ -377,7 +377,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
                         </div>
                         <div class="map-info-row">
                             <i class="bi bi-clock-fill"></i>
-                            <span>Mon–Fri 7:00 AM–3:00 PM &nbsp;|&nbsp; Saturday - Sunday: <strong style="color:var(--ilc-gold);">Closed</strong></span>
+                            <span>Mon–Fri 7:30 AM–4:00 PM &nbsp;|&nbsp; Saturday - Sunday: <strong style="color:var(--ilc-gold);">Closed</strong></span>
                         </div>
                     </div>
                 </div>
@@ -401,23 +401,23 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
                     {{-- CHANGE: Update days and times as needed --}}
                     <div class="hours-row">
                         <span class="day">Monday</span>
-                        <span class="time">7:30 AM – 3:00 PM</span>
+                        <span class="time">7:30 AM – 4:00 PM</span>
                     </div>
                     <div class="hours-row">
                         <span class="day">Tuesday</span>
-                        <span class="time">7:30 AM – 3:00 PM</span>
+                        <span class="time">7:30 AM – 4:00 PM</span>
                     </div>
                     <div class="hours-row">
                         <span class="day">Wednesday</span>
-                        <span class="time">7:30 AM – 3:00 PM</span>
+                        <span class="time">7:30 AM – 4:00 PM</span>
                     </div>
                     <div class="hours-row">
                         <span class="day">Thursday</span>
-                        <span class="time">7:30 AM – 3:00 PM</span>
+                        <span class="time">7:30 AM – 4:00 PM</span>
                     </div>
                     <div class="hours-row">
                         <span class="day">Friday</span>
-                        <span class="time">7:30 AM – 3:00 PM</span>
+                        <span class="time">7:30 AM – 4:00 PM</span>
                     </div>
                     <div class="hours-row">
                         <span class="day">Saturday</span>
@@ -574,7 +574,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
             {{-- Col 4: Office Hours + Visitor Counter --}}
             <div class="col-md-4">
                 <h6>Office Hours</h6>
-                <div class="office-hours-row"><span>Monday – Friday</span><span>7:30 AM – 5:00 PM</span></div>
+                <div class="office-hours-row"><span>Monday – Friday</span><span>7:30 AM – 4:00 PM</span></div>
                 <div class="office-hours-row"><span>Saturday - Sunday</span><span style="color:var(--ilc-gold);">Closed</span></div>
                 <h6 class="mt-3">Visitor Counter</h6>
                 <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px 14px;margin-top:8px;">

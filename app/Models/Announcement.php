@@ -17,11 +17,13 @@ class Announcement extends Model
         'section_id',
         'category',
         'is_active',
+        'is_highlight',
         'image',
     ];
 
     protected $casts = [
-        'is_active' => 'boolean',
+        'is_active'    => 'boolean',
+        'is_highlight' => 'boolean',
     ];
 
     public function teacher()

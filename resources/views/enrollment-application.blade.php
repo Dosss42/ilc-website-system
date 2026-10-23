@@ -2012,7 +2012,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <!-- ══ Terms & Conditions / Privacy Policy Modal ══ -->
 <div id="tcModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);overflow-y:auto;padding:24px 16px;">
-    <div style="background:#fff;border-radius:16px;max-width:640px;margin:0 auto;box-shadow:0 20px 60px rgba(0,0,0,0.25);overflow:hidden;">
+    <div style="background:#fff;border-radius:16px;max-width:1080px;margin:0 auto;box-shadow:0 20px 60px rgba(0,0,0,0.25);overflow:hidden;">
 
         {{-- Modal header --}}
         <div style="background:var(--ilc-blue);padding:20px 24px;display:flex;align-items:center;justify-content:space-between;">
@@ -2038,8 +2038,13 @@ document.addEventListener('DOMContentLoaded', function () {
             </button>
         </div>
 
-        {{-- Scrollable content --}}
-        <div id="modal-tc-box" style="height:300px;overflow-y:auto;padding:20px 24px;font-size:12.5px;color:#444;line-height:1.8;">
+        {{-- Sidebar (sections of the open document, highlighted while scrolling) + scrollable content --}}
+        <div style="display:flex;">
+        <nav id="modal-tc-toc" aria-label="Document sections">
+            <div class="tc-toc-label">Sections</div>
+            <div id="modal-tc-toc-list"></div>
+        </nav>
+        <div id="modal-tc-box" style="flex:1;min-width:0;height:calc(100vh - 380px);min-height:300px;overflow-y:auto;padding:24px 32px;font-size:14px;color:#444;line-height:1.8;">
             <div id="modal-tc-pane-terms">
                 <p style="font-weight:700;color:#1a3a6c;margin:0 0 10px;">IEMELIF LEARNING CENTER — Terms and Conditions</p>
                 <p style="color:#888;font-size:11px;">Online Enrollment System</p>
@@ -2048,7 +2053,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 <p><strong>2. Eligibility</strong><br>The ILC Online Enrollment System is available to:</p>
                 <ul>
-                    <li>Students seeking enrollment at Immaculate Learning Center</li>
+                    <li>Students seeking enrollment at IEMELIF Learning Center</li>
                     <li>Parents or legal guardians of students</li>
                     <li>Authorized school staff and administrators</li>
                 </ul>
@@ -2147,7 +2152,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 <p><strong>8. Privacy and Data Protection</strong><br>ILC is committed to protecting your personal information. Our Privacy Policy, shown in the tab above, details how we collect, use, store, and protect your data. By using this system, you consent to our data practices as outlined in our Privacy Policy.</p>
 
-                <p><strong>9. Intellectual Property</strong><br>All content on the ILC Online Enrollment System, including text, graphics, logos, and software, is the property of Immaculate Learning Center and is protected by copyright laws. Users may not reproduce, distribute, or create derivative works without explicit permission.</p>
+                <p><strong>9. Intellectual Property</strong><br>All content on the ILC Online Enrollment System, including text, graphics, logos, and software, is the property of IEMELIF Learning Center and is protected by copyright laws. Users may not reproduce, distribute, or create derivative works without explicit permission.</p>
 
                 <p><strong>10. Communication</strong><br>By enrolling, you agree to receive communications from ILC through:</p>
                 <ul>
@@ -2174,11 +2179,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 <p><strong>15. Contact Information</strong><br>For questions about these Terms and Conditions or the enrollment process, please contact:</p>
                 <p style="background:#e8f0fb;padding:10px 12px;border-left:3px solid #1a3a6c;border-radius:4px;">
-                    <strong>Immaculate Learning Center</strong><br>
+                    <strong>IEMELIF Learning Center</strong><br>
                     Address: Brgy Poblacion Central General Tinio Nueva Ecija<br>
                     Phone: 0951-989-9685<br>
                     Email: Iemelif_learningcenter@gmail.com<br>
-                    Office Hours: Monday – Friday 7:30 AM – 5:00 PM
+                    Office Hours: Monday – Friday 7:30 AM – 4:00 PM
                 </p>
 
                 <p><strong>16. Agreement</strong><br>By clicking "I Agree" or using the ILC Online Enrollment System, you acknowledge that you have read, understood, and agree to be bound by these Terms and Conditions.</p>
@@ -2341,7 +2346,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     Phone: 0951-989-9685<br>
                     Email: Iemelif_learningcenter@gmail.com<br>
                     Data Protection Officer: Mrs. Teofila Guillermo<br>
-                    Office Hours: Monday to Friday, 8:00 AM – 5:00 PM
+                    Office Hours: Monday to Friday, 7:30 AM – 4:00 PM
                 </p>
                 <p>If you are not satisfied with our response, you have the right to file a complaint with the <strong>National Privacy Commission (NPC)</strong>:</p>
                 <p style="background:#e8f0fb;padding:10px 12px;border-left:3px solid #1a3a6c;border-radius:4px;">
@@ -2362,6 +2367,42 @@ document.addEventListener('DOMContentLoaded', function () {
                 <p style="color:#888;font-size:11px;">Full document: <a href="{{ route('privacy') }}" target="_blank" style="color:var(--ilc-blue);">View complete Privacy Policy</a></p>
             </div>
         </div>
+        </div>
+
+        <style>
+        #modal-tc-toc {
+            position: relative;
+            width: 240px;
+            flex-shrink: 0;
+            height: calc(100vh - 380px);
+            min-height: 300px;
+            overflow-y: auto;
+            padding: 14px 0;
+            background: #f8fafc;
+            border-right: 1px solid #e5e7eb;
+        }
+        .tc-toc-label {
+            font-size: 10px;
+            font-weight: 800;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            padding: 0 18px 8px;
+        }
+        .tc-toc-link {
+            display: block;
+            padding: 7px 18px;
+            font-size: 12.5px;
+            line-height: 1.35;
+            color: #4b5563;
+            text-decoration: none;
+            border-left: 3px solid transparent;
+            transition: color 0.15s, background 0.15s;
+        }
+        .tc-toc-link:hover { color: var(--ilc-blue); background: #eef2fb; }
+        .tc-toc-link.active { color: var(--ilc-blue); background: #e8f0fb; border-left-color: var(--ilc-blue); font-weight: 700; }
+        @media (max-width: 768px) { #modal-tc-toc { display: none; } }
+        </style>
 
         {{-- Scroll hint --}}
         <div id="modal-tc-scroll-hint" style="text-align:center;font-size:11px;color:#9ca3af;padding:6px 24px 0;display:flex;align-items:center;justify-content:center;gap:6px;">
@@ -2386,7 +2427,7 @@ document.addEventListener('DOMContentLoaded', function () {
             </button>
             <button type="button" id="modal-tc-accept-btn" onclick="acceptTcAndProceed()" disabled
                 style="padding:11px 28px;border-radius:8px;border:none;background:#cbd5e1;color:#fff;font-size:13px;font-weight:700;cursor:not-allowed;transition:all 0.2s;">
-                <i class="bi bi-check-lg me-1"></i> Accept &amp; Review Application
+                Continue <i class="bi bi-arrow-right ms-1"></i>
             </button>
         </div>
     </div>
@@ -2419,6 +2460,7 @@ function openTcModal() {
     modalTcTab('terms');
     document.getElementById('tcModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
+    updateTcToc();
 }
 
 function closeTcModal() {
@@ -2438,6 +2480,7 @@ function modalTcTab(tab) {
     pBtn.style.borderBottom= tab === 'privacy' ? '3px solid var(--ilc-blue)' : '3px solid transparent';
     var box = document.getElementById('modal-tc-box');
     box.scrollTop = 0;
+    buildTcToc(tab);
     // Let the display:none/'' change above actually apply before measuring
     // scrollHeight, otherwise the hidden pane's old height can be read.
     setTimeout(function () {
@@ -2459,6 +2502,16 @@ function markTcTabRead(tab) {
     checkbox.disabled = !bothRead;
     label.style.opacity = bothRead ? '1' : '0.6';
     label.style.cursor = bothRead ? 'pointer' : 'not-allowed';
+
+    // Finished the Terms for the first time → move on to the Privacy Policy by itself
+    if (tab === 'terms' && !_tcRead.privacy) {
+        document.getElementById('modal-tc-scroll-hint').innerHTML =
+            '<i class="bi bi-check-circle-fill" style="color:#16a34a;"></i> Terms &amp; Conditions finished — opening the Privacy Policy…';
+        setTimeout(function () {
+            var stillOpen = document.getElementById('tcModal').style.display !== 'none';
+            if (stillOpen && _tcActiveTab === 'terms') modalTcTab('privacy');
+        }, 1200);
+    }
 }
 
 function updateTcScrollHint() {
@@ -2479,7 +2532,51 @@ function updateTcScrollHint() {
 document.getElementById('modal-tc-box').addEventListener('scroll', function () {
     var nearBottom = this.scrollTop + this.clientHeight >= this.scrollHeight - 8;
     if (nearBottom) markTcTabRead(_tcActiveTab);
+    updateTcToc();
 });
+
+// ── Sidebar: one link per numbered section ("1. Acceptance of Terms") of the open document ──
+function buildTcToc(tab) {
+    var list = document.getElementById('modal-tc-toc-list');
+    var box  = document.getElementById('modal-tc-box');
+    list.innerHTML = '';
+    document.querySelectorAll('#modal-tc-pane-' + tab + ' p > strong:first-child').forEach(function (heading) {
+        if (!/^\d+\.\s/.test(heading.textContent.trim())) return; // skip sub-sections like "3.1 ..."
+        var section = heading.parentElement;
+        var link = document.createElement('a');
+        link.href = '#';
+        link.className = 'tc-toc-link';
+        link.textContent = heading.textContent.trim();
+        link._section = section;
+        link.addEventListener('click', function (e) {
+            e.preventDefault();
+            var top = box.scrollTop + section.getBoundingClientRect().top - box.getBoundingClientRect().top - 12;
+            box.scrollTo({ top: top, behavior: 'smooth' });
+        });
+        list.appendChild(link);
+    });
+    updateTcToc();
+}
+
+// Scrollspy: highlight the section being read
+function updateTcToc() {
+    var box   = document.getElementById('modal-tc-box');
+    var links = document.querySelectorAll('#modal-tc-toc-list .tc-toc-link');
+    if (!links.length || !box.clientHeight) return; // modal still hidden: nothing to measure yet
+    var boxTop  = box.getBoundingClientRect().top;
+    var atEnd   = box.scrollTop + box.clientHeight >= box.scrollHeight - 8;
+    var current = links[0];
+    links.forEach(function (link) {
+        if (link._section.getBoundingClientRect().top - boxTop <= 40) current = link;
+    });
+    if (atEnd) current = links[links.length - 1];
+    links.forEach(function (link) { link.classList.toggle('active', link === current); });
+    // Keep the highlighted link visible in the sidebar
+    var toc = document.getElementById('modal-tc-toc');
+    if (current.offsetTop < toc.scrollTop || current.offsetTop + current.offsetHeight > toc.scrollTop + toc.clientHeight) {
+        toc.scrollTop = current.offsetTop - toc.clientHeight / 2;
+    }
+}
 
 function onModalTcCheck() {
     var checked = document.getElementById('modal-tc-checkbox').checked;

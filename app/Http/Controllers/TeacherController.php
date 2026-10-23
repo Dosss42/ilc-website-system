@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\TeacherAssignment;
 use App\Models\User;
 use App\Mail\TeacherAccountCreated;
 use App\Services\ActivityLogger;
@@ -16,25 +17,72 @@ class TeacherController extends Controller
 {
     public function index(Request $request)
     {
-        $query = User::where('role', 'teacher')->where('is_active', true)->orderByDesc('created_at');
+        // Active teachers only by default (dropdowns). Super Admin's Teacher Management asks
+        // for ?include_inactive=1 — a deactivated teacher used to vanish from its list, so
+        // they could never be activated again there — plus ?search / ?status across all pages.
+        $query = User::where('role', 'teacher')->orderByDesc('created_at');
+        if (!$request->boolean('include_inactive')) {
+            $query->where('is_active', true);
+        } elseif (in_array($request->input('status'), ['active', 'inactive'], true)) {
+            $query->where('is_active', $request->input('status') === 'active');
+        }
+        if (trim((string) $request->input('search', '')) !== '') {
+            $like = '%' . addcslashes(trim($request->input('search')), '%_\\') . '%';
+            $query->where(fn ($q) => $q->where('name', 'like', $like)->orWhere('email', 'like', $like));
+        }
 
         // Pagination is opt-in (?paginated=1) — other callers (dropdown
         // population elsewhere, the dedicated Teacher Management page) need
         // the full list, so the default response stays unpaginated.
         if ($request->boolean('paginated')) {
             $page = $query->paginate((int) $request->input('per_page', 15));
+            $teachers = $page->getCollection();
+            if ($request->boolean('with_sections')) {
+                $teachers = $this->withSectionsHandled($teachers);
+            }
             return response()->json([
-                'teachers'     => $page->items(),
+                'teachers'     => $teachers->values(),
                 'current_page' => $page->currentPage(),
                 'last_page'    => $page->lastPage(),
                 'per_page'     => $page->perPage(),
                 'total'        => $page->total(),
                 'from'         => $page->firstItem(),
                 'to'           => $page->lastItem(),
+                // Same cards as Admin's Teacher Management (whole roster, not this page)
+                'stats'        => $request->boolean('include_inactive') ? [
+                    'total'          => User::where('role', 'teacher')->count(),
+                    'active'         => User::where('role', 'teacher')->where('is_active', true)->count(),
+                    'inactive'       => User::where('role', 'teacher')->where('is_active', false)->count(),
+                    'with_schedules' => \App\Models\Schedule::whereNotNull('teacher_id')
+                        ->whereHas('teacher', fn ($q) => $q->where('role', 'teacher'))
+                        ->distinct()->count('teacher_id'),
+                ] : null,
             ]);
         }
 
         return response()->json(['teachers' => $query->get()]);
+    }
+
+    /**
+     * "Sections Handled", same as Admin's Teacher Management column: the sections a teacher
+     * advises (teacher_assignments, is_advisory) and the sections they teach in (schedules).
+     */
+    private function withSectionsHandled($teachers)
+    {
+        $ids = $teachers->pluck('id');
+        $advisory = TeacherAssignment::where('is_advisory', true)->whereIn('teacher_id', $ids)
+            ->with('section:id,name,grade_level,school_year')->get()
+            ->filter(fn ($a) => $a->section)->groupBy('teacher_id');
+        $teaching = \App\Models\Schedule::whereIn('teacher_id', $ids)
+            ->with('section:id,name,grade_level,school_year')->get(['teacher_id', 'section_id'])
+            ->filter(fn ($s) => $s->section)->groupBy('teacher_id');
+        $section = fn ($s) => ['id' => $s->id, 'name' => $s->name, 'grade_level' => $s->grade_level, 'school_year' => $s->school_year];
+
+        return $teachers->map(function ($t) use ($advisory, $teaching, $section) {
+            $t->setAttribute('advisory_sections', ($advisory[$t->id] ?? collect())->map(fn ($a) => $section($a->section))->unique('id')->values());
+            $t->setAttribute('teaching_sections', ($teaching[$t->id] ?? collect())->map(fn ($s) => $section($s->section))->unique('id')->values());
+            return $t;
+        });
     }
 
     public function store(Request $request)

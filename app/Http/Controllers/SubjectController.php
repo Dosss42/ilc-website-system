@@ -17,6 +17,15 @@ class SubjectController extends Controller
         if ($request->filled('is_active')) {
             $query->where('is_active', filter_var($request->is_active, FILTER_VALIDATE_BOOLEAN));
         }
+        // Super Admin's Subject Management: search across all pages, and (?with_counts=1)
+        // how many schedules use each subject — Admin's "In Schedule" column
+        if (trim((string) $request->input('search', '')) !== '') {
+            $like = '%' . addcslashes(trim($request->input('search')), '%_\\') . '%';
+            $query->where(fn ($q) => $q->where('name', 'like', $like)->orWhere('code', 'like', $like));
+        }
+        if ($request->boolean('with_counts')) {
+            $query->withCount('schedules');
+        }
         $query->orderByDesc('created_at');
 
         // Pagination is opt-in (?paginated=1) — other callers (dropdown
@@ -32,6 +41,12 @@ class SubjectController extends Controller
                 'total'        => $page->total(),
                 'from'         => $page->firstItem(),
                 'to'           => $page->lastItem(),
+                // Same cards as Admin's Subject Management (all subjects, not this page)
+                'stats'        => $request->boolean('with_counts') ? [
+                    'total'    => Subject::count(),
+                    'active'   => Subject::where('is_active', true)->count(),
+                    'inactive' => Subject::where('is_active', false)->count(),
+                ] : null,
             ]);
         }
 

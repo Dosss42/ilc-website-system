@@ -1166,6 +1166,57 @@ class EnrollmentController extends Controller
      */
     public function sectionStudents(Request $request)
     {
+        return view('admin.sections.students-content', $this->studentManagementData($request));
+    }
+
+    /**
+     * Super Admin's Student Management: exactly Admin's list — same filters, rows and stat
+     * cards (studentManagementData) — as JSON for its on-page table.
+     */
+    public function studentsData(Request $request)
+    {
+        $d = $this->studentManagementData($request);
+        $grades = ['nursery' => 'Nursery', 'kindergarten' => 'Kinder', 'grade1' => 'Grade 1', 'grade2' => 'Grade 2', 'grade3' => 'Grade 3', 'grade4' => 'Grade 4', 'grade5' => 'Grade 5', 'grade6' => 'Grade 6'];
+        $page = $d['students'];
+
+        $rows = $page->getCollection()->map(function ($s) use ($grades) {
+            $enr = $s->latestEnrollment;
+            $grade = ($enr->student_data['grade_level'] ?? null) ?: ($enr->grade_level ?? null);
+            return [
+                'id'               => $s->id,
+                'name'             => $s->name,
+                'email'            => $s->email,
+                'lrn'              => $s->lrn,
+                'enrollment_id'    => $enr?->id,
+                'reference_number' => $enr?->reference_number,
+                'grade_level'      => $grade,
+                'grade_label'      => $grades[$grade] ?? ($grade ?: 'N/A'),
+                'section'          => ($enr && $enr->section && $enr->section !== 'Unassigned') ? $enr->section : null,
+                'school_year'      => $enr?->school_year,
+                'status'           => $enr ? $enr->status : 'inactive',
+                'payment_status'   => $enr->payment_status ?? 'unpaid',
+            ];
+        })->values();
+
+        return response()->json([
+            'students'     => $rows,
+            'stats'        => [
+                'total' => $d['smTotal'], 'enrolled' => $d['smEnrolled'], 'approved' => $d['smApproved'], 'pending' => $d['smPending'],
+                'not_enrolled' => $d['smNotEnrolled'], 'paid' => $d['smPaid'], 'balance' => $d['smBalance'],
+            ],
+            'school_year'  => $d['studentSchoolYearFilter'],
+            'current_page' => $page->currentPage(),
+            'last_page'    => $page->lastPage(),
+            'per_page'     => $page->perPage(),
+            'total'        => $page->total(),
+            'from'         => $page->firstItem(),
+            'to'           => $page->lastItem(),
+        ]);
+    }
+
+    /** Student Management's list, filters and stat cards — shared by Admin's page and Super Admin's JSON. */
+    private function studentManagementData(Request $request): array
+    {
         $sort = $request->get('sort', 'newest');
         $studentSearch = $request->get('student_search') ?? '';
         $studentGradeFilter = $request->get('student_grade', 'all');
@@ -1291,11 +1342,11 @@ class EnrollmentController extends Controller
             }
         }
 
-        return view('admin.sections.students-content', compact(
+        return compact(
             'students', 'sort', 'studentSearch', 'studentGradeFilter',
             'studentStatusFilter', 'studentPaymentFilter', 'studentSchoolYearFilter',
             'smTotal', 'smEnrolled', 'smApproved', 'smPending', 'smNotEnrolled', 'smPaid', 'smBalance'
-        ));
+        );
     }
 
     /**

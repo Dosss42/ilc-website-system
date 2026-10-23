@@ -187,7 +187,7 @@
             </div>
 
             <div class="info-box">
-                <p style="margin:0;"><strong>Need help?</strong> Contact us at the registrar's office during office hours (Mon-Fri, 7:00 AM - 3:00 PM).</p>
+                <p style="margin:0;"><strong>Need help?</strong> Contact us at the registrar's office during office hours (Mon-Fri, 7:30 AM - 4:00 PM).</p>
                 <p style="margin:5px 0 0;"><strong>Email:</strong> info@iemelif-ilc.edu.ph</p>
             </div>
         </div>

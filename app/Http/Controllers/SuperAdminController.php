@@ -501,6 +501,7 @@ class SuperAdminController extends Controller
             'category'   => $request->category,
             'audience'   => $request->audience,
             'is_active'  => true,
+            'is_highlight' => $request->boolean('is_highlight'),
             'image'      => $imagePath,
         ]);
 
@@ -562,6 +563,14 @@ class SuperAdminController extends Controller
         return back()->with('sa_success', 'Announcement updated.')->with('sa_section', 'announcements');
     }
 
+    /** Show / stop showing this announcement in the home page's Highlights column. */
+    public function toggleAnnouncementHighlight(Announcement $announcement)
+    {
+        $announcement->update(['is_highlight' => !$announcement->is_highlight]);
+        ActivityLogger::log('update', ($announcement->is_highlight ? 'Added' : 'Removed') . " announcement \"{$announcement->title}\" " . ($announcement->is_highlight ? 'to' : 'from') . ' Highlights', 'Announcement', $announcement->id);
+        return back()->with('sa_success', $announcement->is_highlight ? 'Announcement added to Highlights.' : 'Announcement removed from Highlights.')->with('sa_section', 'announcements');
+    }
+
     public function destroyAnnouncement(Announcement $announcement)
     {
         $title = $announcement->title;
@@ -594,6 +603,7 @@ class SuperAdminController extends Controller
             'category'  => $request->category,
             'image'     => $imagePath,
             'is_active' => true,
+            'is_highlight' => $request->boolean('is_highlight'),
         ]);
 
         ActivityLogger::log('create', "Published news article \"{$news->title}\" ({$news->category})", 'News', $news->id);
@@ -647,6 +657,14 @@ class SuperAdminController extends Controller
         $news->update(['is_active' => !$news->is_active]);
         ActivityLogger::log('update', ($news->is_active ? 'Activated' : 'Deactivated') . " news article \"{$news->title}\"", 'News', $news->id);
         return back()->with('sa_success', 'News article updated.')->with('sa_section', 'news');
+    }
+
+    /** Show / stop showing this article in the home page's Highlights column. */
+    public function toggleNewsHighlight(News $news)
+    {
+        $news->update(['is_highlight' => !$news->is_highlight]);
+        ActivityLogger::log('update', ($news->is_highlight ? 'Added' : 'Removed') . " news article \"{$news->title}\" " . ($news->is_highlight ? 'to' : 'from') . ' Highlights', 'News', $news->id);
+        return back()->with('sa_success', $news->is_highlight ? 'Article added to Highlights.' : 'Article removed from Highlights.')->with('sa_section', 'news');
     }
 
     public function destroyNews(News $news)
@@ -726,13 +744,27 @@ class SuperAdminController extends Controller
         $sort   = $request->get('sort', 'newest');
         $search = trim((string) $request->get('search', ''));
 
+        // School Year, same as Admin's Enrollment Management: opens on the current year,
+        // "all" = every year; pending applications of other years are counted for a banner
+        $schoolYear = (string) $request->get('school_year', \App\Models\Setting::getCurrentSchoolYear());
+        if ($schoolYear !== 'all' && !in_array($schoolYear, \App\Models\Setting::schoolYearOptions(), true)) {
+            $schoolYear = \App\Models\Setting::getCurrentSchoolYear();
+        }
+        $sy = $schoolYear !== 'all' ? $schoolYear : null;
+
         $query  = \App\Models\Enrollment::select(
-            'id','user_id','reference_number','status','grade_level',
+            'id','user_id','reference_number','status','grade_level','school_year',
             'student_data','payment_status','payment_amount','total_fee',
             'created_at','updated_at'
         )->with('user.profile');
+        if ($sy) {
+            $query->where('school_year', $sy);
+        }
         if ($status !== 'all') {
             $query->where('status', $status);
+        } else {
+            // 'cancelled' = an undone promotion, nothing to act on (still under its own status)
+            $query->where('status', '!=', 'cancelled');
         }
         if ($grade !== 'all') {
             $query->where(function ($q) use ($grade) {
@@ -790,15 +822,39 @@ class SuperAdminController extends Controller
                 'first_name'       => $profile?->first_name ?: ($data['first_name']  ?? ''),
                 'last_name'        => $profile?->last_name  ?: ($data['last_name']   ?? ''),
                 'grade_level'      => $e->grade_level ?: ($data['grade_level'] ?? ''),
+                'school_year'      => $e->school_year,
+                'student_type'     => $data['student_type'] ?? null,
             ];
         });
 
         $counts = \App\Models\Enrollment::selectRaw('status, count(*) as cnt')
+            ->when($sy, fn ($q) => $q->where('school_year', $sy))
             ->groupBy('status')->pluck('cnt', 'status');
+        $pendingOtherYears = $sy
+            ? \App\Models\Enrollment::where('status', 'pending')->where('school_year', '!=', $sy)
+                ->selectRaw('school_year, COUNT(*) as c')->groupBy('school_year')->orderBy('school_year')->pluck('c', 'school_year')
+            : collect();
+        // Admin's "Total Fees Collected" / "Pending Payments" cards — the same query
+        // (EnrollmentController::sectionEnrollment): each student's latest enrollment in the year
+        $finance = \Illuminate\Support\Facades\DB::selectOne("
+            SELECT
+                COUNT(CASE WHEN e.payment_status IS NULL OR e.payment_status = 'pending' THEN 1 END) as unpaid_count,
+                COALESCE(SUM(CASE WHEN e.payment_status IN ('paid','partial') THEN e.payment_amount ELSE 0 END), 0) as total_collected
+            FROM enrollments e
+            WHERE e.id IN (
+                SELECT MAX(id) FROM enrollments
+                WHERE status <> 'cancelled'" . ($sy ? " AND school_year = ?" : "") . "
+                GROUP BY user_id
+            )
+        ", $sy ? [$sy] : []);
 
         return response()->json([
             'enrollments'     => $enrollments,
             'counts'          => $counts,
+            'school_year'     => $schoolYear,
+            'pending_other_years' => $pendingOtherYears,
+            'fees_collected'  => (float) ($finance->total_collected ?? 0),
+            'pending_payments' => (int) ($finance->unpaid_count ?? 0),
             'enrollment_open' => \App\Models\Setting::get('enrollment_open', true),
             'current_page'    => $page->currentPage(),
             'last_page'       => $page->lastPage(),

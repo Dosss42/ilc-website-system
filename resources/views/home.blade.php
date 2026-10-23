@@ -256,41 +256,32 @@ document.addEventListener('keydown', function(e) {
 .hero-section {
     position: relative;
     width: 100%;
-    height: 520px;
+    height: 560px;
     overflow: hidden;
     background: #0f2451;
 }
 
-/* The image layer — Ken Burns slow zoom + drift */
+/* The image layer — the school and its students (2314px wide, so it is never stretched
+   on a normal screen). No zoom animation: scaling it up made it soft. Positioned so the
+   students' faces stay in view on wide and narrow screens. */
 .hero-bg {
     position: absolute;
-    inset: -6%;           /* slightly oversized so zoom never reveals edges */
-    width: 112%;
-    height: 112%;
-    background: url('{{ asset('images/background.png') }}') center center / cover no-repeat;
-    animation: kenBurns 22s ease-in-out infinite;
-    will-change: transform;
+    inset: 0;
+    background: url('{{ asset('images/hero-ilc.jpg') }}') center 55% / cover no-repeat;
     pointer-events: none;
 }
 
-@keyframes kenBurns {
-    0%   { transform: scale(1)    translate(0,   0);   }
-    25%  { transform: scale(1.06) translate(-1%, -1%); }
-    50%  { transform: scale(1.10) translate(-2%, 0.5%);}
-    75%  { transform: scale(1.06) translate( 1%, -0.5%);}
-    100% { transform: scale(1)    translate(0,   0);   }
-}
-
-/* Dark gradient overlay — bottom heavier so text pops */
+/* Dark on the left (behind the welcome text), clear on the right (the students) */
 .hero-overlay {
     position: absolute;
     inset: 0;
-    background: linear-gradient(
-        to bottom,
-        rgba(10, 22, 50, 0.30) 0%,
-        rgba(10, 22, 50, 0.50) 50%,
-        rgba(10, 22, 50, 0.78) 100%
-    );
+    background:
+        linear-gradient(to right,
+            rgba(10, 22, 50, 0.82) 0%,
+            rgba(10, 22, 50, 0.62) 32%,
+            rgba(10, 22, 50, 0.18) 60%,
+            rgba(10, 22, 50, 0) 78%),
+        linear-gradient(to top, rgba(10, 22, 50, 0.35) 0%, rgba(10, 22, 50, 0) 30%);
     z-index: 1;
     pointer-events: none;
 }
@@ -312,64 +303,71 @@ document.addEventListener('keydown', function(e) {
     100% { left: 140%;  }
 }
 
-/* Content layer */
+/* Content layer — on the left side */
 .hero-content {
     position: absolute;
     inset: 0;
     z-index: 3;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
-    text-align: center;
-    padding: 0 20px;
+    text-align: left;
+    padding: 0 clamp(24px, 7vw, 120px);
 }
 
-.hero-school-name {
-    font-size: clamp(22px, 4vw, 40px);
-    font-weight: 900;
+/* WELCOME / TO ILC! — two lines, "ILC!" in the school gold */
+.hero-welcome {
+    font-size: clamp(34px, 4.2vw, 60px);
+    font-weight: 800;   /* the heaviest Open Sans weight this page loads */
+    line-height: 1.02;
     color: #fff;
-    letter-spacing: 1.5px;
+    letter-spacing: 1px;
     text-transform: uppercase;
-    text-shadow: 0 3px 20px rgba(0,0,0,.5);
-    margin-bottom: 10px;
+    text-shadow: 0 4px 24px rgba(0,0,0,.45);
+    margin: 0 0 12px;
     animation: heroFadeUp .9s ease both;
 }
+.hero-welcome .hero-welcome-gold { color: #f2b632; }
 
-.hero-tagline {
-    font-size: clamp(13px, 1.8vw, 17px);
-    color: rgba(255,255,255,.82);
-    font-weight: 500;
-    letter-spacing: .5px;
-    margin-bottom: 28px;
-    text-shadow: 0 2px 10px rgba(0,0,0,.4);
-    animation: heroFadeUp .9s .18s ease both;
+/* The school motto (Admin › Settings › School), italic under the welcome */
+.hero-motto {
+    font-size: clamp(15px, 1.45vw, 21px);
+    font-style: italic;
+    font-weight: 600;
+    color: rgba(255,255,255,.9);
+    max-width: 500px;
+    line-height: 1.45;
+    text-shadow: 0 2px 10px rgba(0,0,0,.45);
+    margin: 0 0 22px;
+    padding-left: 12px;
+    border-left: 3px solid #f2b632;
+    animation: heroFadeUp .9s .12s ease both;
 }
 
-.hero-divider {
-    width: 60px;
-    height: 3px;
-    background: #c5a059;
-    border-radius: 2px;
-    margin: 0 auto 24px;
-    animation: heroFadeUp .9s .1s ease both;
+/* Welcome + motto + button as one block on the left; the button sits centered under it */
+.hero-text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
 }
 
 .hero-actions {
+    align-self: center;
     display: flex;
     gap: 14px;
     justify-content: center;
     flex-wrap: wrap;
-    animation: heroFadeUp .9s .3s ease both;
+    animation: heroFadeUp .9s .25s ease both;
 }
 
 .hero-btn-primary {
-    padding: 13px 32px;
+    padding: 8px 20px;
     background: #c5a059;
     color: #0f2451;
     border: none;
     border-radius: 40px;
-    font-size: 14px;
+    font-size: 12.5px;
     font-weight: 800;
     text-decoration: none;
     letter-spacing: .4px;
@@ -385,77 +383,17 @@ document.addEventListener('keydown', function(e) {
     color: #0f2451;
 }
 
-.hero-btn-secondary {
-    padding: 13px 28px;
-    background: rgba(255,255,255,.12);
-    color: #fff;
-    border: 1.5px solid rgba(255,255,255,.4);
-    border-radius: 40px;
-    font-size: 14px;
-    font-weight: 700;
-    text-decoration: none;
-    letter-spacing: .4px;
-    transition: all .25s;
-    backdrop-filter: blur(4px);
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
-.hero-btn-secondary:hover {
-    background: rgba(255,255,255,.22);
-    transform: translateY(-3px);
-    color: #fff;
-}
-
-/* Scroll indicator */
-.hero-scroll {
-    position: absolute;
-    bottom: 22px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 4;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    color: rgba(255,255,255,.5);
-    font-size: 10px;
-    font-weight: 600;
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    animation: heroFadeUp 1s .6s ease both;
-    cursor: pointer;
-}
-.hero-scroll-dot {
-    width: 24px;
-    height: 38px;
-    border: 2px solid rgba(255,255,255,.35);
-    border-radius: 12px;
-    display: flex;
-    justify-content: center;
-    padding-top: 6px;
-}
-.hero-scroll-dot::after {
-    content: '';
-    width: 4px;
-    height: 8px;
-    border-radius: 2px;
-    background: rgba(255,255,255,.6);
-    animation: scrollBob 1.6s ease-in-out infinite;
-}
-@keyframes scrollBob {
-    0%, 100% { transform: translateY(0); opacity: 1; }
-    50%       { transform: translateY(8px); opacity: .3; }
-}
-
 @keyframes heroFadeUp {
     from { opacity: 0; transform: translateY(22px); }
     to   { opacity: 1; transform: translateY(0); }
 }
 
 @media (max-width: 576px) {
-    .hero-section { height: 380px; }
-    .hero-btn-primary, .hero-btn-secondary { padding: 11px 22px; font-size: 13px; }
+    .hero-section { height: 420px; }
+    .hero-bg { background-position: 68% center; }
+    .hero-overlay { background: linear-gradient(to right, rgba(10, 22, 50, 0.78) 0%, rgba(10, 22, 50, 0.45) 70%, rgba(10, 22, 50, 0.25) 100%); }
+    .hero-btn-primary { padding: 8px 18px; font-size: 12px; }
+    .hero-motto { max-width: 260px; }
 }
 </style>
 
@@ -465,25 +403,18 @@ document.addEventListener('keydown', function(e) {
     <div class="hero-shine"></div>
 
     <div class="hero-content">
-        <div class="hero-school-name">IEMELIF Learning Center</div>
-        <div class="hero-divider"></div>
-        <div class="hero-tagline">Nurturing Faith, Excellence, and Learning — General Tinio, Nueva Ecija</div>
-        <div class="hero-actions">
+        <div class="hero-text">
+            <h1 class="hero-welcome">Welcome<br>to <span class="hero-welcome-gold">ILC!</span></h1>
+            <p class="hero-motto">{{ \App\Models\Setting::get('school_motto') ?: 'Nurturing Faith, Excellence, and Learning' }}</p>
             @php $enrollmentOpen = \App\Models\Setting::get('enrollment_open', true); @endphp
             @if($enrollmentOpen)
-            <a href="{{ route('enrollment.form') }}" class="hero-btn-primary">
-                <i class="bi bi-pencil-fill"></i> Enroll Now
-            </a>
+            <div class="hero-actions">
+                <a href="{{ route('enrollment.form') }}" class="hero-btn-primary">
+                    <i class="bi bi-pencil-fill"></i> Enroll Now
+                </a>
+            </div>
             @endif
-            <a href="{{ route('about') }}" class="hero-btn-secondary">
-                <i class="bi bi-info-circle"></i> Learn More
-            </a>
         </div>
-    </div>
-
-    <div class="hero-scroll" onclick="document.querySelector('.real-section:nth-of-type(2)').scrollIntoView({behavior:'smooth'})">
-        <div class="hero-scroll-dot"></div>
-        <span>Scroll</span>
     </div>
 </div>
 </div>{{-- /real-hero --}}
@@ -504,22 +435,7 @@ document.addEventListener('keydown', function(e) {
             @endfor
         </div></div>
     </div>
-    {{-- Feature cards skeleton --}}
-    <div style="background:#f6f8fb;padding:36px 0;">
-        <div class="container"><div class="row g-4">
-            @for($i=0;$i<3;$i++)
-            <div class="col-md-4">
-                <span class="skel" style="height:200px;display:block;border-radius:18px 18px 0 0;margin-bottom:0;"></span>
-                <div style="background:#fff;border-radius:0 0 18px 18px;padding:18px;border:1.5px solid #e8edf5;border-top:none;">
-                    <span class="skel" style="height:16px;width:70%;display:block;border-radius:4px;margin-bottom:10px;"></span>
-                    <span class="skel" style="height:11px;width:100%;display:block;border-radius:4px;margin-bottom:6px;"></span>
-                    <span class="skel" style="height:11px;width:85%;display:block;border-radius:4px;"></span>
-                </div>
-            </div>
-            @endfor
-        </div>
-    </div>
-</div>
+{{-- (the feature cards moved into Highlights & Announcements, below) --}}
 </div>{{-- /skel-thumbs --}}
 
 {{-- ══════════════════════════════════════════
@@ -663,19 +579,6 @@ document.addEventListener('keydown', function(e) {
     flex: 1;
     margin-bottom: 16px;
 }
-.feature-card-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    font-weight: 700;
-    color: #1a3a6c;
-    text-decoration: none;
-    margin-top: auto;
-    transition: gap .2s;
-}
-.feature-card:hover .feature-card-link { gap: 10px; }
-.feature-card-link i { font-size: 14px; }
 
 @media (max-width: 768px) {
     .stats-bar-inner { grid-template-columns: repeat(2, 1fr); }
@@ -748,71 +651,6 @@ document.addEventListener('keydown', function(e) {
 })();
 </script>
 
-{{-- Feature Cards --}}
-<div class="feature-cards-row">
-    <div class="container">
-        <div class="row g-4">
-
-            {{-- Card 1: About / School Head --}}
-            <div class="col-md-4">
-                <a href="{{ route('about') }}" class="feature-card">
-                    <div class="feature-card-img">
-                        <img src="{{ asset('images/oic.jpg') }}" alt="School Head">
-                        <div class="feature-card-img-overlay"></div>
-                        <span class="feature-card-badge" style="background:rgba(26,58,108,.7);color:#fff;">
-                            <i class="bi bi-person-badge me-1"></i>Leadership
-                        </span>
-                    </div>
-                    <div class="feature-card-body">
-                        <div class="feature-card-title">Meet Our School Head</div>
-                        <div class="feature-card-text">Learn about the vision and leadership guiding IEMELIF Learning Center towards excellence in faith-based education.</div>
-                        <span class="feature-card-link">Learn More <i class="bi bi-arrow-right"></i></span>
-                    </div>
-                </a>
-            </div>
-
-            {{-- Card 2: Enrollment --}}
-            <div class="col-md-4">
-                @php $enrollOpen = \App\Models\Setting::get('enrollment_open', true); @endphp
-                <a href="{{ $enrollOpen ? route('enrollment.form') : route('admission') }}" class="feature-card">
-                    <div class="feature-card-img">
-                        <img src="{{ asset('images/bg7.jpg') }}" alt="Enrollment">
-                        <div class="feature-card-img-overlay"></div>
-                        <span class="feature-card-badge" style="background:{{ $enrollOpen ? 'rgba(22,163,74,.8)' : 'rgba(100,116,139,.7)' }};color:#fff;">
-                            <i class="bi bi-circle-fill me-1" style="font-size:7px;"></i>
-                            {{ $enrollOpen ? 'Enrollment Open' : 'Enrollment Closed' }}
-                        </span>
-                    </div>
-                    <div class="feature-card-body">
-                        <div class="feature-card-title">{{ $enrollOpen ? 'Enroll Now for S.Y. 2026–2027' : 'Enrollment Information' }}</div>
-                        <div class="feature-card-text">{{ $enrollOpen ? 'Secure your child\'s spot today. Online enrollment is open — complete the requirements and register in minutes.' : 'Enrollment for the current school year is now closed. Check back soon or contact the school for updates.' }}</div>
-                        <span class="feature-card-link">{{ $enrollOpen ? 'Start Enrollment' : 'View Details' }} <i class="bi bi-arrow-right"></i></span>
-                    </div>
-                </a>
-            </div>
-
-            {{-- Card 3: Academics --}}
-            <div class="col-md-4">
-                <a href="{{ route('academics') }}" class="feature-card">
-                    <div class="feature-card-img">
-                        <img src="{{ asset('images/logo2.png') }}" alt="Academics" style="object-fit:contain;padding:20px;background:#e8f0fb;">
-                        <div class="feature-card-img-overlay" style="background:linear-gradient(to bottom, transparent 30%, rgba(10,22,50,.4) 100%);"></div>
-                        <span class="feature-card-badge" style="background:rgba(197,160,89,.85);color:#0f2451;">
-                            <i class="bi bi-book-fill me-1"></i>Academics
-                        </span>
-                    </div>
-                    <div class="feature-card-body">
-                        <div class="feature-card-title">Our Academic Programs</div>
-                        <div class="feature-card-text">From Nursery to Grade 6, IEMELIF offers a holistic MATATAG-based curriculum that develops mind, character, and faith.</div>
-                        <span class="feature-card-link">Explore Programs <i class="bi bi-arrow-right"></i></span>
-                    </div>
-                </a>
-            </div>
-
-        </div>
-    </div>
-</div>
-
 </div>{{-- /real-thumbs --}}
 
 {{-- ══════════════════════════════════════════
@@ -828,7 +666,7 @@ document.addEventListener('keydown', function(e) {
 <div class="real-section" id="real-news-hdr">
 <div style="background: var(--ilc-blue); padding: 10px 0; text-align:center; border-bottom: 4px solid var(--ilc-gold);">
     <span style="color:#fff; font-size:18px; font-weight:700; text-transform:uppercase; letter-spacing:2px;">
-        ILC NEWS &amp; ANNOUCEMENTS
+        HIGHLIGHTS AND ANNOUNCEMENTS
     </span>
 </div>
 </div>{{-- /real-news-hdr --}}
@@ -840,22 +678,32 @@ document.addEventListener('keydown', function(e) {
     <div class="container">
         <div class="row g-4">
             {{-- Left: News skeleton --}}
-            <div class="col-lg-7">
+            <div class="col-lg-3">
                 <span class="skel" style="height:20px;width:120px;display:block;border-radius:4px;margin-bottom:18px;"></span>
                 @for($i=0;$i<3;$i++)
-                <div style="display:flex;gap:14px;margin-bottom:22px;align-items:flex-start;">
-                    <span class="skel" style="width:110px;height:80px;flex-shrink:0;border-radius:8px;display:block;"></span>
-                    <div style="flex:1;">
-                        <span class="skel" style="height:16px;width:90%;display:block;border-radius:4px;margin-bottom:8px;"></span>
-                        <span class="skel" style="height:13px;width:100%;display:block;border-radius:4px;margin-bottom:5px;"></span>
-                        <span class="skel" style="height:13px;width:75%;display:block;border-radius:4px;"></span>
+                <div style="margin-bottom:18px;">
+                    <span class="skel" style="height:120px;display:block;border-radius:10px 10px 0 0;"></span>
+                    <span class="skel" style="height:14px;width:90%;display:block;border-radius:4px;margin:10px 0 6px;"></span>
+                    <span class="skel" style="height:12px;width:70%;display:block;border-radius:4px;"></span>
+                </div>
+                @endfor
+            </div>
+            {{-- Middle: Highlights skeleton --}}
+            <div class="col-lg-6">
+                <span class="skel" style="height:20px;width:140px;display:block;border-radius:4px;margin-bottom:18px;"></span>
+                @for($i=0;$i<3;$i++)
+                <div style="display:flex;gap:16px;margin-bottom:18px;">
+                    <span class="skel" style="width:42%;height:170px;flex-shrink:0;border-radius:14px;display:block;"></span>
+                    <div style="flex:1;padding-top:10px;">
+                        <span class="skel" style="height:16px;width:80%;display:block;border-radius:4px;margin-bottom:10px;"></span>
+                        <span class="skel" style="height:12px;width:100%;display:block;border-radius:4px;margin-bottom:6px;"></span>
+                        <span class="skel" style="height:12px;width:85%;display:block;border-radius:4px;"></span>
                     </div>
                 </div>
                 @endfor
-                <span class="skel" style="height:34px;width:110px;border-radius:20px;display:block;"></span>
             </div>
             {{-- Right: Announcements skeleton --}}
-            <div class="col-lg-5">
+            <div class="col-lg-3">
                 <span class="skel" style="height:20px;width:150px;display:block;border-radius:4px;margin-bottom:18px;"></span>
                 @for($i=0;$i<3;$i++)
                 <div style="display:flex;gap:12px;margin-bottom:16px;align-items:center;">
@@ -882,13 +730,6 @@ document.addEventListener('keydown', function(e) {
     background: #f8fafd;
     padding: 52px 0 60px;
     position: relative;
-}
-.news-section::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 4px;
-    background: #c5a059;
 }
 
 /* Column headers */
@@ -1000,6 +841,22 @@ document.addEventListener('keydown', function(e) {
 }
 .news-card:hover .news-read-more { color: #c5a059; gap: 8px; }
 
+/* Sidebar news (narrow column): picture on top, text below */
+.news-card.news-card-stack { flex-direction: column; }
+.news-card.news-card-stack .news-img { width: 100%; height: 130px; min-height: 0; }
+
+/* Middle column: Highlights — the feature cards, one under another;
+   on wide screens the picture is on the left and the text on the right */
+.highlights-list .highlight-item + .highlight-item { margin-top: 18px; }
+.highlights-list .feature-card { height: auto; }
+/* Highlights are display-only (not links), so no hover lift or image zoom */
+.highlights-list .feature-card:hover { transform: none; box-shadow: 0 4px 20px rgba(26,58,108,.08); }
+.highlights-list .feature-card:hover .feature-card-img img { transform: none; }
+@media (min-width: 992px) {
+    .highlights-list .feature-card { flex-direction: row; }
+    .highlights-list .feature-card-img { width: 42%; height: auto; min-height: 190px; }
+}
+
 /* Announcements panel */
 .ann-panel {
     background: #eef1f8;
@@ -1072,10 +929,10 @@ document.addEventListener('keydown', function(e) {
 
 <section class="news-section">
     <div class="container">
-        <div class="row g-4 g-xl-5">
+        <div class="row g-4">
 
-            {{-- LEFT: LATEST NEWS --}}
-            <div class="col-lg-7">
+            {{-- LEFT (sidebar): LATEST NEWS — below Highlights on phones --}}
+            <div class="col-lg-3 order-2 order-lg-1">
                 <div class="news-col-hdr">
                     <span class="news-col-hdr-badge">Latest</span>
                     <span class="news-col-hdr-title">ILC News</span>
@@ -1083,7 +940,7 @@ document.addEventListener('keydown', function(e) {
 
                 @if(isset($latestNews) && $latestNews->isNotEmpty())
                     @foreach($latestNews as $article)
-                    <a href="{{ route('news.show', $article) }}" class="news-card">
+                    <a href="{{ route('news.show', $article) }}" class="news-card news-card-stack">
                         <div class="news-img">
                             @if($article->image)
                                 <img src="{{ asset('storage/'.$article->image) }}" alt="{{ $article->title }}">
@@ -1099,7 +956,7 @@ document.addEventListener('keydown', function(e) {
                     </a>
                     @endforeach
                 @else
-                <a href="{{ route('news') }}" class="news-card">
+                <a href="{{ route('news') }}" class="news-card news-card-stack">
                     <div class="news-img"><div class="news-img-placeholder"><img src="{{ asset('images/bg4.jpg') }}" alt="News"></div></div>
                     <div class="news-body">
                         <h6>Celebrating 35 Years of Excellence in Education and Faith</h6>
@@ -1107,7 +964,7 @@ document.addEventListener('keydown', function(e) {
                         <span class="news-read-more">Read More <i class="bi bi-arrow-right-short"></i></span>
                     </div>
                 </a>
-                <a href="{{ route('news') }}" class="news-card">
+                <a href="{{ route('news') }}" class="news-card news-card-stack">
                     <div class="news-img"><div class="news-img-placeholder"><img src="{{ asset('images/bg2.jpg') }}" alt="News"></div></div>
                     <div class="news-body">
                         <h6>Science Education Affair 2025</h6>
@@ -1115,7 +972,7 @@ document.addEventListener('keydown', function(e) {
                         <span class="news-read-more">Read More <i class="bi bi-arrow-right-short"></i></span>
                     </div>
                 </a>
-                <a href="{{ route('news') }}" class="news-card">
+                <a href="{{ route('news') }}" class="news-card news-card-stack">
                     <div class="news-img"><div class="news-img-placeholder"><img src="{{ asset('images/bg3.jpg') }}" alt="News"></div></div>
                     <div class="news-body">
                         <h6>Welcome Back to School, ILCians!</h6>
@@ -1128,8 +985,127 @@ document.addEventListener('keydown', function(e) {
                 <a href="{{ route('news') }}" class="btn-more"><i class="bi bi-newspaper"></i> More News</a>
             </div>
 
-            {{-- RIGHT: ANNOUNCEMENTS --}}
-            <div class="col-lg-5">
+            {{-- MIDDLE: HIGHLIGHTS — the school head, enrollment and academics cards --}}
+            <div class="col-lg-6 order-1 order-lg-2">
+                <div class="news-col-hdr">
+                    <span class="news-col-hdr-badge">Featured</span>
+                    <span class="news-col-hdr-title">Highlights</span>
+                </div>
+                <div class="highlights-list">
+                {{-- News / announcements starred as Highlights by Admin or Super Admin --}}
+                @foreach(($highlightPosts ?? collect()) as $post)
+                <div class="highlight-item">
+                    <div class="feature-card">
+                        <div class="feature-card-img">
+                            @if($post['image'])
+                                <img src="{{ asset('storage/'.$post['image']) }}" alt="{{ $post['title'] }}">
+                            @else
+                                <img src="{{ asset('images/logo2.png') }}" alt="{{ $post['title'] }}" style="object-fit:contain;padding:20px;background:#e8f0fb;">
+                            @endif
+                            <div class="feature-card-img-overlay"></div>
+                            <span class="feature-card-badge" style="{{ $post['type'] === 'News' ? 'background:rgba(26,58,108,.7);color:#fff;' : 'background:rgba(197,160,89,.85);color:#0f2451;' }}">
+                                <i class="bi bi-{{ $post['type'] === 'News' ? 'newspaper' : 'megaphone-fill' }} me-1"></i>{{ $post['type'] }}
+                            </span>
+                        </div>
+                        <div class="feature-card-body">
+                            <div class="feature-card-title">{{ $post['title'] }}</div>
+                            <div class="feature-card-text">{!! nl2br(e($post['text'])) !!}</div>
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+
+                {{-- Card 1: About / School Head --}}
+                <div class="highlight-item">
+                    <div class="feature-card">
+                        <div class="feature-card-img">
+                            <img src="{{ asset('images/oic.jpg') }}" alt="School Head">
+                            <div class="feature-card-img-overlay"></div>
+                            <span class="feature-card-badge" style="background:rgba(26,58,108,.7);color:#fff;">
+                                <i class="bi bi-person-badge me-1"></i>Leadership
+                            </span>
+                        </div>
+                        <div class="feature-card-body">
+                            <div class="feature-card-title">Meet Our School Head</div>
+                            <div class="feature-card-text">Under the leadership of our School Principal, MRS. Teofila Guillermo, IEMELIF Learning Center combines strong academic instruction with spiritual formation, guided always by the Word of God. Established in February 1995 under the guidance of the IEMELIF Church, the school continues to nurture learners to become upright citizens and servant leaders in their communities. Read her message to our learners and families and learn more about the vision that guides our school.</div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Card 2: Enrollment --}}
+                <div class="highlight-item">
+                    @php $enrollOpen = \App\Models\Setting::get('enrollment_open', true); @endphp
+                    <div class="feature-card">
+                        <div class="feature-card-img">
+                            <img src="{{ asset('images/bg7.jpg') }}" alt="Enrollment">
+                            <div class="feature-card-img-overlay"></div>
+                            <span class="feature-card-badge" style="background:{{ $enrollOpen ? 'rgba(22,163,74,.8)' : 'rgba(100,116,139,.7)' }};color:#fff;">
+                                <i class="bi bi-circle-fill me-1" style="font-size:7px;"></i>
+                                {{ $enrollOpen ? 'Enrollment Open' : 'Enrollment Closed' }}
+                            </span>
+                        </div>
+                        <div class="feature-card-body">
+                            <div class="feature-card-title">{{ $enrollOpen ? 'Enroll Now for S.Y. 2026–2027' : 'Enrollment Information' }}</div>
+                            <div class="feature-card-text">{{ $enrollOpen ? 'Secure your child\'s spot today. Online enrollment is now open for Nursery, Kinder and Grades 1 to 6, for both new students and transferees. Fill out the enrollment form online, then prepare the requirements: a PSA birth certificate copy, Form 137, the learner\'s latest grades, and two 2x2 ID photos. Once submitted, the school will review your application before enrollment is confirmed.' : 'Enrollment for the current school year is now closed. Please check back soon or contact the school for updates. New students and transferees may already prepare the requirements: a PSA birth certificate copy, Form 137, the learner\'s latest grades, and two 2x2 ID photos.' }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Card 3: Academics --}}
+                <div class="highlight-item">
+                    <div class="feature-card">
+                        <div class="feature-card-img">
+                            <img src="{{ asset('images/logo2.png') }}" alt="Academics" style="object-fit:contain;padding:20px;background:#e8f0fb;">
+                            <div class="feature-card-img-overlay" style="background:linear-gradient(to bottom, transparent 30%, rgba(10,22,50,.4) 100%);"></div>
+                            <span class="feature-card-badge" style="background:rgba(197,160,89,.85);color:#0f2451;">
+                                <i class="bi bi-book-fill me-1"></i>Academics
+                            </span>
+                        </div>
+                        <div class="feature-card-body">
+                            <div class="feature-card-title">Our Academic Programs</div>
+                            <div class="feature-card-text">From Nursery and Kinder to Grade 6, IEMELIF offers a holistic MATATAG-based curriculum aligned with the Department of Education's K–6 Basic Education Program. Learners follow a three-term school year and receive personalized attention in small classes, while Christian values and character formation are integrated in every part of school life. Beyond academics, students take part in co-curricular activities, spiritual formation programs and community service.</div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Card 4: Vision & Mission (the full Vision / Mission / Philosophy is on the About page) --}}
+                <div class="highlight-item">
+                    <div class="feature-card">
+                        <div class="feature-card-img">
+                            <img src="{{ asset('images/logoo.jpg') }}" alt="Vision and Mission" style="object-fit:contain;padding:20px;background:#fff;">
+                            <div class="feature-card-img-overlay" style="background:linear-gradient(to bottom, transparent 30%, rgba(10,22,50,.3) 100%);"></div>
+                            <span class="feature-card-badge" style="background:rgba(26,58,108,.7);color:#fff;">
+                                <i class="bi bi-eye-fill me-1"></i>Vision &amp; Mission
+                            </span>
+                        </div>
+                        <div class="feature-card-body">
+                            <div class="feature-card-title">Our Vision and Mission</div>
+                            <div class="feature-card-text">Our vision is to create and sustain an integrated, wholesome and appropriate environment for all phases of the learner's growth and development. As a future-oriented school, the IEMELIF Learning Center gives every child the opportunity to discover their interests and God-given talents, and aims to train and lead them to have a "Desire to Learn" — following Jesus' example of love and care for children. Read our full vision, mission and philosophy on the About page.</div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Card 5: Contact & Visit Us (same details as the footer) --}}
+                <div class="highlight-item">
+                    <div class="feature-card">
+                        <div class="feature-card-img">
+                            <img src="{{ asset('images/background.png') }}" alt="IEMELIF Learning Center campus">
+                            <div class="feature-card-img-overlay"></div>
+                            <span class="feature-card-badge" style="background:rgba(197,160,89,.85);color:#0f2451;">
+                                <i class="bi bi-geo-alt-fill me-1"></i>Visit Us
+                            </span>
+                        </div>
+                        <div class="feature-card-body">
+                            <div class="feature-card-title">Contact and Visit Us</div>
+                            <div class="feature-card-text">Visit us at Brgy. Poblacion Central, General Tinio, Nueva Ecija. Our office is open Monday to Friday, 7:30 AM to 4:00 PM, and closed on weekends. For enrollment and other inquiries, call 0951-989-9685, email Iemelif_learningcenter@gmail.com, or send us a message through our Contact page.</div>
+                        </div>
+                    </div>
+                </div>
+                </div>
+            </div>
+
+            {{-- RIGHT (sidebar): ANNOUNCEMENTS --}}
+            <div class="col-lg-3 order-3">
                 <div class="news-col-hdr">
                     <span class="news-col-hdr-badge">Posted</span>
                     <span class="news-col-hdr-title">Announcements</span>
@@ -1195,6 +1171,10 @@ document.addEventListener('keydown', function(e) {
 </section>
 </div>{{-- /real-news --}}
 
+{{-- Vision / Mission / Philosophy is hidden on the home page (it is on the About page).
+     Set to true to show it here again. --}}
+@php $showVmgOnHome = false; @endphp
+@if($showVmgOnHome)
 {{-- ══════════════════════════════════════════
      VMG SECTION — Skeleton
 ════════════════════════════════════════════ --}}
@@ -1398,6 +1378,7 @@ document.addEventListener('keydown', function(e) {
     </div>
 </section>
 </div>{{-- /real-vmg --}}
+@endif
 
 {{-- ══════════════════════════════════════════
      FOOTER — Skeleton
@@ -1504,7 +1485,7 @@ document.addEventListener('keydown', function(e) {
             {{-- Col 4: Office Hours + Visitor Counter --}}
             <div class="col-md-4">
                 <h6>Office Hours</h6>
-                <div class="office-hours-row"><span>Monday – Friday</span><span>7:30 AM – 5:00 PM</span></div>
+                <div class="office-hours-row"><span>Monday – Friday</span><span>7:30 AM – 4:00 PM</span></div>
                 <div class="office-hours-row"><span>Saturday - Sunday</span><span style="color:var(--ilc-gold);">Closed</span></div>
                 <h6 class="mt-3">Visitor Counter</h6>
                 <div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:10px 14px;margin-top:8px;">

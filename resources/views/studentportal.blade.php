@@ -3076,7 +3076,7 @@
                                 <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;color:#166534;">
                                     <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fff;border-radius:10px;border:1px solid #bbf7d0;">
                                         <i class="bi bi-clock-fill" style="color:#16a34a;font-size:16px;flex-shrink:0;"></i>
-                                        <div><strong>Office Hours:</strong> Monday – Friday, 8:00 AM – 4:00 PM</div>
+                                        <div><strong>Office Hours:</strong> Monday – Friday, 7:30 AM – 4:00 PM</div>
                                     </div>
                                     <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fff;border-radius:10px;border:1px solid #bbf7d0;">
                                         <i class="bi bi-geo-alt-fill" style="color:#16a34a;font-size:16px;flex-shrink:0;"></i>
@@ -3676,7 +3676,7 @@
                                 </div>
                                 <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border-radius:9px;border:1px solid #bbf7d0;">
                                     <i class="bi bi-clock-fill" style="color:#16a34a;font-size:14px;"></i>
-                                    <div>Mon–Fri &nbsp;·&nbsp; 8:00 AM – 4:00 PM</div>
+                                    <div>Mon–Fri &nbsp;·&nbsp; 7:30 AM – 4:00 PM</div>
                                 </div>
                                 <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fff;border-radius:9px;border:1px solid #bbf7d0;">
                                     <i class="bi bi-hash" style="color:#16a34a;font-size:14px;"></i>

@@ -505,7 +505,7 @@
             Phone: [Insert Phone Number]<br>
             Email: [Insert School Email]<br>
             Data Protection Officer: [Insert DPO Name]<br>
-            Office Hours: Monday to Friday, 8:00 AM – 5:00 PM
+            Office Hours: Monday to Friday, 7:30 AM – 4:00 PM
         </div>
         <p>
             If you are not satisfied with our response, you have the right to file a complaint
