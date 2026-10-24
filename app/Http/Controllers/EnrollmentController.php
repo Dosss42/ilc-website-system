@@ -1047,7 +1047,7 @@ class EnrollmentController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'role']);
 
-        // Contact messages for admin inbox — capped at 50 (was unbounded,
+        // Contact messages for admin inbox — capped at 200, paged 10 per page in the browser (was unbounded,
         // loading every contact-form submission ever received into memory
         // on every dashboard visit — see docs/system-improvement-plan.md
         // item #3). Stat counts computed independently via cheap COUNT
@@ -1055,7 +1055,7 @@ class EnrollmentController extends Controller
         // counts-from-a-limited-list bug already fixed elsewhere
         // (Student Management, Teacher Management) would otherwise make
         // these undercount once there are more than 50 messages.
-        $contactMessages      = \App\Models\ContactMessage::orderByDesc('created_at')->limit(50)->get();
+        $contactMessages      = \App\Models\ContactMessage::orderByDesc('created_at')->limit(200)->get();
         $unreadMessagesCount  = \App\Models\ContactMessage::where('status', 'unread')->count();
         $totalMessagesCount   = \App\Models\ContactMessage::count();
         $readMessagesCount    = \App\Models\ContactMessage::where('status', 'read')->count();

@@ -1,111 +1,93 @@
     <div id="section-messages" class="dash-section" style="display:none;">
-        <div class="section-header-bar">
-            <h4><i class="bi bi-envelope-fill me-2" style="color:var(--ilc-gold);"></i>Contact Messages</h4>
-            <small class="text-muted">Messages submitted through the website contact form</small>
-        </div>
-
-        {{-- Stats row — independent COUNT queries (computed in
-             EnrollmentController@adminIndex), not derived from
-             $contactMessages, which is capped at 50 rows and would
-             otherwise undercount once there are more messages than that.
-             See docs/system-improvement-plan.md item #3. --}}
-        @php
-            $msgUnread  = $unreadMessagesCount ?? 0;
-            $msgRead    = $readMessagesCount ?? 0;
-            $msgReplied = $repliedMessagesCount ?? 0;
-            $msgTotal   = $totalMessagesCount ?? 0;
-        @endphp
-        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:22px;">
-            <div style="flex:1;min-width:120px;background:#fff;border:1px solid #e8edf5;border-radius:12px;padding:16px 18px;text-align:center;">
-                <div style="font-size:26px;font-weight:800;color:#1a3a6c;">{{ $msgTotal }}</div>
-                <div style="font-size:11px;color:#94a3b8;font-weight:600;text-transform:uppercase;margin-top:2px;">Total</div>
-            </div>
-            <div style="flex:1;min-width:120px;background:#fef3c7;border:1px solid #fcd34d;border-radius:12px;padding:16px 18px;text-align:center;">
-                <div style="font-size:26px;font-weight:800;color:#92400e;">{{ $msgUnread }}</div>
-                <div style="font-size:11px;color:#92400e;font-weight:600;text-transform:uppercase;margin-top:2px;">Unread</div>
-            </div>
-            <div style="flex:1;min-width:120px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px 18px;text-align:center;">
-                <div style="font-size:26px;font-weight:800;color:#1d4ed8;">{{ $msgRead }}</div>
-                <div style="font-size:11px;color:#1d4ed8;font-weight:600;text-transform:uppercase;margin-top:2px;">Read</div>
-            </div>
-            <div style="flex:1;min-width:120px;background:#f0fdf4;border:1px solid #86efac;border-radius:12px;padding:16px 18px;text-align:center;">
-                <div style="font-size:26px;font-weight:800;color:#15803d;">{{ $msgReplied }}</div>
-                <div style="font-size:11px;color:#15803d;font-weight:600;text-transform:uppercase;margin-top:2px;">Replied</div>
+        <div class="section-header">
+            <div>
+                <h1><i class="bi bi-envelope-fill" style="color:var(--gold);"></i> Contact Messages</h1>
+                <p>Messages sent from the website's Contact page. Opening a message marks it as read.</p>
             </div>
         </div>
 
-        {{-- Messages Table --}}
-        <div style="background:#fff;border:1px solid #e8edf5;border-radius:14px;overflow:hidden;">
-            <div style="padding:16px 20px;border-bottom:1px solid #f0f4f8;display:flex;align-items:center;justify-content:space-between;">
-                <span style="font-weight:700;font-size:14px;color:#1a2a4a;">Inbox</span>
+        {{-- Counts — independent COUNT queries (EnrollmentController@adminIndex), not derived from
+             $contactMessages, which is capped at 50 rows. They update live when a message is
+             opened, marked or deleted (msgRecount()). --}}
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px;" class="msg-stats">
+            <div class="stat-card">
+                <div class="stat-icon blue"><i class="bi bi-envelope-fill"></i></div>
+                <div><div class="stat-value" id="msgStatTotal">{{ $totalMessagesCount ?? 0 }}</div><div class="stat-label">Total Messages</div></div>
             </div>
+            <div class="stat-card">
+                <div class="stat-icon gold"><i class="bi bi-envelope-exclamation-fill"></i></div>
+                <div><div class="stat-value" id="msgStatUnread">{{ $unreadMessagesCount ?? 0 }}</div><div class="stat-label">Unread</div></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon purple"><i class="bi bi-envelope-open-fill"></i></div>
+                <div><div class="stat-value" id="msgStatRead">{{ $readMessagesCount ?? 0 }}</div><div class="stat-label">Read</div></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="bi bi-reply-fill"></i></div>
+                <div><div class="stat-value" id="msgStatReplied">{{ $repliedMessagesCount ?? 0 }}</div><div class="stat-label">Replied</div></div>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <div class="content-card-header" style="flex-wrap:wrap;gap:10px;">
+                <h6><i class="bi bi-inbox-fill me-2" style="color:var(--gold);"></i>Inbox</h6>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                    @foreach(['' => 'All', 'unread' => 'Unread', 'read' => 'Read', 'replied' => 'Replied'] as $mk => $ml)
+                        <button type="button" class="msg-chip {{ $mk === '' ? 'active' : '' }}" data-status="{{ $mk }}" onclick="msgFilter(this.dataset.status)">{{ $ml }}</button>
+                    @endforeach
+                    <input type="text" id="msgSearch" class="form-fld" placeholder="Search name, email or subject…" oninput="msgFilter(null, true)" style="width:240px;padding:6px 12px;font-size:12.5px;">
+                </div>
+            </div>
+
             @if(($contactMessages ?? collect())->isEmpty())
-                <div style="text-align:center;padding:60px 20px;color:#94a3b8;">
-                    <i class="bi bi-inbox" style="font-size:48px;display:block;margin-bottom:12px;opacity:.4;"></i>
-                    <div style="font-size:14px;">No messages yet.</div>
+                <div style="text-align:center;padding:60px 20px;color:var(--muted);">
+                    <i class="bi bi-inbox" style="font-size:48px;display:block;margin-bottom:12px;opacity:.35;"></i>
+                    <div style="font-size:15px;font-weight:600;margin-bottom:4px;">No messages yet</div>
+                    <div style="font-size:12px;">Messages sent from the website's Contact page appear here.</div>
                 </div>
             @else
             <div style="overflow-x:auto;">
-                <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                <table class="dash-table">
                     <thead>
-                        <tr style="background:#f8faff;">
-                            <th style="padding:11px 16px;text-align:left;font-weight:700;color:#374151;border-bottom:1px solid #e8edf5;width:140px;">Sender</th>
-                            <th style="padding:11px 16px;text-align:left;font-weight:700;color:#374151;border-bottom:1px solid #e8edf5;">Subject</th>
-                            <th style="padding:11px 16px;text-align:left;font-weight:700;color:#374151;border-bottom:1px solid #e8edf5;width:110px;">Date</th>
-                            <th style="padding:11px 16px;text-align:left;font-weight:700;color:#374151;border-bottom:1px solid #e8edf5;width:90px;">Status</th>
-                            <th style="padding:11px 16px;text-align:left;font-weight:700;color:#374151;border-bottom:1px solid #e8edf5;width:140px;">Actions</th>
-                        </tr>
+                        <tr><th>Sender</th><th>Subject</th><th style="width:130px;">Received</th><th style="width:100px;">Status</th><th style="width:130px;">Actions</th></tr>
                     </thead>
-                    <tbody>
+                    <tbody id="msgTableBody">
                         @foreach($contactMessages ?? [] as $msg)
-                        @php
-                            $isUnread = $msg->status === 'unread';
-                            $statusConfig = [
-                                'unread'  => ['#fef3c7','#92400e','Unread'],
-                                'read'    => ['#eff6ff','#1d4ed8','Read'],
-                                'replied' => ['#f0fdf4','#15803d','Replied'],
-                            ][$msg->status] ?? ['#f3f4f6','#6b7280','—'];
-                        @endphp
-                        <tr id="msg-row-{{ $msg->id }}"
-                            style="border-bottom:1px solid #f0f4f8;background:{{ $isUnread ? '#fffbeb' : '#fff' }};cursor:pointer;"
-                            onclick="openMsgModal({{ $msg->id }}, {{ json_encode($msg->name) }}, {{ json_encode($msg->email) }}, {{ json_encode($msg->phone ?? '—') }}, {{ json_encode($msg->subject) }}, {{ json_encode($msg->message) }}, {{ json_encode($msg->created_at->format('M d, Y h:i A')) }}, {{ json_encode($msg->status) }})">
-                            <td style="padding:12px 16px;">
-                                <div style="font-weight:{{ $isUnread ? '700' : '500' }};color:#1e293b;">{{ $msg->name }}</div>
-                                <div style="font-size:11px;color:#94a3b8;margin-top:1px;">{{ $msg->email }}</div>
+                        @php $isUnread = $msg->status === 'unread'; @endphp
+                        <tr id="msg-row-{{ $msg->id }}" class="msg-row {{ $isUnread ? 'msg-unread' : '' }}" data-status="{{ $msg->status }}"
+                            data-search="{{ strtolower($msg->name . ' ' . $msg->email . ' ' . $msg->subject) }}" style="cursor:pointer;"
+                            onclick="openMsgModal({{ $msg->id }}, {{ json_encode($msg->name) }}, {{ json_encode($msg->email) }}, {{ json_encode($msg->phone ?? '—') }}, {{ json_encode($msg->subject) }}, {{ json_encode($msg->message) }}, {{ json_encode($msg->created_at->format('M d, Y h:i A')) }}, this.dataset.status)">
+                            <td>
+                                <div class="msg-name" style="color:var(--text);">@if($isUnread)<span class="msg-dot" title="Unread"></span>@endif{{ $msg->name }}</div>
+                                <div style="font-size:11px;color:var(--muted);margin-top:1px;">{{ $msg->email }}</div>
                             </td>
-                            <td style="padding:12px 16px;">
-                                <div style="font-weight:{{ $isUnread ? '700' : '400' }};color:#1e293b;">{{ $msg->subject }}</div>
-                                <div style="font-size:11px;color:#94a3b8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:300px;">{{ Str::limit($msg->message, 70) }}</div>
+                            <td>
+                                <div class="msg-subject" style="color:var(--text);">{{ $msg->subject }}</div>
+                                <div style="font-size:11.5px;color:var(--muted);margin-top:2px;max-width:420px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ Str::limit($msg->message, 90) }}</div>
                             </td>
-                            <td style="padding:12px 16px;font-size:12px;color:#64748b;white-space:nowrap;">{{ $msg->created_at->format('M d, Y') }}<br>{{ $msg->created_at->format('h:i A') }}</td>
-                            <td style="padding:12px 16px;">
-                                <span style="background:{{ $statusConfig[0] }};color:{{ $statusConfig[1] }};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;">{{ $statusConfig[2] }}</span>
-                            </td>
-                            <td style="padding:12px 16px;" onclick="event.stopPropagation();">
-                                <div style="display:flex;gap:5px;flex-wrap:wrap;">
-                                    @if($msg->status !== 'read')
-                                    <button onclick="updateMsgStatus({{ $msg->id }}, 'read')" title="Mark as Read"
-                                        style="padding:4px 9px;background:#eff6ff;color:#1d4ed8;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">
-                                        <i class="bi bi-eye"></i>
-                                    </button>
-                                    @endif
-                                    @if($msg->status !== 'replied')
-                                    <button onclick="updateMsgStatus({{ $msg->id }}, 'replied')" title="Mark as Replied"
-                                        style="padding:4px 9px;background:#f0fdf4;color:#15803d;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">
-                                        <i class="bi bi-reply-fill"></i>
-                                    </button>
-                                    @endif
-                                    <button onclick="deleteMsg({{ $msg->id }})" title="Delete"
-                                        style="padding:4px 9px;background:#fef2f2;color:#dc2626;border:none;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;">
-                                        <i class="bi bi-trash3"></i>
-                                    </button>
-                                </div>
-                            </td>
+                            <td style="font-size:12px;color:var(--muted);white-space:nowrap;">{{ $msg->created_at->format('M d, Y') }}<br>{{ $msg->created_at->format('h:i A') }}</td>
+                            <td class="msg-status-cell"></td>
+                            <td class="msg-actions-cell" onclick="event.stopPropagation();"></td>
                         </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
+            <div id="msgNoMatch" style="display:none;text-align:center;padding:30px;color:var(--muted);font-size:13px;">No messages match.</div>
+            <div id="msgPagination" style="display:none;"></div>
+            @if(($totalMessagesCount ?? 0) > ($contactMessages ?? collect())->count())
+                <div style="padding:10px 18px;font-size:11.5px;color:var(--muted);border-top:1px solid var(--border);">Showing the latest {{ ($contactMessages ?? collect())->count() }} of {{ $totalMessagesCount }} messages.</div>
+            @endif
             @endif
         </div>
-    </div>
+    </div>{{-- /section-messages --}}
+
+    <style>
+        @media (max-width: 992px) { #section-messages .msg-stats { grid-template-columns: repeat(2, 1fr) !important; } }
+        .msg-chip { padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; border: 1.5px solid #ddd; background: #f8f9fa; color: #555; cursor: pointer; }
+        .msg-chip.active { border-color: var(--blue); background: var(--blue); color: #fff; }
+        .msg-row.msg-unread td { background: #fffbeb; }
+        .msg-row.msg-unread .msg-name, .msg-row.msg-unread .msg-subject { font-weight: 700; }
+        .msg-row .msg-name, .msg-row .msg-subject { font-weight: 500; }
+        .msg-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--gold); margin-right: 6px; vertical-align: middle; }
+    </style>
