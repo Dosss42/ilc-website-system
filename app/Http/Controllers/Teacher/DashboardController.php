@@ -2254,74 +2254,75 @@ class DashboardController extends Controller
             ->get()
             ->groupBy('student_id');
 
-        // ── Build per-student rows (PDF via teacher.sf5 view + dompdf, same
-        // pattern as printSF9) ──
-        $rows = [];
-        $promotedCount = 0;
-        $retainedCount = 0;
-        $graduatedCount = 0;
-
+        // ── Official SF5 (DepEd Order 8, s. 2015) rows ──
+        // A subject's final rating = average of its 3 terms (only once all 3 are in). General Average and
+        // Action Taken only once every subject has its final rating:
+        //   Promoted = 75+ in all learning areas; Conditionally Promoted = below 75 in not more than 2;
+        //   Retained = below 75 in 3 or more.
+        $rows = ['M' => [], 'F' => [], 'X' => []];
         foreach ($students as $stu) {
             $stuGrades = $allGrades->get($stu->id) ?? collect();
             $profile   = $stu->profile;
 
-            $subjectCells = [];
-            $termAvgs     = [];
+            $finals = [];
+            $failed = [];
             foreach ($subjects as $sub) {
-                $subGrades = $stuGrades->where('subject_id', $sub->id);
                 $terms = [];
                 foreach ([1, 2, 3] as $term) {
-                    $g = $subGrades->where('term', $term)->first();
-                    $terms[$term] = $isDescriptive ? ($g?->descriptive_grade ?? '') : ($g?->grade ?? '');
+                    $terms[] = $stuGrades->where('subject_id', $sub->id)->where('term', $term)->first()?->grade;
                 }
-                $subjectCells[] = $terms;
-
-                if (!$isDescriptive) {
-                    $numericGrades = $subGrades->pluck('grade')->filter(fn ($v) => $v !== null)->values();
-                    if ($numericGrades->count()) {
-                        $termAvgs[] = $numericGrades->sum() / $numericGrades->count();
-                    }
-                }
+                if ($isDescriptive || in_array(null, $terms, true)) { $finals = null; break; }
+                $final = (int) round(array_sum($terms) / 3);
+                $finals[] = $final;
+                if ($final < 75) $failed[] = $sub->name;
             }
 
-            $avg = ($termAvgs && !$isDescriptive) ? round(array_sum($termAvgs) / count($termAvgs)) : null;
+            $avg = $finals ? (int) round(array_sum($finals) / count($finals)) : null;
+            $action = $avg === null ? '' : (count($failed) === 0 ? 'PROMOTED' : (count($failed) <= 2 ? 'CONDITIONALLY PROMOTED' : 'RETAINED'));
 
-            $action = '';
-            if (!$isDescriptive && $avg !== null) {
-                if ($gradeLevel === 'grade6') {
-                    $action = $avg >= 75 ? 'Graduated' : 'Retained';
-                } else {
-                    $action = $avg >= 75 ? 'Promoted' : 'Retained';
-                }
-                match ($action) {
-                    'Promoted'  => $promotedCount++,
-                    'Graduated' => $graduatedCount++,
-                    'Retained'  => $retainedCount++,
-                    default     => null,
-                };
-            }
-
-            $rows[] = [
-                'lrn'     => $stu->lrn ?? '',
-                'name'    => $stu->name,
-                'sex'     => $profile ? strtoupper(substr($profile->gender ?? '', 0, 1)) : '',
-                'subjects'=> $subjectCells,
-                'avg'     => $avg,
-                'action'  => $action,
+            $sex = strtoupper(substr($profile->gender ?? '', 0, 1));
+            $last = $profile->last_name ?? null;
+            $rows[in_array($sex, ['M', 'F']) ? $sex : 'X'][] = [
+                'lrn'        => $stu->lrn ?? '',
+                // Last Name, First Name, Middle Name
+                'name'       => $last ? strtoupper(trim("{$last}, {$profile->first_name} " . ($profile->middle_name ?? ''))) : strtoupper($stu->name),
+                'avg'        => $avg,
+                'action'     => $action,
+                'incomplete' => $action === '' ? '' : implode(', ', $failed),
             ];
+        }
+        foreach ($rows as &$group) usort($group, fn ($a, $b) => strcmp($a['name'], $b['name']));
+        unset($group);
+
+        // Summary Table and Level of Progress and Achievement (by General Average), per sex
+        $count = fn (string $sex, callable $test) => collect($rows[$sex])->filter($test)->count();
+        $summary = [];
+        foreach (['PROMOTED' => 'Promoted', 'CONDITIONALLY PROMOTED' => '*Conditionally Promoted', 'RETAINED' => 'Retained'] as $key => $label) {
+            $m = $count('M', fn ($r) => $r['action'] === $key);
+            $f = $count('F', fn ($r) => $r['action'] === $key);
+            $summary[] = ['label' => $label, 'm' => $m, 'f' => $f, 't' => $m + $f + $count('X', fn ($r) => $r['action'] === $key)];
+        }
+        $levels = [];
+        foreach ([['Did Not Meet Expectations', '(74% and below)', 0, 74], ['Fairly Satisfactory', '(75%-79%)', 75, 79],
+                  ['Satisfactory', '(80%-84%)', 80, 84], ['Very Satisfactory', '(85%-89%)', 85, 89], ['Outstanding', '(90%-100%)', 90, 100]] as [$label, $range, $lo, $hi]) {
+            $in = fn ($r) => $r['avg'] !== null && $r['avg'] >= $lo && $r['avg'] <= $hi;
+            $m = $count('M', $in); $f = $count('F', $in);
+            $levels[] = ['label' => $label, 'range' => $range, 'm' => $m, 'f' => $f, 't' => $m + $f + $count('X', $in)];
         }
 
         $data = [
-            'section'        => $section,
-            'teacher'        => $adviser,
-            'schoolYear'     => $schoolYear,
-            'gradeLabel'     => $gradeLabel,
-            'isDescriptive'  => $isDescriptive,
-            'subjects'       => $subjects,
-            'rows'           => $rows,
-            'promotedCount'  => $promotedCount,
-            'retainedCount'  => $retainedCount,
-            'graduatedCount' => $graduatedCount,
+            'section'       => $section,
+            'adviserName'   => $adviser?->name ?? '',
+            'schoolHead'    => \App\Models\Setting::get('principal_name') ?: '',
+            'schoolId'      => \App\Models\Setting::get('school_id') ?: '',
+            'schoolYear'    => $schoolYear,
+            'gradeLabel'    => $gradeLabel,
+            'isDescriptive' => $isDescriptive,
+            'males'         => $rows['M'],
+            'females'       => $rows['F'],
+            'others'        => $rows['X'],
+            'summary'       => $summary,
+            'levels'        => $levels,
         ];
 
         $html = view('teacher.sf5', $data)->render();

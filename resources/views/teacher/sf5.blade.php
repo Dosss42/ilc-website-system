@@ -4,249 +4,218 @@
 <meta charset="UTF-8">
 <title>SF5 — {{ $section->name }} — {{ $schoolYear }}</title>
 <style>
-    /* See the same rule in teacher/sf9.blade.php — without this, dompdf's
-       own default page margin stacks on top of the full-page-sized .page
-       box below and pushes an entirely blank second page onto every PDF. */
+    /* Official SF5 (Report on Promotion and Level of Progress & Achievement, DepEd Order 8 s. 2015), legal landscape.
+       dompdf's own page margin is zeroed; .page's padding is the visible margin. No width on .page —
+       width:100% tables inside a full-width box overflow the right edge under dompdf's table layout. */
     @page { margin: 0; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-        font-family: Arial, sans-serif;
-        font-size: 8pt;
-        color: #000;
-        background: #fff;
-    }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 7pt; color: #000; background: #fff; }
+    .page { padding: 7mm 9mm 5mm; }
+    .page-break { page-break-before: always; }
 
-    .page {
-        /* No min-height: a box asked to be exactly one physical page tall
-           overflows by a hair under dompdf's own rounding and pushes an
-           entirely blank extra page onto every PDF. Content naturally
-           fills the page anyway.
-           No explicit width either — see the same fix in teacher/sf9.blade.php:
-           dompdf's table layout computes a width:100% child against this
-           box's OUTER (border-box) width rather than its content width, so
-           pinning .page to the exact physical page width made the roster
-           table overflow past the right edge with no visible margin there.
-           Leaving width unset sizes .page to the container minus its own
-           padding via the standard CSS auto-width algorithm instead. */
-        margin: 0 auto;
-        padding: 8mm 10mm;
-    }
+    /* Header */
+    table.hdr { width: 100%; border-collapse: collapse; }
+    table.hdr td { vertical-align: middle; }
+    table.hdr td.logo { width: 11%; text-align: center; }
+    table.hdr td.logo img { width: 56px; height: 56px; }
+    table.hdr td.logo img.deped { width: 92px; height: auto; }
+    .title { font-size: 13pt; font-weight: bold; text-align: center; }
+    .subtitle { font-size: 7pt; font-style: italic; text-align: center; margin-bottom: 4px; }
+    table.fields { width: 100%; border-collapse: separate; border-spacing: 4px 3px; }
+    table.fields td { font-size: 7.5pt; white-space: nowrap; }
+    table.fields td.lbl { text-align: right; padding-right: 2px; }
+    table.fields td.box { border: 1px solid #000; height: 15px; font-weight: bold; padding: 1px 4px; }
 
-    /* ── HEADER ── */
-    .header-table { width: 100%; border-collapse: collapse; margin-bottom: 4px; }
-    .header-table td { vertical-align: middle; }
-    .header-logo { width: 55px; text-align: center; }
-    .header-logo img { width: 50px; height: 50px; object-fit: contain; }
-    .header-center { text-align: center; padding: 0 6px; }
-    .header-center .republic { font-size: 7.5pt; }
-    .header-center .deped    { font-size: 8pt; font-weight: bold; }
-    .header-center .school   { font-size: 10pt; font-weight: bold; text-transform: uppercase; }
-    .header-center .address  { font-size: 7.5pt; }
-    .header-right { width: 55px; text-align: center; }
+    /* Layout: learners on the left, summary / signatures on the right */
+    table.layout { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 4px; }
+    table.layout > tbody > tr > td { vertical-align: top; }
+    td.left-col { width: 76%; }
+    td.right-col { width: 24%; padding-left: 10px; }
 
-    .form-title {
-        text-align: center;
-        font-size: 9pt;
-        font-weight: bold;
-        border: 1.5px solid #000;
-        padding: 3px;
-        margin: 6px 0 4px;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
+    table.lr { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    table.lr th, table.lr td { border: 1px solid #000; font-size: 7pt; padding: 1px 3px; }
+    table.lr th { font-weight: bold; text-align: center; vertical-align: middle; font-size: 6.5pt; }
+    table.lr th .note { font-weight: normal; }
+    table.lr td { height: 18px; }
+    table.lr td.c { text-align: center; }
+    table.lr td.shade { background: #d9d9d9; }
 
-    /* ── META ── */
-    .meta-table { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
-    .meta-table td { border: 0.5px solid #000; padding: 3px 6px; font-size: 8pt; }
-    .meta-table .lbl { font-weight: bold; background: #d9e1f2; color: #1a3a6c; width: 12%; }
-    .meta-table .val { width: 21%; }
+    table.sum { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+    table.sum th, table.sum td { border: 1px solid #000; font-size: 6.5pt; text-align: center; padding: 2px; }
+    table.sum th.cap { font-size: 7pt; padding: 3px; }
+    table.sum td.lbl { font-weight: bold; font-size: 6pt; line-height: 1.15; height: 26px; }
 
-    /* ── ROSTER TABLE ── */
-    .roster-table { width: 100%; border-collapse: collapse; font-size: 7.5pt; }
-    .roster-table th {
-        background: #1a3a6c; color: #fff;
-        border: 0.5px solid #000; padding: 3px 4px;
-        text-align: center; font-size: 7pt; font-weight: bold;
-        vertical-align: middle;
-    }
-    .roster-table th.sub-term {
-        background: #2c5282; font-size: 6.5pt;
-    }
-    .roster-table td {
-        border: 0.5px solid #000; padding: 2px 4px;
-        text-align: center; font-size: 7.5pt;
-    }
-    .roster-table td.name-cell { text-align: left; font-weight: 500; }
-    .roster-table tr:nth-child(even) td { background: #f7f8fc; }
-    .roster-table td.avg-pass { font-weight: bold; color: #155724; }
-    .roster-table td.avg-fail { font-weight: bold; color: #721c24; }
-
-    /* ── SUMMARY ── */
-    .summary-box {
-        margin-top: 8px; padding: 6px 10px;
-        border: 0.5px solid #000; background: #d9e1f2;
-        font-size: 8pt;
-    }
-    .summary-box b { color: #1a3a6c; }
-    .summary-box span { margin-right: 22px; }
-
-    /* ── SIGNATURE ── */
-    .sig-table { width: 100%; border-collapse: collapse; margin-top: 18px; }
-    .sig-table td { padding: 2px 6px; font-size: 8pt; vertical-align: bottom; width: 33.33%; }
-    .sig-line { border-top: 0.5px solid #000; margin-top: 24px; text-align: center; padding-top: 2px; font-size: 7.5pt; }
-    .sig-label { font-size: 7pt; color: #555; text-align: center; }
-
-    .footer-note {
-        font-size: 7pt; color: #555; margin-top: 8px;
-        text-align: center; font-style: italic;
-    }
-
-    /* ── PRINT ── */
-    @media print {
-        body { margin: 0; }
-        .page { margin: 0; padding: 6mm 8mm; }
-        .no-print { display: none !important; }
-    }
+    .sig { margin-top: 18px; font-size: 7pt; }
+    .sig .line { border-bottom: 1px solid #000; height: 16px; text-align: center; font-weight: bold; margin-top: 6px; }
+    .sig .role { text-align: center; margin-top: 2px; }
+    .guide { font-size: 6pt; line-height: 1.25; margin-top: 10px; }
+    .guide p { margin-top: 4px; text-align: justify; }
+    .pageno { text-align: right; font-size: 7pt; margin-top: 4px; }
 </style>
 </head>
 <body>
+@php
+    $img = fn ($p) => file_exists($p) ? 'data:image/png;base64,' . base64_encode(file_get_contents($p)) : null;
+    // Left: the round DepEd seal (images/deped_seal.png), else the DepEd wordmark, else the IEMELIF seal. Right: the ILC logo.
+    $sealFile = collect(['deped_seal.png', 'deped_logo.png', 'logo1.png'])->first(fn ($f) => file_exists(public_path('images/' . $f)));
+    $sealIsDeped = $sealFile === 'deped_logo.png'; // the wide wordmark keeps its proportions
+    $seal = $sealFile ? $img(public_path('images/' . $sealFile)) : null;
+    $district = \App\Models\Setting::get('school_district') ?: '';
+    $logo = $img(public_path('images/logo.png'));
+    $sfSchoolName = \App\Models\Setting::get('school_name') ?: 'IEMELIF Learning Center';
 
-{{-- Print button (hidden on print) --}}
-<div class="no-print" style="background:#1a3a6c;padding:8px 16px;display:flex;align-items:center;gap:12px;">
-    <button onclick="window.print()" style="background:#f5a623;color:#fff;border:none;border-radius:6px;padding:7px 20px;font-size:13px;font-weight:700;cursor:pointer;">
-        🖨 Print / Save as PDF
-    </button>
-    <button onclick="window.close()" style="background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);border-radius:6px;padding:7px 16px;font-size:13px;cursor:pointer;">
-        ✕ Close
-    </button>
-    <span style="color:rgba(255,255,255,0.7);font-size:12px;">SF5 — Report on Promotions and Level of Proficiency | {{ $section->name }} | S.Y. {{ $schoolYear }}</span>
-</div>
+    // Learner rows per page (page 1 also has the header). Males first, then females, like the printed form;
+    // empty lines pad each part so the form keeps its shape, and the totals sit at the end of each part.
+    $firstCap = 27;
+    $nextCap  = 32;
+    $paginate = function (array $rows, array $tail, int $firstRoom, int $room) {
+        $pages = []; $i = 0; $n = count($rows); $cap = $firstRoom;
+        while (true) {
+            $left = $n - $i;
+            if ($left + count($tail) <= $cap) {
+                $page = array_slice($rows, $i);
+                for ($k = count($page); $k < $cap - count($tail); $k++) $page[] = null;
+                $pages[] = array_merge($page, $tail);
+                return $pages;
+            }
+            $take = min($left, $cap);
+            $pages[] = array_slice($rows, $i, $take);
+            $i += $take;
+            $cap = $room;
+        }
+    };
+    $total = fn ($label, $n) => ['total' => $label, 'n' => $n];
+    $females = array_merge($females, $others); // learners with no sex recorded are listed after the females
+    $pages = array_merge(
+        $paginate($males, [$total('TOTAL MALE', count($males))], $firstCap, $nextCap),
+        $paginate($females, [$total('TOTAL FEMALE', count($females) - count($others)), $total('COMBINED', count($males) + count($females))], $nextCap, $nextCap)
+    );
+    $pageCount = count($pages);
+    $fmt = fn ($v) => $v === null ? '' : (string) $v;
+@endphp
 
-<div class="page">
+@foreach($pages as $p => $pageRows)
+<div class="page {{ $p > 0 ? 'page-break' : '' }}">
 
-    {{-- ── HEADER ── --}}
-    <table class="header-table">
-        <tr>
-            <td class="header-logo">
-                @php $logoPath = public_path('images/logo.png'); @endphp
-                @if(file_exists($logoPath))
-                <img src="data:image/png;base64,{{ base64_encode(file_get_contents($logoPath)) }}" alt="ILC">
+    @if($p === 0)
+    <table class="hdr"><tr>
+        <td class="logo">@if($seal)<img src="{{ $seal }}" alt="" class="{{ $sealIsDeped ? 'deped' : '' }}">@endif</td>
+        <td>
+            <div class="title">School Form 5 (SF 5) Report on Promotion and Level of Progress &amp; Achievement</div>
+            <div class="subtitle">Revised to conform with the instructions of DepEd Order 8, s. 2015</div>
+            <table class="fields">
+                <tr>
+                    <td class="lbl" style="width:9%;">Region</td><td class="box" style="width:12%;">III</td>
+                    <td class="lbl" style="width:9%;">Division</td><td class="box" style="width:24%;">NUEVA ECIJA</td>
+                    <td class="lbl" style="width:9%;">District</td><td class="box" style="width:17%;">{{ $district ?: ' ' }}</td>
+                    <td style="width:7%;"></td><td style="width:13%;"></td>
+                </tr>
+                <tr>
+                    <td class="lbl">School ID</td><td class="box">{{ $schoolId ?: ' ' }}</td>
+                    <td class="lbl">School Year</td><td class="box">{{ $schoolYear }}</td>
+                    <td class="lbl">Curriculum</td><td class="box">MATATAG Curriculum</td>
+                    <td></td><td></td>
+                </tr>
+                <tr>
+                    <td class="lbl">School Name</td><td class="box" colspan="3">{{ strtoupper($sfSchoolName) }}</td>
+                    <td class="lbl">Grade Level</td><td class="box">{{ $gradeLabel }}</td>
+                    <td class="lbl">Section</td><td class="box">{{ $section->name }}</td>
+                </tr>
+            </table>
+        </td>
+        <td class="logo">@if($logo)<img src="{{ $logo }}" alt="">@endif</td>
+    </tr></table>
+    @endif
+
+    <table class="layout"><tr>
+        {{-- ── Learners ── --}}
+        <td class="left-col">
+            <table class="lr">
+                <thead>
+                    <tr>
+                        <th rowspan="2" style="width:12%;">LRN</th>
+                        <th rowspan="2" style="width:30%;">LEARNER'S NAME<br><span class="note">(Last Name, First Name, Middle Name)</span></th>
+                        <th rowspan="2" style="width:11%;">GENERAL AVERAGE <span class="note">(Whole numbers for non-honor as per DepEd Order 8, s. 2015)</span></th>
+                        <th rowspan="2" style="width:13%;">ACTION TAKEN: PROMOTED, *CONDITIONALLY PROMOTED or RETAINED</th>
+                        <th colspan="2">INCOMPLETE LEARNING AREA/S</th>
+                    </tr>
+                    <tr>
+                        <th style="width:17%;"><span class="note">Incomplete Learning Area/s from previous school year/s that <b><u>had been completed</u></b> as of end of current School Year</span></th>
+                        <th style="width:17%;"><span class="note">Incomplete Learning Area/s as of end of current School Year</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach($pageRows as $r)
+                    @if($r === null)
+                        <tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                    @elseif(isset($r['total']))
+                        <tr>
+                            <td class="c" style="font-weight:bold;">{{ $r['n'] }}</td>
+                            <td style="font-weight:bold;">{{ $r['total'] }}</td>
+                            <td class="shade"></td><td class="shade"></td><td class="shade"></td><td class="shade"></td>
+                        </tr>
+                    @else
+                        <tr>
+                            <td class="c">{{ $r['lrn'] }}</td>
+                            <td>{{ $r['name'] }}</td>
+                            <td class="c">{{ $fmt($r['avg']) }}</td>
+                            <td class="c" style="font-size:6pt;">{{ $r['action'] }}</td>
+                            <td></td>
+                            <td style="font-size:6pt;">{{ $r['incomplete'] }}</td>
+                        </tr>
+                    @endif
+                @endforeach
+                </tbody>
+            </table>
+        </td>
+
+        {{-- ── Right column ── --}}
+        <td class="right-col">
+            @if($p === 0)
+                <div style="height:{{ 52 }}px;"></div>
+                <table class="sum">
+                    <tr><th colspan="4" class="cap">SUMMARY TABLE</th></tr>
+                    <tr><th>STATUS</th><th>MALE</th><th>FEMALE</th><th>TOTAL</th></tr>
+                    @foreach($summary as $s)
+                    <tr><td class="lbl">{{ strtoupper($s['label']) }}</td><td>{{ $s['m'] }}</td><td>{{ $s['f'] }}</td><td>{{ $s['t'] }}</td></tr>
+                    @endforeach
+                </table>
+                <table class="sum">
+                    <tr><th colspan="4" class="cap">LEVEL OF PROGRESS AND ACHIEVEMENT</th></tr>
+                    <tr><th></th><th>MALE</th><th>FEMALE</th><th>TOTAL</th></tr>
+                    @foreach($levels as $l)
+                    <tr><td class="lbl">{{ $l['label'] }}<br><span style="font-weight:normal;">{{ $l['range'] }}</span></td><td>{{ $l['m'] }}</td><td>{{ $l['f'] }}</td><td>{{ $l['t'] }}</td></tr>
+                    @endforeach
+                </table>
+            @else
+                <div style="height:40px;"></div>
+                <div class="sig">PREPARED BY:
+                    <div class="line">{{ strtoupper($adviserName) }}</div>
+                    <div class="role">Class Adviser</div><div class="role">(Name and Signature)</div>
+                </div>
+                <div class="sig">CERTIFIED CORRECT &amp; SUBMITTED:
+                    <div class="line">{{ strtoupper($schoolHead) }}</div>
+                    <div class="role">School Head</div><div class="role">(Name and Signature)</div>
+                </div>
+                <div class="sig">REVIEWED BY:
+                    <div class="line"></div>
+                    <div class="role">Division Representative</div><div class="role">(Name and Signature)</div>
+                </div>
+                @if($p === $pageCount - 1)
+                <div class="guide">
+                    <b><i>GUIDELINES:</i></b>
+                    <p><b><i>1. Do not include Dropouts and Transferred Out (D.O.4, 2014)</i></b></p>
+                    <p>2. To be prepared by the Adviser. Final rating per learning area should be taken from the record of subject teachers. The class adviser should compute for the General Average. (leave it blank for *conditionally promoted).</p>
+                    <p>3. On the summary table, reflect the total number of learners PROMOTED (Final Grade of at least <b>75% in ALL learning areas</b>), RETAINED (Did not meet expectations in <b>three (3) or more learning areas</b>) and *CONDITIONALLY PROMOTED (*did not meet expectations in <b>not more than two (2) learning areas</b>) and the Level of Progress and Achievement according to the individual General Average. All provisions on classroom assessment and the grading system in the said Order shall be in effect for all grade levels - Deped Order 29, s. 2015.</p>
+                    <p>4. Incomplete Learning Areas. The 1st sub-column refers to learning area/s that failed from previous SY but had been completed in the current SY. The 2nd sub-column presented the list of learning areas that did not meet expectation during the current SY.</p>
+                    <p>5. Protocols of validation &amp; submission is under the discretion of the Schools Division Superintendent.</p>
+                </div>
                 @endif
-            </td>
-            @php
-                // Admin > Settings > School Info
-                $sfSchoolName    = \App\Models\Setting::get('school_name') ?: 'IEMELIF Learning Center';
-                $sfSchoolAddress = \App\Models\Setting::get('school_address') ?: 'General Tinio, Nueva Ecija';
-            @endphp
-            <td class="header-center">
-                <div class="republic">Republic of the Philippines</div>
-                <div class="deped">Department of Education</div>
-                <div style="font-size:7.5pt;">Region III — Central Luzon | Schools Division of Nueva Ecija</div>
-                <div class="school">{{ $sfSchoolName }}</div>
-                <div class="address">{{ $sfSchoolAddress }}</div>
-            </td>
-            <td class="header-right">
-                <div style="width:50px;height:50px;border:1px solid #ccc;display:flex;align-items:center;justify-content:center;font-size:6pt;color:#999;text-align:center;">DepEd Logo</div>
-            </td>
-        </tr>
-    </table>
-
-    <div class="form-title">School Form 5 (SF5) — Report on Promotions and Level of Proficiency</div>
-
-    {{-- ── META ── --}}
-    <table class="meta-table">
-        <tr>
-            <td class="lbl">School Year</td><td class="val">{{ $schoolYear }}</td>
-            <td class="lbl">Grade Level</td><td class="val">{{ $gradeLabel }}</td>
-        </tr>
-        <tr>
-            <td class="lbl">Section</td><td class="val">{{ $section->name }}</td>
-            <td class="lbl">Adviser</td><td class="val">{{ $teacher->name }}</td>
-        </tr>
-        <tr>
-            <td class="lbl">Generated</td><td class="val">{{ now()->format('F d, Y') }}</td>
-            <td class="lbl">Total Learners</td><td class="val">{{ count($rows) }}</td>
-        </tr>
-    </table>
-
-    {{-- ── ROSTER ── --}}
-    <table class="roster-table">
-        <thead>
-            <tr>
-                <th rowspan="2" style="width:3%;">No.</th>
-                <th rowspan="2" style="width:9%;">LRN</th>
-                <th rowspan="2" style="width:18%;">Learner's Name</th>
-                <th rowspan="2" style="width:4%;">Sex</th>
-                @foreach($subjects as $sub)
-                    <th colspan="3">{{ $sub->name }}</th>
-                @endforeach
-                <th rowspan="2" style="width:6%;">Final<br>Avg</th>
-                <th rowspan="2" style="width:9%;">Action Taken</th>
-            </tr>
-            <tr>
-                @foreach($subjects as $sub)
-                    <th class="sub-term">T1</th>
-                    <th class="sub-term">T2</th>
-                    <th class="sub-term">T3</th>
-                @endforeach
-            </tr>
-        </thead>
-        <tbody>
-            @forelse($rows as $i => $row)
-            <tr>
-                <td>{{ $i + 1 }}</td>
-                <td>{{ $row['lrn'] }}</td>
-                <td class="name-cell">{{ $row['name'] }}</td>
-                <td>{{ $row['sex'] }}</td>
-                @foreach($row['subjects'] as $terms)
-                    <td>{{ $terms[1] }}</td>
-                    <td>{{ $terms[2] }}</td>
-                    <td>{{ $terms[3] }}</td>
-                @endforeach
-                <td class="{{ $row['avg'] !== null ? ($row['avg'] >= 75 ? 'avg-pass' : 'avg-fail') : '' }}">{{ $row['avg'] ?? '' }}</td>
-                <td>{{ $row['action'] }}</td>
-            </tr>
-            @empty
-            <tr>
-                <td colspan="{{ 6 + count($subjects) * 3 }}" style="padding:14px;">No enrolled learners in this section.</td>
-            </tr>
-            @endforelse
-        </tbody>
-    </table>
-
-    {{-- ── SUMMARY ── --}}
-    <div class="summary-box">
-        <b>SUMMARY:</b>
-        <span>Total Learners: {{ count($rows) }}</span>
-        @if(!$isDescriptive)
-            <span>Promoted: {{ $promotedCount }}</span>
-            <span>Retained: {{ $retainedCount }}</span>
-            @if($graduatedCount > 0)
-                <span>Graduated: {{ $graduatedCount }}</span>
             @endif
-        @endif
-    </div>
-
-    {{-- ── SIGNATURE ── --}}
-    <table class="sig-table">
-        <tr>
-            <td>
-                <div class="sig-line">{{ $teacher->name }}</div>
-                <div class="sig-label">Class Adviser</div>
-            </td>
-            <td>
-                <div class="sig-line">&nbsp;</div>
-                <div class="sig-label">Principal / School Head</div>
-            </td>
-            <td>
-                <div class="sig-line">{{ now()->format('F d, Y') }}</div>
-                <div class="sig-label">Date Generated</div>
-            </td>
-        </tr>
-    </table>
-
-    <div class="footer-note">This is a system-generated report. {{ $sfSchoolName }} — {{ $sfSchoolAddress }}.</div>
-
+            <div class="pageno">School Form 5: Page {{ $p + 1 }} of {{ $pageCount }}</div>
+        </td>
+    </tr></table>
 </div>
+@endforeach
 </body>
 </html>

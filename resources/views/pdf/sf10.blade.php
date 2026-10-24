@@ -19,6 +19,7 @@
     table.hdr td { vertical-align: middle; text-align: center; }
     table.hdr td.logo { width: 16%; }
     table.hdr td.logo img { width: 52px; height: 52px; }
+    table.hdr td.logo img.deped { width: 84px; height: auto; } /* DepEd logo is wide, keep its proportions */
     .hdr-small { font-size: 8pt; line-height: 1.25; }
     .hdr-title { font-size: 12pt; font-weight: bold; margin-top: 4px; }
     .hdr-sub { font-size: 7.5pt; font-style: italic; }
@@ -51,8 +52,10 @@
 <body>
 @php
     $img = fn ($p) => file_exists($p) ? 'data:image/png;base64,' . base64_encode(file_get_contents($p)) : null;
-    // Left: DepEd seal when public/images/deped_logo.png is added, else the IEMELIF seal. Right: the school logo.
-    $seal = $img(public_path('images/deped_logo.png')) ?? $img(public_path('images/logo1.png'));
+    // Left: the round DepEd seal (images/deped_seal.png), else the DepEd wordmark, else the IEMELIF seal. Right: the ILC logo.
+    $sealFile = collect(['deped_seal.png', 'deped_logo.png', 'logo1.png'])->first(fn ($f) => file_exists(public_path('images/' . $f)));
+    $sealIsDeped = $sealFile === 'deped_logo.png'; // the wide wordmark keeps its proportions
+    $seal = $sealFile ? $img(public_path('images/' . $sealFile)) : null;
     $logo = $img(public_path('images/logo.png'));
 
     // Ratings print as whole numbers like on the form (90.00 → 90)
@@ -67,17 +70,18 @@
 
     $division = 'Nueva Ecija';
     $region   = 'III';
+    $district = \App\Models\Setting::get('school_district') ?: '';
 @endphp
 
 @php
 /* One Scholastic Record block (empty when $r is null) */
-$renderBlock = function ($r) use ($fmt, $schoolName, $schoolId, $division, $region, $subjectRows) {
+$renderBlock = function ($r) use ($fmt, $schoolName, $schoolId, $division, $region, $district, $subjectRows) {
     // &nbsp; keeps an empty underline at its set width (dompdf shrinks empty cells)
     $v = fn ($x) => ($x ?? '') === '' ? '&nbsp;' : e($x);
     $isDesc = $r && in_array($r['gradeLevel'], ['nursery', 'kindergarten']);
     $html  = '<div class="block">';
     $html .= '<table class="f"><tr><td>School:</td><td class="v" style="width:62%;">' . ($r ? e(strtoupper($schoolName)) : '') . '</td><td class="gap"></td><td>School ID:</td><td class="v" style="width:18%;">' . ($r ? e($schoolId) : '') . '</td></tr></table>';
-    $html .= '<table class="f"><tr><td>District:</td><td class="v" style="width:24%;"></td><td class="gap"></td><td>Division:</td><td class="v" style="width:26%;">' . ($r ? e($division) : '') . '</td><td class="gap"></td><td>Region:</td><td class="v" style="width:14%;">' . ($r ? e($region) : '') . '</td></tr></table>';
+    $html .= '<table class="f"><tr><td>District:</td><td class="v" style="width:24%;">' . ($r ? e($district) : '') . '</td><td class="gap"></td><td>Division:</td><td class="v" style="width:26%;">' . ($r ? e($division) : '') . '</td><td class="gap"></td><td>Region:</td><td class="v" style="width:14%;">' . ($r ? e($region) : '') . '</td></tr></table>';
     $html .= '<table class="f"><tr><td>Classified as Grade:</td><td class="v" style="width:17%;">' . $v($r['grade'] ?? null) . '</td><td class="gap"></td><td>Section:</td><td class="v" style="width:20%;">' . $v($r['section'] ?? null) . '</td><td class="gap"></td><td>School Year:</td><td class="v" style="width:20%;white-space:nowrap;">' . $v($r['schoolYear'] ?? null) . '</td></tr></table>';
     $html .= '<table class="f"><tr><td>Name of Adviser/Teacher:</td><td class="v" style="width:44%;">' . $v($r['adviser'] ?? null) . '</td><td class="gap"></td><td>Signature:</td><td class="v" style="width:22%;"></td></tr></table>';
 
@@ -105,7 +109,7 @@ $renderBlock = function ($r) use ($fmt, $schoolName, $schoolId, $division, $regi
 <div class="page">
     <div class="form-code">SF10-ES</div>
     <table class="hdr"><tr>
-        <td class="logo">@if($seal)<img src="{{ $seal }}" alt="">@endif</td>
+        <td class="logo">@if($seal)<img src="{{ $seal }}" alt="" class="{{ $sealIsDeped ? 'deped' : '' }}">@endif</td>
         <td>
             <div class="hdr-small">Republic of the Philippines<br>Department of Education</div>
             <div class="hdr-title">Learner Permanent Record for Elementary School (SF10-ES)</div>

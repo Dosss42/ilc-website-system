@@ -267,7 +267,8 @@ document.addEventListener('keydown', function(e) {
 .hero-bg {
     position: absolute;
     inset: 0;
-    background: url('{{ asset('images/hero-ilc.jpg') }}') center 55% / cover no-repeat;
+    /* Trial photo; the previous one is images/hero-ilc.jpg */
+    background: url('{{ asset('images/hero-ilc-2.jpg') }}') center 55% / cover no-repeat;
     pointer-events: none;
 }
 

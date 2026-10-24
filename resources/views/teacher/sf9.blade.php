@@ -21,9 +21,10 @@
     /* Header */
     table.hdr { width: 100%; border-collapse: collapse; }
     table.hdr td { vertical-align: middle; text-align: center; }
-    table.hdr td.logo { width: 14%; }
+    table.hdr td.logo { width: 16%; }
     table.hdr td.logo img { width: 58px; height: 58px; }
-    .hdr-text { font-size: 10.5pt; line-height: 1.25; white-space: nowrap; }
+    table.hdr td.logo img.deped { width: 72px; height: auto; } /* DepEd logo is wide, keep its proportions */
+    .hdr-text { font-size: 10pt; line-height: 1.25; white-space: nowrap; }
 
     .fill { display: inline-block; border-bottom: 1px solid #000; text-align: center; font-weight: bold; }
     .center { text-align: center; }
@@ -80,8 +81,9 @@
 </head>
 <body>
 @php
-    // Left: DepEd seal when public/images/deped_logo.png is added, else the IEMELIF seal. Right: the school logo.
-    $sealPath   = file_exists(public_path('images/deped_logo.png')) ? public_path('images/deped_logo.png') : public_path('images/logo1.png');
+    // Left: the round DepEd seal (images/deped_seal.png), else the DepEd wordmark, else the IEMELIF seal. Right: the ILC logo.
+    $sealPath   = collect(['deped_seal.png', 'deped_logo.png', 'logo1.png'])->map(fn ($f) => public_path('images/' . $f))->first(fn ($p) => file_exists($p));
+    $district   = \App\Models\Setting::get('school_district') ?: '';
     $schoolLogo = public_path('images/logo.png');
     $img = fn ($p) => file_exists($p) ? 'data:image/png;base64,' . base64_encode(file_get_contents($p)) : null;
 
@@ -106,13 +108,13 @@
 <td class="left-half">
 
     <table class="hdr"><tr>
-        <td class="logo">@if($img($sealPath))<img src="{{ $img($sealPath) }}" alt="">@endif</td>
+        <td class="logo">@if($img($sealPath))<img src="{{ $img($sealPath) }}" alt="" class="{{ str_ends_with($sealPath, 'deped_logo.png') ? 'deped' : '' }}">@endif</td>
         <td class="hdr-text">
             Republic of the Philippines<br>
             Department of Education<br>
             Region III<br>
-            <b>SCHOOLS DIVISION OFFICE OF</b> <span class="fill" style="width:105px;">NUEVA ECIJA</span><br>
-            District <span class="fill" style="min-width:60px;">&nbsp;</span><br>
+            <b>SCHOOLS DIVISION OFFICE OF</b> <span class="fill" style="width:90px;">NUEVA ECIJA</span><br>
+            District <span class="fill" style="min-width:60px;">{{ $district ?: ' ' }}</span><br>
             {{ $sfSchoolAddress }}
         </td>
         <td class="logo">@if($img($schoolLogo))<img src="{{ $img($schoolLogo) }}" alt="">@endif</td>
@@ -267,7 +269,7 @@
     <table class="approve">
         <tr>
             <td style="width:42%;">
-                <div style="height:16px;font-weight:bold;">{{ $schoolHead }}</div>
+                <div style="height:16px;font-weight:bold;text-transform:uppercase;">{{ $schoolHead }}</div>
                 <div class="sign-line">School Head</div>
             </td>
             <td style="width:16%;"></td>

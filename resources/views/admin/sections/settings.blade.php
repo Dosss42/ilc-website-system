@@ -71,6 +71,19 @@
                                 <input type="text" id="set-school_motto" class="form-fld" maxlength="120" placeholder="Nurturing Faith, Excellence, and Learning">
                                 <small class="text-muted" style="font-size:11px;">Shown under "Welcome to ILC!" on the home page. Leave blank for the default.</small>
                             </div>
+                            <div class="col-md-3">
+                                <label class="form-lbl">School ID (DepEd)</label>
+                                <input type="text" id="set-school_id" class="form-fld" maxlength="20" placeholder="e.g. 419002">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-lbl">District</label>
+                                <input type="text" id="set-school_district" class="form-fld" maxlength="80" placeholder="e.g. General Tinio">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-lbl">School Head / OIC</label>
+                                <input type="text" id="set-principal_name" class="form-fld" maxlength="120" placeholder="e.g. Mrs. Teofila Guillermo">
+                                <small class="text-muted" style="font-size:11px;">School ID, District and School Head are printed on the School Forms (SF5, SF9, SF10).</small>
+                            </div>
                         </div>
                         <div class="stg-section-label">Contact &amp; Location</div>
                         <div class="row g-3">
