@@ -21,6 +21,7 @@
                 'assess_grade'  => $assessGradeFilter ?? 'all',
                 'assess_status' => $assessStatusFilter ?? 'all',
                 'assess_search' => $assessSearchTerm ?? '',
+                'assess_section' => $assessSectionFilter ?? '',
             ];
             $assessUrl = fn($overrides) => url()->current() . '?' . http_build_query(array_merge($assessBaseQuery, $overrides));
         @endphp
@@ -67,7 +68,7 @@
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;align-items:center;">
             <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-right:4px;">Grade:</span>
             @php $assessGradeActive = ($assessGradeFilter ?? 'all') === 'all'; @endphp
-            <a href="{{ $assessUrl(['assess_grade' => 'all', 'assess_page' => 1]) }}"
+            <a href="{{ $assessUrl(['assess_grade' => 'all', 'assess_section' => '', 'assess_page' => 1]) }}"
                 style="padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;display:inline-block;
                     border:1.5px solid {{ $assessGradeActive ? 'var(--blue)' : '#ddd' }};
                     background:{{ $assessGradeActive ? 'var(--blue)' : '#f8f9fa' }};
@@ -77,7 +78,7 @@
             @foreach($glMap as $gk => $gl)
                 @if(($assessByGrade[$gk] ?? 0) > 0)
                 @php $assessGradeActive = ($assessGradeFilter ?? '') === $gk; @endphp
-                <a href="{{ $assessUrl(['assess_grade' => $gk, 'assess_page' => 1]) }}"
+                <a href="{{ $assessUrl(['assess_grade' => $gk, 'assess_section' => '', 'assess_page' => 1]) }}"
                     style="padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;display:inline-block;
                         border:1.5px solid {{ $assessGradeActive ? 'var(--blue)' : '#ddd' }};
                         background:{{ $assessGradeActive ? 'var(--blue)' : '#f8f9fa' }};
@@ -101,6 +102,31 @@
                 @endforeach
             </div>
         </div>
+
+        {{-- Section chips — shown once a grade is chosen, so its sections aren't mixed together --}}
+        @if(($assessGradeFilter ?? 'all') !== 'all' && !empty($assessBySection))
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin:-6px 0 16px;align-items:center;">
+            <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-right:4px;">Section:</span>
+            @php $assessSecActive = ($assessSectionFilter ?? '') === ''; @endphp
+            <a href="{{ $assessUrl(['assess_section' => '', 'assess_page' => 1]) }}"
+                style="padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;display:inline-block;
+                    border:1.5px solid {{ $assessSecActive ? 'var(--blue)' : '#ddd' }};
+                    background:{{ $assessSecActive ? 'var(--blue)' : '#f8f9fa' }};
+                    color:{{ $assessSecActive ? '#fff' : '#555' }};">
+                All Sections ({{ array_sum($assessBySection) }})
+            </a>
+            @foreach($assessBySection as $secName => $secCount)
+                @php $assessSecActive = ($assessSectionFilter ?? '') === (string) $secName; @endphp
+                <a href="{{ $assessUrl(['assess_section' => $secName, 'assess_page' => 1]) }}"
+                    style="padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;display:inline-block;
+                        border:1.5px solid {{ $assessSecActive ? 'var(--blue)' : '#ddd' }};
+                        background:{{ $assessSecActive ? 'var(--blue)' : '#f8f9fa' }};
+                        color:{{ $assessSecActive ? '#fff' : '#555' }};">
+                    {{ $secName }} ({{ $secCount }})
+                </a>
+            @endforeach
+        </div>
+        @endif
 
         {{-- Bulk promote / auto-advance — only offered once a single grade is selected --}}
         @if(($assessGradeFilter ?? 'all') !== 'all')
@@ -133,6 +159,7 @@
                     <input type="hidden" name="assess_sy" value="{{ $assessSchoolYear }}">
                     <input type="hidden" name="assess_grade" value="{{ $assessGradeFilter ?? 'all' }}">
                     <input type="hidden" name="assess_status" value="{{ $assessStatusFilter ?? 'all' }}">
+                    <input type="hidden" name="assess_section" value="{{ $assessSectionFilter ?? '' }}">
                     <input type="text" name="assess_search" id="assessSearch" placeholder="Search student name..."
                         value="{{ $assessSearchTerm ?? '' }}"
                         oninput="debounceFormSubmit(this)"
@@ -261,7 +288,7 @@
                                     <small>Nursery, Kinder, and Grade 1–6 students enrolled in this school year (excluding transferees) appear here.</small>
                                 @else
                                     No students match the current filter.<br>
-                                    <small><a href="{{ $assessUrl(['assess_grade' => 'all', 'assess_status' => 'all', 'assess_search' => '', 'assess_page' => 1]) }}">Clear filters</a></small>
+                                    <small><a href="{{ $assessUrl(['assess_grade' => 'all', 'assess_status' => 'all', 'assess_search' => '', 'assess_section' => '', 'assess_page' => 1]) }}">Clear filters</a></small>
                                 @endif
                             </td>
                         </tr>

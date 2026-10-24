@@ -446,6 +446,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/grades/pending',              [EnrollmentController::class, 'pendingGrades'])->name('admin.grades.pending');
     Route::post('/grades/approve',             [EnrollmentController::class, 'approveGrades'])->name('admin.grades.approve');
     Route::post('/grades/reject',              [EnrollmentController::class, 'rejectGrades'])->name('admin.grades.reject');
+    Route::post('/grades/{grade}/edit',        [EnrollmentController::class, 'editSubmittedGrade'])->name('admin.grades.edit');
 
     // CONTACT MESSAGES INBOX
     Route::patch('/messages/{message}/status', [\App\Http\Controllers\ContactController::class, 'updateStatus'])->name('messages.status');

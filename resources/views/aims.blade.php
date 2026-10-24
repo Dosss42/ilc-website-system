@@ -314,7 +314,7 @@
                     </div>
                     <h5>Students</h5>
                     <p>Access everything about your school life — grades, schedule, payments, and enrollment status — anytime from any device.</p>
-                    @foreach(['View grades per subject & term','Check class schedule','Track tuition balance & pay online','Upload required documents','View school announcements'] as $f)
+                    @foreach(['View grades per subject & term','Check class schedule','Track tuition balance & pay online','Upload required documents'] as $f)
                     <div class="role-feature"><i class="bi bi-check2"></i>{{ $f }}</div>
                     @endforeach
                 </div>
@@ -330,8 +330,8 @@
                         </div>
                     </div>
                     <h5>Teachers</h5>
-                    <p>Manage your classes efficiently — enter grades, take attendance, post announcements, and schedule meetings with parents.</p>
-                    @foreach(['Enter & submit grades by term','Record daily attendance','Post section announcements','Schedule parent-teacher meetings','View assigned sections & subjects'] as $f)
+                    <p>Manage your classes efficiently — enter grades.</p>
+                    @foreach(['Enter & submit grades by term','View their specific schedule','View assigned sections & subjects'] as $f)
                     <div class="role-feature"><i class="bi bi-check2"></i>{{ $f }}</div>
                     @endforeach
                 </div>
@@ -365,7 +365,7 @@
                     </div>
                     <h5>Finance &amp; Cashier</h5>
                     <p>Handle all tuition-related operations — from walk-in cash payments to online Xendit payment links and financial reports.</p>
-                    @foreach(['Record walk-in payments','Generate Xendit payment links','Approve GCash screenshots','Manage installment schedules','View collection reports & charts'] as $f)
+                    @foreach(['Record walk-in payments','Generate Xendit payment links','Manage installment schedules','View collection reports & charts'] as $f)
                     <div class="role-feature"><i class="bi bi-check2"></i>{{ $f }}</div>
                     @endforeach
                 </div>

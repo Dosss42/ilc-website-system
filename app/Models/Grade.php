@@ -36,11 +36,21 @@ class Grade extends Model
         'school_year',
         'status',
         'remarks',
+        'original_grade',
+        'edited_by',
+        'edited_at',
     ];
 
     protected $casts = [
-        'grade' => 'decimal:2',
+        'grade'     => 'decimal:2',
+        'edited_at' => 'datetime',
     ];
+
+    /** The registrar/admin who corrected this grade in Grade Oversight (null = as the teacher gave it). */
+    public function editor()
+    {
+        return $this->belongsTo(User::class, 'edited_by');
+    }
 
     public function student()
     {

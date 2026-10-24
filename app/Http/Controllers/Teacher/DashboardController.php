@@ -375,6 +375,8 @@ class DashboardController extends Controller
                 'grade'              => $gradeVal,
                 'remarks'            => $remarks,
                 'grade_status'       => $grade?->status ?? null,
+                // Set when the registrar corrected this grade in Grade Oversight: the teacher's original value
+                'edited_from'        => $grade?->original_grade,
                 'draft_grade'        => $draftGradeVal,
                 'draft_remarks'      => $draftRemarks,
                 'draft_id'           => $draft?->id ?? null,

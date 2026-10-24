@@ -2281,6 +2281,14 @@
                         : (inputVal !== '' ? inputVal : '—');
                     inputHtml = '<div style="padding:6px 8px;font-size:13px;font-weight:600;color:#555;background:#f5f5f5;border-radius:6px;text-align:center;" title="Already posted — no longer editable here.">'
                         + '<i class="bi bi-lock-fill" style="font-size:10px;color:#999;margin-right:4px;"></i>' + lockedDisplay + '</div>';
+                    // The registrar corrected this grade in Grade Oversight
+                    if (s.edited_from) {
+                        const num = v => { const n = parseFloat(v); return isNaN(n) ? v : String(+n.toFixed(2)); };
+                        const was = isDesc ? s.edited_from : num(s.edited_from);
+                        const now = isDesc ? inputVal : num(inputVal);
+                        inputHtml += '<div style="font-size:10px;color:#b45309;margin-top:3px;text-align:center;font-weight:600;" title="Changed by the registrar during review">'
+                            + '<i class="bi bi-pencil-square me-1"></i>Edited by registrar: ' + was + ' → ' + now + '</div>';
+                    }
                     remarks = isDesc
                         ? (inputVal ? (DESCRIPTIVE_LABELS[inputVal] || inputVal) : '')
                         : (s.remarks || '');

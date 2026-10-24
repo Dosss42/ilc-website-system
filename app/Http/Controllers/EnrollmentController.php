@@ -879,6 +879,8 @@ class EnrollmentController extends Controller
         $assessGradeFilter  = $request->get('assess_grade', 'all');
         $assessStatusFilter = $request->get('assess_status', 'all'); // all|pending|done
         $assessSearchTerm   = trim((string) $request->get('assess_search', ''));
+        // Section within the chosen grade ('' = all sections); only applies once a grade is chosen
+        $assessSectionFilter = $assessGradeFilter !== 'all' ? trim((string) $request->get('assess_section', '')) : '';
 
         $assessGradeLevels = ['nursery','kindergarten','grade1','grade2','grade3','grade4','grade5','grade6'];
 
@@ -932,15 +934,29 @@ class EnrollmentController extends Controller
             })->count();
         }
 
-        // Apply grade / status / search filters (need the PHP-derived grade_level
+        // Section chips for the chosen grade: each section of that grade in this school year, with its count
+        $assessBySection = [];
+        if ($assessGradeFilter !== 'all') {
+            $assessBySection = $assessEligible
+                ->filter(fn ($s) => ($s->latestEnrollment->student_data['grade_level'] ?? ($s->latestEnrollment->grade_level ?? '')) === $assessGradeFilter)
+                ->groupBy(fn ($s) => $s->latestEnrollment->section ?: '—')
+                ->map->count()
+                ->sortKeys(SORT_NATURAL | SORT_FLAG_CASE)
+                ->all();
+        }
+
+        // Apply grade / section / status / search filters (need the PHP-derived grade_level
         // and is_done values above, not raw columns), then hand one page of the
         // result to the view via a manual paginator.
-        $assessFiltered = $assessEligible->filter(function ($s) use ($assessGradeFilter, $assessStatusFilter, $assessSearchTerm) {
+        $assessFiltered = $assessEligible->filter(function ($s) use ($assessGradeFilter, $assessSectionFilter, $assessStatusFilter, $assessSearchTerm) {
             $enr = $s->latestEnrollment;
             $gl  = $enr ? ($enr->student_data['grade_level'] ?? ($enr->grade_level ?? '')) : '';
             $isDone = $s->promotions->isNotEmpty();
 
             if ($assessGradeFilter !== 'all' && $gl !== $assessGradeFilter) {
+                return false;
+            }
+            if ($assessSectionFilter !== '' && ($enr->section ?: '—') !== $assessSectionFilter) {
                 return false;
             }
             if ($assessStatusFilter === 'pending' && $isDone) {
@@ -1077,7 +1093,7 @@ class EnrollmentController extends Controller
             'feeSettings', 'recentStudents', 'allSchedules',
             'currentSchoolYear', 'enrollmentOpen', 'maintenanceMode', 'assessStudents', 'assessGuidanceCounts',
             'assessSummerStatus', 'guidanceCounselors',
-            'assessGradeFilter', 'assessStatusFilter', 'assessSearchTerm',
+            'assessGradeFilter', 'assessStatusFilter', 'assessSearchTerm', 'assessSectionFilter', 'assessBySection',
             'assessTotal', 'assessPending', 'assessDone', 'assessByGrade', 'assessNextSchoolYear',
             'assessSchoolYear', 'sidebarAssessCount',
             'contactMessages', 'unreadMessagesCount', 'totalMessagesCount', 'readMessagesCount', 'repliedMessagesCount'
@@ -4343,9 +4359,11 @@ class EnrollmentController extends Controller
             ? \App\Models\Subject::where('grade_level', $gradeLevel)->where('is_active', true)->orderBy('name')->get()
             : collect();
 
-        // All grade records for this student (any status)
+        // Submitted and approved grades only — a teacher's draft is unfinished work (not shown), and
+        // a returned grade is being redone. Approved = official; submitted = waiting in Grade Oversight.
         $grades = Grade::where('student_id', $user->id)
             ->when($schoolYear, fn($q) => $q->where('school_year', $schoolYear))
+            ->whereIn('status', ['submitted', 'approved'])
             ->with('subject:id,name')
             ->get();
 
@@ -4353,17 +4371,20 @@ class EnrollmentController extends Controller
 
         $isDescriptive = \App\Models\Grade::isNurseryKinder($gradeLevel ?? '');
 
-        $result = $subjects->map(function ($subject) use ($gradesBySubjectTerm, $isDescriptive) {
+        // "submitted" while any term still waits for approval, "approved" once every entered term is
+        $subjectStatus = function ($termGrades) {
+            $statuses = $termGrades->pluck('status')->unique()->values()->toArray();
+            if (in_array('submitted', $statuses)) return 'submitted';
+            if (in_array('approved', $statuses))  return 'approved';
+            return 'not_entered';
+        };
+
+        $result = $subjects->map(function ($subject) use ($gradesBySubjectTerm, $isDescriptive, $subjectStatus) {
             $termGrades = $gradesBySubjectTerm->get($subject->id, collect());
             $t1 = $termGrades->get(1);
             $t2 = $termGrades->get(2);
             $t3 = $termGrades->get(3);
-
-            $statuses = $termGrades->pluck('status')->unique()->values()->toArray();
-            $status = 'not_entered';
-            if (in_array('approved', $statuses))      $status = 'approved';
-            elseif (in_array('submitted', $statuses)) $status = 'submitted';
-            elseif (in_array('draft', $statuses))     $status = 'draft';
+            $termStatus = ['term1_status' => $t1?->status, 'term2_status' => $t2?->status, 'term3_status' => $t3?->status];
 
             if ($isDescriptive) {
                 return [
@@ -4373,13 +4394,14 @@ class EnrollmentController extends Controller
                     'term3'            => $t3?->descriptive_grade,
                     'average'          => null,
                     'remarks'          => $termGrades->sortByDesc('term')->first()?->remarks ?? null,
-                    'status'           => $status,
+                    'status'           => $subjectStatus($termGrades),
                     'is_descriptive'   => true,
-                ];
+                ] + $termStatus;
             }
 
-            $vals = collect([$t1?->grade, $t2?->grade, $t3?->grade])->filter()->values();
-            $avg  = $vals->count() ? round($vals->avg(), 2) : null;
+            // Average and remarks count APPROVED terms only (official), like the promotion warnings
+            $approved = $termGrades->where('status', 'approved')->pluck('grade')->filter(fn($v) => $v !== null)->map(fn($v) => (float) $v);
+            $avg  = $approved->count() ? round($approved->avg(), 2) : null;
 
             return [
                 'subject'        => $subject->name,
@@ -4387,30 +4409,29 @@ class EnrollmentController extends Controller
                 'term2'          => $t2?->grade,
                 'term3'          => $t3?->grade,
                 'average'        => $avg,
-                'remarks'        => $termGrades->sortByDesc('term')->first()?->remarks ?? null,
-                'status'         => $status,
+                'remarks'        => $avg !== null ? Grade::getRemarks($avg) : null,
+                'status'         => $subjectStatus($termGrades),
                 'is_descriptive' => false,
-            ];
+            ] + $termStatus;
         })->values();
 
         // If no subjects found for grade level, fall back to whatever grade records exist
         if ($result->isEmpty() && $grades->isNotEmpty()) {
-            $result = $grades->groupBy('subject_id')->map(function ($rows) {
+            $result = $grades->groupBy('subject_id')->map(function ($rows) use ($subjectStatus) {
                 $byTerm = $rows->keyBy('term');
-                $vals   = $rows->pluck('grade')->filter()->values();
-                $statuses = $rows->pluck('status')->unique()->values()->toArray();
-                $status = 'not_entered';
-                if (in_array('approved', $statuses))   $status = 'approved';
-                elseif (in_array('submitted', $statuses)) $status = 'submitted';
-                elseif (in_array('draft', $statuses))  $status = 'draft';
+                $approved = $rows->where('status', 'approved')->pluck('grade')->filter(fn($v) => $v !== null)->map(fn($v) => (float) $v);
+                $avg = $approved->count() ? round($approved->avg(), 2) : null;
                 return [
                     'subject' => optional($rows->first()->subject)->name ?? 'Unknown',
                     'term1'   => optional($byTerm->get(1))->grade,
                     'term2'   => optional($byTerm->get(2))->grade,
                     'term3'   => optional($byTerm->get(3))->grade,
-                    'average' => $vals->count() ? round($vals->avg(), 2) : null,
-                    'remarks' => $rows->sortByDesc('term')->first()?->remarks ?? null,
-                    'status'  => $status,
+                    'term1_status' => optional($byTerm->get(1))->status,
+                    'term2_status' => optional($byTerm->get(2))->status,
+                    'term3_status' => optional($byTerm->get(3))->status,
+                    'average' => $avg,
+                    'remarks' => $avg !== null ? Grade::getRemarks($avg) : null,
+                    'status'  => $subjectStatus($rows),
                 ];
             })->values();
         }
@@ -4562,49 +4583,150 @@ class EnrollmentController extends Controller
 
     public function pendingGrades(Request $request)
     {
-        $groups = Grade::with(['student:id,name,lrn', 'teacher:id,name', 'subject:id,name,code'])
+        $grades = Grade::with(['student:id,name,lrn', 'teacher:id,name', 'subject:id,name,code,grade_level', 'enrollment:id,section,grade_level'])
             ->where('status', 'submitted')
-            ->get()
-            ->groupBy(fn($g) => implode('|', [
-                $g->teacher_id, $g->subject_id ?? 'null', $g->term, $g->school_year
+            ->get();
+
+        // Grade level + section of each grade: its own enrollment, else the learner's enrollment
+        // for that school year (grades saved from the grade table often have no enrollment_id).
+        $yearEnrollments = Enrollment::whereIn('user_id', $grades->pluck('student_id')->unique())
+            ->whereIn('school_year', $grades->pluck('school_year')->unique())
+            ->whereNotIn('status', ['declined', 'cancelled'])
+            ->orderByDesc('id')
+            ->get(['id', 'user_id', 'school_year', 'section', 'grade_level'])
+            ->unique(fn ($e) => $e->user_id . '|' . $e->school_year)
+            ->keyBy(fn ($e) => $e->user_id . '|' . $e->school_year);
+        $placeOf = fn ($g) => $g->enrollment ?? $yearEnrollments->get($g->student_id . '|' . $g->school_year);
+
+        $gradeLabels = ['nursery' => 'Nursery', 'kindergarten' => 'Kindergarten', 'grade1' => 'Grade 1', 'grade2' => 'Grade 2',
+                        'grade3' => 'Grade 3', 'grade4' => 'Grade 4', 'grade5' => 'Grade 5', 'grade6' => 'Grade 6'];
+
+        // One batch = one teacher's subject, term and school year for ONE section (so approving a
+        // card never touches the same subject in the teacher's other section)
+        $groups = $grades
+            ->groupBy(fn ($g) => implode('|', [
+                $g->teacher_id, $g->subject_id ?? 'null', $g->term, $g->school_year,
+                $placeOf($g)?->grade_level ?? $g->subject?->grade_level ?? '', $placeOf($g)?->section ?? '',
             ]))
-            ->map(fn($rows) => [
-                'teacher'     => $rows->first()->teacher?->name ?? 'Unknown',
-                'subject'     => $rows->first()->subject?->name ?? 'General',
-                'term'        => $rows->first()->term,
-                'school_year' => $rows->first()->school_year,
-                'teacher_id'  => $rows->first()->teacher_id,
-                'subject_id'  => $rows->first()->subject_id,
-                'count'       => $rows->count(),
-                'grades'      => $rows->map(fn($g) => [
-                    'id'               => $g->id,
-                    'student'          => $g->student?->name ?? 'Unknown',
-                    'grade'            => $g->grade,
-                    'descriptive_grade'=> $g->descriptive_grade,
-                    'remarks'          => $g->remarks,
-                ]),
-            ])
+            ->map(function ($rows) use ($placeOf, $gradeLabels) {
+                $first   = $rows->first();
+                $place   = $placeOf($first);
+                $level   = $place?->grade_level ?? $first->subject?->grade_level;
+                $numbers = $rows->pluck('grade')->filter(fn ($v) => $v !== null)->map(fn ($v) => (float) $v);
+                return [
+                    'teacher'      => $first->teacher?->name ?? 'Unknown',
+                    'subject'      => $first->subject?->name ?? 'General',
+                    'term'         => $first->term,
+                    'school_year'  => $first->school_year,
+                    'teacher_id'   => $first->teacher_id,
+                    'subject_id'   => $first->subject_id,
+                    'grade_level'  => $level,
+                    'grade_label'  => $gradeLabels[$level] ?? ($level ? ucfirst($level) : '—'),
+                    'section'      => $place?->section ?? '—',
+                    'submitted_at' => optional($rows->max('updated_at'))->format('M d, Y g:i A'),
+                    'count'        => $rows->count(),
+                    'average'      => $numbers->count() ? round($numbers->avg(), 2) : null,
+                    'passed'       => $numbers->filter(fn ($v) => $v >= 75)->count(),
+                    'failed'       => $numbers->filter(fn ($v) => $v < 75)->count(),
+                    'ids'          => $rows->pluck('id')->values(),
+                    'grades'       => $rows->sortBy(fn ($g) => $g->student?->name)->map(fn ($g) => $this->oversightGradeRow($g))->values(),
+                ];
+            })
+            ->sortBy(fn ($b) => [$b['school_year'], $b['grade_level'], $b['section'], $b['subject'], $b['term']])
             ->values();
 
         return response()->json(['success' => true, 'data' => $groups]);
     }
 
+    /**
+     * Registrar correction of one grade waiting for review (Grade Oversight › Edit). Keeps the
+     * teacher's original value so the teacher's grade table shows "Edited by registrar: 70 → 78",
+     * and writes the change to the System Logs. The grade stays "submitted" until approved.
+     */
+    public function editSubmittedGrade(Request $request, Grade $grade)
+    {
+        if ($grade->status !== 'submitted') {
+            return response()->json(['success' => false, 'message' => 'Only grades waiting for review can be edited here.'], 422);
+        }
+
+        $fmt = fn ($v) => $v === null ? '' : rtrim(rtrim(number_format((float) $v, 2, '.', ''), '0'), '.');
+        $isDescriptive = $grade->descriptive_grade !== null && $grade->descriptive_grade !== '';
+
+        if ($isDescriptive) {
+            $new = $request->validate(['descriptive_grade' => 'required|in:' . implode(',', Grade::DESCRIPTIVE_GRADES)])['descriptive_grade'];
+            $old = $grade->descriptive_grade;
+        } else {
+            $new = $fmt($request->validate(['grade' => 'required|numeric|min:0|max:100'])['grade']);
+            $old = $fmt($grade->grade);
+        }
+
+        if ($new === $old) {
+            return response()->json(['success' => true, 'message' => 'No change.', 'grade' => $this->oversightGradeRow($grade)]);
+        }
+
+        // The teacher's value is kept from the first correction; changing it back clears the note
+        $original = $grade->original_grade ?? $old;
+        $backToTeacher = $new === $original;
+
+        $grade->update([
+            'grade'             => $isDescriptive ? $grade->grade : (float) $new,
+            'descriptive_grade' => $isDescriptive ? $new : $grade->descriptive_grade,
+            'remarks'           => $isDescriptive ? Grade::getDescriptiveLabel($new) : Grade::getRemarks((float) $new),
+            'original_grade'    => $backToTeacher ? null : $original,
+            'edited_by'         => $backToTeacher ? null : Auth::id(),
+            'edited_at'         => $backToTeacher ? null : now(),
+        ]);
+
+        $grade->loadMissing(['student:id,name', 'subject:id,name', 'teacher:id,name']);
+        ActivityLogger::log('update', "Changed {$grade->student?->name}'s {$grade->subject?->name} Term {$grade->term} grade from {$old} to {$new}"
+            . " (S.Y. {$grade->school_year}, teacher: {$grade->teacher?->name})", 'Grade', $grade->id);
+
+        return response()->json(['success' => true, 'message' => "Grade changed from {$old} to {$new}.", 'grade' => $this->oversightGradeRow($grade->fresh(['student:id,name,lrn']))]);
+    }
+
+    /** One learner row of a Grade Oversight card. */
+    private function oversightGradeRow(Grade $g): array
+    {
+        return [
+            'id'                => $g->id,
+            'student'           => $g->student?->name ?? 'Unknown',
+            'lrn'               => $g->student?->lrn,
+            'grade'             => $g->grade,
+            'descriptive_grade' => $g->descriptive_grade,
+            'remarks'           => $g->remarks,
+            'original_grade'    => $g->original_grade,
+        ];
+    }
+
+    /**
+     * The submitted grades an Approve / Return acts on: exactly the batch's grade_ids when given
+     * (the Grade Oversight cards send these), else every submitted grade of that teacher, subject,
+     * term and school year.
+     */
+    private function submittedGradesFor(Request $request)
+    {
+        return Grade::where('status', 'submitted')
+            ->when($request->filled('grade_ids'), fn ($q) => $q->whereIn('id', $request->grade_ids))
+            ->when(!$request->filled('grade_ids'), fn ($q) => $q
+                ->where('teacher_id', $request->teacher_id)
+                ->where('term', $request->term)
+                ->where('school_year', $request->school_year)
+                ->when($request->subject_id, fn ($q) => $q->where('subject_id', $request->subject_id))
+                ->when(!$request->subject_id, fn ($q) => $q->whereNull('subject_id')));
+    }
+
     public function approveGrades(Request $request)
     {
         $request->validate([
+            'grade_ids'   => 'nullable|array',
+            'grade_ids.*' => 'integer',
             'teacher_id'  => 'required|exists:users,id',
             'subject_id'  => 'nullable|exists:subjects,id',
             'term'        => 'required|integer',
             'school_year' => 'required|string',
         ]);
 
-        $count = Grade::where('teacher_id', $request->teacher_id)
-            ->where('term', $request->term)
-            ->where('school_year', $request->school_year)
-            ->where('status', 'submitted')
-            ->when($request->subject_id, fn($q) => $q->where('subject_id', $request->subject_id))
-            ->when(!$request->subject_id, fn($q) => $q->whereNull('subject_id'))
-            ->update(['status' => 'approved']);
+        $count = $this->submittedGradesFor($request)->update(['status' => 'approved']);
 
         $teacherName = User::find($request->teacher_id)?->name ?? "#{$request->teacher_id}";
         ActivityLogger::log('update', "Approved {$count} grade(s) submitted by {$teacherName} (Term {$request->term}, S.Y. {$request->school_year})", 'Grade');
@@ -4615,6 +4737,8 @@ class EnrollmentController extends Controller
     public function rejectGrades(Request $request)
     {
         $request->validate([
+            'grade_ids'   => 'nullable|array',
+            'grade_ids.*' => 'integer',
             'teacher_id'  => 'required|exists:users,id',
             'subject_id'  => 'nullable|exists:subjects,id',
             'term'        => 'required|integer',
@@ -4622,13 +4746,7 @@ class EnrollmentController extends Controller
             'reason'      => 'nullable|string|max:500',
         ]);
 
-        $count = Grade::where('teacher_id', $request->teacher_id)
-            ->where('term', $request->term)
-            ->where('school_year', $request->school_year)
-            ->where('status', 'submitted')
-            ->when($request->subject_id, fn($q) => $q->where('subject_id', $request->subject_id))
-            ->when(!$request->subject_id, fn($q) => $q->whereNull('subject_id'))
-            ->update(['status' => 'rejected']);
+        $count = $this->submittedGradesFor($request)->update(['status' => 'rejected']);
 
         $teacherName = User::find($request->teacher_id)?->name ?? "#{$request->teacher_id}";
         ActivityLogger::log('delete', "Returned {$count} grade(s) to {$teacherName} for revision (Term {$request->term}, S.Y. {$request->school_year})" . ($request->reason ? " — reason: {$request->reason}" : ''), 'Grade');

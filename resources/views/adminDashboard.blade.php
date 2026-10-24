@@ -856,6 +856,10 @@ function showSection(name, opts = {}) {
     if (name === 'settings' && typeof initSettings === 'function') {
         initSettings();
     }
+    // Here (not in a DOMContentLoaded wrapper) so it also loads when the page reopens on Grade Oversight
+    if (name === 'grade-oversight' && typeof loadGradeSubmissions === 'function') {
+        loadGradeSubmissions();
+    }
     if (name === 'fees' && typeof loadFeeSettings === 'function') {
         loadFeeSettings();
     }
@@ -1671,6 +1675,11 @@ function openWalkInEnrollmentModal() {
         @endif
     </button>
 
+    <button class="sidebar-link" id="nav-grade-oversight" onclick="showSection('grade-oversight')">
+        <i class="bi bi-patch-check-fill"></i> Grade Oversight
+        <span class="sidebar-badge" id="gradeOversightBadge" style="display:none;"></span>
+    </button>
+
     <button class="sidebar-link" id="nav-enrollment" onclick="showSection('enrollment')">
 
         <i class="bi bi-clipboard-check-fill"></i> Enrollment Management
@@ -1758,18 +1767,12 @@ function openWalkInEnrollmentModal() {
 
     </button>
 
-    {{--  
-    <button class="sidebar-link" id="nav-grade-oversight" onclick="showSection('grade-oversight')">
-        <i class="bi bi-patch-check-fill"></i> Grade Oversight
-        <span class="sidebar-badge" id="gradeOversightBadge" style="display:none;"></span>
-    </button>
-
     <button class="sidebar-link" id="nav-messages" onclick="showSection('messages')">
         <i class="bi bi-envelope-fill"></i> Messages
         @if(($unreadMessagesCount ?? 0) > 0)
             <span class="sidebar-badge">{{ $unreadMessagesCount }}</span>
         @endif
-    </button>--}}
+    </button>
     <div class="sidebar-section-lbl">settings</div>
     <div class="sidebar-divider"></div>
 
@@ -2610,28 +2613,6 @@ function openWalkInEnrollmentModal() {
     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
     @include('admin.sections.grade-oversight')
 
-    {{-- Grade Reject Reason Modal --}}
-    <div class="modal fade" id="gradeRejectModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content" style="border-radius:14px; overflow:hidden; border:none;">
-                <div style="background:linear-gradient(135deg,#c62828,#e53935); padding:20px 24px; display:flex; align-items:center; gap:12px;">
-                    <i class="bi bi-x-circle-fill" style="font-size:22px; color:#fff;"></i>
-                    <div style="color:#fff; font-size:16px; font-weight:700;">Return Grades for Revision</div>
-                </div>
-                <div style="padding:24px;">
-                    <label style="font-size:13px; font-weight:600; color:var(--text); margin-bottom:6px; display:block;">Reason / Feedback for Teacher</label>
-                    <textarea id="gradeRejectReason" rows="3" style="width:100%; border:1.5px solid var(--border); border-radius:8px; padding:10px 12px; font-size:13px; resize:vertical;" placeholder="e.g. Please double-check grades for Section A Term 2..."></textarea>
-                </div>
-                <div style="padding:0 24px 20px; display:flex; justify-content:flex-end; gap:8px;">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-danger" id="gradeRejectConfirmBtn" onclick="confirmRejectGrades()">
-                        <i class="bi bi-arrow-return-left me-1"></i> Return to Teacher
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
     {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 
          SECTION: MESSAGES (Contact Form Inbox)
@@ -2770,149 +2751,302 @@ function openWalkInEnrollmentModal() {
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
     // GRADE OVERSIGHT
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-    let _pendingRejectPayload = null;
+    let _goData = [];       // pending batches from the server
+    let _goShown = [];      // batches after the filters
+
+    const _goEsc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const _goTermLabel = t => 'Term ' + t;
 
     function loadGradeSubmissions() {
         const list = document.getElementById('gradeSubmissionsList');
-        const empty = document.getElementById('gradeOversightEmpty');
-        list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);"><i class="bi bi-hourglass-split" style="font-size:32px;display:block;margin-bottom:8px;"></i>Loading...</div>';
-        empty.style.display = 'none';
+        list.innerHTML = '<div class="content-card" style="text-align:center;padding:40px;color:var(--muted);"><i class="bi bi-hourglass-split" style="font-size:28px;display:block;margin-bottom:8px;"></i>Loading submissions…</div>';
+        document.getElementById('gradeOversightEmpty').style.display = 'none';
+        document.getElementById('goNoMatch').style.display = 'none';
 
         fetch('/admin/grades/pending', { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
             .then(r => r.json())
             .then(res => {
-                const data = res.data || [];
-                // Update sidebar badge
+                _goData = res.data || [];
+
+                // Sidebar badge + stats count every pending batch, whatever the filters
                 const badge = document.getElementById('gradeOversightBadge');
-                if (data.length > 0) {
-                    badge.textContent = data.length;
-                    badge.style.display = '';
-                } else {
-                    badge.style.display = 'none';
-                }
-
-                if (data.length === 0) {
-                    list.innerHTML = '';
-                    empty.style.display = '';
-                    return;
-                }
-
-                const termLabel = t => t == 1 ? '1st Term' : t == 2 ? '2nd Term' : '3rd Term';
-
-                list.innerHTML = data.map((group, i) => `
-                <div style="background:#fff;border-radius:12px;border:1px solid var(--border);margin-bottom:16px;overflow:hidden;">
-                    <div style="background:#f8f9fa;padding:14px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);">
-                        <div>
-                            <div style="font-size:14px;font-weight:700;color:var(--text);">
-                                <i class="bi bi-person-badge me-2" style="color:var(--blue);"></i>${group.teacher}
-                            </div>
-                            <div style="font-size:12px;color:var(--muted);margin-top:2px;">
-                                ${group.subject} &nbsp;·&nbsp; ${termLabel(group.term)} &nbsp;·&nbsp; S.Y. ${group.school_year}
-                                &nbsp;·&nbsp; <strong>${group.count}</strong> student(s)
-                            </div>
-                        </div>
-                        <div style="display:flex;gap:8px;">
-                            <button class="action-btn edit" title="Approve All" style="background:#e8f5e9;color:#2e7d32;padding:6px 14px;font-size:12px;font-weight:600;border-radius:8px;display:flex;align-items:center;gap:5px;"
-                                onclick="approveGradeGroup(${group.teacher_id}, ${group.subject_id ?? 'null'}, ${group.term}, '${group.school_year}', this)">
-                                <i class="bi bi-check-lg"></i> Approve
-                            </button>
-                            <button class="action-btn delete" title="Return for Revision" style="background:#ffebee;color:#c62828;padding:6px 14px;font-size:12px;font-weight:600;border-radius:8px;display:flex;align-items:center;gap:5px;"
-                                onclick="openGradeReject(${group.teacher_id}, ${group.subject_id ?? 'null'}, ${group.term}, '${group.school_year}')">
-                                <i class="bi bi-arrow-return-left"></i> Return
-                            </button>
-                        </div>
-                    </div>
-                    <div style="overflow-x:auto;">
-                        <table class="dash-table" style="margin:0;">
-                            <thead><tr><th>#</th><th>Student Name</th><th>Grade</th><th>Remarks</th></tr></thead>
-                            <tbody>
-                                ${group.grades.map((g, j) => {
-                                    const isDesc = g.descriptive_grade && g.descriptive_grade !== '';
-                                    const gradeDisplay = isDesc
-                                        ? `<strong style="color:#1565c0;">${g.descriptive_grade}</strong>`
-                                        : (g.grade !== null && g.grade !== undefined
-                                            ? `<strong style="color:${parseFloat(g.grade) >= 75 ? 'var(--green)' : 'var(--red)'};">${g.grade}</strong>`
-                                            : '<span style="color:#ccc;">—</span>');
-                                    const isPassed = isDesc
-                                        ? g.descriptive_grade !== 'DNME'
-                                        : parseFloat(g.grade) >= 75;
-                                    const remarksBg = isPassed ? '#e8f5e9' : '#ffebee';
-                                    const remarksColor = isPassed ? '#2e7d32' : '#c62828';
-                                    return `<tr>
-                                        <td style="color:var(--muted);">${j+1}</td>
-                                        <td style="font-weight:600;">${g.student}</td>
-                                        <td>${gradeDisplay}</td>
-                                        <td><span style="font-size:11px;padding:3px 8px;border-radius:4px;background:${remarksBg};color:${remarksColor};">${g.remarks || '—'}</span></td>
-                                    </tr>`;
-                                }).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>`).join('');
+                if (badge) { badge.textContent = _goData.length; badge.style.display = _goData.length ? '' : 'none'; }
+                goRefreshStats();
+                goFillFilters();
+                renderGradeOversight();
             })
             .catch(() => {
-                list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red);">Failed to load grade submissions.</div>';
+                list.innerHTML = '<div class="content-card" style="text-align:center;padding:40px;color:var(--red);">Failed to load grade submissions. Please click Refresh.</div>';
             });
     }
 
-    function approveGradeGroup(teacherId, subjectId, term, schoolYear, btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Approving...';
-        fetch('/admin/grades/approve', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-            body: JSON.stringify({ teacher_id: teacherId, subject_id: subjectId === 'null' ? null : subjectId, term, school_year: schoolYear })
-        })
-        .then(r => r.json())
-        .then(res => {
-            if (res.success) {
-                showCustomAlert('success', 'Approved', res.message);
-                loadGradeSubmissions();
-            } else {
-                showCustomAlert('error', 'Error', res.message);
-                btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-check-lg"></i> Approve';
-            }
+    // Filter dropdowns list only what is pending (keeps the current choice when still available)
+    function goSetOptions(id, allLabel, pairs) {
+        const sel = document.getElementById(id);
+        const keep = sel.value;
+        sel.innerHTML = '<option value="">' + allLabel + '</option>' + pairs.map(([v, l]) => '<option value="' + _goEsc(v) + '">' + _goEsc(l) + '</option>').join('');
+        if (pairs.some(([v]) => v === keep)) sel.value = keep;
+    }
+    // School Year and Grade Level options come from the page; only Section is rebuilt (it follows both)
+    function goFillFilters() {
+        goFillSections();
+    }
+    function goFillSections() {
+        const sy = document.getElementById('goFilterSy').value;
+        const grade = document.getElementById('goFilterGrade').value;
+        const names = (window._goSections || [])
+            .filter(s => (!sy || s.school_year === sy) && (!grade || s.grade_level === grade))
+            .map(s => s.name)
+            .concat(_goData.filter(b => (!sy || b.school_year === sy) && (!grade || b.grade_level === grade)).map(b => b.section));
+        goSetOptions('goFilterSection', 'All Sections', [...new Set(names)].filter(n => n && n !== '—').sort().map(s => [s, s]));
+    }
+    function goClearFilters() {
+        ['goFilterSy', 'goFilterTerm', 'goFilterGrade', 'goFilterSection', 'goFilterSearch'].forEach(id => document.getElementById(id).value = '');
+        goFillSections();
+        renderGradeOversight(true);
+    }
+
+    const GO_PER_PAGE = 5;
+    let _goPage = 1;
+    function goGoToPage(p) {
+        _goPage = p;
+        renderGradeOversight();
+        document.getElementById('section-grade-oversight').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Same pagination bar as the other Admin lists (Previous / page numbers / Next + "Showing X to Y of Z")
+    function goRenderPagination(total) {
+        const box = document.getElementById('goPagination');
+        if (!total) { box.style.display = 'none'; box.innerHTML = ''; return; }
+        const last = Math.max(1, Math.ceil(total / GO_PER_PAGE));
+        const from = (_goPage - 1) * GO_PER_PAGE + 1, to = Math.min(total, _goPage * GO_PER_PAGE);
+        const link = (p, label) => '<li class="page-item"><a href="#" class="page-link" onclick="goGoToPage(' + p + '); return false;">' + label + '</a></li>';
+        let html = '<div class="p-3"><nav><ul class="pagination">';
+        html += _goPage > 1 ? link(_goPage - 1, 'Previous') : '<li class="page-item disabled"><span class="page-link">Previous</span></li>';
+        (typeof pageWindow === 'function' ? pageWindow(_goPage, last) : Array.from({ length: last }, (_, k) => k + 1)).forEach(i => {
+            if (i === '…') html += '<li class="page-item disabled"><span class="page-link">…</span></li>';
+            else if (i === _goPage) html += '<li class="page-item active"><span class="page-link">' + i + '</span></li>';
+            else html += link(i, i);
         });
+        html += _goPage < last ? link(_goPage + 1, 'Next') : '<li class="page-item disabled"><span class="page-link">Next</span></li>';
+        html += '</ul></nav><div class="pagination-info">Showing ' + from + ' to ' + to + ' of ' + total + ' batch' + (total === 1 ? '' : 'es') + '</div></div>';
+        box.innerHTML = html;
+        box.style.display = '';
     }
 
-    function openGradeReject(teacherId, subjectId, term, schoolYear) {
-        _pendingRejectPayload = { teacher_id: teacherId, subject_id: subjectId === 'null' ? null : subjectId, term, school_year: schoolYear };
-        document.getElementById('gradeRejectReason').value = '';
-        new bootstrap.Modal(document.getElementById('gradeRejectModal')).show();
-    }
-
-    function confirmRejectGrades() {
-        if (!_pendingRejectPayload) return;
-        const reason = document.getElementById('gradeRejectReason').value.trim();
-        const btn = document.getElementById('gradeRejectConfirmBtn');
-        btn.disabled = true;
-        fetch('/admin/grades/reject', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-            body: JSON.stringify({ ..._pendingRejectPayload, reason })
-        })
-        .then(r => r.json())
-        .then(res => {
-            bootstrap.Modal.getInstance(document.getElementById('gradeRejectModal')).hide();
-            btn.disabled = false;
-            if (res.success) {
-                showCustomAlert('success', 'Returned', res.message);
-                loadGradeSubmissions();
-            } else {
-                showCustomAlert('error', 'Error', res.message);
-            }
-        });
-    }
-
-    // Auto-load when navigating to grade-oversight section
-    const _origShowSection = typeof showSection === 'function' ? showSection : null;
-    document.addEventListener('DOMContentLoaded', () => {
-        const _realShow = window.showSection;
-        window.showSection = function(name) {
-            _realShow(name);
-            if (name === 'grade-oversight') loadGradeSubmissions();
+    function renderGradeOversight(resetPage) {
+        if (resetPage) _goPage = 1;
+        const list   = document.getElementById('gradeSubmissionsList');
+        const empty  = document.getElementById('gradeOversightEmpty');
+        const noMatch = document.getElementById('goNoMatch');
+        const label  = document.getElementById('goResultLabel');
+        const f = {
+            sy: document.getElementById('goFilterSy').value,
+            term: document.getElementById('goFilterTerm').value,
+            grade: document.getElementById('goFilterGrade').value,
+            section: document.getElementById('goFilterSection').value,
+            q: document.getElementById('goFilterSearch').value.trim().toLowerCase(),
         };
+        _goShown = _goData.filter(b =>
+            (!f.sy || b.school_year === f.sy) &&
+            (!f.term || String(b.term) === f.term) &&
+            (!f.grade || b.grade_level === f.grade) &&
+            (!f.section || b.section === f.section) &&
+            (!f.q || [b.teacher, b.subject].some(s => String(s).toLowerCase().includes(f.q)) || b.grades.some(g => String(g.student).toLowerCase().includes(f.q)))
+        );
+
+        empty.style.display   = _goData.length === 0 ? '' : 'none';
+        noMatch.style.display = _goData.length > 0 && _goShown.length === 0 ? '' : 'none';
+        label.textContent = _goData.length
+            ? _goShown.length + ' of ' + _goData.length + ' batch' + (_goData.length === 1 ? '' : 'es') + ' waiting for review match the filters'
+            : '';
+
+        const last = Math.max(1, Math.ceil(_goShown.length / GO_PER_PAGE));
+        if (_goPage > last) _goPage = last;
+        const start = (_goPage - 1) * GO_PER_PAGE;
+        // Card buttons use the index in _goShown, so they still point at the right batch on page 2+
+        list.innerHTML = _goShown.slice(start, start + GO_PER_PAGE).map((b, k) => goCardHtml(b, start + k)).join('');
+        goRenderPagination(_goShown.length);
+    }
+
+    const _goIsDesc = g => g.descriptive_grade !== null && g.descriptive_grade !== undefined && g.descriptive_grade !== '';
+    const _goNum = v => { const n = parseFloat(v); return isNaN(n) ? '' : String(+n.toFixed(2)); };
+
+    function goCardHtml(b, i) {
+        const rows = b.grades.map((g, j) => {
+            const isDesc = _goIsDesc(g);
+            const num = parseFloat(g.grade);
+            const failed = isDesc ? g.descriptive_grade === 'DNME' : (!isNaN(num) && num < 75);
+            const shown = isDesc ? g.descriptive_grade : (isNaN(num) ? '—' : _goNum(num));
+            const remark = g.remarks || (isDesc ? '' : (isNaN(num) ? '' : (num >= 75 ? 'Passed' : 'Failed')));
+            const was = g.original_grade ? '<div style="font-size:10px;color:#b45309;font-weight:600;margin-top:2px;"><i class="bi bi-pencil-square"></i> edited · teacher gave ' + _goEsc(isDesc ? g.original_grade : _goNum(g.original_grade)) + '</div>' : '';
+            return '<tr class="' + (failed ? 'go-row-failed' : '') + '">'
+                + '<td style="color:var(--muted);width:40px;">' + (j + 1) + '</td>'
+                + '<td style="font-weight:600;">' + _goEsc(g.student) + '</td>'
+                + '<td style="font-size:12px;color:var(--muted);">' + _goEsc(g.lrn || '—') + '</td>'
+                + '<td id="go-gcell-' + g.id + '"><strong style="color:' + (failed ? 'var(--red)' : 'var(--green)') + ';">' + _goEsc(shown) + '</strong>' + was + '</td>'
+                + '<td>' + (remark ? '<span class="status-badge ' + (failed ? 'inactive' : 'active') + '">' + _goEsc(remark) + '</span>' : '<span style="color:var(--muted);">—</span>') + '</td>'
+                + '<td style="width:60px;"><button type="button" class="action-btn edit" title="Correct this grade" onclick="goEditGrade(' + i + ', ' + j + ')"><i class="bi bi-pencil-fill"></i></button></td>'
+                + '</tr>';
+        }).join('');
+
+        const open = goIsOpen(b);
+        const metric = (v, label, cls) => '<div class="go-metric ' + (cls || '') + '"><div class="v">' + v + '</div><div class="l">' + label + '</div></div>';
+        return '<div class="content-card go-card' + (b.failed ? ' has-failed' : '') + '" id="go-card-' + i + '">'
+            + '<div class="go-card-head">'
+            +   '<div class="go-head-left">'
+            +     '<div class="go-icon"><i class="bi bi-journal-bookmark-fill"></i></div>'
+            +     '<div>'
+            +       '<div class="go-title">' + _goEsc(b.subject) + '</div>'
+            +       '<div class="go-chips"><span class="go-chip">' + _goEsc(b.grade_label) + ' · ' + _goEsc(b.section) + '</span><span class="go-chip term">' + _goTermLabel(b.term) + '</span><span class="go-chip sy">S.Y. ' + _goEsc(b.school_year) + '</span></div>'
+            +       '<div class="go-meta"><i class="bi bi-person-badge me-1"></i>' + _goEsc(b.teacher) + (b.submitted_at ? ' &nbsp;·&nbsp; <i class="bi bi-clock me-1"></i>Submitted ' + _goEsc(b.submitted_at) : '') + '</div>'
+            +     '</div>'
+            +   '</div>'
+            +   '<div class="go-head-right">'
+            +     '<div class="go-metrics">'
+            +       metric(b.count, 'Learners')
+            +       metric(b.average !== null ? b.average : '—', 'Class Avg')
+            +       metric(b.passed, 'Passed', 'good')
+            +       metric(b.failed, 'Below 75', b.failed ? 'bad' : '')
+            +     '</div>'
+            +     '<div class="go-actions">'
+            +       '<button type="button" class="btn-dash btn-success" style="padding:8px 18px;font-size:12.5px;justify-content:center;" onclick="approveGradeGroup(' + i + ', this)"><i class="bi bi-check-lg"></i> Approve</button>'
+            +       '<button type="button" class="go-toggle" onclick="goToggleGrades(' + i + ')">'
+            +         (open ? '<i class="bi bi-chevron-up"></i> Hide grades' : '<i class="bi bi-chevron-down"></i> View grades (' + b.count + ')') + '</button>'
+            +     '</div>'
+            +   '</div>'
+            + '</div>'
+            + '<div id="go-grades-' + i + '" class="go-grades" style="overflow-x:auto;' + (open ? '' : 'display:none;') + '">'
+            +   '<table class="dash-table" style="margin:0;"><thead><tr><th>#</th><th>Student Name</th><th>LRN</th><th>Grade</th><th>Remarks</th><th>Edit</th></tr></thead><tbody>' + rows + '</tbody></table>'
+            + '</div>'
+            + '</div>';
+    }
+
+    // Learner lists start hidden (keeps the page short); cards with grades below 75 start open.
+    // A list you open or close stays that way when the cards are redrawn (e.g. after a correction).
+    const _goOpenState = {};
+    const _goKey = b => b.ids.join(',');
+    function goIsOpen(b) {
+        const k = _goKey(b);
+        // Decided once per card, so fixing its last grade below 75 doesn't snap the list shut
+        if (!(k in _goOpenState)) _goOpenState[k] = b.failed > 0;
+        return _goOpenState[k];
+    }
+    function goToggleGrades(i) {
+        const b = _goShown[i];
+        if (!b) return;
+        _goOpenState[_goKey(b)] = !goIsOpen(b);
+        renderGradeOversight();
+    }
+
+    function _goPayload(b) {
+        return { grade_ids: b.ids, teacher_id: b.teacher_id, subject_id: b.subject_id, term: b.term, school_year: b.school_year };
+    }
+    function _goDescribe(b) {
+        return b.count + ' ' + b.subject + ' grade' + (b.count === 1 ? '' : 's') + ' (' + _goTermLabel(b.term) + ', ' + b.grade_label + ' · ' + b.section + ', S.Y. ' + b.school_year + ') submitted by ' + b.teacher;
+    }
+
+    function approveGradeGroup(i, btn) {
+        const b = _goShown[i];
+        if (!b) return;
+        showConfirm(
+            'Approve Grades',
+            'Approve ' + _goDescribe(b) + '? They become official right away: students will see them in their portal and they count on the SF10.'
+                + (b.failed ? ' Note: ' + b.failed + ' of them are below 75.' : ''),
+            function () {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Approving…';
+                fetch('/admin/grades/approve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                    body: JSON.stringify(_goPayload(b))
+                })
+                .then(r => r.json())
+                .then(res => {
+                    if (res.success) {
+                        // The card slides away (it's done), then the list and counts refresh
+                        const card = document.getElementById('go-card-' + i);
+                        if (card) { card.style.maxHeight = card.offsetHeight + 'px'; void card.offsetHeight; card.classList.add('go-leaving'); }
+                        showCustomAlert('success', 'Approved', res.message + ' Students can now see them.');
+                        setTimeout(loadGradeSubmissions, 450);
+                    }
+                    else { showCustomAlert('error', 'Error', res.message || 'Approve failed.'); btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg"></i> Approve'; }
+                })
+                .catch(() => { showCustomAlert('error', 'Error', 'Network error. Please try again.'); btn.disabled = false; btn.innerHTML = '<i class="bi bi-check-lg"></i> Approve'; });
+            },
+            { btnText: 'Approve', btnClass: 'btn btn-success', btnIcon: 'bi-check-lg', headerBg: 'linear-gradient(135deg,#14532d,#16a34a)', headerIcon: 'bi-patch-check-fill' }
+        );
+    }
+
+    // ── Registrar correction of one grade (stays "submitted" until the card is approved) ──
+    function goEditGrade(i, j) {
+        const g = _goShown[i] && _goShown[i].grades[j];
+        if (!g) return;
+        const cell = document.getElementById('go-gcell-' + g.id);
+        const field = _goIsDesc(g)
+            ? '<select id="go-edit-' + g.id + '" class="form-fld" style="width:auto;padding:4px 8px;font-size:12.5px;">'
+                + ['O', 'VS', 'S', 'FS', 'DNME'].map(v => '<option value="' + v + '"' + (v === g.descriptive_grade ? ' selected' : '') + '>' + v + '</option>').join('') + '</select>'
+            : '<input id="go-edit-' + g.id + '" type="number" min="0" max="100" step="0.01" class="form-fld" style="width:80px;padding:4px 8px;font-size:12.5px;" value="' + _goNum(g.grade) + '"'
+                + ' onkeydown="if(event.key===\'Enter\'){goSaveGrade(' + i + ',' + j + ')}else if(event.key===\'Escape\'){renderGradeOversight()}">';
+        cell.innerHTML = '<div style="display:flex;gap:6px;align-items:center;">' + field
+            + '<button type="button" class="action-btn view" title="Save" onclick="goSaveGrade(' + i + ', ' + j + ')"><i class="bi bi-check-lg"></i></button>'
+            + '<button type="button" class="action-btn delete" title="Cancel" onclick="renderGradeOversight()"><i class="bi bi-x-lg"></i></button></div>';
+        const el = document.getElementById('go-edit-' + g.id);
+        el.focus(); if (el.select) el.select();
+    }
+
+    function goSaveGrade(i, j) {
+        const b = _goShown[i], g = b && b.grades[j];
+        if (!g) return;
+        const value = document.getElementById('go-edit-' + g.id).value;
+        const isDesc = _goIsDesc(g);
+        if (!isDesc && (value === '' || isNaN(parseFloat(value)) || value < 0 || value > 100)) {
+            showCustomAlert('error', 'Invalid grade', 'Enter a grade from 0 to 100.');
+            return;
+        }
+        fetch('/admin/grades/' + g.id + '/edit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+            body: JSON.stringify(isDesc ? { descriptive_grade: value } : { grade: value })
+        })
+        .then(r => r.json().then(d => ({ ok: r.ok, d })))
+        .then(({ ok, d }) => {
+            if (!ok || !d.success) { showCustomAlert('error', 'Error', d.message || 'Could not save the grade.'); return; }
+            Object.assign(g, d.grade);
+            goRecountBatch(b);
+            goRefreshStats();
+            renderGradeOversight();
+            if (d.message !== 'No change.') showCustomAlert('success', 'Grade corrected', d.message + ' The change is recorded in the System Logs and shown to the teacher.');
+        })
+        .catch(() => showCustomAlert('error', 'Error', 'Network error. Please try again.'));
+    }
+
+    // Card numbers + summary cards follow a correction without reloading the list
+    function goRecountBatch(b) {
+        const nums = b.grades.map(g => parseFloat(g.grade)).filter(n => !isNaN(n));
+        b.average = nums.length ? Math.round(nums.reduce((s, n) => s + n, 0) / nums.length * 100) / 100 : null;
+        b.passed = nums.filter(n => n >= 75).length;
+        b.failed = nums.filter(n => n < 75).length;
+    }
+    function goRefreshStats() {
+        document.getElementById('goStatBatches').textContent  = _goData.length;
+        document.getElementById('goStatGrades').textContent   = _goData.reduce((n, b) => n + b.count, 0);
+        document.getElementById('goStatFailed').textContent   = _goData.reduce((n, b) => n + b.failed, 0);
+        document.getElementById('goStatTeachers').textContent = new Set(_goData.map(b => b.teacher_id)).size;
+    }
+
+    // (Grade Oversight loads from showSection() itself)
+
+    // Sidebar badge: how many batches wait for review, shown on every Admin page (not only after opening Grade Oversight)
+    document.addEventListener('DOMContentLoaded', function () {
+        if (localStorage.getItem('currentAdminSection') === 'grade-oversight') return; // that page loads it anyway
+        fetch('/admin/grades/pending', { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(function (r) { return r.json(); })
+            .then(function (res) {
+                var n = (res.data || []).length, badge = document.getElementById('gradeOversightBadge');
+                if (badge) { badge.textContent = n; badge.style.display = n ? '' : 'none'; }
+            })
+            .catch(function () {});
     });
     </script>
 
@@ -12514,22 +12648,26 @@ function openWalkInEnrollmentModal() {
 
             var statusBadge = {
                 approved:    '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#dcfce7;color:#166534;font-weight:700;">Approved</span>',
-                submitted:   '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#dbeafe;color:#1e40af;font-weight:700;">Submitted</span>',
+                submitted:   '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#dbeafe;color:#1e40af;font-weight:700;" title="Submitted by the teacher — approve it in Grade Oversight">Waiting approval</span>',
                 draft:       '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#fef9c3;color:#854d0e;font-weight:700;">Draft</span>',
                 not_entered: '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:#f3f4f6;color:#9ca3af;font-weight:700;">Not yet</span>',
             };
 
             var isDesc = rows.length > 0 && rows[0].is_descriptive;
 
-            var fmtGrade = function(v) {
+            // A term's grade; one still waiting in Grade Oversight is marked (it isn't official yet)
+            var fmtGrade = function(v, status) {
                 if (v === null || v === undefined || v === '') return '<span style="color:#ccc;">—</span>';
+                var waiting = status === 'submitted'
+                    ? '<div style="font-size:9px;color:#1e40af;font-weight:600;line-height:1.1;" title="Not approved yet — approve it in Grade Oversight">waiting<br>approval</div>'
+                    : '';
                 if (isDesc) {
                     var c = v === 'DNME' ? '#dc2626' : '#1565c0';
-                    return '<span style="font-weight:700;color:' + c + ';">' + v + '</span>';
+                    return '<span style="font-weight:700;color:' + c + ';">' + v + '</span>' + waiting;
                 }
                 var n = parseFloat(v);
                 var c = n >= 75 ? '#166534' : (n >= 70 ? '#854d0e' : '#dc2626');
-                return '<span style="font-weight:700;color:' + c + ';">' + n.toFixed(0) + '</span>';
+                return '<span style="font-weight:700;color:' + c + ';">' + (+n.toFixed(2)) + '</span>' + waiting;
             };
 
             var html = '<table style="width:100%;border-collapse:collapse;font-size:13px;">';
@@ -12559,9 +12697,9 @@ function openWalkInEnrollmentModal() {
                 var rowBg = i % 2 === 0 ? '#fff' : '#fafafa';
                 html += '<tr style="border-top:1px solid #f0f0f0;background:' + rowBg + ';">'
                     + '<td style="padding:9px 12px;font-weight:600;">' + row.subject + '</td>'
-                    + '<td style="padding:9px 8px;text-align:center;">' + fmtGrade(row.term1) + '</td>'
-                    + '<td style="padding:9px 8px;text-align:center;">' + fmtGrade(row.term2) + '</td>'
-                    + '<td style="padding:9px 8px;text-align:center;">' + fmtGrade(row.term3) + '</td>'
+                    + '<td style="padding:9px 8px;text-align:center;">' + fmtGrade(row.term1, row.term1_status) + '</td>'
+                    + '<td style="padding:9px 8px;text-align:center;">' + fmtGrade(row.term2, row.term2_status) + '</td>'
+                    + '<td style="padding:9px 8px;text-align:center;">' + fmtGrade(row.term3, row.term3_status) + '</td>'
                     + (isDesc ? '' : '<td style="padding:9px 8px;text-align:center;">' + avgHtml + '</td>')
                     + '<td style="padding:9px 12px;font-size:12px;color:#555;">' + (remarks || '<span style="color:#ccc;">—</span>') + '</td>'
                     + '<td style="padding:9px 8px;text-align:center;">' + (statusBadge[row.status] || '') + '</td>'
@@ -12571,17 +12709,27 @@ function openWalkInEnrollmentModal() {
             html += '</tbody></table>';
 
             if (!isDesc) {
-                // Summary: numeric average
+                // Summary: General Average from the subjects' APPROVED averages only (official grades)
                 var entered = rows.filter(function(r) { return r.average !== null && r.average !== undefined; });
                 var overallAvg = entered.length ? (entered.reduce(function(s,r){ return s + parseFloat(r.average); }, 0) / entered.length).toFixed(1) : null;
+                var waitingCount = rows.filter(function(r) { return r.status === 'submitted'; }).length;
                 if (overallAvg !== null) {
                     var oa = parseFloat(overallAvg);
                     var oaColor = oa >= 75 ? '#166534' : (oa >= 70 ? '#854d0e' : '#dc2626');
                     var oaLabel = oa >= 75 ? 'General Average — Passed' : (oa >= 70 ? 'General Average — Passed w/ Remedial' : 'General Average — Failed');
                     html += '<div style="margin-top:12px;padding:10px 16px;background:#f0f4ff;border-radius:8px;display:flex;justify-content:space-between;align-items:center;">'
-                        + '<span style="font-size:12px;font-weight:600;color:#555;">' + oaLabel + '</span>'
+                        + '<span style="font-size:12px;font-weight:600;color:#555;">' + oaLabel
+                        + '<span style="display:block;font-size:10.5px;font-weight:400;color:#6b7280;">From approved grades only</span></span>'
                         + '<span style="font-size:20px;font-weight:700;color:' + oaColor + ';">' + overallAvg + '</span>'
                         + '</div>';
+                } else if (rows.some(function(r) { return r.term1 || r.term2 || r.term3; })) {
+                    html += '<div style="margin-top:12px;padding:10px 16px;background:#f0f4ff;border-radius:8px;font-size:12px;color:#1e40af;">'
+                        + '<i class="bi bi-hourglass-split me-1"></i>No approved grades yet — the General Average appears once the grades are approved in Grade Oversight.'
+                        + '</div>';
+                }
+                if (waitingCount > 0 && overallAvg !== null) {
+                    html += '<div style="margin-top:6px;font-size:11px;color:#1e40af;"><i class="bi bi-info-circle me-1"></i>'
+                        + waitingCount + ' subject' + (waitingCount === 1 ? ' has' : 's have') + ' grades still waiting approval in Grade Oversight — they are not counted yet.</div>';
                 }
             } else {
                 html += '<div style="margin-top:12px;padding:10px 16px;background:#e8f4ff;border-radius:8px;font-size:11px;color:#1565c0;">'
