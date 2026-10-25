@@ -2746,7 +2746,10 @@ function openWalkInEnrollmentModal() {
         rows.forEach(function (r) { r.style.display = 'none'; });
         matched.slice(start, start + MSG_PER_PAGE).forEach(function (r) { r.style.display = ''; });
         var none = document.getElementById('msgNoMatch');
-        if (none) none.style.display = matched.length ? 'none' : '';
+        if (none) {
+            none.style.display = matched.length ? 'none' : '';
+            none.textContent = rows.length ? 'No messages match.' : 'No messages left in the inbox.';
+        }
         msgRenderPagination(matched.length);
     }
 

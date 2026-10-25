@@ -1134,19 +1134,11 @@
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-lbl">Term</label>
-                            <select class="form-fld" id="ms-list-term" onchange="syncFiltersToGradeView()">
-                                <option value="1">Term 1</option>
-                                <option value="2">Term 2</option>
-                                <option value="3">Term 3</option>
+                            <label class="form-lbl">Section</label>
+                            {{-- Options are the teacher's own sections in the chosen S.Y. (filled by filterAssignmentsBySchoolYear) --}}
+                            <select class="form-fld" id="ms-list-section" onchange="filterAssignmentsBySchoolYear(document.getElementById('ms-list-sy').value)">
+                                <option value="">All Sections</option>
                             </select>
-                        </div>
-                        <div class="col-md-4" style="display:flex;align-items:flex-end;">
-                            <div style="background:#f0f4ff;border:1px solid #c7d7ff;border-radius:8px;padding:8px 12px;font-size:12px;color:var(--blue);font-weight:600;line-height:1.4;">
-                                <i class="bi bi-arrow-right-circle-fill me-1"></i>
-                                Clicking <strong>Enter Grades</strong> will open:<br>
-                                <span id="ms-filter-preview" style="color:#1a3a6c;">Term 1 &nbsp;·&nbsp; S.Y. {{ $currentSchoolYear }}</span>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -1174,7 +1166,8 @@
                                     $glLabel      = $sec ? ($gradeLabels[$sec->grade_level] ?? ucfirst($sec->grade_level)) : '—';
                                 @endphp
                                 @if($sec)
-                                <tr class="ms-assign-row" data-sy="{{ $sec->school_year ?: $currentSchoolYear }}">
+                                <tr class="ms-assign-row" data-sy="{{ $sec->school_year ?: $currentSchoolYear }}"
+                                    data-section-id="{{ $sec->id }}" data-section-label="{{ $glLabel }} — {{ $sec->name }}">
                                     <td>
                                         <div style="font-weight:700;color:var(--blue);font-size:13px;">{{ $glLabel }}</div>
                                         <div style="font-size:12px;color:var(--muted);">{{ $sec->name }}</div>
@@ -1188,7 +1181,7 @@
                                         <span style="font-size:11px;color:var(--muted);"> students</span>
                                     </td>
                                     <td style="white-space:nowrap;">
-                                        <button class="btn-dash btn-primary" style="padding:7px 12px;font-size:12px;margin-right:6px;"
+                                        <button class="btn-dash btn-primary" style="padding:7px 12px;font-size:12px;"
                                             data-section-id="{{ $sec->id }}"
                                             data-subject-id="{{ $sub?->id ?? '' }}"
                                             data-subject-name="{{ $sub?->name ?? 'All Subjects' }}"
@@ -1196,12 +1189,6 @@
                                             data-grade-level="{{ $sec->grade_level ?? '' }}"
                                             onclick="openSubjectViewFromBtn(this)">
                                             <i class="bi bi-pencil-square"></i> Enter Grades
-                                        </button>
-                                        <button class="btn-dash btn-success" style="padding:7px 12px;font-size:12px;"
-                                            data-section-id="{{ $sec->id }}"
-                                            data-subject-id="{{ $sub?->id ?? '' }}"
-                                            onclick="downloadTemplate(this)">
-                                            <i class="bi bi-file-earmark-excel-fill"></i> Download Excel
                                         </button>
                                     </td>
                                 </tr>
@@ -1288,9 +1275,6 @@
 
                     <div style="width:1px;height:36px;background:var(--border);"></div>
 
-                    <button class="btn-dash btn-secondary" onclick="showDraftPreview()" title="View saved draft grades">
-                        <i class="bi bi-eye"></i> Preview Drafts
-                    </button>
                     <button class="btn-dash btn-secondary" onclick="downloadExportCSV()" title="Download grade template (.xlsx)">
                         <i class="bi bi-file-earmark-arrow-down"></i> Export Template
                     </button>
@@ -1378,48 +1362,6 @@
                 <ul id="ms-error-list" style="margin:0;padding-left:18px;font-size:12px;color:var(--text);"></ul>
             </div>
         </div><!-- /ms-grade-view -->
-
-        <!-- ── Export Preview Modal ── -->
-        <div id="ms-export-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1050;align-items:center;justify-content:center;" onclick="if(event.target===this)closeExportModal()">
-            <div style="background:#fff;border-radius:16px;width:90%;max-width:780px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,0.18);overflow:hidden;">
-                <!-- Modal header -->
-                <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
-                    <div>
-                        <div style="font-size:16px;font-weight:700;color:var(--text);" id="exp-modal-title">Grade Sheet Preview</div>
-                        <div style="font-size:12px;color:var(--muted);" id="exp-modal-sub"></div>
-                    </div>
-                    <div style="display:flex;gap:8px;align-items:center;">
-                        <button class="btn-dash btn-primary" style="padding:8px 16px;" onclick="downloadExportCSV()">
-                            <i class="bi bi-download"></i> Download CSV (Import-Ready)
-                        </button>
-                        <button onclick="closeExportModal()" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;padding:4px 8px;line-height:1;">&times;</button>
-                    </div>
-                </div>
-                <!-- Modal body — scrollable table -->
-                <div style="overflow-y:auto;padding:20px 24px;flex:1;">
-                    <table style="width:100%;border-collapse:collapse;font-size:13px;" id="exp-preview-table">
-                        <thead>
-                            <tr style="background:#f0f4f8;">
-                                <th style="padding:10px 12px;text-align:left;border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);width:36px;">#</th>
-                                <th style="padding:10px 12px;text-align:left;border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);">Student Name</th>
-                                <th style="padding:10px 12px;text-align:left;border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);">LRN</th>
-                                <th style="padding:10px 12px;text-align:center;border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);width:100px;">Grade</th>
-                                <th style="padding:10px 12px;text-align:left;border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);">Remarks</th>
-                            </tr>
-                        </thead>
-                        <tbody id="exp-preview-body">
-                            <tr><td colspan="5" style="padding:40px;text-align:center;color:var(--muted);">Loading preview...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-                <!-- Modal footer -->
-                <div style="padding:12px 24px;border-top:1px solid var(--border);background:#f8fafc;font-size:12px;color:var(--muted);flex-shrink:0;">
-                    <i class="bi bi-info-circle"></i>
-                    <strong>How to use:</strong> Click <em>Preview &amp; Export</em> → fill in the Grade column in Excel → save the file → click <em>Import Grades</em> → review the amber-highlighted grades → click <em>Submit Grades</em>.
-                    Do <strong>not</strong> change student_id, LRN, or Name columns.
-                </div>
-            </div>
-        </div>
 
     </div><!-- /section-students -->
 
@@ -2051,16 +1993,6 @@
     let msIsDescriptive      = false;
     const DESCRIPTIVE_LEVELS = ['nursery', 'kindergarten'];
 
-    function downloadTemplate(btn) {
-        const sectionId  = btn.dataset.sectionId;
-        const subjectId  = btn.dataset.subjectId;
-        const schoolYear = document.getElementById('ms-list-sy').value;
-        const term       = document.getElementById('ms-list-term').value;
-        const params = new URLSearchParams({ section_id: sectionId, term: term, school_year: schoolYear });
-        if (subjectId) params.set('subject_id', subjectId);
-        window.location.href = '/teacher/grades/template?' + params.toString();
-    }
-
     // Switch term tab in the grade view and immediately reload
     function selectMsTerm(term, btn) {
         document.getElementById('ms-term').value = term;
@@ -2075,11 +2007,29 @@
     }
 
     // Keep the grade-view selectors in sync with list-view selectors
-    // My Students list: show only assignments whose section belongs to the chosen school year.
+    // My Students list: show only assignments whose section belongs to the chosen school year,
+    // and to the chosen section. The Section list follows the school year (keeps the pick when it still exists).
     function filterAssignmentsBySchoolYear(sy) {
+        const rows = document.querySelectorAll('#ms-list-view .ms-assign-row');
+        const secSel = document.getElementById('ms-list-section');
+        if (secSel) {
+            const keep = secSel.value, seen = {};
+            let opts = '<option value="">All Sections</option>';
+            rows.forEach(function(row) {
+                if (row.dataset.sy !== sy || seen[row.dataset.sectionId]) return;
+                seen[row.dataset.sectionId] = true;
+                const o = document.createElement('option');
+                o.value = row.dataset.sectionId;
+                o.textContent = row.dataset.sectionLabel;
+                opts += o.outerHTML;
+            });
+            secSel.innerHTML = opts;
+            secSel.value = seen[keep] ? keep : '';
+        }
+        const section = secSel ? secSel.value : '';
         let shown = 0;
-        document.querySelectorAll('#ms-list-view .ms-assign-row').forEach(function(row) {
-            const match = row.dataset.sy === sy;
+        rows.forEach(function(row) {
+            const match = row.dataset.sy === sy && (!section || row.dataset.sectionId === section);
             row.style.display = match ? '' : 'none';
             if (match) shown++;
         });
@@ -2096,28 +2046,11 @@
         if (sel) filterAssignmentsBySchoolYear(sel.value);
     });
 
+    // The term is picked with the Term tabs inside Enter Grades (it stays on the last term used)
     function syncFiltersToGradeView() {
         const sy   = document.getElementById('ms-list-sy').value;
-        const term = document.getElementById('ms-list-term').value;
         filterAssignmentsBySchoolYear(sy);
         document.getElementById('ms-sy').value   = sy;
-        document.getElementById('ms-term').value = term;
-
-        // Sync the term tab button active state
-        document.querySelectorAll('.ms-term-tab').forEach(function(b, idx) {
-            var isActive = (idx + 1) === parseInt(term);
-            b.style.background  = isActive ? 'var(--blue)' : '#fff';
-            b.style.color       = isActive ? '#fff' : '#555';
-            b.style.borderColor = isActive ? 'var(--blue)' : '#d1d5db';
-            b.classList.toggle('active', isActive);
-        });
-
-        // Update the live preview indicator in list view
-        const preview = document.getElementById('ms-filter-preview');
-        if (preview) {
-            const termLabels = { '1': 'Term 1', '2': 'Term 2', '3': 'Term 3' };
-            preview.textContent = (termLabels[term] || 'Term ' + term) + ' · S.Y. ' + sy;
-        }
 
         // If the grade view is already open, reload it with the new filters
         const gradeView = document.getElementById('ms-grade-view');
@@ -2160,14 +2093,12 @@
     }
 
     function backToList() {
-        closeExportModal();
         document.getElementById('ms-grade-view').style.display = 'none';
         document.getElementById('ms-list-view').style.display = '';
         const bcExtraWrap = document.getElementById('bc-extra-wrap');
         if (bcExtraWrap) bcExtraWrap.style.display = 'none';
         // Sync list filters back
         document.getElementById('ms-list-sy').value   = document.getElementById('ms-sy').value;
-        document.getElementById('ms-list-term').value = document.getElementById('ms-term').value;
         msCurrentSection     = null;
         msCurrentSubject     = null;
         msCurrentSubjectName = '';
@@ -2279,16 +2210,19 @@
                     const lockedDisplay = isDesc
                         ? (inputVal ? (DESCRIPTIVE_LABELS[inputVal] || inputVal) : '—')
                         : (inputVal !== '' ? inputVal : '—');
-                    inputHtml = '<div style="padding:6px 8px;font-size:13px;font-weight:600;color:#555;background:#f5f5f5;border-radius:6px;text-align:center;" title="Already posted — no longer editable here.">'
-                        + '<i class="bi bi-lock-fill" style="font-size:10px;color:#999;margin-right:4px;"></i>' + lockedDisplay + '</div>';
-                    // The registrar corrected this grade in Grade Oversight
+                    // The registrar corrected this grade in Grade Oversight: shown inside the same box
+                    // (amber outline + pencil, details on hover) so every row keeps the same height
+                    let editedNote = '';
                     if (s.edited_from) {
                         const num = v => { const n = parseFloat(v); return isNaN(n) ? v : String(+n.toFixed(2)); };
                         const was = isDesc ? s.edited_from : num(s.edited_from);
                         const now = isDesc ? inputVal : num(inputVal);
-                        inputHtml += '<div style="font-size:10px;color:#b45309;margin-top:3px;text-align:center;font-weight:600;" title="Changed by the registrar during review">'
-                            + '<i class="bi bi-pencil-square me-1"></i>Edited by registrar: ' + was + ' → ' + now + '</div>';
+                        editedNote = 'Edited by registrar: ' + was + ' → ' + now;
                     }
+                    inputHtml = '<div style="padding:6px 8px;font-size:13px;font-weight:600;color:#555;background:' + (editedNote ? '#fff8ec' : '#f5f5f5') + ';border-radius:6px;text-align:center;white-space:nowrap;'
+                        + (editedNote ? 'box-shadow:inset 0 0 0 1.5px #f5a623;' : '') + '" title="' + (editedNote ? editedNote + ' (changed during review)' : 'Already posted — no longer editable here.') + '">'
+                        + '<i class="bi bi-lock-fill" style="font-size:10px;color:#999;margin-right:4px;"></i>' + lockedDisplay
+                        + (editedNote ? '<i class="bi bi-pencil-square" style="font-size:11px;color:#b45309;margin-left:5px;"></i>' : '') + '</div>';
                     remarks = isDesc
                         ? (inputVal ? (DESCRIPTIVE_LABELS[inputVal] || inputVal) : '')
                         : (s.remarks || '');
@@ -2334,7 +2268,8 @@
                 const permitBadge = s.exam_permit_held
                     ? '<div style="font-size:10px;color:#c62828;margin-top:2px;font-weight:600;" title="' + (s.exam_permit_reason === 'broken_promise' ? 'Promissory Note broken — payment promise date passed unpaid' : 'Payments 3+ consecutive months behind') + '"><i class="bi bi-exclamation-triangle-fill"></i> Exam Permit Withheld</div>'
                     : '';
-                html += '<tr data-student-id="' + s.student_id + '" data-enrollment-id="' + (s.enrollment_id || '') + '">'
+                // Fixed height so rows with the Exam Permit line under the name line up with the rest
+                html += '<tr style="height:64px;" data-student-id="' + s.student_id + '" data-enrollment-id="' + (s.enrollment_id || '') + '">'
                     + '<td style="color:var(--muted);font-size:12px;">' + (i+1) + '</td>'
                     + '<td><div style="font-weight:600;font-size:13px;">' + s.name + '</div>'
                     +   (isDraftFill ? '<div style="font-size:10px;color:#d68910;margin-top:2px;"><i class="bi bi-upload"></i> Imported draft — verify before submitting</div>' : '')
@@ -2480,65 +2415,9 @@
         });
     }
 
-    let msExportData = []; // holds rows for download
-
     function triggerImport() {
         if (!msCurrentSection) { showToast('Please select a section first.', 'error'); return; }
         document.getElementById('import-file').click();
-    }
-
-    function showDraftPreview() {
-        if (!msCurrentSection) { showToast('Please select a section first.', 'error'); return; }
-        const term       = document.getElementById('ms-term').value;
-        const schoolYear = document.getElementById('ms-sy').value;
-        const titleEl    = document.getElementById('ms-view-title').textContent;
-
-        // Populate modal header
-        document.getElementById('exp-modal-title').textContent = 'Draft Preview — ' + titleEl;
-        document.getElementById('exp-modal-sub').textContent   = 'S.Y. ' + schoolYear + ' · Term ' + term;
-
-        // Read current rows from the grade table
-        const rows = document.querySelectorAll('#ms-grade-body tr[data-student-id]');
-        const tbody = document.getElementById('exp-preview-body');
-        msExportData = [];
-
-        if (!rows.length) {
-            tbody.innerHTML = '<tr><td colspan="5" style="padding:30px;text-align:center;color:var(--muted);">No students loaded. Open a subject first.</td></tr>';
-        } else {
-            let html = '';
-            rows.forEach(function(row, i) {
-                const name    = row.cells[1].querySelector('div')?.textContent.trim() || row.cells[1].textContent.trim();
-                const lrn     = row.cells[2].textContent.trim();
-                const gradeIn = row.querySelector('input[type="number"]');
-                const grade   = gradeIn ? (gradeIn.value !== '' ? parseFloat(gradeIn.value) : '') : '';
-                const remarksEl = row.querySelector('.remarks-cell span');
-                const remarks = remarksEl ? remarksEl.textContent.trim() : '—';
-                const studentId = row.dataset.studentId;
-
-                msExportData.push({ studentId, lrn, name, grade, remarks });
-
-                const gradeColor = grade !== '' ? (grade >= 75 ? '#27ae60' : '#e74c3c') : '#718096';
-                const bgColor = (i % 2 === 0) ? '#fff' : '#f8fafc';
-                html += '<tr style="background:' + bgColor + ';">'
-                    + '<td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;color:#718096;">' + (i + 1) + '</td>'
-                    + '<td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;font-weight:600;color:#2d3748;">' + name + '</td>'
-                    + '<td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;color:#718096;font-size:12px;">' + (lrn || '—') + '</td>'
-                    + '<td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;text-align:center;font-weight:700;font-size:15px;color:' + gradeColor + ';">' + (grade !== '' ? grade : '—') + '</td>'
-                    + '<td style="padding:10px 12px;border-bottom:1px solid #e2e8f0;">'
-                    +   (grade !== '' ? '<span style="background:' + (grade >= 75 ? '#e8f8f0' : '#fdecea') + ';color:' + (grade >= 75 ? '#27ae60' : '#e74c3c') + ';padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;">' + remarks + '</span>' : '<span style="color:#718096;">—</span>')
-                    + '</td>'
-                    + '</tr>';
-            });
-            tbody.innerHTML = html;
-        }
-
-        // Show modal
-        const modal = document.getElementById('ms-export-modal');
-        modal.style.display = 'flex';
-    }
-
-    function closeExportModal() {
-        document.getElementById('ms-export-modal').style.display = 'none';
     }
 
     function downloadExportCSV() {
@@ -2588,7 +2467,9 @@
             showToast(data.message || 'Draft saved!', 'warning');
             if (data.errors && data.errors.length) {
                 const ul = document.getElementById('ms-error-list');
-                ul.innerHTML = data.errors.map(e => '<li>' + e + '</li>').join('');
+                // Messages quote cell values from the uploaded file — show them as text, not HTML
+                ul.innerHTML = '';
+                data.errors.forEach(e => { const li = document.createElement('li'); li.textContent = e; ul.appendChild(li); });
                 document.getElementById('ms-import-errors').style.display = '';
             }
             // Only reload if still viewing the same section

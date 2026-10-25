@@ -259,6 +259,11 @@ class DashboardController extends Controller
             }
         }
 
+        // Alphabetical (A–Z by name, as shown) everywhere the teacher sees the class:
+        // grade entry, the Excel export, attendance and the class lists
+        $section->setRelation('students', $section->students
+            ->sortBy(fn($s) => mb_strtolower(trim($s->name)), SORT_NATURAL)->values());
+
         $this->sectionStudentsCache[$section->id] = $section->students;
         return $section;
     }
@@ -611,14 +616,19 @@ class DashboardController extends Controller
         $termLabel   = 'Term ' . $request->term;
         $subjectName = $subject?->name ?? 'All Subjects';
         $gradeLevel  = strtoupper(str_replace(['_', '-'], ' ', $section->grade_level ?? ''));
+        $isDescriptive = \App\Models\Grade::isNurseryKinder($section->grade_level ?? '');
 
+        // Same values the teacher sees on screen: the posted grade (submitted or approved),
+        // otherwise the saved draft. (Was submitted only, so approved grades exported blank.)
         $existingGrades = Grade::where('teacher_id', $teacher->id)
             ->when($request->subject_id, fn($q) => $q->where('subject_id', $request->subject_id))
             ->when(!$request->subject_id, fn($q) => $q->whereNull('subject_id'))
             ->where('term', $request->term)
             ->where('school_year', $schoolYear)
-            ->where('status', 'submitted')
+            ->whereIn('status', ['draft', 'submitted', 'approved'])
             ->whereIn('student_id', $students->pluck('id'))
+            ->orderByRaw("status = 'draft' DESC") // drafts first, so keyBy keeps the posted grade
+            ->orderBy('id')
             ->get()
             ->keyBy('student_id');
 
@@ -646,11 +656,14 @@ class DashboardController extends Controller
             'color'       => ['rgb' => 'b0b8c4'],
         ]]];
 
-        $ws->getColumnDimension('A')->setWidth(5);
-        $ws->getColumnDimension('B')->setWidth(30);
-        $ws->getColumnDimension('C')->setWidth(18);
+        $ws->getColumnDimension('A')->setWidth(12);
+        $ws->getColumnDimension('B')->setWidth(17);
+        $ws->getColumnDimension('C')->setWidth(30);
         $ws->getColumnDimension('D')->setWidth(12);
         $ws->getColumnDimension('E')->setWidth(20);
+        // F = student ID, hidden: Import Grades matches rows by it (or by LRN when it is blank),
+        // so the file works even for students who have no LRN yet
+        $ws->getColumnDimension('F')->setWidth(12)->setVisible(false);
 
         $r = 1;
 
@@ -747,22 +760,22 @@ class DashboardController extends Controller
 
         // ── Instructions note ──
         $ws->mergeCells("A{$r}:{$lastCol}{$r}");
-        $ws->setCellValue("A{$r}", 'INSTRUCTIONS: Only edit column D (Grade). Do NOT change student_id, Student Name, or LRN. You can import this file directly (.xlsx) or save as .csv first.');
+        $ws->setCellValue("A{$r}", 'INSTRUCTIONS: Only edit column D (' . ($isDescriptive ? 'Rating' : 'Grade') . '). Do NOT change the LRN or Student Name. Students are listed A–Z.');
         $ws->getStyle("A{$r}:{$lastCol}{$r}")->applyFromArray([
             'font'      => ['italic' => true, 'size' => 9, 'color' => ['rgb' => '7f4f00']],
             'fill'      => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFF8E1']],
             'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT, 'wrapText' => true],
             'borders'   => ['allBorders' => ['borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN, 'color' => ['rgb' => $gold]]],
         ]);
-        $ws->getRowDimension($r)->setRowHeight(18);
+        $ws->getRowDimension($r)->setRowHeight(28);
         $r++;
         $r++; // spacer
 
         // ── Column headers ──
-        // Column A = student_id (required by import), B = Name, C = LRN, D = Grade, E = Remarks
-        $colHeaders = ['student_id', 'STUDENT NAME', 'LRN', 'GRADE (Edit Only)', 'REMARKS'];
+        // A = No., B = LRN, C = Name, D = Grade, E = Remarks, F = student ID (hidden, used by import)
+        $colHeaders = ['NO.', 'LRN', 'STUDENT NAME', $isDescriptive ? 'RATING (Edit Only)' : 'GRADE (Edit Only)', 'REMARKS', 'STUDENT ID'];
         foreach ($colHeaders as $i => $h) {
-            $col = chr(65 + $i); // A, B, C, D, E
+            $col = chr(65 + $i); // A … F
             $ws->setCellValue("{$col}{$r}", $h);
         }
         $ws->getStyle("A{$r}:{$lastCol}{$r}")->applyFromArray([
@@ -784,23 +797,30 @@ class DashboardController extends Controller
         // ── Student data rows ──
         foreach ($students as $i => $student) {
             $gradeRecord = $existingGrades->get($student->id);
-            $grade       = $gradeRecord?->grade;
-            $remarks     = $grade !== null ? \App\Models\Grade::getRemarks($grade) : '';
+            if ($isDescriptive) {
+                $grade   = $gradeRecord?->descriptive_grade ?: null;
+                $remarks = $grade ? \App\Models\Grade::getDescriptiveLabel($grade) : '';
+            } else {
+                $grade   = $gradeRecord?->grade;
+                $remarks = $grade !== null ? \App\Models\Grade::getRemarks($grade) : '';
+            }
             $rowBg       = $i % 2 === 0 ? 'FFFFFF' : 'f5f7fa';
 
-            $ws->setCellValue("A{$r}", $student->id); // student_id — required for import
-            $ws->setCellValue("B{$r}", $student->name);
-            $ws->setCellValue("C{$r}", $student->lrn ?? '');
+            $ws->setCellValue("A{$r}", $i + 1);
+            // LRN as text, so Excel keeps all 12 digits instead of showing 1.23E+11
+            $ws->setCellValueExplicit("B{$r}", (string) ($student->lrn ?? ''), \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            $ws->setCellValue("C{$r}", $student->name);
             if ($grade !== null) {
-                $ws->setCellValue("D{$r}", $grade);
+                $ws->setCellValue("D{$r}", $isDescriptive ? $grade : (float) $grade);
             }
             $ws->setCellValue("E{$r}", $remarks);
+            $ws->setCellValue("F{$r}", $student->id); // hidden — required for import
 
             $ws->getStyle("A{$r}:{$lastCol}{$r}")->applyFromArray(array_merge($thinBorder, [
                 'fill' => ['fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID, 'startColor' => ['rgb' => $rowBg]],
             ]));
-            // Center: #, Grade
-            foreach (["A{$r}", "C{$r}", "D{$r}"] as $c) {
+            // Center: No., LRN, Grade
+            foreach (["A{$r}", "B{$r}", "D{$r}"] as $c) {
                 $ws->getStyle($c)->getAlignment()->setHorizontal(\PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER);
             }
             // Highlight grade cell (editable)
@@ -810,7 +830,7 @@ class DashboardController extends Controller
             ]);
             // Color remarks
             if ($grade !== null) {
-                $remarkColor = $grade >= 75 ? '2e7d32' : 'c62828';
+                $remarkColor = ($isDescriptive ? $grade !== 'DNME' : $grade >= 75) ? '2e7d32' : 'c62828';
                 $ws->getStyle("E{$r}")->getFont()->getColor()->setRGB($remarkColor);
             }
             $ws->getRowDimension($r)->setRowHeight(16);
@@ -837,7 +857,7 @@ class DashboardController extends Controller
         // ── Footer note ──
         $r += 2;
         $ws->mergeCells("A{$r}:{$lastCol}{$r}");
-        $ws->setCellValue("A{$r}", 'To import: save a copy as .csv (comma-separated), then upload via Teacher Portal > Import Grades.');
+        $ws->setCellValue("A{$r}", 'To import: upload this file (.xlsx) or a .csv copy via Teacher Portal > Import Grades.');
         $ws->getStyle("A{$r}")->applyFromArray([
             'font'      => ['italic' => true, 'size' => 9, 'color' => ['rgb' => '888888']],
             'alignment' => ['horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_LEFT],
@@ -1445,6 +1465,31 @@ class DashboardController extends Controller
 
     // ── IMPORT: parse CSV → save as draft ──
 
+    /**
+     * Column positions of an import file's header row, or null when the row is not a header.
+     * Recognises the current export (LRN … STUDENT ID), older exports (student_id … LRN … GRADE)
+     * and the old '#' template header.
+     */
+    private function gradeImportColumns(array $cells): ?array
+    {
+        $h = array_map(fn($v) => strtolower(trim((string) $v)), $cells);
+        $find = function (array $names) use ($h) {
+            foreach ($h as $i => $v) if (in_array($v, $names, true)) return $i;
+            return null;
+        };
+        $id    = $find(['student_id', 'student id']);
+        $lrn   = $find(['lrn']);
+        $name  = $find(['student name', 'student_name', 'name']);
+        $grade = null;
+        foreach ($h as $i => $v) {
+            if (str_starts_with($v, 'grade') || str_starts_with($v, 'rating')) { $grade = $i; break; }
+        }
+
+        if (($h[0] ?? '') === '#') return ['id' => 0, 'lrn' => $lrn, 'name' => $name ?? 1, 'grade' => $grade ?? 3];
+        if ($id === null && ($lrn === null || $grade === null)) return null;
+        return ['id' => $id, 'lrn' => $lrn, 'name' => $name, 'grade' => $grade ?? 3];
+    }
+
     public function importGrades(Request $request)
     {
         $teacher = Auth::user();
@@ -1483,107 +1528,88 @@ class DashboardController extends Controller
         $rows         = [];
         $errors       = [];
 
-        // ── Parse xlsx / xls using PhpSpreadsheet ──
+        // ── Read the file into plain rows (.xlsx/.xls via PhpSpreadsheet, .csv/.txt line by line) ──
+        $table = [];
         if (in_array($extension, ['xlsx', 'xls'])) {
             try {
-                $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($uploadedFile->getRealPath());
-                $sheet       = $spreadsheet->getActiveSheet();
-                $headerFound = false;
-
+                $sheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($uploadedFile->getRealPath())->getActiveSheet();
                 foreach ($sheet->getRowIterator() as $sheetRow) {
                     $cells = [];
                     foreach ($sheetRow->getCellIterator() as $cell) {
                         $cells[] = trim((string) $cell->getValue());
                     }
-                    if (empty(array_filter($cells))) continue;
-
-                    $firstCell = strtolower($cells[0] ?? '');
-
-                    // Skip rows until we find the header
-                    if (!$headerFound) {
-                        // Detect header: first cell is '#' comment or 'student_id' or numeric (actual data row)
-                        if (str_starts_with($firstCell, '#')) continue;
-                        if ($firstCell === 'student_id' || $firstCell === '#') { $headerFound = true; continue; }
-                        // If first cell looks like a number, treat it as a data row (no explicit header)
-                        if (is_numeric($cells[0])) $headerFound = true;
-                        else continue;
-                    }
-
-                    // Skip footer/summary rows (CLASS AVERAGE, notes, etc.) — column A must be a positive integer
-                    if (!is_numeric($cells[0]) || (int)$cells[0] <= 0) continue;
-
-                    $studentId = (int) ($cells[0] ?? 0);
-                    // Export template: A=student_id, B=Name, C=LRN, D=Grade (index 3), E=Remarks
-                    // Both Grade 1-6 and Nursery/Kinder read from column D (index 3)
-                    $rawVal = strtoupper(trim($cells[3] ?? ''));
-
-                    if (!in_array($studentId, $validStudentIds)) {
-                        $errors[] = "Row with student_id {$studentId} does not belong to this section.";
-                        continue;
-                    }
-
-                    if ($isDescriptive) {
-                        if ($rawVal !== '' && !in_array($rawVal, \App\Models\Grade::DESCRIPTIVE_GRADES)) {
-                            $errors[] = "Student ID {$studentId}: rating \"{$rawVal}\" is invalid (must be O, VS, S, FS, or DNME).";
-                            continue;
-                        }
-                        $rows[] = ['student_id' => $studentId, 'grade' => null, 'descriptive_grade' => $rawVal !== '' ? $rawVal : null, 'name' => trim($cells[2] ?? '')];
-                    } else {
-                        if ($rawVal !== '' && (!is_numeric($rawVal) || (float)$rawVal < 0 || (float)$rawVal > 100)) {
-                            $errors[] = "Student ID {$studentId}: grade \"{$rawVal}\" is invalid (must be 0–100 or blank).";
-                            continue;
-                        }
-                        $rows[] = ['student_id' => $studentId, 'grade' => $rawVal !== '' ? (float) $rawVal : null, 'descriptive_grade' => null, 'name' => trim($cells[2] ?? '')];
-                    }
+                    $table[] = $cells;
                 }
             } catch (\Exception $e) {
                 return response()->json(['success' => false, 'message' => 'Could not read Excel file: ' . $e->getMessage()], 422);
             }
-
-            // Skip to DB save section below
         } else {
-        // ── Parse CSV / TXT ──
-        $handle = fopen($uploadedFile->getRealPath(), 'r');
-        if (!$handle) {
-            return response()->json(['success' => false, 'message' => 'Could not read file.'], 422);
+            $handle = fopen($uploadedFile->getRealPath(), 'r');
+            if (!$handle) {
+                return response()->json(['success' => false, 'message' => 'Could not read file.'], 422);
+            }
+            while (($line = fgetcsv($handle)) !== false) {
+                $table[] = array_map(fn($v) => trim((string) $v), $line);
+            }
+            // Excel's "CSV UTF-8" puts an invisible marker (BOM) before the first cell of the file
+            if (isset($table[0][0])) $table[0][0] = preg_replace('/^\xEF\xBB\xBF/', '', $table[0][0]);
+            fclose($handle);
         }
 
-        $headerFound = false;
+        // ── Find the header row, then match each student row ──
+        // Current export: LRN | STUDENT NAME | GRADE | REMARKS | STUDENT ID (hidden).
+        // Older exports: student_id | STUDENT NAME | LRN | GRADE | REMARKS. Columns are found by header name,
+        // so both work. A row is matched by its student ID; without one (e.g. a sheet typed by hand), by its LRN.
+        $lrnToId = $section->students->filter(fn($s) => filled($s->lrn))->mapWithKeys(fn($s) => [trim($s->lrn) => $s->id])->all();
+        $cols = null;
 
-        while (($row = fgetcsv($handle)) !== false) {
-            // Skip comment/info rows
-            if (isset($row[0]) && str_starts_with(trim($row[0]), '#')) continue;
-            // Skip header row
-            if (!$headerFound && isset($row[0]) && strtolower(trim($row[0])) === 'student_id') {
-                $headerFound = true;
-                continue;
+        foreach ($table as $cells) {
+            if (!array_filter($cells, fn($v) => $v !== '')) continue;
+            if (str_starts_with($cells[0] ?? '', '#') && $cells[0] !== '#') continue; // comment line
+
+            if ($cols === null) {
+                $cols = $this->gradeImportColumns($cells);
+                if ($cols !== null) continue;              // this was the header row
+                if (!is_numeric($cells[0] ?? '')) continue; // title / school info rows above the header
+                $cols = ['id' => 0, 'lrn' => null, 'name' => 1, 'grade' => 3]; // no header: the old layout
             }
-            if (!$headerFound) continue;
 
-            $studentId = (int) ($row[0] ?? 0);
-            $rawVal    = strtoupper(trim($row[3] ?? ''));
+            $rawId = $cols['id'] !== null ? ($cells[$cols['id']] ?? '') : '';
+            $lrn   = $cols['lrn'] !== null ? ($cells[$cols['lrn']] ?? '') : '';
+            $name  = $cols['name'] !== null ? ($cells[$cols['name']] ?? '') : '';
+            $label = $name !== '' ? $name : ($lrn !== '' ? "LRN {$lrn}" : "Student ID {$rawId}");
+
+            if (is_numeric($rawId) && (int) $rawId > 0) {
+                $studentId = (int) $rawId;
+            } elseif ($lrn !== '' && isset($lrnToId[$lrn])) {
+                $studentId = $lrnToId[$lrn];
+            } elseif ($lrn !== '' && ctype_digit($lrn)) {
+                $errors[] = "{$label}: LRN {$lrn} does not belong to this section.";
+                continue;
+            } else {
+                continue; // CLASS AVERAGE, notes, blank lines
+            }
 
             if (!in_array($studentId, $validStudentIds)) {
-                $errors[] = "Row with student_id {$studentId} does not belong to this section.";
+                $errors[] = "{$label} does not belong to this section.";
                 continue;
             }
 
+            $rawVal = strtoupper(trim($cells[$cols['grade']] ?? ''));
             if ($isDescriptive) {
                 if ($rawVal !== '' && !in_array($rawVal, \App\Models\Grade::DESCRIPTIVE_GRADES)) {
-                    $errors[] = "Student ID {$studentId}: rating \"{$rawVal}\" is invalid (must be O, VS, S, FS, or DNME).";
+                    $errors[] = "{$label}: rating \"{$rawVal}\" is invalid (must be O, VS, S, FS, or DNME).";
                     continue;
                 }
-                $rows[] = ['student_id' => $studentId, 'grade' => null, 'descriptive_grade' => $rawVal !== '' ? $rawVal : null, 'name' => trim($row[2] ?? '')];
+                $rows[] = ['student_id' => $studentId, 'grade' => null, 'descriptive_grade' => $rawVal !== '' ? $rawVal : null, 'name' => $name];
             } else {
                 if ($rawVal !== '' && (!is_numeric($rawVal) || (float)$rawVal < 0 || (float)$rawVal > 100)) {
-                    $errors[] = "Student ID {$studentId}: grade \"{$rawVal}\" is invalid (must be 0–100 or blank).";
+                    $errors[] = "{$label}: grade \"{$rawVal}\" is invalid (must be 0–100 or blank).";
                     continue;
                 }
-                $rows[] = ['student_id' => $studentId, 'grade' => $rawVal !== '' ? (float) $rawVal : null, 'descriptive_grade' => null, 'name' => trim($row[2] ?? '')];
+                $rows[] = ['student_id' => $studentId, 'grade' => $rawVal !== '' ? (float) $rawVal : null, 'descriptive_grade' => null, 'name' => $name];
             }
         }
-        fclose($handle);
-        } // end CSV else block
 
         if (empty($rows) && empty($errors)) {
             return response()->json(['success' => false, 'message' => 'No valid data rows found in file.'], 422);
@@ -1604,9 +1630,26 @@ class DashboardController extends Controller
                 ->whereIn('student_id', array_column($rows, 'student_id'))
                 ->delete();
 
+            // Same rules as Save as Draft: no draft over a grade that is already posted (submitted/approved —
+            // the export includes those, so a re-imported export must not create drafts for them), and a
+            // blank cell creates no draft (it only clears the old one above).
+            $lockedStudentIds = Grade::where('teacher_id', $teacher->id)
+                ->when($request->subject_id, fn($q) => $q->where('subject_id', $request->subject_id))
+                ->when(!$request->subject_id, fn($q) => $q->whereNull('subject_id'))
+                ->where('term', $request->term)
+                ->where('school_year', $schoolYear)
+                ->whereIn('status', ['submitted', 'approved'])
+                ->whereIn('student_id', array_column($rows, 'student_id'))
+                ->pluck('student_id')
+                ->all();
+
+            $saved = 0; $skippedPosted = 0;
             foreach ($rows as $row) {
                 $descriptive = $row['descriptive_grade'] ?? null;
                 $gradeVal    = $row['grade'] ?? null;
+                if ($gradeVal === null && $descriptive === null) continue;                              // blank cell
+                if (in_array($row['student_id'], $lockedStudentIds)) { $skippedPosted++; continue; }   // already posted
+                $saved++;
                 Grade::create([
                     'student_id'        => $row['student_id'],
                     'teacher_id'        => $teacher->id,
@@ -1623,11 +1666,16 @@ class DashboardController extends Controller
             }
             DB::commit();
 
+            $message = $saved . ' grade(s) saved as draft.';
+            if ($skippedPosted) {
+                $message .= ' ' . $skippedPosted . ' skipped because they are already posted and can no longer be edited here.';
+            }
             return response()->json([
-                'success'   => true,
-                'message'   => count($rows) . ' student grades saved as draft.',
-                'draft_rows'=> $rows,
-                'errors'    => $errors,
+                'success'     => true,
+                'message'     => $message,
+                'draft_count' => $saved,
+                'draft_rows'  => $rows,
+                'errors'      => $errors,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();

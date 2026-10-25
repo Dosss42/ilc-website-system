@@ -4949,6 +4949,8 @@
         const gradeLevel = studentGradeLevel.toLowerCase().replace(/\s/g, '');
         const optCContainer = document.getElementById('opt-c-container');
         const optDContainer = document.getElementById('opt-d-container');
+        // The plan cards are not on the page once tuition is fully paid
+        if (!optCContainer || !optDContainer) return;
 
         // Option C is for Grade 1-6 only
         if (['grade1', 'grade2', 'grade3', 'grade4', 'grade5', 'grade6'].includes(gradeLevel)) {
