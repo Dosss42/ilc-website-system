@@ -57,9 +57,9 @@
             <div class="p-3">
                 <div class="row g-3">
                     <div class="col-md-5">
-                        <div style="position:relative;">
-                            <i class="bi bi-search" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#aaa;font-size:13px;"></i>
-                            <input type="text" id="archive-search-input" class="form-fld" placeholder="Search name, email, or LRN…" style="padding-left:32px;" oninput="filterArchiveRows()">
+                        <div class="toolbar-search toolbar-search-fill">
+                            <i class="bi bi-search"></i>
+                            <input type="text" id="archive-search-input" placeholder="Search name, email, or LRN…" oninput="filterArchiveRows()">
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -233,9 +233,9 @@
 
         <div class="content-card mb-4">
             <div class="p-3">
-                <div style="position:relative; max-width:400px;">
-                    <i class="bi bi-search" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#aaa;font-size:13px;"></i>
-                    <input type="text" id="archive-teacher-search-input" class="form-fld" placeholder="Search name or email…" style="padding-left:32px;" oninput="filterArchiveTeacherRows()">
+                <div class="toolbar-search" style="max-width:400px;">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="archive-teacher-search-input" placeholder="Search name or email…" oninput="filterArchiveTeacherRows()">
                 </div>
             </div>
         </div>

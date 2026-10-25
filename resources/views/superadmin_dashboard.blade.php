@@ -326,6 +326,22 @@
         .status-badge.pending  { background: #fff8ec; color: #d68910; }
         .status-badge.suspended { background: #fdecea; color: var(--red); }
         .status-badge.primary  { background: var(--blue-pale); color: var(--blue); }
+        /* Filter row + search box — copied from public/css/adminDashboard.css (Contact Messages uses them) */
+        .module-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+        .toolbar-search {
+            display: flex; align-items: center; gap: 8px;
+            background: var(--white, #fff); border: 1.5px solid var(--border); border-radius: 8px; padding: 8px 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .toolbar-search:focus-within { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(26,58,108,0.08); }
+        .module-toolbar .toolbar-search { min-width: 220px; flex: 1; max-width: 320px; padding: 7px 14px; }
+        .toolbar-search.toolbar-search-fill { width: 100%; max-width: none; min-height: 100%; }
+        .toolbar-search i { color: var(--muted); font-size: 14px; flex-shrink: 0; }
+        .toolbar-search input {
+            border: none; background: transparent; font-size: 13px; font-family: 'Open Sans', sans-serif;
+            color: var(--text); outline: none; width: 100%; padding: 0; box-shadow: none;
+        }
+        .toolbar-search input::placeholder { color: #bbb; }
         /* Student Management — the same colors as Admin (public/css/adminDashboard.css) */
         .status-badge.approved    { background: #e3f2fd; color: #1565c0; }
         .status-badge.declined    { background: #fdecea; color: #c0392b; }
@@ -643,6 +659,8 @@
     <script src="/js/password-strength.js"></script>
     {{-- pageWindow(): max-10 page buttons, shared by every JS-built pager --}}
     <script src="/js/page-window.js?v={{ filemtime(public_path('js/page-window.js')) }}"></script>
+    {{-- ilcQuickJump: the top-bar "Go to…" box --}}
+    <script src="/js/quick-jump.js?v={{ filemtime(public_path('js/quick-jump.js')) }}"></script>
     @include('partials.password-eye-style')
 </head>
 <body>
@@ -669,16 +687,21 @@
     <div class="topbar-center">
         <div class="dash-search">
             <i class="bi bi-search"></i>
-            <input type="text" placeholder="Search users, logs, settings...">
+            {{-- Quick jump (public/js/quick-jump.js): go to a page, or find a student. Page lists keep their own search boxes. --}}
+            <input type="text" id="qjInput" placeholder="Go to a page or find a student…">
         </div>
     </div>
     <div class="topbar-right">
+        {{-- Notifications are not built yet — hidden until they are (the "3" was a placeholder).
         <a href="#" class="topbar-icon-btn">
             <i class="bi bi-bell"></i>
             <span class="notif-dot">3</span>
         </a>
-        <a href="#" class="topbar-icon-btn">
+        --}}
+        {{-- Same as Admin: opens Contact Messages, badge = unread count (kept live by contact-messages.js) --}}
+        <a href="#" class="topbar-icon-btn" title="Contact Messages" onclick="event.preventDefault(); showSection('messages');">
             <i class="bi bi-envelope"></i>
+            <span class="notif-dot" id="topbarMsgBadge" style="{{ ($unreadMessagesCount ?? 0) ? '' : 'display:none;' }}">{{ $unreadMessagesCount ?? 0 }}</span>
         </a>
         <div class="dropdown">
             <div class="user-chip" data-bs-toggle="dropdown" aria-expanded="false">
@@ -778,6 +801,11 @@
     <button class="sidebar-link {{ $section === 'news' ? 'active' : '' }}" id="nav-news" onclick="showSection('news')">
         <i class="bi bi-newspaper"></i> News
         <span class="sidebar-badge">{{ $newsArticles->total() }}</span>
+    </button>
+    {{-- Contact Messages — the same inbox as Admin (shared page, pop-up and script) --}}
+    <button class="sidebar-link {{ $section === 'messages' ? 'active' : '' }}" id="nav-messages" onclick="showSection('messages')">
+        <i class="bi bi-envelope-fill"></i> Messages
+        <span class="sidebar-badge" style="{{ ($unreadMessagesCount ?? 0) ? '' : 'display:none;' }}">{{ $unreadMessagesCount ?? 0 }}</span>
     </button>
 
     <div class="sidebar-section-lbl">System</div>
@@ -2010,6 +2038,11 @@
         </div>
     </div><!-- /section-news -->
 
+    {{-- ── SECTION: CONTACT MESSAGES — the same page, pop-up and script as Admin ── --}}
+    @include('admin.sections.messages')
+    @include('partials.contact-messages-modal')
+    <script src="/js/contact-messages.js?v={{ filemtime(public_path('js/contact-messages.js')) }}"></script>
+
     <div id="section-reports" class="dash-section" {{ $section !== 'reports' ? 'style="display:none;"' : '' }}>
         <div class="section-header">
             <div>
@@ -2495,7 +2528,7 @@
             <div style="overflow-x:auto;">
                 <table class="dash-table">
                     <thead><tr>
-                        <th>Student</th><th>Grade</th><th>Section</th><th>Contact</th><th>Status</th><th>Payment</th><th>Actions</th>
+                        <th>Student</th><th>Grade</th><th>Section</th><th>Email</th><th>Status</th><th>Payment</th><th>Actions</th>
                     </tr></thead>
                     <tbody id="stm-tbody">
                         <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted);"><span class="spinner-border spinner-border-sm me-2"></span>Loading…</td></tr>
@@ -3421,7 +3454,7 @@
     const sections = [
         'dashboard','users','roles','logs','backup','reports','settings',
         'enrollments','students','teachers','subjects','sections-mgmt','schedules','sys-settings',
-        'announcements','news','archives'
+        'announcements','news','messages','archives'
     ];
 
     // Track which sections have been loaded (avoid duplicate fetches)
@@ -3433,7 +3466,7 @@
         logs: 'Activity Logs', backup: 'Backup & Restore', reports: 'Reports', settings: 'Settings',
         enrollments: 'Enrollment Oversight', students: 'Student Management', teachers: 'Teacher Management', subjects: 'Subject Management',
         'sections-mgmt': 'Section Management', schedules: 'Schedule Management', 'sys-settings': 'System Settings',
-        announcements: 'Announcements', news: 'News Management', archives: 'Archives',
+        announcements: 'Announcements', news: 'News Management', messages: 'Contact Messages', archives: 'Archives',
     };
     function updateBreadcrumb(name) {
         const el = document.getElementById('bc-current');
@@ -3448,6 +3481,35 @@
             skel.style.display = 'none';
         }, 280);
     }
+
+    // ── Top-bar quick jump: any sidebar page, or a student (opens Student Management searched for them) ──
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!window.ilcQuickJump) return;
+        ilcQuickJump.init({
+            input: document.getElementById('qjInput'),
+            show: function (name) { showSection(name); },
+            searchLabel: 'Students',
+            search: function (q) {
+                return fetch('/admin/students/search?q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' } })
+                    .then(function (r) { return r.ok ? r.json() : []; })
+                    .then(function (list) {
+                        return list.map(function (s) {
+                            return {
+                                icon: 'bi-person-fill', label: s.name,
+                                hint: [s.grade_label, s.section, s.lrn ? 'LRN ' + s.lrn : s.email].filter(Boolean).join(' · '),
+                                run: function () {
+                                    // LRN / email are unique, so the list opens on exactly this student, any school year
+                                    document.getElementById('stm-search').value = s.lrn || s.email;
+                                    document.getElementById('stm-sy').value = 'all';
+                                    if (_loaded['students']) { showSection('students'); loadStudentsMgmt(1); }
+                                    else showSection('students'); // first open loads with the values above
+                                },
+                            };
+                        });
+                    });
+            },
+        });
+    });
 
     function showSection(name) {
         sections.forEach(s => {
@@ -5331,7 +5393,7 @@
             return '<tr>' +
                 '<td><div class="user-row-name"><div class="user-row-avatar">' + saEsc((s.name || '').substring(0, 2).toUpperCase()) + '</div><div>' +
                     '<div style="font-weight:600;">' + saEsc(s.name) + '</div>' +
-                    '<div class="user-row-sub">' + saEsc(s.reference_number || ('ID: ' + s.id)) + '</div></div></div></td>' +
+                    '<div class="user-row-sub">' + (s.lrn ? 'LRN ' + saEsc(s.lrn) : '<span style="font-style:italic;">No LRN yet</span>') + '</div></div></div></td>' +
                 '<td>' + saEsc(s.grade_label) + '</td>' +
                 '<td>' + (s.section ? saEsc(s.section) : '<span style="color:var(--muted);">—</span>') + '</td>' +
                 '<td class="fs-12">' + saEsc(s.email) + '</td>' +

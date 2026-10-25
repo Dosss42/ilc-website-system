@@ -759,19 +759,25 @@
             display: flex; align-items: center; gap: 10px;
             margin-bottom: 16px; flex-wrap: wrap;
         }
-        .module-toolbar .toolbar-search {
+        /* The one search box used on every Admin page: magnifier icon inside, always the first
+           (left-most) item of its filter row. In a toolbar it takes up to 320px; add
+           .toolbar-search-fill to make it fill its column (Bootstrap rows / labelled filter rows). */
+        .toolbar-search {
             display: flex; align-items: center; gap: 8px;
             background: var(--white); border: 1.5px solid var(--border);
-            border-radius: 8px; padding: 8px 14px; min-width: 220px;
-            flex: 1; max-width: 320px;
+            border-radius: 8px; padding: 8px 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
-        .module-toolbar .toolbar-search i { color: var(--muted); font-size: 14px; }
-        .module-toolbar .toolbar-search input {
+        .toolbar-search:focus-within { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(26,58,108,0.08); }
+        .module-toolbar .toolbar-search { min-width: 220px; flex: 1; max-width: 320px; padding: 7px 14px; } /* same height as .toolbar-filter selects */
+        .toolbar-search.toolbar-search-fill { width: 100%; max-width: none; min-height: 100%; }
+        .toolbar-search i { color: var(--muted); font-size: 14px; flex-shrink: 0; }
+        .toolbar-search input {
             border: none; background: transparent; font-size: 13px;
             font-family: 'Open Sans', sans-serif; color: var(--text);
-            outline: none; width: 100%;
+            outline: none; width: 100%; padding: 0; box-shadow: none;
         }
-        .module-toolbar .toolbar-search input::placeholder { color: #bbb; }
+        .toolbar-search input::placeholder { color: #bbb; }
         .toolbar-filter select {
             border: 1.5px solid var(--border); border-radius: 8px;
             padding: 8px 12px; font-size: 12px; font-weight: 600;

@@ -44,6 +44,37 @@ class ContactMessagesTest extends TestCase
         $this->assertSame(0, ContactMessage::count());
     }
 
+    public function test_superadmin_has_the_same_inbox_and_actions(): void
+    {
+        ContactMessage::create(['name' => 'Maria', 'email' => 'm@example.com', 'subject' => 'Enrollment', 'message' => 'Hi', 'status' => 'unread']);
+        $msg = ContactMessage::create(['name' => 'Pedro', 'email' => 'p@example.com', 'subject' => 'Fees', 'message' => 'Hi', 'status' => 'read']);
+        $sa = User::factory()->create(['role' => 'superadmin']);
+
+        $data = null;
+        View::composer('superadmin_dashboard', function ($view) use (&$data) { $data = $view->getData(); });
+        $html = $this->actingAs($sa, 'web')->get('/superadmin/dashboard')->assertOk()->getContent();
+        $this->assertSame([2, 1, 1, 0], [$data['totalMessagesCount'], $data['unreadMessagesCount'], $data['readMessagesCount'], $data['repliedMessagesCount']]);
+
+        // Same page, pop-up and script as Admin; sidebar link and top-bar envelope with the unread count
+        foreach (['id="section-messages"', 'id="msgViewModal"', '/js/contact-messages.js?v=', 'id="nav-messages"', 'id="topbarMsgBadge"', "showSection('messages')"] as $needle) {
+            $this->assertStringContainsString($needle, $html, $needle);
+        }
+        $this->assertMatchesRegularExpression('#id="topbarMsgBadge"[^>]*>1</span>#', $html, 'envelope shows 1 unread');
+
+        $this->actingAs($sa, 'web')->patchJson("/admin/messages/{$msg->id}/status", ['status' => 'replied'])->assertOk();
+        $this->assertSame('replied', $msg->fresh()->status);
+        $this->actingAs($sa, 'web')->deleteJson("/admin/messages/{$msg->id}")->assertOk();
+        $this->assertSame(1, ContactMessage::count());
+    }
+
+    public function test_student_portal_has_no_placeholder_search_or_bell(): void
+    {
+        $student = User::factory()->create(['role' => 'student']);
+        $html = $this->actingAs($student, 'web')->get('/student/dashboard')->getContent();
+        $this->assertStringNotContainsString('<input type="text" placeholder="Search...">', $html);
+        $this->assertStringNotContainsString('<i class="bi bi-bell"></i><span class="notif-dot">2</span>', $html);
+    }
+
     public function test_non_staff_cannot_change_messages(): void
     {
         $msg = ContactMessage::create(['name' => 'Pedro', 'email' => 'p@example.com', 'subject' => 'Fees', 'message' => 'Hi', 'status' => 'unread']);

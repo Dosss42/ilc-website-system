@@ -661,15 +661,20 @@
         </div>
     </div>
     <div class="topbar-center">
+        {{-- No top-bar search for students: they have 6 pages, all in the sidebar, and only their own
+             records — nothing to look up (see docs/SEARCH-BARS.md). This box was a placeholder.
         <div class="dash-search">
             <i class="bi bi-search"></i>
             <input type="text" placeholder="Search...">
         </div>
+        --}}
     </div>
     <div class="topbar-right">
+        {{-- Notifications are not built yet — hidden until they are (the "2" was a placeholder).
         <a href="#" class="topbar-icon-btn">
             <i class="bi bi-bell"></i><span class="notif-dot">2</span>
         </a>
+        --}}
         <div class="dropdown">
             <div class="user-chip" data-bs-toggle="dropdown" aria-expanded="false">
                 <div class="user-avatar">

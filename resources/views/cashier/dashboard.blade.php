@@ -651,15 +651,20 @@
         </div>
     </div>
     <div class="topbar-left">
+        {{-- Placeholders, hidden: nothing read this search box, and the printer icon had no action
+             (receipts print from each payment row). Cashier pages keep their own search boxes.
         <div class="topbar-search">
             <i class="bi bi-search"></i>
             <input type="text" placeholder="Search student name or reference…" id="globalSearch">
         </div>
+        --}}
     </div>
     <div class="topbar-right">
+        {{--
         <div class="topbar-icon-btn" title="Print Receipt">
             <i class="bi bi-printer"></i>
         </div>
+        --}}
         <div class="dropdown">
             <div class="user-chip" data-bs-toggle="dropdown" aria-expanded="false">
                 <div class="user-avatar">{{ strtoupper(substr(auth('cashier')->user()->name, 0, 1)) }}</div>

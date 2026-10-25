@@ -110,7 +110,10 @@
                 <form method="GET" action="{{ url()->current() }}" class="row g-3" id="student-filter-form">
                     <input type="hidden" name="section" value="students">
                     <div class="col-md-4">
-                        <input type="text" name="student_search" class="form-fld" placeholder="Search student name, LRN, or email..." value="{{ $studentSearch ?? '' }}" oninput="debounceFormSubmit(this)">
+                        <div class="toolbar-search toolbar-search-fill">
+                            <i class="bi bi-search"></i>
+                            <input type="text" name="student_search" placeholder="Search student name, LRN, or email..." value="{{ $studentSearch ?? '' }}" oninput="debounceFormSubmit(this)">
+                        </div>
                     </div>
                     <div class="col-md-2">
                         <select name="student_grade" class="form-fld" onchange="this.form.requestSubmit()">
@@ -192,7 +195,7 @@
 
                             <th>Section</th>
 
-                            <th>Contact</th>
+                            <th>Email</th>
 
                             <th>Status</th>
 
@@ -273,7 +276,7 @@
 
                                             <div style="font-weight:600;">{{ $s->name }}</div>
 
-                                            <div class="user-row-sub">{{ $enr ? $enr->reference_number : 'ID: '.$s->id }}</div>
+                                            <div class="user-row-sub">{!! filled($s->lrn) ? 'LRN ' . e($s->lrn) : '<span style="font-style:italic;">No LRN yet</span>' !!}</div>
 
                                         </div>
 

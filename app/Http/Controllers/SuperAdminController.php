@@ -86,7 +86,7 @@ class SuperAdminController extends Controller
             'users', 'dashboardUsers', 'userManagementUsers',
             'stats', 'sort', 'roleFilter', 'userSearch', 'logs', 'section', 'backups',
             'announcements', 'newsArticles', 'logRetentionPeriod', 'paymentAutomation', 'schedulerLastRun'
-        ));
+        ) + \App\Models\ContactMessage::inboxData()); // Contact Messages inbox — same data as Admin
     }
 
     /** When the scheduler last ran (its every-minute heartbeat in routes/console.php), or null. */

@@ -1047,19 +1047,15 @@ class EnrollmentController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'role']);
 
-        // Contact messages for admin inbox — capped at 200, paged 10 per page in the browser (was unbounded,
-        // loading every contact-form submission ever received into memory
-        // on every dashboard visit — see docs/system-improvement-plan.md
-        // item #3). Stat counts computed independently via cheap COUNT
-        // queries rather than from the capped list — same
-        // counts-from-a-limited-list bug already fixed elsewhere
-        // (Student Management, Teacher Management) would otherwise make
-        // these undercount once there are more than 50 messages.
-        $contactMessages      = \App\Models\ContactMessage::orderByDesc('created_at')->limit(200)->get();
-        $unreadMessagesCount  = \App\Models\ContactMessage::where('status', 'unread')->count();
-        $totalMessagesCount   = \App\Models\ContactMessage::count();
-        $readMessagesCount    = \App\Models\ContactMessage::where('status', 'read')->count();
-        $repliedMessagesCount = \App\Models\ContactMessage::where('status', 'replied')->count();
+        // Contact messages inbox — latest 200 + separate counts; shared with Super Admin
+        // (see ContactMessage::inboxData() and docs/system-improvement-plan.md item #3).
+        [
+            'contactMessages'      => $contactMessages,
+            'unreadMessagesCount'  => $unreadMessagesCount,
+            'totalMessagesCount'   => $totalMessagesCount,
+            'readMessagesCount'    => $readMessagesCount,
+            'repliedMessagesCount' => $repliedMessagesCount,
+        ] = \App\Models\ContactMessage::inboxData();
 
         // Announcements — moved to sectionAnnouncements(), loaded on-demand
         // via GET /admin/section/announcements. See
@@ -4487,14 +4483,30 @@ class EnrollmentController extends Controller
             return response()->json([]);
         }
 
+        // Used by the Guidance student picker and the top-bar quick jump (Admin / Super Admin)
+        $grades = ['nursery' => 'Nursery', 'kindergarten' => 'Kinder', 'grade1' => 'Grade 1', 'grade2' => 'Grade 2', 'grade3' => 'Grade 3', 'grade4' => 'Grade 4', 'grade5' => 'Grade 5', 'grade6' => 'Grade 6'];
         $students = User::where('role', 'student')
             ->where(function ($query) use ($q) {
                 $query->where('name', 'like', "%{$q}%")
-                      ->orWhere('email', 'like', "%{$q}%");
+                      ->orWhere('email', 'like', "%{$q}%")
+                      ->orWhere('lrn', 'like', "%{$q}%");
             })
+            ->with('latestEnrollment')
             ->orderBy('name')
             ->limit(20)
-            ->get(['id', 'name', 'email']);
+            ->get(['id', 'name', 'email', 'lrn'])
+            ->map(function ($s) use ($grades) {
+                $enr   = $s->latestEnrollment;
+                $grade = ($enr->student_data['grade_level'] ?? null) ?: ($enr->grade_level ?? null);
+                return [
+                    'id'          => $s->id,
+                    'name'        => $s->name,
+                    'email'       => $s->email,
+                    'lrn'         => $s->lrn,
+                    'grade_label' => $grades[$grade] ?? null,
+                    'section'     => ($enr && $enr->section && $enr->section !== 'Unassigned') ? $enr->section : null,
+                ];
+            });
 
         return response()->json($students);
     }

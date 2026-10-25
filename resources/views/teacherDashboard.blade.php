@@ -541,7 +541,8 @@
     <div class="topbar-center">
         <div class="dash-search">
             <i class="bi bi-search"></i>
-            <input type="text" placeholder="Search students, subjects...">
+            {{-- Quick jump (public/js/quick-jump.js): go to a page, or open a subject's grade sheet --}}
+            <input type="text" id="qjInput" placeholder="Go to a page or subject…">
         </div>
     </div>
     <div class="topbar-right">
@@ -1874,6 +1875,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/js/password-strength.js"></script>
+<script src="/js/quick-jump.js?v={{ filemtime(public_path('js/quick-jump.js')) }}"></script>
 <script>
     PwStrength.attach('tch-new-pwd', 'tch-confirm-pwd', { tips: true, forSelf: true });
 </script>
@@ -2179,6 +2181,34 @@
         msCurrentSectionLabel = '';
         teacherViewSet({ section: 'students', grade: null });
     }
+
+    // ── Top-bar quick jump: any sidebar page, or one of this teacher's subjects (opens its grade sheet) ──
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!window.ilcQuickJump) return;
+        ilcQuickJump.init({
+            input: document.getElementById('qjInput'),
+            show: function (name) { showSection(name); },
+            searchLabel: 'My Subjects',
+            search: function (q) {
+                const words = q.split(/\s+/).filter(Boolean);
+                return [...document.querySelectorAll('#ms-list-view .ms-assign-row')]
+                    .filter(row => words.every(w => (row.dataset.search || '').indexOf(w) > -1))
+                    .map(function (row) {
+                        const btn = row.querySelector('button[data-section-id]');
+                        return {
+                            icon: 'bi-journal-text', label: btn.dataset.subjectName,
+                            hint: btn.dataset.sectionName + ' · S.Y. ' + row.dataset.sy,
+                            run: function () {
+                                showSection('students');
+                                const sy = document.getElementById('ms-list-sy');
+                                if (sy.value !== row.dataset.sy) { sy.value = row.dataset.sy; filterAssignmentsBySchoolYear(row.dataset.sy); }
+                                openSubjectViewFromBtn(btn);
+                            },
+                        };
+                    });
+            },
+        });
+    });
 
     // Typed or imported grades that are not saved yet would be lost on reload / closing the tab — ask first
     // (not for Export Template's download, which keeps the page open)

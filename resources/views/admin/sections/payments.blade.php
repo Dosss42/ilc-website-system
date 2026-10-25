@@ -52,6 +52,13 @@
                 <h6><i class="bi bi-funnel me-2" style="color:var(--gold);"></i>Filter Payments</h6>
             </div>
             <div style="padding:16px 20px; display:flex; flex-wrap:wrap; gap:12px; align-items:end;">
+                <div style="flex:2; min-width:220px;">
+                    <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">Search Student</label>
+                    <div class="toolbar-search toolbar-search-fill">
+                        <i class="bi bi-search"></i>
+                        <input type="text" id="payFilterSearch" placeholder="Search by name or email..." oninput="filterPaymentTable()">
+                    </div>
+                </div>
                 <div style="flex:1; min-width:140px;">
                     <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">School Year</label>
                     <select id="payFilterYear" class="form-select" style="font-size:13px; padding:8px 12px;" onchange="filterPaymentTable()">
@@ -77,10 +84,6 @@
                         <option value="gcash">GCash</option>
                         <option value="cash">Cash</option>
                     </select>
-                </div>
-                <div style="flex:1; min-width:180px;">
-                    <label style="font-size:12px; font-weight:600; color:var(--muted); margin-bottom:6px; display:block;">Search Student</label>
-                    <input type="text" id="payFilterSearch" class="form-control" placeholder="Search by name or email..." style="font-size:13px; padding:8px 12px;" oninput="filterPaymentTable()">
                 </div>
                 <div>
                     <button type="button" class="btn-dash btn-secondary" onclick="resetPaymentFilters()" style="padding:8px 16px; font-size:13px;">

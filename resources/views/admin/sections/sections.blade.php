@@ -95,6 +95,10 @@
         </div>
 
         <div class="module-toolbar">
+            <div class="toolbar-search">
+                <i class="bi bi-search"></i>
+                <input type="text" id="sectionSearchInput" placeholder="Search sections..." onkeyup="filterSectionTable()">
+            </div>
             <div class="toolbar-filter">
                 {{-- Server-side: reloads Section Management for the chosen school year --}}
                 <select id="sectionSyFilter" title="School Year" onchange="changeSectionSchoolYear(this.value)">
@@ -103,10 +107,6 @@
                         <option value="{{ $sy }}" {{ $sectionSyFilter === $sy ? 'selected' : '' }}>S.Y. {{ $sy }}{{ $sy === ($currentSchoolYear ?? '') ? ' (current)' : '' }}</option>
                     @endforeach
                 </select>
-            </div>
-            <div class="toolbar-search">
-                <i class="bi bi-search"></i>
-                <input type="text" id="sectionSearchInput" placeholder="Search sections..." onkeyup="filterSectionTable()">
             </div>
             <div class="toolbar-filter">
                 <select id="sectionGradeFilterQuick" onchange="filterSectionTable()">

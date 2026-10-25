@@ -128,9 +128,9 @@
             <div class="p-3">
                 <div class="row g-3 mb-3 align-items-center">
                     <div class="col-md-5">
-                        <div class="input-group">
-                            <span class="input-group-text"><i class="bi bi-search"></i></span>
-                            <input type="text" id="enrollmentSearchInput" class="form-fld"
+                        <div class="toolbar-search toolbar-search-fill">
+                            <i class="bi bi-search"></i>
+                            <input type="text" id="enrollmentSearchInput"
                                    placeholder="Search by name, email, or reference number..."
                                    value="{{ $enrollmentSearch ?? '' }}"
                                    oninput="debouncedEnrollmentSearch()"

@@ -29,13 +29,19 @@
         </div>
 
         <div class="content-card">
-            <div class="content-card-header" style="flex-wrap:wrap;gap:10px;">
+            <div class="content-card-header">
                 <h6><i class="bi bi-inbox-fill me-2" style="color:var(--gold);"></i>Inbox</h6>
+            </div>
+            {{-- Search first (left), then the status chips — same layout as the other Admin lists --}}
+            <div class="module-toolbar" style="padding:14px 18px 0;margin-bottom:14px;">
+                <div class="toolbar-search">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="msgSearch" placeholder="Search name, email or subject…" oninput="msgFilter(null, true)">
+                </div>
                 <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
                     @foreach(['' => 'All', 'unread' => 'Unread', 'read' => 'Read', 'replied' => 'Replied'] as $mk => $ml)
                         <button type="button" class="msg-chip {{ $mk === '' ? 'active' : '' }}" data-status="{{ $mk }}" onclick="msgFilter(this.dataset.status)">{{ $ml }}</button>
                     @endforeach
-                    <input type="text" id="msgSearch" class="form-fld" placeholder="Search name, email or subject…" oninput="msgFilter(null, true)" style="width:240px;padding:6px 12px;font-size:12.5px;">
                 </div>
             </div>
 

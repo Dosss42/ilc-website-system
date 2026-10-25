@@ -48,6 +48,13 @@
                     $goGrades = ['nursery' => 'Nursery', 'kindergarten' => 'Kindergarten', 'grade1' => 'Grade 1', 'grade2' => 'Grade 2',
                                  'grade3' => 'Grade 3', 'grade4' => 'Grade 4', 'grade5' => 'Grade 5', 'grade6' => 'Grade 6'];
                 @endphp
+                <div style="flex:1;min-width:240px;">
+                    <label class="form-lbl" style="font-size:11px;">Search</label>
+                    <div class="toolbar-search toolbar-search-fill" style="padding:7px 12px;">
+                        <i class="bi bi-search"></i>
+                        <input type="text" id="goFilterSearch" placeholder="Teacher, subject or student name…" oninput="renderGradeOversight(true)">
+                    </div>
+                </div>
                 <div>
                     <label class="form-lbl" style="font-size:11px;">School Year</label>
                     <select id="goFilterSy" class="form-fld" style="min-width:170px;padding:7px 10px;font-size:13px;" onchange="goFillSections(); renderGradeOversight(true)">
@@ -80,10 +87,6 @@
                     <select id="goFilterSection" class="form-fld" style="min-width:150px;padding:7px 10px;font-size:13px;" onchange="renderGradeOversight(true)">
                         <option value="">All Sections</option>
                     </select>
-                </div>
-                <div style="flex:1;min-width:220px;">
-                    <label class="form-lbl" style="font-size:11px;">Search</label>
-                    <input type="text" id="goFilterSearch" class="form-fld" style="padding:7px 12px;font-size:13px;" placeholder="Teacher, subject or student name…" oninput="renderGradeOversight(true)">
                 </div>
                 <button type="button" class="btn-dash btn-secondary" style="padding:8px 14px;font-size:12.5px;" onclick="goClearFilters()">
                     <i class="bi bi-x-circle"></i> Clear

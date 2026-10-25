@@ -36,6 +36,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     {{-- pageWindow(): max-10 page buttons, shared by every JS-built pager --}}
     <script src="/js/page-window.js?v={{ filemtime(public_path('js/page-window.js')) }}"></script>
+    {{-- ilcQuickJump: the top-bar "Go to…" box --}}
+    <script src="/js/quick-jump.js?v={{ filemtime(public_path('js/quick-jump.js')) }}"></script>
     {{-- printOfficialReceipt(): the one receipt layout used across the system --}}
     <script src="/js/official-receipt.js?v={{ filemtime(public_path('js/official-receipt.js')) }}"></script>
 
@@ -848,7 +850,8 @@ function showSection(name, opts = {}) {
         loadEnrollmentSection('{{ route("admin.section.enrollment") }}');
     }
     if (name === 'students') {
-        loadStudentsSection('{{ route("admin.section.students") }}');
+        // opts.studentsUrl: open already searched (the top-bar quick jump), in one load
+        loadStudentsSection(opts.studentsUrl || '{{ route("admin.section.students") }}');
     }
     if (name === 'subjects') {
         loadSubjectsSection('{{ route("admin.section.subjects") }}');
@@ -1559,7 +1562,8 @@ function openWalkInEnrollmentModal() {
 
             <i class="bi bi-search"></i>
 
-            <input type="text" placeholder="Search students, records...">
+            {{-- Quick jump (public/js/quick-jump.js): go to a page, or find a student. Page lists keep their own search boxes. --}}
+            <input type="text" id="qjInput" placeholder="Go to a page or find a student…">
 
         </div>
 
@@ -1576,13 +1580,12 @@ function openWalkInEnrollmentModal() {
             <span id="maintenance-topbar-label">{{ $isMaintenance ? 'Maintenance ON' : 'Maintenance' }}</span>
         </button>
 
+        {{-- Notifications are not built yet — hidden until they are (the "5" was a placeholder).
         <a href="#" class="topbar-icon-btn">
-
             <i class="bi bi-bell"></i>
-
             <span class="notif-dot">5</span>
-
         </a>
+        --}}
 
         <a href="#" class="topbar-icon-btn" title="Contact Messages" onclick="event.preventDefault(); showSection('messages');">
 
@@ -2621,211 +2624,38 @@ function openWalkInEnrollmentModal() {
 
     @include('admin.sections.messages')
 
-    {{-- Message View Modal --}}
-    <div class="modal fade" id="msgViewModal" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content" style="border:0;border-radius:16px;overflow:hidden;">
-                <div class="modal-header" style="background:linear-gradient(135deg,#1a3a6c,#2471a3);border:none;padding:16px 22px;">
-                    <div style="flex:1;min-width:0;">
-                        <h5 id="msgModalSubject" class="modal-title" style="color:#fff;font-weight:700;font-size:15px;margin:0;"></h5>
-                        <div id="msgModalMeta" style="font-size:11px;color:rgba(255,255,255,.65);margin-top:3px;"></div>
-                    </div>
-                    <button type="button" class="btn-close btn-close-white ms-3" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body" style="padding:24px;">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
-                        <div style="background:#f8faff;border-radius:10px;padding:12px 14px;">
-                            <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">From</div>
-                            <div id="msgModalName" style="font-size:13px;font-weight:700;color:#1e293b;"></div>
-                            <div id="msgModalEmail" style="font-size:12px;color:#64748b;margin-top:2px;"></div>
-                        </div>
-                        <div style="background:#f8faff;border-radius:10px;padding:12px 14px;">
-                            <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Contact & Date</div>
-                            <div id="msgModalPhone" style="font-size:13px;font-weight:600;color:#1e293b;"></div>
-                            <div id="msgModalDate"  style="font-size:12px;color:#64748b;margin-top:2px;"></div>
-                        </div>
-                    </div>
-                    <div style="background:#f8faff;border-radius:10px;padding:16px 18px;">
-                        <div style="font-size:10px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Message</div>
-                        <div id="msgModalBody" style="font-size:13px;color:#374151;line-height:1.7;white-space:pre-wrap;"></div>
-                    </div>
-                </div>
-                <div class="modal-footer" style="border-top:1px solid #e8edf5;padding:14px 22px;gap:8px;justify-content:space-between;">
-                    <div id="msgModalStatusBtns" style="display:flex;gap:8px;"></div>
-                    <div style="display:flex;gap:8px;">
-                        <a id="msgModalReplyLink" href="#"
-                            style="display:inline-flex;align-items:center;gap:6px;padding:8px 16px;background:#1a3a6c;color:#fff;border-radius:8px;font-size:13px;font-weight:600;text-decoration:none;">
-                            <i class="bi bi-envelope-arrow-up-fill"></i> Reply via Email
-                        </a>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    {{-- Message pop-up + inbox script: shared with Super Admin --}}
+    @include('partials.contact-messages-modal')
+    <script src="/js/contact-messages.js?v={{ filemtime(public_path('js/contact-messages.js')) }}"></script>
 
-    {{-- JS for messages section --}}
     <script>
-    var _currentMsgId = null;
-
-    function openMsgModal(id, name, email, phone, subject, message, date, status) {
-        _currentMsgId = id;
-        document.getElementById('msgModalSubject').textContent = subject;
-        document.getElementById('msgModalMeta').textContent    = date;
-        document.getElementById('msgModalName').textContent    = name;
-        document.getElementById('msgModalEmail').textContent   = email;
-        document.getElementById('msgModalPhone').textContent   = phone || '—';
-        document.getElementById('msgModalDate').textContent    = date;
-        document.getElementById('msgModalBody').textContent    = message;
-        document.getElementById('msgModalReplyLink').href      = 'mailto:' + email + '?subject=Re: ' + encodeURIComponent(subject);
-
-        // Auto-mark as read when opened (so the modal offers only what is left to do)
-        if (status === 'unread') { updateMsgStatus(id, 'read', false); status = 'read'; }
-
-        // Status action buttons inside modal
-        var btns = '';
-        if (status !== 'read')    btns += '<button onclick="updateMsgStatus(' + id + ',\'read\',true)"    style="padding:8px 14px;background:#eff6ff;color:#1d4ed8;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;"><i class="bi bi-eye"></i> Mark as Read</button>';
-        if (status !== 'replied') btns += '<button onclick="updateMsgStatus(' + id + ',\'replied\',true)" style="padding:8px 14px;background:#f0fdf4;color:#15803d;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;"><i class="bi bi-reply-fill"></i> Mark as Replied</button>';
-        document.getElementById('msgModalStatusBtns').innerHTML = btns;
-
-        new bootstrap.Modal(document.getElementById('msgViewModal')).show();
-    }
-
-    // Status badge + action buttons of one inbox row, from its data-status
-    var MSG_BADGE = { unread: ['pending', 'Unread'], read: ['approved', 'Read'], replied: ['enrolled', 'Replied'] };
-    function msgRenderRow(row) {
-        var id = row.id.replace('msg-row-', ''), st = row.dataset.status, b = MSG_BADGE[st] || ['inactive', st];
-        row.classList.toggle('msg-unread', st === 'unread');
-        var dot = row.querySelector('.msg-dot');
-        if (dot && st !== 'unread') dot.remove();
-        row.querySelector('.msg-status-cell').innerHTML = '<span class="status-badge ' + b[0] + '">' + b[1] + '</span>';
-        row.querySelector('.msg-actions-cell').innerHTML = '<div style="display:flex;gap:5px;">'
-            + (st !== 'read' ? '<button type="button" class="action-btn edit" title="Mark as Read" onclick="updateMsgStatus(' + id + ', \'read\')"><i class="bi bi-envelope-open"></i></button>' : '')
-            + (st !== 'replied' ? '<button type="button" class="action-btn view" title="Mark as Replied" onclick="updateMsgStatus(' + id + ', \'replied\')"><i class="bi bi-reply-fill"></i></button>' : '')
-            + '<button type="button" class="action-btn delete" title="Delete" onclick="deleteMsg(' + id + ')"><i class="bi bi-trash3"></i></button></div>';
-    }
-
-    // Counts, sidebar badge and the top-bar envelope follow every change (no reload needed).
-    // Shown rows are the latest 50; anything older keeps its share of the server's counts.
-    var _msgBase = null;
-    function msgRecount() {
-        var rows = document.querySelectorAll('#msgTableBody .msg-row');
-        var c = { unread: 0, read: 0, replied: 0 };
-        rows.forEach(function (r) { if (c[r.dataset.status] !== undefined) c[r.dataset.status]++; });
-        if (!_msgBase) {
-            var s = function (id) { var el = document.getElementById(id); return el ? (parseInt(el.textContent) || 0) : 0; };
-            _msgBase = { unread: s('msgStatUnread') - c.unread, read: s('msgStatRead') - c.read, replied: s('msgStatReplied') - c.replied };
-        }
-        var unread = _msgBase.unread + c.unread, read = _msgBase.read + c.read, replied = _msgBase.replied + c.replied;
-        var set = function (id, v) { var el = document.getElementById(id); if (el) el.textContent = v; };
-        set('msgStatUnread', unread); set('msgStatRead', read); set('msgStatReplied', replied); set('msgStatTotal', unread + read + replied);
-        ['#nav-messages .sidebar-badge', '#topbarMsgBadge'].forEach(function (sel) {
-            var el = document.querySelector(sel);
-            if (el) { el.textContent = unread; el.style.display = unread ? '' : 'none'; }
-        });
-    }
-
-    // Chips + search pick the matching rows, then they are shown 10 per page.
-    // A chip or a new search goes back to page 1; marking or deleting keeps the current page.
-    var _msgStatusFilter = '', _msgPage = 1, MSG_PER_PAGE = 10;
-    function msgFilter(status, resetPage) {
-        if (status !== undefined && status !== null) {
-            _msgStatusFilter = status;
-            resetPage = true;
-            document.querySelectorAll('.msg-chip').forEach(function (b) { b.classList.toggle('active', b.dataset.status === status); });
-        }
-        if (resetPage) _msgPage = 1;
-        var q = ((document.getElementById('msgSearch') || {}).value || '').trim().toLowerCase();
-        var rows = Array.prototype.slice.call(document.querySelectorAll('#msgTableBody .msg-row'));
-        var matched = rows.filter(function (r) {
-            return (!_msgStatusFilter || r.dataset.status === _msgStatusFilter) && (!q || r.dataset.search.indexOf(q) > -1);
-        });
-        var last = Math.max(1, Math.ceil(matched.length / MSG_PER_PAGE));
-        if (_msgPage > last) _msgPage = last;
-        var start = (_msgPage - 1) * MSG_PER_PAGE;
-        rows.forEach(function (r) { r.style.display = 'none'; });
-        matched.slice(start, start + MSG_PER_PAGE).forEach(function (r) { r.style.display = ''; });
-        var none = document.getElementById('msgNoMatch');
-        if (none) {
-            none.style.display = matched.length ? 'none' : '';
-            none.textContent = rows.length ? 'No messages match.' : 'No messages left in the inbox.';
-        }
-        msgRenderPagination(matched.length);
-    }
-
-    function msgGoToPage(p) {
-        _msgPage = p;
-        msgFilter();
-        document.getElementById('section-messages').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-
-    // Same pagination bar as the other Admin lists (Previous / page numbers / Next + "Showing X to Y of Z")
-    function msgRenderPagination(total) {
-        var box = document.getElementById('msgPagination');
-        if (!box) return;
-        if (!total) { box.style.display = 'none'; box.innerHTML = ''; return; }
-        var last = Math.max(1, Math.ceil(total / MSG_PER_PAGE));
-        var from = (_msgPage - 1) * MSG_PER_PAGE + 1, to = Math.min(total, _msgPage * MSG_PER_PAGE);
-        var link = function (p, label) { return '<li class="page-item"><a href="#" class="page-link" onclick="msgGoToPage(' + p + '); return false;">' + label + '</a></li>'; };
-        var html = '<div class="p-3"><nav><ul class="pagination">';
-        html += _msgPage > 1 ? link(_msgPage - 1, 'Previous') : '<li class="page-item disabled"><span class="page-link">Previous</span></li>';
-        (typeof pageWindow === 'function' ? pageWindow(_msgPage, last) : Array.from({ length: last }, function (_, k) { return k + 1; })).forEach(function (i) {
-            if (i === '…') html += '<li class="page-item disabled"><span class="page-link">…</span></li>';
-            else if (i === _msgPage) html += '<li class="page-item active"><span class="page-link">' + i + '</span></li>';
-            else html += link(i, i);
-        });
-        html += _msgPage < last ? link(_msgPage + 1, 'Next') : '<li class="page-item disabled"><span class="page-link">Next</span></li>';
-        html += '</ul></nav><div class="pagination-info">Showing ' + from + ' to ' + to + ' of ' + total + ' message' + (total === 1 ? '' : 's') + '</div></div>';
-        box.innerHTML = html;
-        box.style.display = '';
-    }
-
+    // ── Top-bar quick jump: any sidebar page, or a student (opens Student Management searched for them) ──
     document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('#msgTableBody .msg-row').forEach(msgRenderRow);
-        msgRecount();
-        msgFilter(null, true);
+        if (!window.ilcQuickJump) return;
+        ilcQuickJump.init({
+            input: document.getElementById('qjInput'),
+            show: function (name) { showSection(name); },
+            searchLabel: 'Students',
+            search: function (q) {
+                return fetch('/admin/students/search?q=' + encodeURIComponent(q), { headers: { 'Accept': 'application/json' } })
+                    .then(function (r) { return r.ok ? r.json() : []; })
+                    .then(function (list) {
+                        return list.map(function (s) {
+                            return {
+                                icon: 'bi-person-fill', label: s.name,
+                                hint: [s.grade_label, s.section, s.lrn ? 'LRN ' + s.lrn : s.email].filter(Boolean).join(' · '),
+                                // LRN / email are unique, so the list opens on exactly this student, any school year
+                                run: function () {
+                                    showSection('students', { studentsUrl: '{{ route("admin.section.students") }}?' +
+                                        new URLSearchParams({ student_search: s.lrn || s.email, student_schoolyear: 'all' }).toString() });
+                                },
+                            };
+                        });
+                    });
+            },
+        });
     });
 
-    function updateMsgStatus(id, status, closeModal) {
-        fetch('/admin/messages/' + id + '/status', {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-            body: JSON.stringify({ status: status })
-        })
-        .then(function(r) { return r.json(); })
-        .then(function(data) {
-            if (!data.success) return;
-            var row = document.getElementById('msg-row-' + id);
-            if (row) { row.dataset.status = status; msgRenderRow(row); }
-            msgRecount();
-            msgFilter();
-            if (closeModal) {
-                var m = bootstrap.Modal.getInstance(document.getElementById('msgViewModal'));
-                if (m) m.hide();
-            }
-        })
-        .catch(function () { showAdminToast('Could not update the message. Please try again.', 'error'); });
-    }
-
-    function deleteMsg(id) {
-        showDeleteConfirm('Delete this message? This cannot be undone.', function () {
-            fetch('/admin/messages/' + id, {
-                method: 'DELETE',
-                headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
-            })
-            .then(function(r) { return r.json(); })
-            .then(function(data) {
-                if (data.success) {
-                    var row = document.getElementById('msg-row-' + id);
-                    if (row) row.remove();
-                    msgRecount();
-                    msgFilter();
-                    showAdminToast('Message deleted.', 'success');
-                }
-            })
-            .catch(function () { showAdminToast('Could not delete the message. Please try again.', 'error'); });
-        });
-    }
     </script>
 
     <script>
@@ -6980,16 +6810,19 @@ function openWalkInEnrollmentModal() {
 
     // Load teacher assignments when switching to that section
     const originalShowSection = showSection;
-    showSection = function(name) {
+    // Pass opts through: Back/Forward ({fromHistory}), the first load ({initial}) and the quick jump
+    // ({studentsUrl}) all rely on it — dropping it made Back/Forward push new history entries.
+    showSection = function(name, opts) {
         // 'promotion' was merged into 'assessment' — redirect transparently
         if (name === 'promotion') name = 'assessment';
-        originalShowSection(name);
+        originalShowSection(name, opts || {});
         if (name === 'teacher-assignments') {
             loadTeacherAssignments();
         }
         if (name === 'summer') {
             loadSummerClasses();
         }
+        return false;
     };
 
     // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•

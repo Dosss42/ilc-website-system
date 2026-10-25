@@ -160,10 +160,12 @@
                     <input type="hidden" name="assess_grade" value="{{ $assessGradeFilter ?? 'all' }}">
                     <input type="hidden" name="assess_status" value="{{ $assessStatusFilter ?? 'all' }}">
                     <input type="hidden" name="assess_section" value="{{ $assessSectionFilter ?? '' }}">
-                    <input type="text" name="assess_search" id="assessSearch" placeholder="Search student name..."
-                        value="{{ $assessSearchTerm ?? '' }}"
-                        oninput="debounceFormSubmit(this)"
-                        style="width:100%;padding:9px 14px;border:1.5px solid #e0e0e0;border-radius:8px;font-size:13px;">
+                    <div class="toolbar-search toolbar-search-fill">
+                        <i class="bi bi-search"></i>
+                        <input type="text" name="assess_search" id="assessSearch" placeholder="Search student name..."
+                            value="{{ $assessSearchTerm ?? '' }}"
+                            oninput="debounceFormSubmit(this)">
+                    </div>
                 </form>
             </div>
         </div>
