@@ -545,6 +545,8 @@
         </div>
     </div>
     <div class="topbar-right">
+        {{-- Notifications and messages are not built for teachers yet — hidden until they are
+             (the "2" was a placeholder). Put these back when the feature exists.
         <a href="#" class="topbar-icon-btn">
             <i class="bi bi-bell"></i>
             <span class="notif-dot">2</span>
@@ -552,6 +554,7 @@
         <a href="#" class="topbar-icon-btn">
             <i class="bi bi-envelope"></i>
         </a>
+        --}}
         <div class="dropdown">
             <div class="user-chip" data-bs-toggle="dropdown" aria-expanded="false">
                 <div class="user-avatar">
@@ -691,13 +694,14 @@
                     </div>
                 </div>
             </div>
+            {{-- Drafts already have their own "Draft Grades" card below, so this slot shows the sections --}}
             <div class="col-md-3 col-sm-6">
                 <div class="stat-card">
-                    <div class="stat-icon red"><i class="bi bi-pencil-square"></i></div>
+                    <div class="stat-icon purple"><i class="bi bi-diagram-3-fill"></i></div>
                     <div>
-                        <div class="stat-value">{{ $draftCount }}</div>
-                        <div class="stat-label">Pending Drafts</div>
-                        <div class="stat-change {{ $draftCount > 0 ? 'down' : 'up' }}">{{ $draftCount > 0 ? 'Awaiting review' : 'All submitted' }}</div>
+                        <div class="stat-value">{{ $sections->count() }}</div>
+                        <div class="stat-label">Sections Handled</div>
+                        <div class="stat-change up">S.Y. {{ $currentSchoolYear }}</div>
                     </div>
                 </div>
             </div>
@@ -707,7 +711,7 @@
                     <div>
                         <div class="stat-value">{{ $schedules->count() }}</div>
                         <div class="stat-label">Total Classes</div>
-                        <div class="stat-change up">S.Y. 2026–2027</div>
+                        <div class="stat-change up">Weekly schedule</div>
                     </div>
                 </div>
             </div>
@@ -717,6 +721,7 @@
                     <div>
                         <div class="stat-value">{{ $subjects->count() }}</div>
                         <div class="stat-label">Subjects Handled</div>
+                        <div class="stat-change up">Across {{ $sections->count() }} {{ Str::plural('section', $sections->count()) }}</div>
                     </div>
                 </div>
             </div>
@@ -1140,6 +1145,11 @@
                                 <option value="">All Sections</option>
                             </select>
                         </div>
+                        <div class="col-md-4">
+                            <label class="form-lbl">Search</label>
+                            <input type="text" class="form-fld" id="ms-list-search" placeholder="Subject, code, grade level or section…"
+                                oninput="filterAssignmentsBySchoolYear(document.getElementById('ms-list-sy').value)">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1167,7 +1177,8 @@
                                 @endphp
                                 @if($sec)
                                 <tr class="ms-assign-row" data-sy="{{ $sec->school_year ?: $currentSchoolYear }}"
-                                    data-section-id="{{ $sec->id }}" data-section-label="{{ $glLabel }} — {{ $sec->name }}">
+                                    data-section-id="{{ $sec->id }}" data-section-label="{{ $glLabel }} — {{ $sec->name }}"
+                                    data-search="{{ mb_strtolower($glLabel . ' ' . $sec->name . ' ' . ($sub?->name ?? 'All Subjects') . ' ' . ($sub?->code ?? '')) }}">
                                     <td>
                                         <div style="font-weight:700;color:var(--blue);font-size:13px;">{{ $glLabel }}</div>
                                         <div style="font-size:12px;color:var(--muted);">{{ $sec->name }}</div>
@@ -1207,7 +1218,9 @@
                                 <tr id="ms-assign-empty-sy" style="display:none;">
                                     <td colspan="4" style="text-align:center;padding:40px;color:var(--muted);">
                                         <i class="bi bi-calendar-x" style="font-size:36px;display:block;margin-bottom:8px;opacity:0.3;"></i>
-                                        <div style="font-weight:600;">No subject assignments for S.Y. <span id="ms-assign-empty-sy-label"></span>.</div>
+                                        <div style="font-weight:600;" id="ms-assign-empty-msg">No subject assignments for this school year.</div>
+                                        <button type="button" id="ms-assign-clear-search" class="btn-dash btn-secondary" style="display:none;margin-top:10px;padding:6px 14px;font-size:12px;"
+                                            onclick="document.getElementById('ms-list-search').value=''; filterAssignmentsBySchoolYear(document.getElementById('ms-list-sy').value)">Clear search</button>
                                     </td>
                                 </tr>
                             @endif
@@ -1667,15 +1680,46 @@
                             <button type="submit" id="photo-submit-btn" style="display:none;"></button>
                         </form>
 
-                        <div style="border-top:1px solid var(--border);padding-top:16px;display:flex;flex-direction:column;gap:0;">
-                            <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0f0;">
-                                <span style="font-size:12px;color:var(--muted);">Full Name</span>
-                                <span style="font-size:12px;font-weight:600;">{{ $teacher->name }}</span>
+                        {{-- Editable name + email (errors use the "profile" bag, see Teacher\DashboardController::updateProfile) --}}
+                        <form method="POST" action="{{ route('teacher.settings.profile') }}" id="teacher-profile-form"
+                              style="border-top:1px solid var(--border);padding-top:16px;margin-bottom:6px;">
+                            @csrf
+                            @method('PUT')
+                            @if(session('profile_success'))
+                                <div style="background:#e8f5e9;border:1px solid #a5d6a7;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#2e7d32;display:flex;align-items:center;gap:8px;">
+                                    <i class="bi bi-check-circle-fill"></i> {{ session('profile_success') }}
+                                </div>
+                            @endif
+                            <label class="form-lbl" for="teacher-own-name">Full Name</label>
+                            <input type="text" name="name" id="teacher-own-name" class="form-fld" required minlength="2" maxlength="255"
+                                   value="{{ $errors->profile->any() ? old('name') : $teacher->name }}">
+                            @if($errors->profile->has('name'))
+                                <div style="font-size:12px;color:#c0392b;margin-top:4px;">{{ $errors->profile->first('name') }}</div>
+                            @endif
+
+                            <label class="form-lbl" for="teacher-own-email" style="margin-top:12px;">Email</label>
+                            <input type="email" name="email" id="teacher-own-email" class="form-fld" required maxlength="255"
+                                   data-current="{{ $teacher->email }}" oninput="teacherEmailChanged()"
+                                   value="{{ $errors->profile->any() ? old('email') : $teacher->email }}">
+                            @if($errors->profile->has('email'))
+                                <div style="font-size:12px;color:#c0392b;margin-top:4px;">{{ $errors->profile->first('email') }}</div>
+                            @endif
+                            <div style="font-size:11px;color:var(--muted);margin-top:4px;">This is the email you log in with.</div>
+
+                            {{-- Shown only when the email is being changed --}}
+                            <div id="teacher-profile-pw-wrap" style="display:none;margin-top:12px;">
+                                <label class="form-lbl" for="teacher-profile-pw">Current Password <span style="color:#c0392b;">*</span></label>
+                                <input type="password" name="profile_password" id="teacher-profile-pw" class="form-fld" autocomplete="current-password"
+                                       placeholder="Needed to change your email">
+                                @if($errors->profile->has('profile_password'))
+                                    <div style="font-size:12px;color:#c0392b;margin-top:4px;">{{ $errors->profile->first('profile_password') }}</div>
+                                @endif
                             </div>
-                            <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0f0;">
-                                <span style="font-size:12px;color:var(--muted);">Email</span>
-                                <span style="font-size:12px;font-weight:600;">{{ $teacher->email }}</span>
-                            </div>
+
+                            <button type="submit" class="btn-dash btn-primary" style="margin-top:14px;"><i class="bi bi-check-lg"></i> Save Changes</button>
+                        </form>
+
+                        <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:6px;display:flex;flex-direction:column;gap:0;">
                             <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f0f0f0;">
                                 <span style="font-size:12px;color:var(--muted);">Role</span>
                                 <span style="font-size:12px;font-weight:600;">Teacher</span>
@@ -1837,6 +1881,16 @@
     const sections = ['dashboard','schedule','students','attendance','announcements','ptc','settings'];
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
 
+    // ── Remember where the teacher was, so a reload comes back to the same page ──
+    // { section, grade: { sectionId, subjectId, sy, term } } — per teacher account, in this browser only.
+    const TEACHER_VIEW_KEY = 'ilcTeacherView:{{ auth()->id() }}';
+    function teacherViewGet() {
+        try { return JSON.parse(localStorage.getItem(TEACHER_VIEW_KEY)) || {}; } catch (e) { return {}; }
+    }
+    function teacherViewSet(patch) {
+        try { localStorage.setItem(TEACHER_VIEW_KEY, JSON.stringify(Object.assign(teacherViewGet(), patch))); } catch (e) {}
+    }
+
     // ── Breadcrumbs ──
     const BREADCRUMB_LABELS = {
         dashboard: 'Dashboard', schedule: 'My Schedule', students: 'My Students',
@@ -1878,6 +1932,7 @@
 
     function showSection(name) {
         closeMobileSidebar();
+        teacherViewSet({ section: name });
         sections.forEach(s => {
             document.getElementById('section-' + s).style.display = s === name ? '' : 'none';
             const nav = document.getElementById('nav-' + s);
@@ -1947,13 +2002,24 @@
         autoSelectFirst('att-section');
         filterAttSubjectsForSection(document.getElementById('att-section')?.value || '');
         autoSelectFirst('att-subject');
-        @if(session('settings_tab') || session('password_success') || session('photo_success') || $errors->has('current_password'))
+        @if(session('settings_tab') || session('password_success') || session('photo_success') || $errors->has('current_password') || $errors->profile->any())
         showSection('settings');
+        teacherEmailChanged();
         @else
         // Default section is 'dashboard' — trigger skeleton on initial page load
         applySectionSkeleton('dashboard');
         @endif
     });
+
+    // Settings: ask for the current password only when the email is actually being changed
+    function teacherEmailChanged() {
+        const inp = document.getElementById('teacher-own-email');
+        const wrap = document.getElementById('teacher-profile-pw-wrap');
+        if (!inp || !wrap) return;
+        const changed = inp.value.trim().toLowerCase() !== (inp.dataset.current || '').toLowerCase();
+        wrap.style.display = changed ? '' : 'none';
+        document.getElementById('teacher-profile-pw').required = changed;
+    }
 
     function previewAndUploadPhoto(input) {
         if (!input.files || !input.files[0]) return;
@@ -2027,9 +2093,13 @@
             secSel.value = seen[keep] ? keep : '';
         }
         const section = secSel ? secSel.value : '';
+        // Search box: every word must appear in the row's grade level, section, subject name or code
+        const searchEl = document.getElementById('ms-list-search');
+        const words = (searchEl ? searchEl.value : '').trim().toLowerCase().split(/\s+/).filter(Boolean);
         let shown = 0;
         rows.forEach(function(row) {
-            const match = row.dataset.sy === sy && (!section || row.dataset.sectionId === section);
+            const match = row.dataset.sy === sy && (!section || row.dataset.sectionId === section)
+                && words.every(function(w) { return (row.dataset.search || '').indexOf(w) > -1; });
             row.style.display = match ? '' : 'none';
             if (match) shown++;
         });
@@ -2038,7 +2108,10 @@
         const empty = document.getElementById('ms-assign-empty-sy');
         if (empty) {
             empty.style.display = shown ? 'none' : '';
-            document.getElementById('ms-assign-empty-sy-label').textContent = sy;
+            document.getElementById('ms-assign-empty-msg').textContent = words.length
+                ? 'No subjects match "' + searchEl.value.trim() + '".'
+                : 'No subject assignments for S.Y. ' + sy + '.';
+            document.getElementById('ms-assign-clear-search').style.display = words.length ? '' : 'none';
         }
     }
     document.addEventListener('DOMContentLoaded', function() {
@@ -2099,11 +2172,45 @@
         if (bcExtraWrap) bcExtraWrap.style.display = 'none';
         // Sync list filters back
         document.getElementById('ms-list-sy').value   = document.getElementById('ms-sy').value;
+        filterAssignmentsBySchoolYear(document.getElementById('ms-list-sy').value);
         msCurrentSection     = null;
         msCurrentSubject     = null;
         msCurrentSubjectName = '';
         msCurrentSectionLabel = '';
+        teacherViewSet({ section: 'students', grade: null });
     }
+
+    // Typed or imported grades that are not saved yet would be lost on reload / closing the tab — ask first
+    // (not for Export Template's download, which keeps the page open)
+    let msDownloading = false;
+    window.addEventListener('beforeunload', function(e) {
+        if (msDownloading) return;
+        if (typeof msGradesDirty !== 'undefined' && msGradesDirty && msCurrentSection) { e.preventDefault(); e.returnValue = ''; }
+    });
+
+    // On reload: go back to the section the teacher was on, and reopen the grade sheet
+    // (same subject, section, school year and term) if one was open. Only reopens a subject
+    // that is still in this teacher's My Students list.
+    document.addEventListener('DOMContentLoaded', function() {
+        const saved = teacherViewGet();
+        if (!saved.section || sections.indexOf(saved.section) === -1 || saved.section === 'dashboard') return;
+        showSection(saved.section);
+        const g = saved.grade;
+        if (saved.section !== 'students' || !g || !g.sectionId) return;
+
+        const sySel = document.getElementById('ms-list-sy');
+        if (g.sy && [...sySel.options].some(o => o.value === g.sy)) {
+            sySel.value = g.sy;
+            filterAssignmentsBySchoolYear(g.sy);
+        }
+        const btn = [...document.querySelectorAll('#ms-list-view .ms-assign-row button[data-section-id]')]
+            .find(b => b.dataset.sectionId === String(g.sectionId) && (b.dataset.subjectId || '') === (g.subjectId ? String(g.subjectId) : ''));
+        if (!btn) { teacherViewSet({ grade: null }); return; }
+
+        const term = [1, 2, 3].includes(parseInt(g.term)) ? parseInt(g.term) : 1;
+        selectMsTerm(term, document.querySelectorAll('.ms-term-tab')[term - 1]); // no reload yet — nothing is open
+        openSubjectViewFromBtn(btn);
+    });
 
     // ── The grade table's action button ──
     // Save as Draft while there are unsaved changes (typed, or just imported → review then save),
@@ -2150,6 +2257,7 @@
         updateGradeActionButton();
         const term = parseInt(document.getElementById('ms-term').value);
         const schoolYear = document.getElementById('ms-sy').value;
+        teacherViewSet({ section: 'students', grade: { sectionId: msCurrentSection, subjectId: msCurrentSubject, sy: schoolYear, term: term } });
         // Keep subtitle in sync whenever term or SY changes
         document.getElementById('ms-view-subtitle').textContent =
             msCurrentSubjectName + ' · S.Y. ' + schoolYear + ' · Term ' + term;
@@ -2426,7 +2534,9 @@
         const schoolYear = document.getElementById('ms-sy').value;
         const params = new URLSearchParams({ section_id: msCurrentSection, term: term, school_year: schoolYear });
         if (msCurrentSubject) params.set('subject_id', msCurrentSubject);
-        // Open in same tab — browser will trigger download for .xlsx content-disposition
+        // A file download, not leaving the page — so the "unsaved grades" prompt must not appear for it
+        msDownloading = true;
+        setTimeout(function() { msDownloading = false; }, 2000);
         window.location.href = '/teacher/grades/export?' + params.toString();
     }
 

@@ -820,6 +820,8 @@ Route::middleware(['auth', 'teacher', 'maintenance'])->prefix('teacher')->name('
     Route::put('/settings/password', [\App\Http\Controllers\Teacher\DashboardController::class, 'updatePassword'])->name('settings.password');
     // Settings — profile photo
     Route::post('/settings/photo', [\App\Http\Controllers\Teacher\DashboardController::class, 'updatePhoto'])->name('settings.photo');
+    // Settings — own name and email (email change needs the current password)
+    Route::put('/settings/profile', [\App\Http\Controllers\Teacher\DashboardController::class, 'updateProfile'])->middleware('throttle:10,1')->name('settings.profile');
 });
 
 // ─────────────────────────────────────────

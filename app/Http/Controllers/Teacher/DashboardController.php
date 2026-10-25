@@ -2392,6 +2392,50 @@ class DashboardController extends Controller
         return 'password';
     }
 
+    /**
+     * The teacher's own name and email (Settings → Account Information).
+     * Same rules as Teacher Management (unique, real email domain). The email is the login and where
+     * password OTPs go, so changing it needs the current password. Errors use the "profile" bag so they
+     * can't collide with the Change Password form.
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = Auth::user();
+        $validated = $request->validateWithBag('profile', [
+            'name'             => 'required|string|min:2|max:255',
+            'email'            => 'required|email:rfc,dns|max:255|unique:users,email,' . $user->id,
+            'profile_password' => 'nullable|string',
+        ]);
+
+        $name  = trim($validated['name']);
+        $email = trim($validated['email']);
+        $emailChanged = strcasecmp($email, $user->email) !== 0;
+
+        if ($emailChanged && !Hash::check((string) $request->input('profile_password'), $user->password)) {
+            return back()->withErrors(['profile_password' => 'Enter your current password to change your email.'], 'profile')
+                         ->withInput($request->except('profile_password'))
+                         ->with('settings_tab', 'account');
+        }
+
+        $oldName = $user->name; $oldEmail = $user->email;
+        $user->update(['name' => $name, 'email' => $email]);
+
+        if ($oldName !== $user->name) {
+            \App\Services\ActivityLogger::log('update', "{$oldName} changed their name to {$user->name}", 'User', $user->id);
+        }
+        if ($emailChanged) {
+            \App\Services\ActivityLogger::log('update', "{$user->name} changed their email from {$oldEmail} to {$user->email}", 'User', $user->id);
+        }
+
+        $message = match (true) {
+            $emailChanged && $oldName !== $user->name => 'Name and email updated. Use your new email the next time you log in.',
+            $emailChanged                              => 'Email updated. Use your new email the next time you log in.',
+            $oldName !== $user->name                   => 'Name updated successfully.',
+            default                                    => 'No changes to save.',
+        };
+        return back()->with('profile_success', $message)->with('settings_tab', 'account');
+    }
+
     public function updatePhoto(Request $request)
     {
         $request->validate([
