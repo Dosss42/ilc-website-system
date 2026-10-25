@@ -93,6 +93,23 @@ class XenditPaymentTest extends TestCase
         $this->assertDatabaseHas('payment_transactions', ['xendit_invoice_id' => 'inv-bad-sig', 'status' => 'pending']);
     }
 
+    /** XENDIT_WEBHOOK_TOKEN missing on the server: an empty token must not "match" a request with no token. */
+    public function test_webhook_is_refused_when_no_token_is_configured(): void
+    {
+        config(['services.xendit.webhook_token' => '']);
+        $enrollment = Enrollment::factory()->create();
+        PaymentTransaction::create([
+            'enrollment_id' => $enrollment->id, 'user_id' => $enrollment->user_id,
+            'payment_type' => 'online', 'payment_method' => 'gcash', 'amount' => 5000,
+            'reference_number' => 'TEST-REF-3', 'xendit_invoice_id' => 'inv-no-token',
+            'status' => 'pending',
+        ]);
+
+        $this->postJson('/cashier/webhook/xendit', ['id' => 'inv-no-token', 'status' => 'PAID'])->assertStatus(401);
+        $this->postJson('/cashier/webhook/xendit', ['id' => 'inv-no-token', 'status' => 'PAID'], ['x-callback-token' => ''])->assertStatus(401);
+        $this->assertDatabaseHas('payment_transactions', ['xendit_invoice_id' => 'inv-no-token', 'status' => 'pending']);
+    }
+
     /**
      * This is the core resilience feature: on a local/non-public-URL dev
      * environment, Xendit's webhook can never be delivered — the polling

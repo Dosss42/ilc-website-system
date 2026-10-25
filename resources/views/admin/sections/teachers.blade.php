@@ -328,7 +328,7 @@
 
                             <label class="dash-form-label"><i class="bi bi-person me-1"></i>Full Name</label>
 
-                            <input type="text" id="teacher-name" class="dash-form-control" placeholder="e.g. Juan Dela Cruz">
+                            <input type="text" id="teacher-name" class="dash-form-control" placeholder="e.g. Juan Dela Cruz" data-capitalize="words" autocapitalize="words">
 
                         </div>
 
@@ -365,15 +365,6 @@
 
                         </div>
 
-                        <div class="mb-3" id="teacher-password-group" style="display:none;">
-
-                            <label class="dash-form-label"><i class="bi bi-key me-1"></i>New Password</label>
-
-                            <input type="password" id="teacher-password" class="dash-form-control" placeholder="Leave blank to keep current">
-
-                            <small class="text-muted-alt">Leave blank to keep current password.</small>
-
-                        </div>
 
                         <div class="mb-3">
 

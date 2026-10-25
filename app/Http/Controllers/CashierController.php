@@ -1063,7 +1063,10 @@ class CashierController extends Controller
 
     public function xenditWebhook(Request $request)
     {
-        if (!hash_equals((string) config('services.xendit.webhook_token'), (string) $request->header('x-callback-token'))) {
+        // No token configured (XENDIT_WEBHOOK_TOKEN missing) → refuse everything. Otherwise an empty
+        // token would "match" a request with no x-callback-token header, letting anyone mark invoices paid.
+        $expected = (string) config('services.xendit.webhook_token');
+        if ($expected === '' || !hash_equals($expected, (string) $request->header('x-callback-token'))) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 

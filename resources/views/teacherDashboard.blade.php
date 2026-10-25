@@ -1692,7 +1692,7 @@
                                 </div>
                             @endif
                             <label class="form-lbl" for="teacher-own-name">Full Name</label>
-                            <input type="text" name="name" id="teacher-own-name" class="form-fld" required minlength="2" maxlength="255"
+                            <input type="text" name="name" id="teacher-own-name" class="form-fld" required minlength="2" maxlength="255" data-capitalize="words" autocapitalize="words"
                                    value="{{ $errors->profile->any() ? old('name') : $teacher->name }}">
                             @if($errors->profile->has('name'))
                                 <div style="font-size:12px;color:#c0392b;margin-top:4px;">{{ $errors->profile->first('name') }}</div>
@@ -1876,6 +1876,7 @@
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="/js/password-strength.js"></script>
 <script src="/js/quick-jump.js?v={{ filemtime(public_path('js/quick-jump.js')) }}"></script>
+<script src="/js/name-case.js?v={{ filemtime(public_path('js/name-case.js')) }}"></script>
 <script>
     PwStrength.attach('tch-new-pwd', 'tch-confirm-pwd', { tips: true, forSelf: true });
 </script>

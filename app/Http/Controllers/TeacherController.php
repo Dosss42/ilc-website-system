@@ -97,7 +97,7 @@ class TeacherController extends Controller
         $plainPassword = $this->generateTeacherPassword();
 
         $teacher = User::create([
-            'name' => $validated['name'],
+            'name' => \App\Support\NameCase::words($validated['name']), // "maria dela cruz" → "Maria Dela Cruz"
             'email' => $validated['email'],
             'password' => bcrypt($plainPassword),
             'role' => 'teacher',
@@ -139,23 +139,27 @@ class TeacherController extends Controller
 
     public function update(Request $request, User $teacher)
     {
+        // No password here: a teacher's password is theirs — they change it in Settings (OTP to their
+        // email) or with "Forgot password?" on the login page; the Super Admin can reset it if needed.
+        // The "real domain" (dns) check only runs when the email is actually changed — otherwise renaming a
+        // teacher whose saved email has a made-up domain (or editing while offline) was refused as "not valid".
+        $emailChanged = strcasecmp(trim((string) $request->input('email')), (string) $teacher->email) !== 0;
         $validated = $request->validate([
             'name'      => 'required|string|min:2|max:255',
-            'email'     => 'required|email:rfc,dns|unique:users,email,' . $teacher->id . '|max:255',
-            'password'  => ['nullable', 'string', \Illuminate\Validation\Rules\Password::defaults()],
+            'email'     => 'required|' . ($emailChanged ? 'email:rfc,dns' : 'email:rfc') . '|unique:users,email,' . $teacher->id . '|max:255',
             'is_active' => 'boolean',
+        ], [
+            'email.email' => $emailChanged
+                ? 'That email address is not valid, or its domain does not exist (check the spelling after the @).'
+                : 'The email address is not valid.',
         ]);
 
-        $teacher->name = $validated['name'];
+        $teacher->name = \App\Support\NameCase::words($validated['name']);
         $teacher->email = $validated['email'];
-        $passwordChanged = !empty($validated['password']);
-        if ($passwordChanged) {
-            $teacher->password = bcrypt($validated['password']);
-        }
         $teacher->is_active = $validated['is_active'] ?? true;
         $teacher->save();
 
-        ActivityLogger::log('update', "Updated teacher {$teacher->name} ({$teacher->email})" . ($passwordChanged ? ' — password reset' : ''), 'User', $teacher->id);
+        ActivityLogger::log('update', "Updated teacher {$teacher->name} ({$teacher->email})", 'User', $teacher->id);
 
         return response()->json($teacher);
     }

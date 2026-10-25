@@ -38,6 +38,8 @@
     <script src="/js/page-window.js?v={{ filemtime(public_path('js/page-window.js')) }}"></script>
     {{-- ilcQuickJump: the top-bar "Go to…" box --}}
     <script src="/js/quick-jump.js?v={{ filemtime(public_path('js/quick-jump.js')) }}"></script>
+    {{-- data-capitalize="words": capital first letter of each word in name boxes --}}
+    <script src="/js/name-case.js?v={{ filemtime(public_path('js/name-case.js')) }}"></script>
     {{-- printOfficialReceipt(): the one receipt layout used across the system --}}
     <script src="/js/official-receipt.js?v={{ filemtime(public_path('js/official-receipt.js')) }}"></script>
 
@@ -3982,69 +3984,6 @@ function openWalkInEnrollmentModal() {
         window.open(url, '_blank');
     }
 
-    // ── Export Schedule ──
-
-    function csvEscape(value) {
-        const s = value === null || value === undefined ? '' : String(value);
-        return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-    }
-
-    function exportSchedule() {
-
-        const grade = document.getElementById('scheduleGradeFilter').value;
-
-        if (!grade) {
-
-            showCustomAlert('warning', 'Select Grade', 'Please select a grade level first.');
-
-            return;
-
-        }
-
-        const rows = _scheduleCache || [];
-
-        if (!rows.length) {
-            showCustomAlert('warning', 'Nothing to Export', 'Load a schedule first, then export it.');
-            return;
-        }
-
-        const dayOrder = { 'Monday':1, 'Tuesday':2, 'Wednesday':3, 'Thursday':4, 'Friday':5, 'Saturday':6, 'Sunday':7 };
-        const sorted = [...rows].sort((a, b) => {
-            const d = (dayOrder[a.day_of_week] || 99) - (dayOrder[b.day_of_week] || 99);
-            return d !== 0 ? d : (a.start_time || '').localeCompare(b.start_time || '');
-        });
-
-        const header = ['Day', 'Start Time', 'End Time', 'Section', 'Subject Code', 'Subject Name', 'Teacher', 'Room'];
-        const lines = [header.map(csvEscape).join(',')];
-
-        sorted.forEach(s => {
-            lines.push([
-                s.day_of_week || '',
-                (s.start_time || '').substring(0, 5),
-                (s.end_time || '').substring(0, 5),
-                s.section ? s.section.name : '',
-                s.subject ? (s.subject.code || '') : '',
-                s.subject ? s.subject.name : '',
-                s.teacher ? s.teacher.name : '',
-                s.room || '',
-            ].map(csvEscape).join(','));
-        });
-
-        const sectionSel = document.getElementById('scheduleSectionFilter');
-        const sectionLabel = sectionSel && sectionSel.selectedIndex > 0 ? sectionSel.options[sectionSel.selectedIndex].text : 'all-sections';
-        const filename = `schedule-${grade}-${sectionLabel}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '.csv';
-
-        const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
-
     // â”€â”€ Populate Section Filter based on Grade â”€â”€
 
     const scheduleGradeFilter = document.getElementById('scheduleGradeFilter');
@@ -6983,9 +6922,7 @@ function openWalkInEnrollmentModal() {
         document.getElementById('teacher-id').value = '';
         document.getElementById('teacher-name').value = '';
         document.getElementById('teacher-email').value = '';
-        document.getElementById('teacher-password').value = '';
         document.getElementById('teacher-autogen-info').style.display = 'block';
-        document.getElementById('teacher-password-group').style.display = 'none';
         document.getElementById('teacher-active').value = '1';
         _resetTeacherEmailUI();
 
@@ -7000,12 +6937,9 @@ function openWalkInEnrollmentModal() {
         document.getElementById('teacher-id').value = id;
         document.getElementById('teacher-name').value = name;
         document.getElementById('teacher-email').value = email;
-        document.getElementById('teacher-password').value = '';
         document.getElementById('teacher-autogen-info').style.display = 'none';
-        document.getElementById('teacher-password-group').style.display = 'block';
         document.getElementById('teacher-active').value = active ? '1' : '0';
         _resetTeacherEmailUI();
-        PwStrength.refresh('teacher-password');
 
         new bootstrap.Modal(document.getElementById('teacherModal')).show();
 
@@ -7066,14 +7000,6 @@ function openWalkInEnrollmentModal() {
             is_active: document.getElementById('teacher-active').value === '1'
 
         };
-
-        if (id) {
-
-            const pw = document.getElementById('teacher-password').value;
-
-            if (pw) body.password = pw;
-
-        }
 
         fetch(url, {
             method: method,
@@ -14215,13 +14141,6 @@ function openWalkInEnrollmentModal() {
 <script src="/js/password-strength.js"></script>
 <script>
     PwStrength.attach('admin-own-password', 'admin-own-password-confirm', { tips: true, forSelf: true });
-    // Edit Teacher: optional ("leave blank to keep current"), so the meter stays hidden until they type.
-    PwStrength.attach('teacher-password', null, {
-        hideWhenEmpty: true,
-        personal: function () {
-            return (document.getElementById('teacher-name') || {}).value + ' ' + (document.getElementById('teacher-email') || {}).value;
-        }
-    });
 
     // Walk-in enrollment address cascade
     PHAddress.initCascade({

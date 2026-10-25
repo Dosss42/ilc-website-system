@@ -150,7 +150,9 @@ class SuperAdminParityTest extends TestCase
             ->assertSee('id="tch-status-filter"', false)->assertSee('id="tch-cnt-total"', false)
             ->assertSee('id="subj-search"', false)->assertSee('<th>In Schedule</th>', false)
             ->assertSee('id="sec-status-filter"', false)->assertSee('ilcSectionTools.autoAssign', false)
-            ->assertSee('js/section-tools.js', false)->assertSee('saExportScheduleCsv()', false)
+            ->assertSee('js/section-tools.js', false)
+            // Schedule: Download PDF only — the Export CSV button was removed (same as Admin)
+            ->assertSee('id="saSchedulePdfLink"', false)->assertDontSee('saExportScheduleCsv', false)
             ->assertSee('id="nav-students"', false)->assertSee('id="section-students"', false)
             ->assertSee('id="enr-fees-collected"', false)->assertSee('saAssignAdvisory(', false);
 

@@ -88,9 +88,6 @@
             <div class="content-card-header">
                 <h6 id="scheduleInfoText">Schedule</h6>
                 <div style="display:flex;gap:8px;">
-                    <button class="btn-dash btn-secondary" onclick="exportSchedule()" style="display:inline-flex;align-items:center;gap:7px;">
-                        <i class="bi bi-file-earmark-spreadsheet-fill"></i> Export CSV
-                    </button>
                     <button class="btn-dash btn-primary" onclick="downloadScheduleAdminPDF()" style="display:inline-flex;align-items:center;gap:7px;">
                         <i class="bi bi-file-earmark-pdf-fill"></i> Download PDF
                     </button>

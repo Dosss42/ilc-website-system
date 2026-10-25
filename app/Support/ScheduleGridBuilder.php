@@ -52,8 +52,12 @@ class ScheduleGridBuilder
      *   (empty if nothing is scheduled there), so a timetable with few or no
      *   classes still shows the full school day. Classes at non-standard
      *   times still get their own row.
+     * @param bool $withBreaks Add the Health Break / Lunch Break rows that fall
+     *   inside the day being shown (between its first class and its last), so a
+     *   morning-only timetable (Nursery, Kinder) shows the Health Break but no
+     *   Lunch Break, and a full day shows both.
      */
-    public static function build($schedules, bool $withStandardSlots = false): array
+    public static function build($schedules, bool $withStandardSlots = false, bool $withBreaks = true): array
     {
         $usedDays = $schedules->pluck('day_of_week')->unique()->toArray();
         $showDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -80,6 +84,16 @@ class ScheduleGridBuilder
             // A class booked into a break slot turns it into a normal row so it still shows
             $timeSlots[$timeKey]['break'] = null;
             $timeSlots[$timeKey]['days'][$sched->day_of_week] = $sched;
+        }
+        if ($withBreaks && $schedules->isNotEmpty()) {
+            $first = $schedules->min(fn($s) => substr($s->start_time, 0, 5));
+            $last  = $schedules->max(fn($s) => substr($s->end_time, 0, 5));
+            foreach (self::STANDARD_SLOTS as $slot) {
+                $key = $slot['start'] . '-' . $slot['end'];
+                if (!empty($slot['break']) && !isset($timeSlots[$key]) && $slot['start'] >= $first && $slot['end'] <= $last) {
+                    $timeSlots[$key] = ['start' => $slot['start'] . ':00', 'end' => $slot['end'] . ':00', 'days' => [], 'break' => $slot['break']];
+                }
+            }
         }
         ksort($timeSlots);
 

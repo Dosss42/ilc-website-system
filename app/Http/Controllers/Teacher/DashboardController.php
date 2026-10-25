@@ -2401,13 +2401,17 @@ class DashboardController extends Controller
     public function updateProfile(Request $request)
     {
         $user = Auth::user();
+        // "Real domain" (dns) check only for a NEW email — a name change must not fail on the saved email
+        $emailChanged = strcasecmp(trim((string) $request->input('email')), (string) $user->email) !== 0;
         $validated = $request->validateWithBag('profile', [
             'name'             => 'required|string|min:2|max:255',
-            'email'            => 'required|email:rfc,dns|max:255|unique:users,email,' . $user->id,
+            'email'            => 'required|' . ($emailChanged ? 'email:rfc,dns' : 'email:rfc') . '|max:255|unique:users,email,' . $user->id,
             'profile_password' => 'nullable|string',
+        ], [
+            'email.email' => 'That email address is not valid, or its domain does not exist (check the spelling after the @).',
         ]);
 
-        $name  = trim($validated['name']);
+        $name  = \App\Support\NameCase::words($validated['name']);
         $email = trim($validated['email']);
         $emailChanged = strcasecmp($email, $user->email) !== 0;
 

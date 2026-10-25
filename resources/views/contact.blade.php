@@ -435,28 +435,12 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
                 <div class="social-box">
                     <h5><i class="bi bi-share-fill me-2"></i> Follow &amp; Connect</h5>
 
-                    {{-- CHANGE: Replace all # links with your actual social media URLs --}}
+                    {{-- CHANGE: Replace # with the school's Facebook page URL (e.g. https://www.facebook.com/YourPageName) --}}
                     <a href="#" class="social-link" target="_blank">
                         <i class="bi bi-facebook fb"></i>
                         <div>
                             <div class="social-link-title">Facebook Page</div>
                             <div class="social-link-sub">IEMELIF Learning Center — General Tinio</div>
-                        </div>
-                    </a>
-
-                    <a href="#" class="social-link" target="_blank">
-                        <i class="bi bi-messenger msg"></i>
-                        <div>
-                            <div class="social-link-title">Facebook Messenger</div>
-                            <div class="social-link-sub">Message us directly anytime</div>
-                        </div>
-                    </a>
-
-                    <a href="#" class="social-link" target="_blank">
-                        <i class="bi bi-youtube yt"></i>
-                        <div>
-                            <div class="social-link-title">YouTube Channel</div>
-                            <div class="social-link-sub">Watch school events and activities</div>
                         </div>
                     </a>
 

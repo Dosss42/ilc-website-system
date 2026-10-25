@@ -23,10 +23,11 @@ trait ChecksTeacherOwnership
             ->exists();
         if ($inSchedule) return true;
 
-        // Fallback: advisory assignment (class advisers can also manage their section)
+        // Otherwise any assignment to this section: advisory (class advisers manage their section) or a subject
+        // assignment made in Teacher Assignments before the timetable exists — the same links My Students lists,
+        // so a class shown there always opens.
         return TeacherAssignment::where('teacher_id', $teacherId)
             ->where('section_id', $sectionId)
-            ->where('is_advisory', true)
             ->exists();
     }
 
@@ -52,10 +53,10 @@ trait ChecksTeacherOwnership
             ->exists();
         if ($inSchedule) return true;
 
-        // Advisory teachers can enter general grades for their section
+        // Assigned this subject in this section (Teacher Assignments), or the section's adviser
         return TeacherAssignment::where('teacher_id', $teacherId)
             ->where('section_id', $sectionId)
-            ->where('is_advisory', true)
+            ->where(fn ($q) => $q->where('subject_id', $subjectId)->orWhere('is_advisory', true))
             ->exists();
     }
 }

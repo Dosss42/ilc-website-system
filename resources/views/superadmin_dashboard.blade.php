@@ -661,6 +661,8 @@
     <script src="/js/page-window.js?v={{ filemtime(public_path('js/page-window.js')) }}"></script>
     {{-- ilcQuickJump: the top-bar "Go to…" box --}}
     <script src="/js/quick-jump.js?v={{ filemtime(public_path('js/quick-jump.js')) }}"></script>
+    {{-- data-capitalize="words": capital first letter of each word in name boxes --}}
+    <script src="/js/name-case.js?v={{ filemtime(public_path('js/name-case.js')) }}"></script>
     @include('partials.password-eye-style')
 </head>
 <body>
@@ -2836,9 +2838,6 @@
             <div class="content-card-header">
                 <h6 id="scheduleInfoText">Schedule</h6>
                 <div style="display:flex;gap:8px;">
-                    <button type="button" class="btn-dash btn-secondary" onclick="saExportScheduleCsv()" style="display:inline-flex;align-items:center;gap:7px;">
-                        <i class="bi bi-file-earmark-spreadsheet-fill"></i> Export CSV
-                    </button>
                     <a href="#" id="saSchedulePdfLink" target="_blank" class="btn-dash btn-primary" style="display:inline-flex;align-items:center;gap:7px;text-decoration:none;">
                         <i class="bi bi-file-earmark-pdf-fill"></i> Download PDF
                     </a>
@@ -5961,10 +5960,9 @@
             '<div style="background:linear-gradient(135deg,#6a1b9a,#7b1fa2);padding:20px 24px;"><div style="display:flex;align-items:center;gap:12px;"><div style="width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;"><i class="bi bi-person-badge-fill" style="color:#fff;font-size:18px;"></i></div><div style="font-size:16px;font-weight:800;color:#fff;" id="teacherModalTitle">Add Teacher</div></div><button type="button" data-bs-dismiss="modal" style="position:absolute;top:14px;right:16px;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.15);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;"><i class="bi bi-x-lg"></i></button></div>' +
             '<div style="padding:20px 24px;background:#fff;">' +
             '<input type="hidden" id="teacher-id">' +
-            '<div class="mb-3"><label class="form-lbl">Full Name *</label><input type="text" id="teacher-name" class="form-fld" placeholder="e.g. Juan Dela Cruz"></div>' +
+            '<div class="mb-3"><label class="form-lbl">Full Name *</label><input type="text" id="teacher-name" class="form-fld" placeholder="e.g. Juan Dela Cruz" data-capitalize="words" autocapitalize="words"></div>' +
             '<div class="mb-3"><label class="form-lbl">Email Address *</label><div style="position:relative;"><input type="email" id="teacher-email" class="form-fld" placeholder="e.g. teacher@gmail.com" oninput="validateTeacherEmailField(this)" style="padding-right:38px;"><span id="teacher-email-icon" style="position:absolute;right:11px;top:50%;transform:translateY(-50%);font-size:16px;display:none;"></span></div><div id="teacher-email-msg" style="font-size:11px;margin-top:5px;display:none;"></div></div>' +
             '<div class="mb-3" id="teacher-autogen-info" style="display:none;"><div style="background:#e8f8f0;border:1px solid #b8e6c8;border-radius:8px;padding:14px 16px;display:flex;align-items:center;gap:10px;"><i class="bi bi-shield-lock-fill" style="font-size:20px;color:#28a745;"></i><div><div style="font-weight:700;font-size:13px;color:#155724;">Password Auto-Generated</div><div style="font-size:12px;color:#3c763d;">A secure password will be generated and sent to the teacher\'s email automatically.</div></div></div></div>' +
-            '<div class="mb-3" id="teacher-password-group" style="display:none;"><label class="form-lbl">New Password</label><input type="password" id="teacher-password" class="form-fld" placeholder="Leave blank to keep current"><small style="color:#64748b;font-size:11px;">Leave blank to keep current password.</small></div>' +
             '<div><label class="form-lbl">Status</label><select id="teacher-active" class="form-fld"><option value="1">Active</option><option value="0">Inactive</option></select></div>' +
             '</div><div style="padding:12px 24px;background:#f8faff;border-top:1.5px solid #e2e8f0;display:flex;gap:10px;justify-content:flex-end;">' +
             '<button type="button" data-bs-dismiss="modal" style="padding:9px 18px;background:#fff;color:#64748b;border:1.5px solid #e2e8f0;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">Cancel</button>' +
@@ -6027,9 +6025,7 @@
         document.getElementById('teacher-id').value = '';
         document.getElementById('teacher-name').value = '';
         document.getElementById('teacher-email').value = '';
-        document.getElementById('teacher-password').value = '';
         document.getElementById('teacher-autogen-info').style.display = 'block';
-        document.getElementById('teacher-password-group').style.display = 'none';
         document.getElementById('teacher-active').value = '1';
         _resetTeacherEmailUI();
         new bootstrap.Modal(document.getElementById('teacherModal')).show();
@@ -6045,16 +6041,9 @@
         document.getElementById('teacher-id').value = t.id;
         document.getElementById('teacher-name').value = t.name || '';
         document.getElementById('teacher-email').value = t.email || '';
-        document.getElementById('teacher-password').value = '';
         document.getElementById('teacher-autogen-info').style.display = 'none';
-        document.getElementById('teacher-password-group').style.display = 'block';
         document.getElementById('teacher-active').value = (t.is_active || t.is_active === 1) ? '1' : '0';
         _resetTeacherEmailUI();
-        // Optional field ("leave blank to keep current"), so the meter stays hidden until they type.
-        PwStrength.attach('teacher-password', null, {
-            hideWhenEmpty: true,
-            personal: (t.name || '') + ' ' + (t.email || '')
-        });
         new bootstrap.Modal(document.getElementById('teacherModal')).show();
     }
 
@@ -6066,11 +6055,9 @@
         if (!name || name.length < 2) { saToast('warning', "Please enter the teacher's full name."); return; }
         if (!email || !_emailRfc.test(email)) { saToast('warning', 'Please enter a valid email address.'); return; }
 
+        // No password: teachers change their own (Settings / Forgot password); Super Admin can use
+        // User Management › Reset Password.
         var body = { name: name, email: email, is_active: active };
-        if (id) {
-            var pw = document.getElementById('teacher-password').value;
-            if (pw) body.password = pw;
-        }
 
         var method = id ? 'PUT' : 'POST';
         var url    = '/admin/teachers' + (id ? '/' + id : '');
@@ -6684,33 +6671,6 @@
     };
     var _saScheduleCache = [];
 
-    // Export CSV — same columns and order as Admin's (the schedule currently shown)
-    function saExportScheduleCsv() {
-        var grade = document.getElementById('scheduleGradeFilter').value;
-        if (!grade) { saToast('warning', 'Select a grade level first.'); return; }
-        if (!_saScheduleCache.length) { saToast('warning', 'Nothing to export', 'Load a schedule first, then export it.'); return; }
-        var dayOrder = { Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6, Sunday: 7 };
-        var rows = _saScheduleCache.slice().sort(function (a, b) {
-            var d = (dayOrder[a.day_of_week] || 99) - (dayOrder[b.day_of_week] || 99);
-            return d !== 0 ? d : (a.start_time || '').localeCompare(b.start_time || '');
-        });
-        var cell = function (v) { v = String(v == null ? '' : v); return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
-        var lines = [['Day', 'Start Time', 'End Time', 'Section', 'Subject Code', 'Subject Name', 'Teacher', 'Room'].map(cell).join(',')];
-        rows.forEach(function (s) {
-            lines.push([s.day_of_week, (s.start_time || '').substring(0, 5), (s.end_time || '').substring(0, 5),
-                s.section ? s.section.name : '', s.subject ? (s.subject.code || '') : '', s.subject ? s.subject.name : '',
-                s.teacher ? s.teacher.name : '', s.room || ''].map(cell).join(','));
-        });
-        var secSel = document.getElementById('scheduleSectionFilter');
-        var secLabel = secSel && secSel.selectedIndex > 0 ? secSel.options[secSel.selectedIndex].text : 'all-sections';
-        var name = ('schedule-' + grade + '-' + secLabel + '-' + schedSelectedYear() + '-term' + document.getElementById('scheduleTermFilter').value)
-            .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '.csv';
-        var url = URL.createObjectURL(new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8;' }));
-        var a = document.createElement('a');
-        a.href = url; a.download = name;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
 
     function quickSelectScheduleGrade(grade) {
         document.getElementById('scheduleGradeFilter').value = grade;
