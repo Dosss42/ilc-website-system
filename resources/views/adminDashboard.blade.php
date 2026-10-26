@@ -13701,7 +13701,7 @@ function openWalkInEnrollmentModal() {
                 <div class="row g-3 mb-3">
                     <div class="col-md-6">
                         <label class="dash-form-label"><i class="bi bi-tag me-1" style="color:var(--green);"></i>Section Name <span class="text-danger">*</span></label>
-                        <input type="text" id="sec-name" class="dash-form-control" placeholder="e.g. Section A">
+                        <input type="text" id="sec-name" class="dash-form-control" placeholder="e.g. Section A" data-capitalize="words" autocapitalize="words">
                     </div>
                     <div class="col-md-6">
                         <label class="dash-form-label"><i class="bi bi-mortarboard me-1" style="color:var(--green);"></i>Grade Level <span class="text-danger">*</span></label>

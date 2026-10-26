@@ -164,6 +164,7 @@ class SectionController extends Controller
             'school_year' => 'required|string|max:20',
             'is_active' => 'boolean'
         ]);
+        $validated['name'] = \App\Support\NameCase::words($validated['name']); // "rizal b" → "Rizal B"
 
         if (!isset($validated['max_students'])) {
             $validated['max_students'] = 30;
@@ -367,9 +368,24 @@ class SectionController extends Controller
             'school_year' => 'required|string|max:20',
             'is_active' => 'boolean'
         ]);
+        $validated['name'] = \App\Support\NameCase::words($validated['name']);
 
-        $oldGradeLevel = $section->grade_level;
+        $oldGradeLevel  = $section->grade_level;
+        $oldName        = $section->name;
+        $oldSchoolYear  = $section->school_year;
         $section->update($validated);
+
+        // Renamed: enrollments keep the section as plain text, so move this section's own students
+        // to the new name — otherwise they would drop out of its class lists, SF forms and grade sheets.
+        if ($oldName !== $section->name) {
+            $moved = \App\Models\Enrollment::where('school_year', $oldSchoolYear)
+                ->where('section', $oldName)
+                ->whereIn('user_id', $section->students()->pluck('users.id'))
+                ->update(['section' => $section->name]);
+            if ($moved) {
+                ActivityLogger::log('update', "Section renamed \"{$oldName}\" → \"{$section->name}\": {$moved} enrollment(s) updated", 'Section', $section->id);
+            }
+        }
 
         // Re-assign subjects if grade level changed
         if ($oldGradeLevel !== $section->grade_level) {
