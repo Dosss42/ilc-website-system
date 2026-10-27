@@ -9,8 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
   
-    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1789758077">
-    <link rel="stylesheet" href="{{ asset('css/news.css') }}?v=1780250000">    {{-- news page only --}}
+    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1789900001">
+    <link rel="stylesheet" href="{{ asset('css/news.css') }}?v=1789900000">    {{-- news page only --}}
     <style>
         /* Custom Scrollbar Design */
         ::-webkit-scrollbar {
@@ -643,25 +643,16 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
             <div class="col-md-3">
                 <h6>Latest Articles</h6>
                 <div class="footer-news-item">
-                    <div class="footer-news-img">
-                        <img src="{{ asset('images/bg4.jpg') }}" alt="News 1"> 
-                    </div>
                     <div class="footer-news-text">
                         Celebrating 32 Years of Excellence in Education
                     </div>
                 </div>
                 <div class="footer-news-item">
-                    <div class="footer-news-img">
-                        <img src="{{ asset('images/bg2.jpg') }}" alt="News 1"> 
-                    </div>
                     <div class="footer-news-text">
                         Science Education Affair 2025 &mdash; A Successful Event
                     </div>
                 </div>
                 <div class="footer-news-item">
-                    <div class="footer-news-img">
-                        <img src="{{ asset('images/bg3.jpg') }}" alt="News 1"> 
-                    </div>
                     <div class="footer-news-text">
                         Welcome Back to School, ILCians!
                     </div>
@@ -698,5 +689,6 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>(function(){var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],months=['January','February','March','April','May','June','July','August','September','October','November','December'];function pad(n){return n<10?'0'+n:n;}function tick(){var now=new Date(),d=days[now.getDay()]+', '+months[now.getMonth()]+' '+now.getDate()+', '+now.getFullYear(),h=now.getHours(),ampm=h>=12?'PM':'AM';h=h%12||12;var t=h+':'+pad(now.getMinutes())+':'+pad(now.getSeconds())+' '+ampm;var de=document.getElementById('topbar-date'),te=document.getElementById('topbar-time');if(de)de.textContent=d;if(te)te.textContent=t;}tick();setInterval(tick,1000);})();</script>
 <script>(function(){var S=[['real-content','skel-content'],['real-footer','skel-footer']];function go(i){if(i>=S.length){document.body.classList.remove('page-loading');return;}var r=document.getElementById(S[i][0]),s=document.getElementById(S[i][1]);if(s)s.style.display='none';if(r){r.style.display='block';void r.offsetWidth;r.style.transition='opacity .38s ease';r.style.opacity='1';}setTimeout(function(){go(i+1);},160);}function start(){setTimeout(function(){go(0);},200);}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',start);}else{start();}})();</script>
+<script src="{{ asset('js/sticky-nav.js') }}?v=1"></script>
 </body>
 </html>

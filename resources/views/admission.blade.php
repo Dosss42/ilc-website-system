@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
-    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1789758077">
+    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1789900001">
     <link rel="stylesheet" href="{{ asset('css/enrollment.css') }}?v=1780320000">
     <style>
         /* Custom Scrollbar Design */
@@ -923,23 +923,30 @@ body, div, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select
 
         </div>
 
-        {{-- Enrollment Schedule Notice --}}
-        <div style="background:#e8f0fb; border:1px solid #b8d0f0; border-radius:8px; padding:16px 20px; display:flex; align-items:flex-start; gap:14px; margin-bottom:32px;">
-            <i class="bi bi-calendar-event-fill" style="color:var(--ilc-blue); font-size:20px; flex-shrink:0; margin-top:2px;"></i>
-            <div>
+        @php $admissionClosed = session('enrollment_closed') || (isset($enrollmentOpen) && !$enrollmentOpen); @endphp
+
+        {{-- Enrollment Schedule Notice — the Enroll Now button sits on its right while enrollment is open --}}
+        <div style="background:#e8f0fb; border:1px solid #b8d0f0; border-radius:8px; padding:16px 20px; display:flex; align-items:center; flex-wrap:wrap; gap:14px; margin-bottom:32px;">
+            <i class="bi bi-calendar-event-fill" style="color:var(--ilc-blue); font-size:20px; flex-shrink:0; align-self:flex-start; margin-top:2px;"></i>
+            <div style="flex:1; min-width:220px;">
                 <div style="font-size:13px; font-weight:700; color:var(--ilc-blue); margin-bottom:4px;">
                     Enrollment Period: June 1 &ndash; June 5, 2026
                 </div>
                 <div style="font-size:12px; color:#555; line-height:1.6;">
                     {{-- CHANGE: Update enrollment schedule --}}
                     Office hours: Monday to Friday, 7:30 AM &ndash; 4:00 PM &nbsp;|&nbsp;
-                    Saturday-Sunday: Closed 
+                    Saturday-Sunday: Closed
                 </div>
             </div>
+            @unless($admissionClosed)
+            <a href="{{ route('enrollment.form') }}" class="btn-apply-now">
+                <span>Enroll Now</span>
+            </a>
+            @endunless
         </div>
 
-        {{-- Enroll Now Button / Closed Notice --}}
-        @if(session('enrollment_closed') || (isset($enrollmentOpen) && !$enrollmentOpen))
+        {{-- Closed Notice --}}
+        @if($admissionClosed)
         <div class="text-center mt-5 mb-4">
             <div style="display:inline-block;background:#fff3e0;border:1.5px solid #f5a623;border-radius:14px;padding:22px 36px;max-width:480px;">
                 <div style="font-size:32px;margin-bottom:10px;"><i class="bi bi-lock-fill" style="font-size:32px;color:#1a3a6c;margin-bottom:10px;display:block;font-style:normal;"></i></div>
@@ -949,13 +956,6 @@ body, div, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select
                     Please check back later or visit the school office for walk-in enrollment.
                 </div>
             </div>
-        </div>
-        @else
-        <div class="text-center mt-5 mb-4">
-            <a href="{{ route('enrollment.form') }}" class="btn-apply-now">
-                <span>Enroll Now</span>
-                <i class="fas fa-arrow-right"></i>
-            </a>
         </div>
         @endif
 
@@ -1015,5 +1015,6 @@ body, div, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select
 <script>(function(){var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],months=['January','February','March','April','May','June','July','August','September','October','November','December'];function pad(n){return n<10?'0'+n:n;}function tick(){var now=new Date(),d=days[now.getDay()]+', '+months[now.getMonth()]+' '+now.getDate()+', '+now.getFullYear(),h=now.getHours(),ampm=h>=12?'PM':'AM';h=h%12||12;var t=h+':'+pad(now.getMinutes())+':'+pad(now.getSeconds())+' '+ampm;var de=document.getElementById('topbar-date'),te=document.getElementById('topbar-time');if(de)de.textContent=d;if(te)te.textContent=t;}tick();setInterval(tick,1000);})();</script>
 <script>(function(){var S=[['real-content','skel-content']];function go(i){if(i>=S.length){document.body.classList.remove('page-loading');return;}var r=document.getElementById(S[i][0]),s=document.getElementById(S[i][1]);if(s)s.style.display='none';if(r){r.style.display='block';void r.offsetWidth;r.style.transition='opacity .38s ease';r.style.opacity='1';}setTimeout(function(){go(i+1);},160);}function start(){setTimeout(function(){go(0);},200);}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',start);}else{start();}})();</script>
 
+<script src="{{ asset('js/sticky-nav.js') }}?v=1"></script>
 </body>
 </html>

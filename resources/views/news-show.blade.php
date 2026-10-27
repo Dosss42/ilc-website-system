@@ -8,8 +8,8 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
-    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1789758077">
-    <link rel="stylesheet" href="{{ asset('css/news.css') }}?v=1780250000">
+    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1789900001">
+    <link rel="stylesheet" href="{{ asset('css/news.css') }}?v=1789900000">
 <style>
 :root { --bs-font-sans-serif: 'Open Sans', sans-serif; --bs-body-font-family: 'Open Sans', sans-serif; }
 body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, textarea {
@@ -205,5 +205,6 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
 @include('partials.footer')
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ asset('js/sticky-nav.js') }}?v=1"></script>
 </body>
 </html>

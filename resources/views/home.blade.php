@@ -27,7 +27,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
-    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1789758077">
+    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1789900001">
     <link rel="stylesheet" href="{{ asset('css/home.css') }}?v=1780380004">
     <style>
         /* Custom Scrollbar Design */
@@ -317,7 +317,7 @@ document.addEventListener('keydown', function(e) {
     padding: 0 clamp(24px, 7vw, 120px);
 }
 
-/* WELCOME / TO ILC! — two lines, "ILC!" in the school gold */
+/* WELCOME TO / IEMELIF / LEARNING CENTER! — the school name in the school gold */
 .hero-welcome {
     font-size: clamp(34px, 4.2vw, 60px);
     font-weight: 800;   /* the heaviest Open Sans weight this page loads */
@@ -346,7 +346,7 @@ document.addEventListener('keydown', function(e) {
     animation: heroFadeUp .9s .12s ease both;
 }
 
-/* Welcome + motto + button as one block on the left; the button sits centered under it */
+/* Welcome + motto + button as one block on the left; the button runs from the start to the end of the text */
 .hero-text {
     display: flex;
     flex-direction: column;
@@ -354,7 +354,7 @@ document.addEventListener('keydown', function(e) {
 }
 
 .hero-actions {
-    align-self: center;
+    align-self: stretch;
     display: flex;
     gap: 14px;
     justify-content: center;
@@ -363,12 +363,14 @@ document.addEventListener('keydown', function(e) {
 }
 
 .hero-btn-primary {
-    padding: 8px 20px;
+    flex: 1;
+    justify-content: center;
+    padding: 13px 20px;
     background: #c5a059;
     color: #0f2451;
     border: none;
     border-radius: 40px;
-    font-size: 12.5px;
+    font-size: 14px;
     font-weight: 800;
     text-decoration: none;
     letter-spacing: .4px;
@@ -393,7 +395,7 @@ document.addEventListener('keydown', function(e) {
     .hero-section { height: 420px; }
     .hero-bg { background-position: 68% center; }
     .hero-overlay { background: linear-gradient(to right, rgba(10, 22, 50, 0.78) 0%, rgba(10, 22, 50, 0.45) 70%, rgba(10, 22, 50, 0.25) 100%); }
-    .hero-btn-primary { padding: 8px 18px; font-size: 12px; }
+    .hero-btn-primary { padding: 10px 18px; font-size: 13px; }
     .hero-motto { max-width: 260px; }
 }
 </style>
@@ -405,7 +407,7 @@ document.addEventListener('keydown', function(e) {
 
     <div class="hero-content">
         <div class="hero-text">
-            <h1 class="hero-welcome">Welcome<br>to <span class="hero-welcome-gold">ILC!</span></h1>
+            <h1 class="hero-welcome">Welcome to<br><span class="hero-welcome-gold">IEMELIF<br>Learning Center!</span></h1>
             <p class="hero-motto">{{ \App\Models\Setting::get('school_motto') ?: 'Nurturing Faith, Excellence, and Learning' }}</p>
             @php $enrollmentOpen = \App\Models\Setting::get('enrollment_open', true); @endphp
             @if($enrollmentOpen)
@@ -848,15 +850,37 @@ document.addEventListener('keydown', function(e) {
 
 /* Middle column: Highlights — the feature cards, one under another;
    on wide screens the picture is on the left and the text on the right */
-.highlights-list .highlight-item + .highlight-item { margin-top: 18px; }
+.highlights-list .highlight-item + .highlight-item { margin-top: 14px; }
 .highlights-list .feature-card { height: auto; }
 /* Highlights are display-only (not links), so no hover lift or image zoom */
 .highlights-list .feature-card:hover { transform: none; box-shadow: 0 4px 20px rgba(26,58,108,.08); }
 .highlights-list .feature-card:hover .feature-card-img img { transform: none; }
 @media (min-width: 992px) {
     .highlights-list .feature-card { flex-direction: row; }
-    .highlights-list .feature-card-img { width: 42%; height: auto; min-height: 190px; }
+    .highlights-list .feature-card-img { width: 42%; height: auto; }
+    /* News and Highlights cards share one height so they line up row by row (both have a 14px gap);
+       long text is cut with "…" so a card never grows taller than its row */
+    .news-card.news-card-stack,
+    .highlights-list .feature-card { height: 290px; }
+    .news-card.news-card-stack .news-body h6,
+    .news-card.news-card-stack .news-body p,
+    .highlights-list .feature-card-title,
+    .highlights-list .feature-card-text {
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .news-card.news-card-stack .news-body h6 { -webkit-line-clamp: 2; }
+    .news-card.news-card-stack .news-body p  { -webkit-line-clamp: 3; flex: 0 1 auto; }
+    .news-card.news-card-stack .news-read-more { margin-top: auto; }
+    .highlights-list .feature-card-title { -webkit-line-clamp: 2; }
+    .highlights-list .feature-card-text  { -webkit-line-clamp: 9; flex: 0 1 auto; margin-bottom: 0; }
 }
+
+/* Get to Know Us: enrollment, academics, vision & mission — three cards across, below the news row */
+.about-cards-row { padding-top: 0; }
+.about-cards-row .feature-card:hover { transform: none; box-shadow: 0 4px 20px rgba(26,58,108,.08); }
+.about-cards-row .feature-card:hover .feature-card-img img { transform: none; }
 
 /* Announcements panel */
 .ann-panel {
@@ -993,8 +1017,13 @@ document.addEventListener('keydown', function(e) {
                     <span class="news-col-hdr-title">Highlights</span>
                 </div>
                 <div class="highlights-list">
-                {{-- News / announcements starred as Highlights by Admin or Super Admin --}}
-                @foreach(($highlightPosts ?? collect()) as $post)
+                {{-- Three cards, one per News card: posts starred as Highlights by Admin or Super Admin come first,
+                     then the school's own cards fill the rest --}}
+                @php
+                    $hlPosts = ($highlightPosts ?? collect())->take(3);
+                    $hlFill  = 3 - $hlPosts->count();
+                @endphp
+                @foreach($hlPosts as $post)
                 <div class="highlight-item">
                     <div class="feature-card">
                         <div class="feature-card-img">
@@ -1016,6 +1045,7 @@ document.addEventListener('keydown', function(e) {
                 </div>
                 @endforeach
 
+                @if($hlFill >= 1)
                 {{-- Card 1: About / School Head --}}
                 <div class="highlight-item">
                     <div class="feature-card">
@@ -1033,60 +1063,29 @@ document.addEventListener('keydown', function(e) {
                     </div>
                 </div>
 
-                {{-- Card 2: Enrollment --}}
+                @endif
+
+                @if($hlFill >= 2)
+                {{-- Card 2: Student Portal --}}
                 <div class="highlight-item">
-                    @php $enrollOpen = \App\Models\Setting::get('enrollment_open', true); @endphp
                     <div class="feature-card">
                         <div class="feature-card-img">
-                            <img src="{{ asset('images/bg7.jpg') }}" alt="Enrollment">
+                            <img src="{{ asset('images/bg5.jpg') }}" alt="Student Portal">
                             <div class="feature-card-img-overlay"></div>
-                            <span class="feature-card-badge" style="background:{{ $enrollOpen ? 'rgba(22,163,74,.8)' : 'rgba(100,116,139,.7)' }};color:#fff;">
-                                <i class="bi bi-circle-fill me-1" style="font-size:7px;"></i>
-                                {{ $enrollOpen ? 'Enrollment Open' : 'Enrollment Closed' }}
-                            </span>
-                        </div>
-                        <div class="feature-card-body">
-                            <div class="feature-card-title">{{ $enrollOpen ? 'Enroll Now for S.Y. 2026–2027' : 'Enrollment Information' }}</div>
-                            <div class="feature-card-text">{{ $enrollOpen ? 'Secure your child\'s spot today. Online enrollment is now open for Nursery, Kinder and Grades 1 to 6, for both new students and transferees. Fill out the enrollment form online, then prepare the requirements: a PSA birth certificate copy, Form 137, the learner\'s latest grades, and two 2x2 ID photos. Once submitted, the school will review your application before enrollment is confirmed.' : 'Enrollment for the current school year is now closed. Please check back soon or contact the school for updates. New students and transferees may already prepare the requirements: a PSA birth certificate copy, Form 137, the learner\'s latest grades, and two 2x2 ID photos.' }}</div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Card 3: Academics --}}
-                <div class="highlight-item">
-                    <div class="feature-card">
-                        <div class="feature-card-img">
-                            <img src="{{ asset('images/logo2.png') }}" alt="Academics" style="object-fit:contain;padding:20px;background:#e8f0fb;">
-                            <div class="feature-card-img-overlay" style="background:linear-gradient(to bottom, transparent 30%, rgba(10,22,50,.4) 100%);"></div>
-                            <span class="feature-card-badge" style="background:rgba(197,160,89,.85);color:#0f2451;">
-                                <i class="bi bi-book-fill me-1"></i>Academics
-                            </span>
-                        </div>
-                        <div class="feature-card-body">
-                            <div class="feature-card-title">Our Academic Programs</div>
-                            <div class="feature-card-text">From Nursery and Kinder to Grade 6, IEMELIF offers a holistic MATATAG-based curriculum aligned with the Department of Education's K–6 Basic Education Program. Learners follow a three-term school year and receive personalized attention in small classes, while Christian values and character formation are integrated in every part of school life. Beyond academics, students take part in co-curricular activities, spiritual formation programs and community service.</div>
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Card 4: Vision & Mission (the full Vision / Mission / Philosophy is on the About page) --}}
-                <div class="highlight-item">
-                    <div class="feature-card">
-                        <div class="feature-card-img">
-                            <img src="{{ asset('images/logoo.jpg') }}" alt="Vision and Mission" style="object-fit:contain;padding:20px;background:#fff;">
-                            <div class="feature-card-img-overlay" style="background:linear-gradient(to bottom, transparent 30%, rgba(10,22,50,.3) 100%);"></div>
                             <span class="feature-card-badge" style="background:rgba(26,58,108,.7);color:#fff;">
-                                <i class="bi bi-eye-fill me-1"></i>Vision &amp; Mission
+                                <i class="bi bi-laptop me-1"></i>Online
                             </span>
                         </div>
                         <div class="feature-card-body">
-                            <div class="feature-card-title">Our Vision and Mission</div>
-                            <div class="feature-card-text">Our vision is to create and sustain an integrated, wholesome and appropriate environment for all phases of the learner's growth and development. As a future-oriented school, the IEMELIF Learning Center gives every child the opportunity to discover their interests and God-given talents, and aims to train and lead them to have a "Desire to Learn" — following Jesus' example of love and care for children. Read our full vision, mission and philosophy on the About page.</div>
+                            <div class="feature-card-title">Student Portal for Learners and Parents</div>
+                            <div class="feature-card-text">Enrolled learners and their parents can log in to the ILC Student Portal anytime to check grades for each term, see the class schedule, follow the enrollment status and upload documents, and view the account balance. School fees can also be paid online through the portal, so families no longer need to line up at the cashier for every payment.</div>
                         </div>
                     </div>
                 </div>
+                @endif
 
-                {{-- Card 5: Contact & Visit Us (same details as the footer) --}}
+                @if($hlFill >= 3)
+                {{-- Card 3: Contact & Visit Us (same details as the footer) --}}
                 <div class="highlight-item">
                     <div class="feature-card">
                         <div class="feature-card-img">
@@ -1102,6 +1101,7 @@ document.addEventListener('keydown', function(e) {
                         </div>
                     </div>
                 </div>
+                @endif
                 </div>
             </div>
 
@@ -1167,6 +1167,66 @@ document.addEventListener('keydown', function(e) {
                 </div>
             </div>
 
+        </div>
+
+        {{-- GET TO KNOW US: enrollment, academics, vision & mission — three cards across --}}
+        <div class="news-col-hdr mt-5">
+            <span class="news-col-hdr-badge">Explore</span>
+            <span class="news-col-hdr-title">Get to Know Us</span>
+        </div>
+        <div class="row g-4 about-cards-row">
+            {{-- Enrollment --}}
+            <div class="col-md-6 col-lg-4">
+                @php $enrollOpen = \App\Models\Setting::get('enrollment_open', true); @endphp
+                <div class="feature-card">
+                    <div class="feature-card-img">
+                        <img src="{{ asset('images/bg7.jpg') }}" alt="Enrollment">
+                        <div class="feature-card-img-overlay"></div>
+                        <span class="feature-card-badge" style="background:{{ $enrollOpen ? 'rgba(22,163,74,.8)' : 'rgba(100,116,139,.7)' }};color:#fff;">
+                            <i class="bi bi-circle-fill me-1" style="font-size:7px;"></i>
+                            {{ $enrollOpen ? 'Enrollment Open' : 'Enrollment Closed' }}
+                        </span>
+                    </div>
+                    <div class="feature-card-body">
+                        <div class="feature-card-title">{{ $enrollOpen ? 'Enroll Now for S.Y. 2026–2027' : 'Enrollment Information' }}</div>
+                        <div class="feature-card-text">{{ $enrollOpen ? 'Secure your child\'s spot today. Online enrollment is now open for Nursery, Kinder and Grades 1 to 6, for both new students and transferees. Fill out the enrollment form online, then prepare the requirements: a PSA birth certificate copy, Form 137, the learner\'s latest grades, and two 2x2 ID photos. Once submitted, the school will review your application before enrollment is confirmed.' : 'Enrollment for the current school year is now closed. Please check back soon or contact the school for updates. New students and transferees may already prepare the requirements: a PSA birth certificate copy, Form 137, the learner\'s latest grades, and two 2x2 ID photos.' }}</div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Academics --}}
+            <div class="col-md-6 col-lg-4">
+                <div class="feature-card">
+                    <div class="feature-card-img">
+                        <img src="{{ asset('images/logo2.png') }}" alt="Academics" style="object-fit:contain;padding:20px;background:#e8f0fb;">
+                        <div class="feature-card-img-overlay" style="background:linear-gradient(to bottom, transparent 30%, rgba(10,22,50,.4) 100%);"></div>
+                        <span class="feature-card-badge" style="background:rgba(197,160,89,.85);color:#0f2451;">
+                            <i class="bi bi-book-fill me-1"></i>Academics
+                        </span>
+                    </div>
+                    <div class="feature-card-body">
+                        <div class="feature-card-title">Our Academic Programs</div>
+                        <div class="feature-card-text">From Nursery and Kinder to Grade 6, IEMELIF offers a holistic MATATAG-based curriculum aligned with the Department of Education's K–6 Basic Education Program. Learners follow a three-term school year and receive personalized attention in small classes, while Christian values and character formation are integrated in every part of school life. Beyond academics, students take part in co-curricular activities, spiritual formation programs and community service.</div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Vision & Mission (the full Vision / Mission / Philosophy is on the About page) --}}
+            <div class="col-md-12 col-lg-4">
+                <div class="feature-card">
+                    <div class="feature-card-img">
+                        <img src="{{ asset('images/logoo.jpg') }}" alt="Vision and Mission" style="object-fit:contain;padding:20px;background:#fff;">
+                        <div class="feature-card-img-overlay" style="background:linear-gradient(to bottom, transparent 30%, rgba(10,22,50,.3) 100%);"></div>
+                        <span class="feature-card-badge" style="background:rgba(26,58,108,.7);color:#fff;">
+                            <i class="bi bi-eye-fill me-1"></i>Vision &amp; Mission
+                        </span>
+                    </div>
+                    <div class="feature-card-body">
+                        <div class="feature-card-title">Our Vision and Mission</div>
+                        <div class="feature-card-text">Our vision is to create and sustain an integrated, wholesome and appropriate environment for all phases of the learner's growth and development. As a future-oriented school, the IEMELIF Learning Center gives every child the opportunity to discover their interests and God-given talents, and aims to train and lead them to have a "Desire to Learn" — following Jesus' example of love and care for children. Read our full vision, mission and philosophy on the About page.</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </section>
@@ -1458,25 +1518,16 @@ document.addEventListener('keydown', function(e) {
             <div class="col-md-3">
                 <h6>Latest Articles</h6>
                 <div class="footer-news-item">
-                    <div class="footer-news-img">
-                        <img src="{{ asset('images/bg4.jpg') }}" alt="News 1"> 
-                    </div>
                     <div class="footer-news-text">
                         Celebrating 32 Years of Excellence in Education
                     </div>
                 </div>
                 <div class="footer-news-item">
-                    <div class="footer-news-img">
-                        <img src="{{ asset('images/bg2.jpg') }}" alt="News 1"> 
-                    </div>
                     <div class="footer-news-text">
                         Science Education Affair 2025 — A Successful Event
                     </div>
                 </div>
                 <div class="footer-news-item">
-                    <div class="footer-news-img">
-                        <img src="{{ asset('images/bg3.jpg') }}" alt="News 1"> 
-                    </div>
                     <div class="footer-news-text">
                         Welcome Back to School, ILCians!
                     </div>
@@ -1693,6 +1744,7 @@ document.addEventListener('keydown', function(e) {
     }
 })();
 </script>
+<script src="{{ asset('js/sticky-nav.js') }}?v=1"></script>
 </body>
 </html>
 </script>

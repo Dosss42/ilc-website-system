@@ -8,7 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
-    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1789758077">
+    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1789900001">
     <style>
         body { font-family: 'Open Sans', sans-serif; -webkit-font-smoothing: antialiased; }
 
@@ -500,5 +500,6 @@
 })();
 </script>
 <script>(function(){var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],months=['January','February','March','April','May','June','July','August','September','October','November','December'];function pad(n){return n<10?'0'+n:n;}function tick(){var now=new Date(),d=days[now.getDay()]+', '+months[now.getMonth()]+' '+now.getDate()+', '+now.getFullYear(),h=now.getHours(),ampm=h>=12?'PM':'AM';h=h%12||12;var t=h+':'+pad(now.getMinutes())+':'+pad(now.getSeconds())+' '+ampm;var de=document.getElementById('topbar-date'),te=document.getElementById('topbar-time');if(de)de.textContent=d;if(te)te.textContent=t;}tick();setInterval(tick,1000);})();</script>
+<script src="{{ asset('js/sticky-nav.js') }}?v=1"></script>
 </body>
 </html>

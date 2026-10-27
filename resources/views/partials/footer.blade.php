@@ -51,25 +51,16 @@
             <div class="col-md-3">
                 <h6>Latest Articles</h6>
                 <div class="footer-news-item">
-                    <div class="footer-news-img">
-                        <img src="{{ asset('images/bg4.jpg') }}" alt="News 1"> 
-                    </div>
                     <div class="footer-news-text">
                         Celebrating 32 Years of Excellence in Education
                     </div>
                 </div>
                 <div class="footer-news-item">
-                    <div class="footer-news-img">
-                        <img src="{{ asset('images/bg2.jpg') }}" alt="News 1"> 
-                    </div>
                     <div class="footer-news-text">
                         Science Education Affair 2025 — A Successful Event
                     </div>
                 </div>
                 <div class="footer-news-item">
-                    <div class="footer-news-img">
-                        <img src="{{ asset('images/bg3.jpg') }}" alt="News 1"> 
-                    </div>
                     <div class="footer-news-text">
                         Welcome Back to School, ILCians!
                     </div>

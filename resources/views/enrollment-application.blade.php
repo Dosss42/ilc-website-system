@@ -2026,8 +2026,8 @@ document.addEventListener('DOMContentLoaded', function () {
             <button type="button" onclick="closeTcModal()" style="background:none;border:none;color:#fff;font-size:22px;cursor:pointer;opacity:0.7;line-height:1;" title="Cancel">&times;</button>
         </div>
 
-        {{-- Tab switcher --}}
-        <div style="display:flex;border-bottom:2px solid #e5e7eb;">
+        {{-- Tab switcher — phones only (no sidebar there); on wider screens the sidebar headings switch documents --}}
+        <div class="tc-mobile-tabs" style="display:flex;border-bottom:2px solid #e5e7eb;">
             <button type="button" id="modal-tc-tab-terms" onclick="modalTcTab('terms')"
                 style="flex:1;padding:12px 0;font-size:13px;font-weight:700;border:none;background:#fff;color:var(--ilc-blue);border-bottom:3px solid var(--ilc-blue);cursor:pointer;transition:all 0.2s;">
                 <i class="bi bi-file-text me-1"></i> Terms &amp; Conditions
@@ -2038,13 +2038,14 @@ document.addEventListener('DOMContentLoaded', function () {
             </button>
         </div>
 
-        {{-- Sidebar (sections of the open document, highlighted while scrolling) + scrollable content --}}
+        {{-- Sidebar (full height: each document's heading, then its numbered sections, highlighted while
+             scrolling) | right column: scrollable document, scroll hint, agreement checkbox, buttons --}}
         <div style="display:flex;">
-        <nav id="modal-tc-toc" aria-label="Document sections">
-            <div class="tc-toc-label">Sections</div>
+        <nav id="modal-tc-toc" aria-label="Documents and sections">
             <div id="modal-tc-toc-list"></div>
         </nav>
-        <div id="modal-tc-box" style="flex:1;min-width:0;height:calc(100vh - 380px);min-height:300px;overflow-y:auto;padding:24px 32px;font-size:14px;color:#444;line-height:1.8;">
+        <div style="flex:1;min-width:0;">
+        <div id="modal-tc-box" style="height:calc(100vh - 334px);min-height:300px;overflow-y:auto;padding:24px 32px;font-size:14px;color:#444;line-height:1.8;">
             <div id="modal-tc-pane-terms">
                 <p style="font-weight:700;color:#1a3a6c;margin:0 0 10px;">IEMELIF LEARNING CENTER — Terms and Conditions</p>
                 <p style="color:#888;font-size:11px;">Online Enrollment System</p>
@@ -2367,28 +2368,42 @@ document.addEventListener('DOMContentLoaded', function () {
                 <p style="color:#888;font-size:11px;">Full document: <a href="{{ route('privacy') }}" target="_blank" style="color:var(--ilc-blue);">View complete Privacy Policy</a></p>
             </div>
         </div>
-        </div>
 
         <style>
+        /* Sidebar runs the full height of the modal body; its list scrolls inside it */
         #modal-tc-toc {
             position: relative;
             width: 240px;
             flex-shrink: 0;
-            height: calc(100vh - 380px);
-            min-height: 300px;
-            overflow-y: auto;
-            padding: 14px 0;
             background: #f8fafc;
             border-right: 1px solid #e5e7eb;
         }
-        .tc-toc-label {
-            font-size: 10px;
+        #modal-tc-toc-list {
+            position: absolute;
+            inset: 0;
+            overflow-y: auto;
+            padding: 10px 0 14px;
+        }
+        /* Document heading (Terms & Conditions / Privacy Policy) above its numbered sections */
+        .tc-toc-doc {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px 8px;
+            font-size: 12.5px;
             font-weight: 800;
             color: #9ca3af;
+            text-decoration: none;
             text-transform: uppercase;
-            letter-spacing: 1.5px;
-            padding: 0 18px 8px;
+            letter-spacing: .6px;
         }
+        .tc-toc-doc + .tc-toc-link { margin-top: 2px; }
+        .tc-toc-link + .tc-toc-doc { margin-top: 12px; border-top: 1px solid #e5e7eb; padding-top: 16px; }
+        .tc-toc-doc:hover, .tc-toc-doc.active { color: var(--ilc-blue); }
+        .tc-toc-doc .tc-doc-check { margin-left: auto; color: #16a34a; display: none; }
+        .tc-toc-doc.read .tc-doc-check { display: inline; }
+        .tc-mobile-tabs { display: none !important; }
+        @media (max-width: 768px) { .tc-mobile-tabs { display: flex !important; } }
         .tc-toc-link {
             display: block;
             padding: 7px 18px;
@@ -2430,6 +2445,8 @@ document.addEventListener('DOMContentLoaded', function () {
                 Continue <i class="bi bi-arrow-right ms-1"></i>
             </button>
         </div>
+        </div>{{-- /right column --}}
+        </div>{{-- /sidebar + right column --}}
     </div>
 </div>
 
@@ -2457,6 +2474,7 @@ function openTcModal() {
     document.getElementById('modal-tc-accept-btn').style.background = '#cbd5e1';
     document.getElementById('modal-tc-accept-btn').style.cursor = 'not-allowed';
     document.getElementById('modal-tc-label').style.borderColor = '#d1d5db';
+    buildTcToc();
     modalTcTab('terms');
     document.getElementById('tcModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
@@ -2480,7 +2498,7 @@ function modalTcTab(tab) {
     pBtn.style.borderBottom= tab === 'privacy' ? '3px solid var(--ilc-blue)' : '3px solid transparent';
     var box = document.getElementById('modal-tc-box');
     box.scrollTop = 0;
-    buildTcToc(tab);
+    refreshTcDocHeads();
     // Let the display:none/'' change above actually apply before measuring
     // scrollHeight, otherwise the hidden pane's old height can be read.
     setTimeout(function () {
@@ -2495,6 +2513,7 @@ function modalTcTab(tab) {
 function markTcTabRead(tab) {
     if (_tcRead[tab]) return;
     _tcRead[tab] = true;
+    refreshTcDocHeads();
     updateTcScrollHint();
     var checkbox = document.getElementById('modal-tc-checkbox');
     var label = document.getElementById('modal-tc-label');
@@ -2535,33 +2554,61 @@ document.getElementById('modal-tc-box').addEventListener('scroll', function () {
     updateTcToc();
 });
 
-// ── Sidebar: one link per numbered section ("1. Acceptance of Terms") of the open document ──
-function buildTcToc(tab) {
+// ── Sidebar: each document's heading, then one link per numbered section ("1. Acceptance of Terms").
+//    Built once; clicking a heading or a section of the other document opens that document. ──
+function buildTcToc() {
     var list = document.getElementById('modal-tc-toc-list');
     var box  = document.getElementById('modal-tc-box');
     list.innerHTML = '';
-    document.querySelectorAll('#modal-tc-pane-' + tab + ' p > strong:first-child').forEach(function (heading) {
-        if (!/^\d+\.\s/.test(heading.textContent.trim())) return; // skip sub-sections like "3.1 ..."
-        var section = heading.parentElement;
-        var link = document.createElement('a');
-        link.href = '#';
-        link.className = 'tc-toc-link';
-        link.textContent = heading.textContent.trim();
-        link._section = section;
-        link.addEventListener('click', function (e) {
+    [['terms', 'bi-file-text', 'Terms &amp; Conditions'], ['privacy', 'bi-shield-lock', 'Privacy Policy']].forEach(function (doc) {
+        var tab = doc[0];
+        var head = document.createElement('a');
+        head.href = '#';
+        head.className = 'tc-toc-doc';
+        head.dataset.doc = tab;
+        head.innerHTML = '<i class="bi ' + doc[1] + '"></i><span>' + doc[2] + '</span><i class="bi bi-check-circle-fill tc-doc-check" title="Read"></i>';
+        head.addEventListener('click', function (e) {
             e.preventDefault();
-            var top = box.scrollTop + section.getBoundingClientRect().top - box.getBoundingClientRect().top - 12;
-            box.scrollTo({ top: top, behavior: 'smooth' });
+            if (_tcActiveTab !== tab) modalTcTab(tab); else box.scrollTo({ top: 0, behavior: 'smooth' });
         });
-        list.appendChild(link);
+        list.appendChild(head);
+
+        document.querySelectorAll('#modal-tc-pane-' + tab + ' p > strong:first-child').forEach(function (heading) {
+            if (!/^\d+\.\s/.test(heading.textContent.trim())) return; // skip sub-sections like "3.1 ..."
+            var section = heading.parentElement;
+            var link = document.createElement('a');
+            link.href = '#';
+            link.className = 'tc-toc-link';
+            link.dataset.doc = tab;
+            link.textContent = heading.textContent.trim();
+            link._section = section;
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                var go = function () {
+                    var top = box.scrollTop + section.getBoundingClientRect().top - box.getBoundingClientRect().top - 12;
+                    box.scrollTo({ top: top, behavior: 'smooth' });
+                };
+                if (_tcActiveTab !== tab) { modalTcTab(tab); setTimeout(go, 60); } else go();
+            });
+            list.appendChild(link);
+        });
+    });
+}
+
+// Headings: the open document is highlighted; a finished one gets a green check
+function refreshTcDocHeads() {
+    document.querySelectorAll('#modal-tc-toc-list .tc-toc-doc').forEach(function (head) {
+        head.classList.toggle('active', head.dataset.doc === _tcActiveTab);
+        head.classList.toggle('read', !!_tcRead[head.dataset.doc]);
     });
     updateTcToc();
 }
 
-// Scrollspy: highlight the section being read
+// Scrollspy: highlight the section being read (in the open document only)
 function updateTcToc() {
     var box   = document.getElementById('modal-tc-box');
-    var links = document.querySelectorAll('#modal-tc-toc-list .tc-toc-link');
+    document.querySelectorAll('#modal-tc-toc-list .tc-toc-link').forEach(function (link) { link.classList.remove('active'); });
+    var links = document.querySelectorAll('#modal-tc-toc-list .tc-toc-link[data-doc="' + _tcActiveTab + '"]');
     if (!links.length || !box.clientHeight) return; // modal still hidden: nothing to measure yet
     var boxTop  = box.getBoundingClientRect().top;
     var atEnd   = box.scrollTop + box.clientHeight >= box.scrollHeight - 8;

@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
    
-    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1789758077">
+    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1789900001">
     <link rel="stylesheet" href="{{ asset('css/contact.css') }}?v=1780250000">  {{-- contact page only --}}
     <style>
         /* Custom Scrollbar Design */
@@ -234,13 +234,23 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
     <div class="container">
         <div class="row g-4">
 
-            {{-- LEFT: Contact Form --}}
-            <div class="col-lg-7">
+            {{-- LEFT: Contact Form (50/50 with the map; both cards stretch to the same height) --}}
+            <div class="col-lg-6 d-flex flex-column">
                 <h2 class="contact-section-title">Send Us a Message</h2>
                 <p class="contact-section-subtitle">Have a question? Fill out the form and we'll get back to you.</p>
 
                 <div class="contact-form-box">
 
+                    {{-- Card header — same blue as the map's info panel --}}
+                    <div class="contact-form-head">
+                        <i class="bi bi-chat-dots-fill"></i>
+                        <div>
+                            <div class="contact-form-head-title">Message Form</div>
+                            <div class="contact-form-head-sub">Fields marked <span>*</span> are required</div>
+                        </div>
+                    </div>
+
+                    <div class="contact-form-body">
                     {{-- =============================================
                          SUCCESS / ERROR MESSAGES
                          These show after form submission
@@ -266,7 +276,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
                          Then add in web.php:
                          Route::post('/contact/send', [ContactController::class, 'send'])->name('contact.send');
                          ============================================= --}}
-                    <form method="POST" action="{{ route('contact.send') }}">
+                    <form method="POST" action="{{ route('contact.send') }}" class="contact-form">
                         @csrf
 
                         {{-- Validation errors --}}
@@ -320,7 +330,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
                             </div>
                         </div>
 
-                        <div class="mb-3">
+                        <div class="mb-3 contact-message-field">
                             <label class="form-label">Message <span style="color:red;">*</span></label>
                             <textarea name="message" class="form-control {{ $errors->has('message') ? 'is-invalid' : '' }}"
                                       placeholder="Write your message here..."
@@ -333,13 +343,14 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
                         </button>
 
                     </form>
+                    </div>{{-- /contact-form-body --}}
                 </div>
             </div>
 
             {{-- RIGHT: Google Map --}}
-            <div class="col-lg-5">
+            <div class="col-lg-6 d-flex flex-column">
                 <h2 class="contact-section-title">Find Us</h2>
-                <p class="contact-section-subtitle">We are located Beside of Lou Mart in Brgy.Poblacion Central, General Tinio N.E</p>
+                <p class="contact-section-subtitle">We are located Beside of Lou Mart and front of PBB bank in Brgy.Poblacion Central, General Tinio N.E</p>
 
                 <div class="map-box">
                     {{-- =============================================
@@ -369,11 +380,11 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
                         </div>
                         <div class="map-info-row">
                             <i class="bi bi-telephone-fill"></i>
-                            <span>(046) 000-0000</span>
+                            <span>0951-989-9685</span>
                         </div>
                         <div class="map-info-row">
                             <i class="bi bi-envelope-fill"></i>
-                            <span>info@iemelif-ilc.edu.ph</span>
+                            <span>Iemelif_learningcenter@gmail.com</span>
                         </div>
                         <div class="map-info-row">
                             <i class="bi bi-clock-fill"></i>
@@ -530,25 +541,16 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
             <div class="col-md-3">
                 <h6>Latest Articles</h6>
                 <div class="footer-news-item">
-                    <div class="footer-news-img">
-                        <img src="{{ asset('images/bg4.jpg') }}" alt="News 1"> 
-                    </div>
                     <div class="footer-news-text">
                         Celebrating 32 Years of Excellence in Education
                     </div>
                 </div>
                 <div class="footer-news-item">
-                    <div class="footer-news-img">
-                        <img src="{{ asset('images/bg2.jpg') }}" alt="News 1"> 
-                    </div>
                     <div class="footer-news-text">
                         Science Education Affair 2025 — A Successful Event
                     </div>
                 </div>
                 <div class="footer-news-item">
-                    <div class="footer-news-img">
-                        <img src="{{ asset('images/bg3.jpg') }}" alt="News 1"> 
-                    </div>
                     <div class="footer-news-text">
                         Welcome Back to School, ILCians!
                     </div>
@@ -585,5 +587,6 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>(function(){var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],months=['January','February','March','April','May','June','July','August','September','October','November','December'];function pad(n){return n<10?'0'+n:n;}function tick(){var now=new Date(),d=days[now.getDay()]+', '+months[now.getMonth()]+' '+now.getDate()+', '+now.getFullYear(),h=now.getHours(),ampm=h>=12?'PM':'AM';h=h%12||12;var t=h+':'+pad(now.getMinutes())+':'+pad(now.getSeconds())+' '+ampm;var de=document.getElementById('topbar-date'),te=document.getElementById('topbar-time');if(de)de.textContent=d;if(te)te.textContent=t;}tick();setInterval(tick,1000);})();</script>
 <script>(function(){var S=[['real-content','skel-content'],['real-footer','skel-footer']];function go(i){if(i>=S.length){document.body.classList.remove('page-loading');return;}var r=document.getElementById(S[i][0]),s=document.getElementById(S[i][1]);if(s)s.style.display='none';if(r){r.style.display='block';void r.offsetWidth;r.style.transition='opacity .38s ease';r.style.opacity='1';}setTimeout(function(){go(i+1);},160);}function start(){setTimeout(function(){go(0);},200);}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',start);}else{start();}})();</script>
+<script src="{{ asset('js/sticky-nav.js') }}?v=1"></script>
 </body>
 </html>

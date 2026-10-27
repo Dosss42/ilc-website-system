@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
-    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1789758077">
+    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1789900001">
     <link rel="stylesheet" href="{{ asset('css/about.css') }}?v=1780250000">  {{-- About page specific styles --}}
     <style>
         /* Custom Scrollbar Design */
@@ -447,25 +447,16 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
             <div class="col-md-3">
                 <h6>Latest Articles</h6>
                 <div class="footer-news-item">
-                    <div class="footer-news-img">
-                        <img src="{{ asset('images/bg4.jpg') }}" alt="News 1"> 
-                    </div>
                     <div class="footer-news-text">
                         Celebrating 32 Years of Excellence in Education
                     </div>
                 </div>
                 <div class="footer-news-item">
-                    <div class="footer-news-img">
-                        <img src="{{ asset('images/bg2.jpg') }}" alt="News 1"> 
-                    </div>
                     <div class="footer-news-text">
                         Science Education Affair 2025 &mdash; A Successful Event
                     </div>
                 </div>
                 <div class="footer-news-item">
-                    <div class="footer-news-img">
-                        <img src="{{ asset('images/bg3.jpg') }}" alt="News 1"> 
-                    </div>
                     <div class="footer-news-text">
                         Welcome Back to School, ILCians!
                     </div>
@@ -508,5 +499,6 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
 <script>
 (function(){var S=[['real-content','skel-content'],['real-footer','skel-footer']];function go(i){if(i>=S.length){document.body.classList.remove('page-loading');return;}var r=document.getElementById(S[i][0]),s=document.getElementById(S[i][1]);if(s)s.style.display='none';if(r){r.style.display='block';void r.offsetWidth;r.style.transition='opacity .38s ease';r.style.opacity='1';}setTimeout(function(){go(i+1);},160);}function start(){setTimeout(function(){go(0);},200);}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',start);}else{start();}})();
 </script>
+<script src="{{ asset('js/sticky-nav.js') }}?v=1"></script>
 </body>
 </html>

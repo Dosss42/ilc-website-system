@@ -36,7 +36,7 @@ body { font-family: "Open Sans", sans-serif; font-size: 14px; color: #374151; ma
 .news-category-badge.activity { background: #dcfce7; color: #166534; }
 .news-category-badge.achievement { background: #fae8ff; color: #7e22ce; }
 .news-category-badge.general { background: #f1f5f9; color: #475569; }
-.news-sidebar { position: sticky; top: 24px; }
+.news-sidebar { position: sticky; top: calc(var(--ilc-nav-h, 0px) + 24px); } /* below the sticky menu bar */
 .sidebar-widget { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1.5px solid #e8edf5; box-shadow: 0 2px 8px rgba(26,58,108,.06); }
 .sidebar-widget-title { font-size: 13px; font-weight: 800; color: #1a3a6c; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e8edf5; }
 .recent-post-item { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }

@@ -10,7 +10,7 @@
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
  
 
-    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1789758077">
+    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1789900001">
     <link rel="stylesheet" href="{{ asset('css/academics.css') }}?v=1780250000">  {{-- academics page only --}}
     <style>
         /* Custom Scrollbar Design */
@@ -184,55 +184,14 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
 {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      LEFT SIDEBAR QUICK NAVIGATION
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
-{{-- Top bar under the page banner; sticks to the top while scrolling so it never covers the content --}}
-<nav id="acad-quicknav">
-    <div class="container qnav-inner">
-        <span class="qnav-label">Quick Nav</span>
-
-        <a href="#sec-overview" class="qnav-link" data-sec="sec-overview">
-            <i class="bi bi-book-fill"></i>
-            <span>Overview</span>
-        </a>
-
-        <a href="#sec-grades" class="qnav-link" data-sec="sec-grades">
-            <i class="bi bi-mortarboard-fill"></i>
-            <span>Grade Levels</span>
-        </a>
-
-        {{-- Calendar with a dropdown of the three terms --}}
-        <div class="qnav-cal-wrap">
-            <a href="#sec-calendar" class="qnav-link" data-sec="sec-calendar" id="qnav-cal-btn" onclick="toggleCalSub(event)">
-                <i class="bi bi-calendar3"></i>
-                <span>Academic Calendar</span>
-                <i class="bi bi-chevron-down qnav-chevron" id="qnav-chevron"></i>
-            </a>
-            <div id="qnav-cal-sub">
-                <a href="#sec-calendar" class="qnav-sub-link">
-                    <i class="bi bi-calendar3" style="font-size:11px;color:#1a3a6c;"></i> Whole Calendar
-                </a>
-                <a href="#sec-term1" class="qnav-sub-link">
-                    <i class="bi bi-circle-fill" style="font-size:6px;color:#1d4ed8;"></i> Term 1
-                </a>
-                <a href="#sec-term2" class="qnav-sub-link">
-                    <i class="bi bi-circle-fill" style="font-size:6px;color:#2563eb;"></i> Term 2
-                </a>
-                <a href="#sec-term3" class="qnav-sub-link">
-                    <i class="bi bi-circle-fill" style="font-size:6px;color:#0ea5e9;"></i> Term 3
-                </a>
-            </div>
-        </div>
-
-        <a href="#sec-grading" class="qnav-link" data-sec="sec-grading">
-            <i class="bi bi-bar-chart-fill"></i>
-            <span>Grading System</span>
-        </a>
-    </div>
-</nav>
-
+{{-- The Quick Nav itself sits inside .acad-layout below. Narrow screens: a top bar that sticks under the
+     menu bar. Wide screens: a sidebar card in the rail beside the sections. --}}
 <style>
+.acad-layout { position: relative; }
+.qnav-rail { display: contents; } /* narrow: the bar sticks within the whole .acad-layout */
 #acad-quicknav {
     position: sticky;
-    top: 0;
+    top: var(--ilc-nav-h, 0px); /* just under the sticky menu bar */
     z-index: 998;
     background: #fff;
     border-bottom: 1px solid #e8edf5;
@@ -315,45 +274,62 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
     .qnav-link { padding: 7px 10px; font-size: 12px; }
 }
 
-/* Wide screens: floating panel on the left side. The page content moves right by
-   --qnav-shift (set by the script below) so the panel never covers any text. */
+/* Wide screens: a sidebar card styled like the News page's "Recent Posts" widget. It sits in a rail
+   that runs from the top of Overview to the end of Grading System (64px = the sections' padding), and
+   sticks under the menu bar like the News / Announcements sidebars — so it starts level with
+   "Academic Overview" and leaves with the Grading System section. The script below sets --qnav-left
+   (the empty margin left of the content when there is room) and moves the content right by
+   --qnav-shift only when that margin is too narrow, so the card never covers any text. */
 @media (min-width: 1100px) {
-    #acad-quicknav {
-        position: fixed;
-        left: 8px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 144px;
-        border: none;
-        border-radius: 14px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.14), 0 0 0 1px rgba(0,0,0,0.06);
-        transition: opacity 0.25s;
+    .qnav-rail {
+        display: block;
+        position: absolute;
+        top: 64px;
+        bottom: 64px;
+        left: var(--qnav-left, 12px);
+        width: 176px;
+        z-index: 998;
+        pointer-events: none;
     }
-    #acad-quicknav.qnav-hidden { opacity: 0; pointer-events: none; }
+    #acad-quicknav {
+        position: sticky;
+        top: calc(var(--ilc-nav-h, 0px) + 24px);
+        pointer-events: auto;
+        background: #fff;
+        border: 1.5px solid #e8edf5;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(26,58,108,.06);
+    }
     #acad-quicknav .qnav-inner {
         max-width: none;
         flex-direction: column;
         align-items: stretch;
         flex-wrap: nowrap;
         gap: 2px;
-        padding: 10px 0 12px;
+        padding: 18px 14px 14px;
     }
+    /* Same title as .sidebar-widget-title on the News page */
     .qnav-label {
-        margin: 0 0 4px;
-        padding: 2px 12px 8px;
-        border-bottom: 1px solid #f3f4f6;
+        font-size: 13px;
+        color: #1a3a6c;
+        letter-spacing: 1px;
+        margin: 0 0 8px;
+        padding: 0 0 8px;
+        border-bottom: 2px solid #e8edf5;
     }
     .qnav-link {
         display: flex;
-        gap: 8px;
-        padding: 9px 10px 9px 12px;
-        font-size: 12px;
+        gap: 9px;
+        padding: 9px 10px;
+        font-size: 12.5px;
+        color: #475569;
         white-space: normal;
-        border-left: 3px solid transparent;
-        border-radius: 0 8px 8px 0;
+        border-radius: 8px;
     }
     .qnav-link span { flex: 1; line-height: 1.3; }
-    .qnav-link.active { color: #1a3a6c; background: #eef2fb; border-left-color: #1a3a6c; font-weight: 700; }
+    .qnav-link:hover { color: #1a3a6c; background: #e8f0fb; }
+    .qnav-link.active { color: #1a3a6c; background: #e8f0fb; font-weight: 700; }
+    .qnav-link i:first-child { color: #c5a059; }
     #qnav-cal-sub {
         position: static;
         min-width: 0;
@@ -362,7 +338,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
         border-radius: 0;
         box-shadow: none;
     }
-    .qnav-sub-link { padding: 7px 10px 7px 33px; font-size: 11.5px; }
+    .qnav-sub-link { padding: 7px 10px 7px 32px; font-size: 11.5px; border-radius: 8px; }
 
     #real-content section > .container { padding-left: calc(var(--bs-gutter-x, 1.5rem) * .5 + var(--qnav-shift, 0px)); }
 }
@@ -372,6 +348,54 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
      SECTION 1: ACADEMIC OVERVIEW
      Two-column: text left, image right
 â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• --}}
+{{-- Overview → Grading System: the Quick Nav rail runs alongside these sections, so the card sticks under the menu bar while you scroll them and leaves with them at the end (like the News / Announcements sidebars) --}}
+<div class="acad-layout">
+<div class="qnav-rail">
+<nav id="acad-quicknav">
+    <div class="container qnav-inner">
+        <span class="qnav-label">Quick Nav</span>
+
+        <a href="#sec-overview" class="qnav-link" data-sec="sec-overview">
+            <i class="bi bi-book-fill"></i>
+            <span>Overview</span>
+        </a>
+
+        <a href="#sec-grades" class="qnav-link" data-sec="sec-grades">
+            <i class="bi bi-mortarboard-fill"></i>
+            <span>Grade Levels</span>
+        </a>
+
+        {{-- Calendar with a dropdown of the three terms --}}
+        <div class="qnav-cal-wrap">
+            <a href="#sec-calendar" class="qnav-link" data-sec="sec-calendar" id="qnav-cal-btn" onclick="toggleCalSub(event)">
+                <i class="bi bi-calendar3"></i>
+                <span>Academic Calendar</span>
+                <i class="bi bi-chevron-down qnav-chevron" id="qnav-chevron"></i>
+            </a>
+            <div id="qnav-cal-sub">
+                <a href="#sec-calendar" class="qnav-sub-link">
+                    <i class="bi bi-calendar3" style="font-size:11px;color:#1a3a6c;"></i> Whole Calendar
+                </a>
+                <a href="#sec-term1" class="qnav-sub-link">
+                    <i class="bi bi-circle-fill" style="font-size:6px;color:#1d4ed8;"></i> Term 1
+                </a>
+                <a href="#sec-term2" class="qnav-sub-link">
+                    <i class="bi bi-circle-fill" style="font-size:6px;color:#2563eb;"></i> Term 2
+                </a>
+                <a href="#sec-term3" class="qnav-sub-link">
+                    <i class="bi bi-circle-fill" style="font-size:6px;color:#0ea5e9;"></i> Term 3
+                </a>
+            </div>
+        </div>
+
+        <a href="#sec-grading" class="qnav-link" data-sec="sec-grading">
+            <i class="bi bi-bar-chart-fill"></i>
+            <span>Grading System</span>
+        </a>
+    </div>
+</nav>
+</div>
+
 <section class="acad-overview-section" id="sec-overview">
     <div class="container">
         <div class="row align-items-center g-5">
@@ -1230,6 +1254,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
 
     </div>
 </section>
+</div>{{-- /acad-layout --}}
 
 {{-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      FOOTER
@@ -1286,25 +1311,16 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
             <div class="col-md-3">
                 <h6>Latest Articles</h6>
                 <div class="footer-news-item">
-                    <div class="footer-news-img">
-                        <img src="{{ asset('images/bg4.jpg') }}" alt="News 1"> 
-                    </div>
                     <div class="footer-news-text">
                         Celebrating 32 Years of Excellence in Education
                     </div>
                 </div>
                 <div class="footer-news-item">
-                    <div class="footer-news-img">
-                        <img src="{{ asset('images/bg2.jpg') }}" alt="News 1"> 
-                    </div>
                     <div class="footer-news-text">
                         Science Education Affair 2025 &mdash; A Successful Event
                     </div>
                 </div>
                 <div class="footer-news-item">
-                    <div class="footer-news-img">
-                        <img src="{{ asset('images/bg3.jpg') }}" alt="News 1"> 
-                    </div>
                     <div class="footer-news-text">
                         Welcome Back to School, ILCians!
                     </div>
@@ -1350,31 +1366,33 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
     var sections = ['sec-overview','sec-grades','sec-calendar','sec-grading'];
     var links    = document.querySelectorAll('.qnav-link[data-sec]');
     var bar      = document.getElementById('acad-quicknav');
-    function isSide() { return bar && getComputedStyle(bar).position === 'fixed'; }
-    // Space the top bar takes over the content (none when it is the side panel)
-    function barHeight() { return bar && !isSide() ? bar.offsetHeight : 0; }
+    var rail     = document.querySelector('.qnav-rail');
+    function isSide() { return rail && getComputedStyle(rail).position === 'absolute'; }
+    // Space covered at the top: the sticky menu bar, plus this bar when it is the top bar (not the side card)
+    function barHeight() {
+        var menu = document.querySelector('nav.main-nav');
+        return (menu ? menu.offsetHeight : 0) + (bar && !isSide() ? bar.offsetHeight : 0);
+    }
 
-    // Side panel: move the content right just enough that the panel never covers it
+    // Side card: sit in the empty margin left of the content when it fits; otherwise at the screen
+    // edge, with the content moved right just enough that the card never covers it
     function makeRoom() {
         var root = document.documentElement;
         root.style.setProperty('--qnav-shift', '0px');
+        root.style.removeProperty('--qnav-left');
         var box = document.querySelector('#sec-overview > .container');
         if (!isSide() || !box) return;
-        var need = bar.getBoundingClientRect().right + 14 - box.getBoundingClientRect().left;
+        var gap = 24, edge = 12;
+        var contentLeft = box.getBoundingClientRect().left + parseFloat(getComputedStyle(box).paddingLeft);
+        var left = Math.max(edge, Math.floor(contentLeft - gap - bar.offsetWidth));
+        root.style.setProperty('--qnav-left', left + 'px');
+        var need = left + bar.offsetWidth + gap - contentLeft;
         root.style.setProperty('--qnav-shift', Math.max(0, Math.ceil(need)) + 'px');
     }
     makeRoom();
     window.addEventListener('resize', makeRoom);
     window.addEventListener('load', makeRoom);
     setTimeout(makeRoom, 700); // the content fades in after the loading placeholder
-
-    // Side panel fades out while the footer is on screen, so it doesn't sit on top of it
-    var footer = document.querySelector('.site-footer');
-    if (footer && 'IntersectionObserver' in window) {
-        new IntersectionObserver(function (entries) {
-            bar.classList.toggle('qnav-hidden', entries[0].isIntersecting);
-        }).observe(footer);
-    }
 
     // â”€â”€ Active highlight on scroll â”€â”€
     function setActive() {
@@ -1439,5 +1457,6 @@ function toggleCalSub(e) {
 <script>(function(){var days=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'],months=['January','February','March','April','May','June','July','August','September','October','November','December'];function pad(n){return n<10?'0'+n:n;}function tick(){var now=new Date(),d=days[now.getDay()]+', '+months[now.getMonth()]+' '+now.getDate()+', '+now.getFullYear(),h=now.getHours(),ampm=h>=12?'PM':'AM';h=h%12||12;var t=h+':'+pad(now.getMinutes())+':'+pad(now.getSeconds())+' '+ampm;var de=document.getElementById('topbar-date'),te=document.getElementById('topbar-time');if(de)de.textContent=d;if(te)te.textContent=t;}tick();setInterval(tick,1000);})();</script>
 </div>{{-- /real-content --}}
 <script>(function(){var S=[['real-content','skel-content']];function go(i){if(i>=S.length){document.body.classList.remove('page-loading');return;}var r=document.getElementById(S[i][0]),s=document.getElementById(S[i][1]);if(s)s.style.display='none';if(r){r.style.display='block';void r.offsetWidth;r.style.transition='opacity .38s ease';r.style.opacity='1';}setTimeout(function(){go(i+1);},160);}function start(){setTimeout(function(){go(0);},200);}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',start);}else{start();}})();</script>
+<script src="{{ asset('js/sticky-nav.js') }}?v=1"></script>
 </body>
 </html>

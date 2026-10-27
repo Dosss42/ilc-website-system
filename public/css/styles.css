@@ -998,3 +998,65 @@ p {
     font-size: 11px;
     color: rgba(255,255,255,0.5);
 }
+
+/* ─── STICKY NAV ─── the blue menu bar stays at the top while scrolling; once the white header has
+   scrolled away, the school logo and name slide into its left side (js/sticky-nav.js adds them).
+   html body nav… + !important beats the pages' own ".main-nav { position: relative !important }". */
+html body nav.main-nav {
+    position: sticky !important;
+    top: 0;
+    z-index: 1030;
+    transition: box-shadow .25s;
+}
+html body nav.main-nav.is-stuck { box-shadow: 0 4px 18px rgba(10,22,50,.25); }
+.main-nav > .container { position: relative; }
+
+.main-nav .nav-brand-mini {
+    position: absolute;
+    left: calc(var(--bs-gutter-x, 1.5rem) * .5);
+    top: 50%;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    text-decoration: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-14px, -50%);
+    transition: opacity .3s, transform .3s, visibility .3s;
+}
+.main-nav.is-stuck .nav-brand-mini { opacity: 1; visibility: visible; transform: translate(0, -50%); }
+.main-nav .nav-brand-mini img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: #fff;
+    flex-shrink: 0;
+}
+.main-nav .nav-brand-mini span {
+    color: #fff !important;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+}
+.main-nav .nav-brand-mini span small {
+    display: block;
+    color: var(--ilc-gold, #c5a059) !important;
+    font-size: 9.5px;
+    font-weight: 700;
+}
+/* Not enough room beside the menu: logo only */
+@media (min-width: 992px) and (max-width: 1299.98px) {
+    .main-nav .nav-brand-mini span { display: none; }
+}
+/* Phones/tablets: the logo sits right of the menu button instead */
+@media (max-width: 991.98px) {
+    .main-nav .nav-brand-mini { position: static; transform: translateX(-14px); margin-right: auto; margin-left: 12px; }
+    .main-nav.is-stuck .nav-brand-mini { transform: none; }
+    .main-nav .nav-brand-mini img { width: 32px; height: 32px; }
+}
+
+/* In-page links (#section) land below the sticky menu bar */
+html { scroll-padding-top: var(--ilc-nav-h, 0px); }

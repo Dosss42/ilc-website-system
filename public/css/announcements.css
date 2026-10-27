@@ -35,7 +35,7 @@ body { font-family: "Open Sans", sans-serif; font-size: 14px; color: #374151; ma
 .ann-card-body { padding: 16px; }
 .ann-card-body h5 { font-size: 14px; font-weight: 700; color: #1a3a6c; margin-bottom: 8px; line-height: 1.4; }
 .ann-card-body p { font-size: 12.5px; color: #64748b; line-height: 1.6; }
-.ann-sidebar { position: sticky; top: 24px; }
+.ann-sidebar { position: sticky; top: calc(var(--ilc-nav-h, 0px) + 24px); } /* below the sticky menu bar */
 .ann-sidebar-widget { background: #fff; border-radius: 12px; padding: 0; margin-bottom: 20px; border: 1.5px solid #e8edf5; overflow: hidden; box-shadow: 0 2px 8px rgba(26,58,108,.06); }
 .ann-sidebar-title { background: #1a3a6c; color: #fff; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; padding: 12px 16px; display: flex; align-items: center; gap: 8px; }
 .sidebar-widget { background: #fff; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1.5px solid #e8edf5; box-shadow: 0 2px 8px rgba(26,58,108,.06); }
