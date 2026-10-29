@@ -1342,6 +1342,9 @@
                             <button type="button" onclick="clearAmount()" class="pp-clear-btn">Clear</button>
                         </div>
                         <div class="pp-amount-underline"></div>
+                        {{-- Allowed range for this student (PaymentService::paymentLimits): at least what's due now,
+                             at most the remaining balance — the server enforces the same rule --}}
+                        <div id="payLimitHint" style="display:none;font-size:12px;margin-top:8px;color:#64748b;"></div>
                     </div>
 
                     {{-- Payment Method --}}
@@ -2425,7 +2428,7 @@
                 +'<td style="font-size:12px;color:#64748b;">'+r.time+'</td>'
                 +'<td style="font-weight:700;color:#1e293b;">'+r.student+'</td>'
                 +'<td>'+r.grade+'</td>'
-                +'<td style="font-size:12px;">'+r.type+'</td>'
+                +'<td style="font-size:12px;">'+txWhat(r)+'</td>'
                 +'<td><span class="method-pill '+(r.method.toLowerCase()==='cash'?'cash':'gcash')+'">'+r.method+'</span></td>'
                 +'<td style="font-weight:700;color:#16a34a;">₱'+r.amount+'</td>'
                 +'<td><span style="font-family:monospace;font-size:11px;background:#f8faff;padding:2px 7px;border-radius:5px;color:#475569;">'+r.reference+'</span></td>'
@@ -2485,7 +2488,7 @@
                 +'<td><span style="font-family:monospace;font-size:11.5px;background:#fffbeb;padding:3px 8px;border-radius:6px;color:#b45309;">'+(r.or_no||'—')+'</span></td>'
                 +'<td><div style="font-weight:700;color:#1e293b;">'+r.student+'</div></td>'
                 +'<td style="font-weight:600;">'+r.grade+'</td>'
-                +'<td style="font-size:12px;">'+r.type+'</td>'
+                +'<td style="font-size:12px;">'+txWhat(r)+'</td>'
                 +'<td><span class="method-pill '+(r.method.toLowerCase()==='cash'?'cash':'gcash')+'">'+r.method+'</span></td>'
                 +'<td style="font-weight:700;color:#16a34a;">₱'+r.amount+'</td>'
                 +'<td style="font-size:12px;color:#64748b;">'+r.date+'<br><span style="font-size:10px;">'+r.time+'</span></td>'
@@ -2521,7 +2524,7 @@
             return '<div class="pp-log-row">'
                 + '<div style="min-width:0;">'
                 + '<div class="pp-mono" style="font-size:12.5px;font-weight:600;">₱' + r.amount + ' <span style="font-family:\'Work Sans\',sans-serif;font-weight:500;color:var(--pp-faint);">· ' + r.method + '</span></div>'
-                + '<div class="pp-log-meta">' + r.type + ' &middot; ' + r.date + ' ' + r.time + '</div>'
+                + '<div class="pp-log-meta">' + txWhat(r, true) + ' &middot; ' + r.date + ' ' + r.time + '</div>'
                 + '</div>'
                 + '<span class="pp-mono pp-log-ref">' + (r.or_no||'—') + '</span>'
                 + '</div>';
@@ -2676,6 +2679,19 @@
         });
     }
 
+    // Payment type plus what it covered and its late fee (PaymentService::linkPaidMonths writes the
+    // months and the fee into the description); older payments only have the type.
+    function txWhat(r, inline) {
+        var e = function (v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
+        var fee = Number(r.late_fee) || 0;
+        var desc = r.description && r.description !== r.type ? r.description : '';
+        var feeTag = fee > 0 && !/late fee/i.test(desc) ? 'incl. ₱' + fee.toLocaleString('en-PH', {minimumFractionDigits: 2}) + ' late fee' : '';
+        if (inline) return e(desc || r.type) + (feeTag ? ' &middot; <span style="color:#b91c1c;font-weight:700;">' + feeTag + '</span>' : '');
+        return e(r.type)
+            + (desc ? '<div style="font-size:11px;color:#64748b;">' + e(desc).replace(/(\(incl\.[^)]*late fees?\))/i, '<span style="color:#b91c1c;font-weight:700;">$1</span>') + '</div>' : '')
+            + (feeTag ? '<div style="font-size:11px;color:#b91c1c;font-weight:700;">' + feeTag + '</div>' : '');
+    }
+
     function renderHistory(txs) {
         var tbody = document.getElementById('historyTbody');
         if (!txs.length) {
@@ -2693,7 +2709,7 @@
                 + '<td><span style="font-family:monospace;font-size:11.5px;background:#f8faff;padding:3px 8px;border-radius:6px;color:#475569;">' + (r.or_no||'—') + '</span></td>'
                 + '<td><div style="font-weight:700;color:#1e293b;">' + r.student + '</div><div style="font-size:11px;color:#94a3b8;">' + r.grade + '</div></td>'
                 + '<td>' + r.grade + '</td>'
-                + '<td style="font-size:12px;">' + r.type + '</td>'
+                + '<td style="font-size:12px;">' + txWhat(r) + '</td>'
                 + '<td>' + methodPill + '</td>'
                 + '<td style="font-weight:700;color:#16a34a;">₱' + r.amount + '</td>'
                 + '<td>' + badge + '</td>'
@@ -2928,6 +2944,7 @@
 
     function selectStudent(s) {
         selectedStudent = s;
+        setTimeout(updatePayLimitHint, 0);
         document.getElementById('selectedEnrollmentId').value       = s.enrollment_id || '';
         document.getElementById('selectedStudentEmail').value       = s.email || '';
         document.getElementById('selectedStudentNameHidden').value  = s.name;
@@ -2975,14 +2992,33 @@
         // a redundant "Downpayment" quick-amount button. Number(...) forces
         // the real numeric comparison, same as every other amount comparison
         // in this file already does.
-        if (Number(s.downpayment_amount) > 0 && Number(s.payment_amount||0) < Number(s.downpayment_amount)) {
-            btns.push({ label: 'Downpayment', amount: s.downpayment_amount, type: 'Downpayment', color: '#1a3a6c' });
-        }
-        if (s.monthly_amount > 0) {
-            btns.push({ label: 'Monthly Install.', amount: s.monthly_amount, type: 'Monthly Installment', color: '#2471a3' });
-        }
-        if (s.balance > 0) {
-            btns.push({ label: 'Full Balance', amount: s.balance, type: 'Full Payment', color: '#16a34a' });
+        // Built from the same limits the server enforces (PaymentService::paymentLimits): one button for
+        // exactly what is due now (the rest of the down payment, or the next installment + late fee),
+        // and Full Balance. The old Downpayment / Monthly buttons used the plan's base amounts, which could
+        // be lower than what's due (a monthly amount while the down payment was still unpaid) and get refused.
+        // One button per accepted amount: due now, + 1/2 months in advance, … full balance
+        // (long plans: the first three, then "more in advance" options, then the full balance)
+        var lim = s.pay_limits;
+        if (lim && lim.allowed && lim.allowed.length) {
+            var dpLeft = Number(s.downpayment_amount) > 0 && Number(s.payment_amount || 0) < Number(s.downpayment_amount);
+            lim.allowed.forEach(function (o, k) {
+                var last = k === lim.allowed.length - 1;
+                if (!last && k > 2) return; // keep the row short; typing a later "in advance" total still works
+                var type = last ? 'Full Payment' : (k === 0 ? (dpLeft ? 'Downpayment' : 'Monthly Installment') : (o.label.indexOf('in advance') === -1 ? 'Overdue Payment' : 'Advance Payment'));
+                // the server's own wording for the middle options — "Overdue July – August" vs "… + 1 month in advance"
+                var label = last ? 'Full Balance' : (k === 0 ? (dpLeft ? 'Downpayment' : 'Monthly Install.') : o.label);
+                btns.push({ label: label, amount: o.amount, type: type, color: last ? '#16a34a' : (k === 0 ? '#1a3a6c' : '#2471a3') });
+            });
+        } else {
+            if (Number(s.downpayment_amount) > 0 && Number(s.payment_amount||0) < Number(s.downpayment_amount)) {
+                btns.push({ label: 'Downpayment', amount: s.downpayment_amount, type: 'Downpayment', color: '#1a3a6c' });
+            }
+            if (s.monthly_amount > 0) {
+                btns.push({ label: 'Monthly Install.', amount: s.monthly_amount, type: 'Monthly Installment', color: '#2471a3' });
+            }
+            if (s.balance > 0) {
+                btns.push({ label: 'Full Balance', amount: s.balance, type: 'Full Payment', color: '#16a34a' });
+            }
         }
         var qRow  = document.getElementById('quickAmountRow');
         var qBtns = document.getElementById('quickAmountBtns');
@@ -3071,7 +3107,37 @@
         });
     }
 
+    function fmtPeso(v) { return '₱' + Number(v).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+    // Only exact amounts are accepted (PaymentService::paymentLimits — the server checks the same list):
+    // what's due now, that plus whole months in advance, or the full balance. Returns why not, or null.
+    function payLimitProblem(amount) {
+        var lim = selectedStudent && selectedStudent.pay_limits;
+        if (!lim || !lim.allowed || !lim.allowed.length || amount === '' || isNaN(amount)) return null;
+        amount = Math.round(parseFloat(amount) * 100) / 100;
+        var ok = lim.allowed.some(function (o) { return Math.abs(o.amount - amount) < 0.005; });
+        return ok ? null : 'Only exact amounts are accepted (whole months) — pick one of the amounts above.';
+    }
+
+    function updatePayLimitHint() {
+        var hint = document.getElementById('payLimitHint');
+        if (!hint) return;
+        var lim = selectedStudent && selectedStudent.pay_limits;
+        if (!lim || !lim.allowed || !lim.allowed.length) { hint.style.display = 'none'; return; }
+        var raw = document.getElementById('paymentAmount').value;
+        var problem = raw !== '' ? payLimitProblem(raw) : null;
+        var match = !problem && raw !== '' ? lim.allowed.filter(function (o) { return Math.abs(o.amount - parseFloat(raw)) < 0.005; })[0] : null;
+        hint.innerHTML = problem
+            ? '<i class="bi bi-exclamation-circle-fill"></i> ' + problem
+            : '<i class="bi bi-info-circle"></i> ' + (match ? '<strong>' + match.label + '</strong> · ' : '')
+              + 'Due now: <strong>' + fmtPeso(lim.min) + '</strong>'
+              + (lim.allowed.length > 1 ? ' · paying whole months in advance or the full balance (' + fmtPeso(lim.max) + ') is accepted' : ' (the whole remaining balance)');
+        hint.style.color = problem ? '#b91c1c' : '#64748b';
+        hint.style.display = 'block';
+    }
+
     function updateTransactionSummary() {
+        updatePayLimitHint();
         var amount = parseFloat(document.getElementById('paymentAmount').value);
         var method = document.getElementById('paymentMethod').value;
         var type   = document.getElementById('paymentType').value;
@@ -3094,6 +3160,8 @@
 
         if (!enrollmentId) { showToast('Please select a student first.', 'warning'); return; }
         if (!amount || amount <= 0) { showToast('Please enter a valid amount.', 'warning'); return; }
+        var limitProblem = payLimitProblem(amount);
+        if (limitProblem) { showToast(limitProblem, 'warning'); updatePayLimitHint(); return; }
         if (!method) { showToast('Please select a payment method.', 'warning'); return; }
         if (!type)   { showToast('Please select a payment type.', 'warning'); return; }
 
@@ -3201,9 +3269,12 @@
             if (data.success) {
                 document.getElementById('xenditLinkUrl').value = data.invoice_url;
                 document.getElementById('xenditLinkOpenBtn').href = data.invoice_url;
-                if (data.expiry) {
-                    document.getElementById('xenditLinkExpiry').textContent = 'Expires: ' + new Date(data.expiry).toLocaleString('en-PH');
-                }
+                // The amount on Xendit's page (also for a link that was already open), then when it expires
+                var linkInfo = [];
+                if (data.amount) linkInfo.push('Amount on the payment page: ' + fmtPeso(data.amount));
+                if (data.expiry) linkInfo.push('Expires: ' + new Date(data.expiry).toLocaleString('en-PH'));
+                document.getElementById('xenditLinkExpiry').textContent = linkInfo.join(' · ');
+                if (data.reused && data.message) showToast(data.message, 'info');
                 document.getElementById('xenditLinkResult').style.display = 'block';
                 window.open(data.invoice_url, '_blank');
                 pollCashierXenditStatus(data.invoice_id);
@@ -3289,6 +3360,7 @@
         .then(function(d) {
             if (d.success) {
                 selectedStudent = d;
+                setTimeout(updatePayLimitHint, 0);
                 updateStudentCardStats(d);
                 if (statusEl) {
                     statusEl.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> Payment confirmed — balance updated.';
@@ -3316,6 +3388,7 @@
 
     function clearPaymentForm() {
         selectedStudent = null;
+        updatePayLimitHint(); // hides it
         document.getElementById('selectedEnrollmentId').value = '';
         document.getElementById('selectedStudentEmail').value = '';
         document.getElementById('selectedStudentNameHidden').value = '';
@@ -3355,7 +3428,7 @@
     // Builds a Print button's onclick from a list row. Every value is JSON-encoded and
     // HTML-escaped, so names like O'Brien can't break the button.
     function _reprintOnclick(r) {
-        var args = [r.or_no, r.student, r.grade, r.school_year, r.type, r.method, r.amount, r.date, r.time]
+        var args = [r.or_no, r.student, r.grade, r.school_year, r.description || r.type, r.method, r.amount, r.date, r.time]
             .map(function(v) { return JSON.stringify(v == null ? '' : String(v)); })
             .join(',');
         return 'reprintTx(' + args.replace(/&/g, '&amp;').replace(/"/g, '&quot;') + ')';

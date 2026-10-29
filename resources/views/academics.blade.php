@@ -869,7 +869,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
         ];
         @endphp
 
-        {{-- â”€â”€ EOSY 2025-2026 â”€â”€ --}}
+        {{-- ── EOSY 2025-2026 ── --}}
         <div style="border:1px solid #93c5fd;border-radius:12px;margin-bottom:28px;overflow:hidden;">
             <div style="background:linear-gradient(135deg,#0c4a6e,#0369a1);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
                 <span style="font-size:13px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:1px;">End-of-School Year (EOSY) 2025&ndash;2026</span>
@@ -909,7 +909,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
             </div>
         </div>
 
-        {{-- â”€â”€ TERM 1 â”€â”€ --}}
+        {{-- ── TERM 1 ── --}}
         <div id="sec-term1" style="border:1px solid #bfdbfe;border-radius:12px;margin-bottom:28px;overflow:hidden;">
             <div style="background:linear-gradient(135deg,#1e3a8a,#1d4ed8);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
                 <span style="font-size:13px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:1px;">Term 1</span>
@@ -963,7 +963,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
             </div>
         </div>
 
-        {{-- â”€â”€ TERM 2 â”€â”€ --}}
+        {{-- ── TERM 2 ── --}}
         <div id="sec-term2" style="border:1px solid #7dd3fc;border-radius:12px;margin-bottom:28px;overflow:hidden;">
             <div style="background:linear-gradient(135deg,#1e3a8a,#2563eb);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
                 <span style="font-size:13px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:1px;">Term 2</span>
@@ -1020,7 +1020,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
             </div>
         </div>
 
-        {{-- â”€â”€ TERM 3 â”€â”€ --}}
+        {{-- ── TERM 3 ── --}}
         <div id="sec-term3" style="border:1px solid #93c5fd;border-radius:12px;margin-bottom:28px;overflow:hidden;">
             <div style="background:linear-gradient(135deg,#0369a1,#0ea5e9);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;">
                 <span style="font-size:13px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:1px;">Term 3</span>
@@ -1394,7 +1394,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
     window.addEventListener('load', makeRoom);
     setTimeout(makeRoom, 700); // the content fades in after the loading placeholder
 
-    // â”€â”€ Active highlight on scroll â”€â”€
+    // ── Active highlight on scroll ──
     function setActive() {
         var scrollY = window.scrollY + barHeight() + 60;
         var current = sections[0];
@@ -1409,7 +1409,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
     window.addEventListener('scroll', setActive, { passive: true });
     setActive();
 
-    // â”€â”€ Smooth scroll (no offset needed &mdash; sidebar doesn't block content) â”€â”€
+    // ── Smooth scroll (no offset needed &mdash; sidebar doesn't block content) ──
     document.querySelectorAll('a[href^="#sec-"]').forEach(function(a) {
         a.addEventListener('click', function(e) {
             if (e.defaultPrevented) return; // first click on Academic Calendar only opens its dropdown
@@ -1436,7 +1436,7 @@ function closeCalSub() {
     if (chevron) chevron.style.transform = 'rotate(0deg)';
 }
 
-// â”€â”€ Calendar sub-links click toggle â”€â”€
+// ── Calendar sub-links click toggle ──
 function toggleCalSub(e) {
     // Only toggle sub &mdash; still allow the calendar anchor scroll
     var sub      = document.getElementById('qnav-cal-sub');

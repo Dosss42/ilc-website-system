@@ -174,13 +174,13 @@
         <p>Maya and bank transfer are not currently available.</p>
 
         <h3>5.2 Payment Deadlines and Late Fees</h3>
-        <p>For students under an installment payment plan, each monthly installment is due on the date shown in the student's Payment Schedule, visible at all times in the Student Portal. If a payment is not received by the due date, the following applies automatically:</p>
+        <p>For students under an installment payment plan, each monthly installment is due on the date shown in the student's Payment Schedule, visible at all times in the Student Portal. Each installment is due on the last day of its month (July to March), and the following applies automatically:</p>
         <ul>
-            <li><strong>1 week</strong> past the due date — a warning notice is sent by email.</li>
-            <li><strong>2 weeks</strong> past the due date — a follow-up reminder is sent (grace period; no fee yet).</li>
-            <li><strong>3 weeks</strong> past the due date — a late fee of <strong>₱500</strong> is added to that installment, and a confirmation notice is sent.</li>
+            <li><strong>3 days before</strong> the due date — a reminder is sent by email.</li>
+            <li><strong>On the due date</strong> — a second reminder is sent by email.</li>
+            <li>If the installment is still unpaid <strong>at the end of the due date</strong>, a late fee of <strong>₱500</strong> is added to that installment the next morning, and a notice is sent by email. The late fee is charged once per installment.</li>
         </ul>
-        <p>Weekly reminders continue automatically for as long as an installment remains unpaid. A late fee alone does not affect a student's ability to attend class; see Section 5.4 and 5.5 for what happens if payments fall further behind.</p>
+        <p>After that, a reminder is sent every week for as long as the installment remains unpaid. A late fee never affects a student's ability to attend class or take exams; see Section 5.4 and 5.5 for what happens if payments fall further behind.</p>
 
         <h3>5.3 Refund Policy</h3>
         <p>Refunds are subject to the school's refund policy:</p>
@@ -200,14 +200,14 @@
             <li>A copy of every Promissory Note is available to the parent/guardian upon request.</li>
         </ul>
 
-        <h3>5.5 Exam Permit</h3>
-        <p>An <strong>Exam Permit</strong> is the school's permission for a student to sit for periodic/quarterly exams.</p>
+        <h3>5.5 Exams and the Results Hold</h3>
+        <p>Every enrolled student may take the periodic/quarterly and final exams, whether or not school fees are fully paid, in line with <strong>Republic Act No. 11984</strong> (No Permit, No Exam Prohibition Act).</p>
         <ul>
-            <li>The Exam Permit is withheld when payments are <strong>three (3) consecutive months</strong> behind schedule and there is no Promissory Note in good standing, or when a Promissory Note on the account has been broken (Section 5.4).</li>
-            <li>Withholding the Exam Permit is a restriction on taking the exam, separate from the late fee described in Section 5.2.</li>
-            <li>The Exam Permit is automatically restored as soon as the account balance is brought current, or a new Promissory Note is signed before its promised date, or the Finance Office confirms the balance has been settled — no separate request is needed.</li>
-            <li>This restriction applies specifically to periodic/quarterly exams and does not affect a student's ability to attend regular classes.</li>
-            <li>Parents/guardians may contact the Finance Office at any time to check their account status or arrange a Promissory Note before this restriction applies.</li>
+            <li>When payments are <strong>three (3) consecutive months</strong> behind schedule and there is no Promissory Note in good standing, or when a Promissory Note on the account has been broken (Section 5.4), the student's <strong>exam results and school records are held</strong> — not released — until the account is brought current.</li>
+            <li>The results hold is separate from the late fee described in Section 5.2.</li>
+            <li>The hold is lifted automatically — and the results released — as soon as the overdue months are paid, or a new Promissory Note is signed before its promised date, or the Finance Office confirms the balance has been settled. No separate request is needed.</li>
+            <li>The hold never stops a student from taking exams or attending regular classes.</li>
+            <li>Parents/guardians may contact the Finance Office at any time to check their account status or arrange a Promissory Note before a hold applies.</li>
         </ul>
 
         <h2>6. Academic Integrity and Conduct</h2>

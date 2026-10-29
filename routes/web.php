@@ -437,7 +437,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::delete('/{id}/force', [EnrollmentController::class, 'forceDeleteStudent'])->name('force-delete');
         Route::get('/{user}/sf10', [EnrollmentController::class, 'downloadSF10'])->name('sf10');
         Route::get('/{user}/transactions', [EnrollmentController::class, 'studentTransactions'])->name('transactions');
-        Route::get('/{user}', [EnrollmentController::class, 'showStudent'])->name('show');
+        // numbers only, so /students/promotion-history (registered further down) isn't taken for a student id
+        Route::get('/{user}', [EnrollmentController::class, 'showStudent'])->name('show')->whereNumber('user');
         Route::put('/{user}', [EnrollmentController::class, 'updateStudent'])->name('update');
         Route::delete('/{user}', [EnrollmentController::class, 'deleteStudent'])->name('destroy');
     });
@@ -489,6 +490,12 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::get('/pdf', [ScheduleController::class, 'downloadSchedulePdf'])->name('pdf');
         Route::post('/', [ScheduleController::class, 'store'])->name('store');
         Route::post('/copy-term', [ScheduleController::class, 'copyTerm'])->name('copy-term');
+        // Subject Teachers grid + timetable generator (App\Services\ScheduleGenerator)
+        Route::get('/subject-teachers', [\App\Http\Controllers\ScheduleGeneratorController::class, 'teacherGrid'])->name('subject-teachers');
+        Route::post('/subject-teachers', [\App\Http\Controllers\ScheduleGeneratorController::class, 'saveTeacherGrid'])->name('subject-teachers.save');
+        Route::get('/generator/defaults', [\App\Http\Controllers\ScheduleGeneratorController::class, 'defaults'])->name('generator.defaults');
+        Route::post('/generator/preview', [\App\Http\Controllers\ScheduleGeneratorController::class, 'preview'])->name('generator.preview');
+        Route::post('/generator/save', [\App\Http\Controllers\ScheduleGeneratorController::class, 'save'])->name('generator.save');
         Route::get('/{schedule}', [ScheduleController::class, 'show'])->name('show');
         Route::put('/{schedule}', [ScheduleController::class, 'update'])->name('update');
         Route::delete('/{schedule}', [ScheduleController::class, 'destroy'])->name('destroy');

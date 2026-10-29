@@ -145,7 +145,14 @@
                 </thead>
                 <tbody>
                     @forelse(($walkInTransactions ?? collect()) as $walkInTx)
-                    @php $walkInInstallment = $walkInTx->installment; @endphp
+                    @php
+                        $walkInInstallment = $walkInTx->installment;
+                        $walkInLateFee = $walkInTx->lateFeePortion();
+                        $walkInDesc = $walkInInstallment ? $walkInInstallment->month_name . ' Installment' : ($walkInTx->description ?: ($walkInTx->installment_month ?? 'Payment'));
+                        if ($walkInLateFee > 0 && stripos($walkInDesc, 'late fee') === false) {
+                            $walkInDesc .= ' (incl. ₱' . number_format($walkInLateFee, 2) . ' late fee)';
+                        }
+                    @endphp
                     <tr data-status="{{ $walkInTx->status }}" data-student="{{ strtolower($walkInTx->user->name ?? '') }}">
                         <td style="font-weight:600;">#{{ $walkInTx->id }}</td>
                         <td>
@@ -157,9 +164,15 @@
                             @if($walkInInstallment)
                                 <div style="font-weight:600;color:var(--blue);">{{ $walkInInstallment->month_name }} Installment</div>
                                 <div style="font-size:12px;color:var(--muted);">₱{{ number_format($walkInInstallment->amount ?? 0, 2) }}</div>
+                                @if($walkInLateFee > 0)
+                                    <div style="font-size:11px;color:#b91c1c;font-weight:700;">+ ₱{{ number_format($walkInLateFee, 2) }} late fee</div>
+                                @endif
                                 <div style="font-size:11px;color:var(--green);font-weight:600;">Total: ₱{{ number_format($walkInTx->amount, 2) }}</div>
                             @else
                                 <div style="font-weight:600;color:var(--blue);">{{ $walkInTx->installment_month ?? 'Downpayment' }}</div>
+                                @if($walkInLateFee > 0)
+                                    <div style="font-size:11px;color:#b91c1c;font-weight:700;">incl. ₱{{ number_format($walkInLateFee, 2) }} late fee</div>
+                                @endif
                                 <div style="font-size:11px;color:var(--green);font-weight:600;">₱{{ number_format($walkInTx->amount, 2) }}</div>
                             @endif
                         </td>
@@ -205,7 +218,7 @@
                                         student_name: '{{ addslashes($walkInTx->user->name ?? 'N/A') }}',
                                         grade_level: '{{ $walkInTx->enrollment->grade_level ?? 'N/A' }}',
                                         school_year: '{{ $walkInTx->enrollment->school_year ?? 'N/A' }}',
-                                        description: '{{ addslashes($walkInInstallment ? ($walkInInstallment->month_name.' Installment') : ($walkInTx->description ?: ($walkInTx->installment_month ?? 'Payment'))) }}',
+                                        description: '{{ addslashes($walkInDesc) }}',
                                         amount: '{{ number_format($walkInTx->amount, 2) }}',
                                         method: '{{ ['cash' => 'Cash', 'gcash' => 'GCash'][$walkInTx->payment_method] ?? ucfirst($walkInTx->payment_method ?? 'Cash') }}',
                                         received_by: '{{ addslashes($walkInTx->processedBy->name ?? 'Admin') }}',
@@ -275,6 +288,9 @@
                         <td><span class="grade-chip">{{ $xTx->enrollment->grade_level ?? 'N/A' }}</span></td>
                         <td>
                             <div style="font-weight:600;color:var(--blue);">{{ $xTx->description ?? 'Online Payment' }}</div>
+                            @if(($xFee = $xTx->lateFeePortion()) > 0 && stripos($xTx->description ?? '', 'late fee') === false)
+                                <div style="font-size:11px;color:#b91c1c;font-weight:700;">incl. ₱{{ number_format($xFee, 2) }} late fee</div>
+                            @endif
                             <div style="font-size:11px;color:var(--green,#28a745);font-weight:600;">₱{{ number_format($xTx->amount, 2) }}</div>
                         </td>
                         <td>

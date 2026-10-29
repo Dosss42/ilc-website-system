@@ -9,21 +9,30 @@
             </button>
         </div>
 
-        {{-- Stats (all pending submissions) --}}
+        {{-- Stats (all pending submissions). Click: clear the filters (or show only batches with a grade
+             below 75) and scroll to the list — js/stat-jump.js --}}
+        @php
+            // Grade Level last: if it changes, its handler also refills the Section list
+            $goAll = fn ($show) => ['#goFilterSy' => '', '#goFilterTerm' => '', '#goFilterSection' => '', '#goFilterSearch' => '', '#goFilterShow' => $show, '#goFilterGrade' => ''];
+        @endphp
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px;" class="go-stats">
-            <div class="stat-card">
+            <div class="stat-card stat-card-link" role="button" tabindex="0" title="Show every batch waiting for review"
+                 data-jump="{{ json_encode(["set" => $goAll(""), "to" => "#goResultLabel"]) }}">
                 <div class="stat-icon gold"><i class="bi bi-hourglass-split"></i></div>
                 <div><div class="stat-value" id="goStatBatches">0</div><div class="stat-label">Batches to Review</div></div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card stat-card-link" role="button" tabindex="0" title="Show every batch waiting for review"
+                 data-jump="{{ json_encode(["set" => $goAll(""), "to" => "#goResultLabel", "active" => false]) }}">
                 <div class="stat-icon blue"><i class="bi bi-journal-check"></i></div>
                 <div><div class="stat-value" id="goStatGrades">0</div><div class="stat-label">Grades Waiting</div></div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card stat-card-link" role="button" tabindex="0" title="Show only batches with a grade below 75"
+                 data-jump="{{ json_encode(["set" => $goAll("failed"), "to" => "#goResultLabel"]) }}">
                 <div class="stat-icon red"><i class="bi bi-exclamation-triangle-fill"></i></div>
                 <div><div class="stat-value" id="goStatFailed">0</div><div class="stat-label">Grades Below 75</div></div>
             </div>
-            <div class="stat-card">
+            <div class="stat-card stat-card-link" role="button" tabindex="0" title="Show every batch waiting for review"
+                 data-jump="{{ json_encode(["set" => $goAll(""), "to" => "#goResultLabel", "active" => false]) }}">
                 <div class="stat-icon green"><i class="bi bi-person-badge-fill"></i></div>
                 <div><div class="stat-value" id="goStatTeachers">0</div><div class="stat-label">Teachers Waiting</div></div>
             </div>
@@ -86,6 +95,13 @@
                     <label class="form-lbl" style="font-size:11px;">Section</label>
                     <select id="goFilterSection" class="form-fld" style="min-width:150px;padding:7px 10px;font-size:13px;" onchange="renderGradeOversight(true)">
                         <option value="">All Sections</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="form-lbl" style="font-size:11px;">Show</label>
+                    <select id="goFilterShow" class="form-fld" style="min-width:150px;padding:7px 10px;font-size:13px;" onchange="renderGradeOversight(true)">
+                        <option value="">All Batches</option>
+                        <option value="failed">With Grades Below 75</option>
                     </select>
                 </div>
                 <button type="button" class="btn-dash btn-secondary" style="padding:8px 14px;font-size:12.5px;" onclick="goClearFilters()">

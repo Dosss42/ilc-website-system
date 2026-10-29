@@ -165,7 +165,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
                 <h2 class="ann-page-title">All Announcements</h2>
                 <p class="ann-page-subtitle">Stay informed with the latest updates from IEMELIF Learning Center.</p>
 
-                {{-- â”€â”€ FILTER TABS â”€â”€ --}}
+                {{-- ── FILTER TABS ── --}}
                 {{-- =============================================
                      FILTER TABS: When connected to database,
                      add ?type= query to each link and highlight
@@ -439,7 +439,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
 
                 </div>{{-- /row --}}
 
-                {{-- â”€â”€ PAGINATION â”€â”€ --}}
+                {{-- ── PAGINATION ── --}}
                 {{-- =============================================
                      When using database, replace with:
                      {{ $announcements->links() }}

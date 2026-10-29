@@ -262,7 +262,7 @@
                             @if($examStatus['held'])
                                 <span style="display:inline-flex;align-items:center;gap:4px;margin-top:4px;margin-left:4px;padding:3px 10px;border-radius:12px;font-size:10px;font-weight:700;background:#3e1a1a;color:#ffcdd2;"
                                       title="{{ $examStatus['reason'] === 'broken_promise' ? 'Promissory Note broken — promised date passed unpaid' : $examStatus['overdue_months'] . ' consecutive months unpaid' }}">
-                                    <i class="bi bi-file-earmark-lock-fill"></i> Exam Permit Held
+                                    <i class="bi bi-file-earmark-lock-fill"></i> Results on Hold
                                 </span>
                             @endif
                         @else
@@ -426,8 +426,8 @@
             <div class="modal-body" style="padding:20px 24px; max-height:65vh; overflow-y:auto;">
                 <div style="background:#f3e5f5; border-radius:8px; padding:10px 14px; margin-bottom:16px; font-size:12px; color:#4a148c;">
                     <i class="bi bi-info-circle-fill me-1"></i>
-                    A note in good standing (still <strong>pending</strong> with a future promise date, or <strong>extended</strong>) keeps the Exam Permit clear.
-                    A <strong>broken</strong> note — the promised date passed unpaid — re-applies the hold until a new note is issued or the balance is paid in full.
+                    A note in good standing (still <strong>pending</strong> with a future promise date, or <strong>extended</strong>) keeps the account clear of a results hold (the student always takes the exams; only the results are held).
+                    A <strong>broken</strong> note — the promised date passed unpaid — re-applies the results hold until a new note is issued or the overdue months are paid.
                 </div>
                 <div id="nm-list">
                     <div style="text-align:center; padding:30px; color:var(--muted);"><div class="spinner-border spinner-border-sm me-2"></div>Loading...</div>
@@ -784,7 +784,7 @@ function renderNotesList(notes) {
 
 function updateNoteStatus(noteId, status, extendedDate) {
     if (status === 'broken') {
-        showConfirm('Mark this Promissory Note as Broken? This will re-apply the Exam Permit Hold until a new note is issued or the balance is fully paid.',
+        showConfirm('Mark this Promissory Note as Broken? This will re-apply the Results Hold until a new note is issued or the overdue months are paid.',
             function () { doUpdateNoteStatus(noteId, status, extendedDate); },
             { title: 'Mark as Broken', confirmLabel: 'Mark as Broken', danger: true });
         return;
@@ -809,7 +809,7 @@ function doUpdateNoteStatus(noteId, status, extendedDate) {
     .then(data => {
         if (data.success) {
             loadNotesList(nmCurrentEnrollmentId);
-            location.reload(); // refresh the Exam Permit badge in the table behind the modal
+            location.reload(); // refresh the Results Hold badge in the table behind the modal
         } else {
             showToast(data.message || 'Failed to update note.', 'error');
         }

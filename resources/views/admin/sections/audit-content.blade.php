@@ -5,34 +5,28 @@
             </div>
         </div>
 
+        {{-- Click a card: set the filters below to match it and scroll to the entries — js/stat-jump.js --}}
+        @php
+            $aF = fn ($type, $from, $to) => ['#audit-filter-form [name=audit_search]' => '', '#audit-filter-form [name=audit_role]' => '',
+                '#audit-filter-form [name=audit_from]' => $from, '#audit-filter-form [name=audit_to]' => $to, '#audit-filter-form [name=audit_type]' => $type];
+            $aCards = [
+                ['blue', 'bi-journal-check', $stats['total'], 'Total Entries', 'Show every entry below', $aF('', '', '')],
+                ['green', 'bi-calendar-check-fill', $stats['today'], 'Today', "Show today's entries below", $aF('', $auditToday ?? '', $auditToday ?? '')],
+                ['gold', 'bi-shield-exclamation', $stats['failed'], 'Failed / Denied (last 7 days)', 'Show failed logins and denied actions of the last 7 days below', $aF('failed_denied', $auditWeekAgo ?? '', '')],
+            ];
+        @endphp
         <div class="row g-3 mb-4">
+            @foreach($aCards as [$color, $icon, $count, $label, $tip, $set])
             <div class="col-md-4 col-sm-6">
-                <div class="stat-card">
-                    <div class="stat-icon blue"><i class="bi bi-journal-check"></i></div>
+                <div class="stat-card stat-card-link" role="button" tabindex="0" title="{{ $tip }}" data-jump="{{ json_encode(["set" => $set, "to" => "#audit-list-card"]) }}">
+                    <div class="stat-icon {{ $color }}"><i class="bi {{ $icon }}"></i></div>
                     <div>
-                        <div class="stat-value">{{ number_format($stats['total']) }}</div>
-                        <div class="stat-label">Total Entries</div>
+                        <div class="stat-value">{{ number_format($count) }}</div>
+                        <div class="stat-label">{{ $label }}</div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4 col-sm-6">
-                <div class="stat-card">
-                    <div class="stat-icon green"><i class="bi bi-calendar-check-fill"></i></div>
-                    <div>
-                        <div class="stat-value">{{ number_format($stats['today']) }}</div>
-                        <div class="stat-label">Today</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4 col-sm-6">
-                <div class="stat-card">
-                    <div class="stat-icon gold"><i class="bi bi-shield-exclamation"></i></div>
-                    <div>
-                        <div class="stat-value">{{ number_format($stats['failed']) }}</div>
-                        <div class="stat-label">Failed / Denied (last 7 days)</div>
-                    </div>
-                </div>
-            </div>
+            @endforeach
         </div>
 
         {{-- Read-only here: only the Super Admin changes this (System Logs) --}}
@@ -51,6 +45,7 @@
                 <div class="toolbar-filter">
                     <select name="audit_type" onchange="this.form.requestSubmit()">
                         <option value="">All Events</option>
+                        <option value="failed_denied" {{ $auditType === 'failed_denied' ? 'selected' : '' }}>Failed / Denied</option>
                         @foreach($eventTypes as $value => $label)
                             <option value="{{ $value }}" {{ $auditType === $value ? 'selected' : '' }}>{{ $label }}</option>
                         @endforeach
@@ -75,7 +70,7 @@
             </div>
         </form>
 
-        <div class="content-card">
+        <div class="content-card" id="audit-list-card">
             <div class="content-card-header">
                 <h6><i class="bi bi-list-ul me-2" style="color:var(--blue);"></i>Activity</h6>
             </div>

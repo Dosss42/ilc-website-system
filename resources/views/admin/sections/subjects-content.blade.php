@@ -14,62 +14,20 @@
 
         </div>
 
+        {{-- Click a card: filter the subject list below and scroll to it — js/stat-jump.js --}}
         <div class="row g-3 mb-4">
-
+            @foreach([['blue', 'bi-book-fill', ($subjects ?? null)?->total() ?? 0, 'Total Subjects', ''], ['green', 'bi-check-circle-fill', $activeSubjectsCount ?? 0, 'Active', 'active'], ['red', 'bi-x-circle-fill', $inactiveSubjectsCount ?? 0, 'Inactive', 'inactive']] as [$color, $icon, $count, $label, $st])
             <div class="col-md-3 col-sm-6">
-
-                <div class="stat-card">
-
-                    <div class="stat-icon blue"><i class="bi bi-book-fill"></i></div>
-
+                <div class="stat-card stat-card-link" role="button" tabindex="0" title="Show {{ $st === '' ? 'all subjects' : $label . ' subjects' }} below"
+                     data-jump="{{ json_encode(["set" => ["#subjectSearchInput" => "", "#subjectGradeFilter" => "", "#subjectStatusFilter" => $st], "to" => "#subject-list-card"]) }}">
+                    <div class="stat-icon {{ $color }}"><i class="bi {{ $icon }}"></i></div>
                     <div>
-
-                        <div class="stat-value">{{ ($subjects ?? null)?->total() ?? 0 }}</div>
-
-                        <div class="stat-label">Total Subjects</div>
-
+                        <div class="stat-value">{{ $count }}</div>
+                        <div class="stat-label">{{ $label }}</div>
                     </div>
-
                 </div>
-
             </div>
-
-            <div class="col-md-3 col-sm-6">
-
-                <div class="stat-card">
-
-                    <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
-
-                    <div>
-
-                        <div class="stat-value">{{ $activeSubjectsCount ?? 0 }}</div>
-
-                        <div class="stat-label">Active</div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            <div class="col-md-3 col-sm-6">
-
-                <div class="stat-card">
-
-                    <div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div>
-
-                    <div>
-
-                        <div class="stat-value">{{ $inactiveSubjectsCount ?? 0 }}</div>
-
-                        <div class="stat-label">Inactive</div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
+            @endforeach
         </div>
 
         <div class="module-toolbar">
@@ -122,7 +80,7 @@
 
         </div>
 
-        <div class="content-card">
+        <div class="content-card" id="subject-list-card">
 
             <div class="content-card-header">
 

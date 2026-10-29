@@ -18,13 +18,14 @@
 
         </div>
 
-        {{-- Stat Cards — same height (h-100) and same three lines each: value, label, sub-line --}}
+        {{-- Stat Cards — same height (h-100) and same three lines each: value, label, sub-line.
+             Click: open the list each one counts (js/stat-jump.js) --}}
 
         <div class="row g-3 mb-4">
 
             <div class="col-md-3 col-sm-6">
 
-                <div class="stat-card h-100">
+                <div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Open Student Management (all students)" data-jump="{{ json_encode(['section' => 'students', 'set' => ['#student-filter-form [name=student_search]' => '', '#student-filter-form [name=student_grade]' => 'all', '#student-filter-form [name=student_schoolyear]' => 'all', '#student-filter-form [name=student_status]' => 'all', '#student-filter-form [name=student_payment]' => 'all'], 'to' => '#sm-list-card', 'active' => false]) }}">
 
                     <div class="stat-icon blue"><i class="bi bi-people-fill"></i></div>
 
@@ -44,7 +45,7 @@
 
             <div class="col-md-3 col-sm-6">
 
-                <div class="stat-card h-100">
+                <div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Open Teacher Management (all teachers)" data-jump="{{ json_encode(['section' => 'teachers', 'set' => ['#teacherSearchInput' => '', '#teacherStatusFilter' => ''], 'to' => '#teacher-list-card', 'active' => false]) }}">
 
                     <div class="stat-icon gold"><i class="bi bi-person-badge-fill"></i></div>
 
@@ -64,7 +65,7 @@
 
             <div class="col-md-3 col-sm-6">
 
-                <div class="stat-card h-100">
+                <div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Show the fully paid students (Student Management)" data-jump="{{ json_encode(['section' => 'students', 'set' => ['#student-filter-form [name=student_search]' => '', '#student-filter-form [name=student_grade]' => 'all', '#student-filter-form [name=student_schoolyear]' => 'all', '#student-filter-form [name=student_status]' => 'all', '#student-filter-form [name=student_payment]' => 'paid'], 'to' => '#sm-list-card', 'active' => false]) }}">
 
                     <div class="stat-icon green"><i class="bi bi-clipboard-check-fill"></i></div>
 
@@ -85,7 +86,7 @@
 
             <div class="col-md-3 col-sm-6">
 
-                <div class="stat-card h-100">
+                <div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Show the students with nothing paid yet (Student Management)" data-jump="{{ json_encode(['section' => 'students', 'set' => ['#student-filter-form [name=student_search]' => '', '#student-filter-form [name=student_grade]' => 'all', '#student-filter-form [name=student_schoolyear]' => 'all', '#student-filter-form [name=student_status]' => 'all', '#student-filter-form [name=student_payment]' => 'unpaid'], 'to' => '#sm-list-card', 'active' => false]) }}">
 
                     <div class="stat-icon red"><i class="bi bi-hourglass-split"></i></div>
 

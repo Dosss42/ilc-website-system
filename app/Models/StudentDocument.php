@@ -9,6 +9,20 @@ class StudentDocument extends Model
 {
     use SoftDeletes;
 
+    /** The four documents every student needs approved (enrollment checklist, re-enrollment, assessment). */
+    const REQUIRED_TYPES = ['birth_certificate', 'form_137', 'report_card', 'two_by_two_picture'];
+
+    /** How many of the four required documents a student has approved (0–4) — the same count the portal shows. */
+    public static function approvedRequiredCount(int $userId): int
+    {
+        return static::where(fn ($q) => $q->where('user_id', $userId)
+                ->orWhereIn('enrollment_id', Enrollment::where('user_id', $userId)->select('id')))
+            ->whereIn('document_type', self::REQUIRED_TYPES)
+            ->where('status', 'approved')
+            ->distinct()
+            ->count('document_type');
+    }
+
     protected $fillable = [
         'user_id',
         'enrollment_id',

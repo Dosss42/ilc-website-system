@@ -924,6 +924,8 @@ class EnrollmentController extends Controller
         $assessTotal   = $assessEligible->count();
         $assessPending = $assessEligible->filter(fn($s) => $s->promotions->isEmpty())->count();
         $assessDone    = $assessEligible->filter(fn($s) => $s->promotions->isNotEmpty())->count();
+        // Assessed, but the family hasn't re-enrolled from the portal yet — the school follows these up
+        $assessWaiting = $assessEligible->filter(fn($s) => $s->promotions->isNotEmpty() && !$s->promotions->first()->enrollment_id)->count();
 
         $assessByGrade = [];
         foreach ($assessGradeLevels as $gk) {
@@ -963,6 +965,9 @@ class EnrollmentController extends Controller
                 return false;
             }
             if ($assessStatusFilter === 'done' && !$isDone) {
+                return false;
+            }
+            if ($assessStatusFilter === 'waiting' && (!$isDone || $s->promotions->first()->enrollment_id)) {
                 return false;
             }
             if ($assessSearchTerm !== '' && stripos($s->name, $assessSearchTerm) === false) {
@@ -1090,7 +1095,7 @@ class EnrollmentController extends Controller
             'currentSchoolYear', 'enrollmentOpen', 'maintenanceMode', 'assessStudents', 'assessGuidanceCounts',
             'assessSummerStatus', 'guidanceCounselors',
             'assessGradeFilter', 'assessStatusFilter', 'assessSearchTerm', 'assessSectionFilter', 'assessBySection',
-            'assessTotal', 'assessPending', 'assessDone', 'assessByGrade', 'assessNextSchoolYear',
+            'assessTotal', 'assessPending', 'assessDone', 'assessWaiting', 'assessByGrade', 'assessNextSchoolYear',
             'assessSchoolYear', 'sidebarAssessCount',
             'contactMessages', 'unreadMessagesCount', 'totalMessagesCount', 'readMessagesCount', 'repliedMessagesCount'
         ));
@@ -1117,7 +1122,10 @@ class EnrollmentController extends Controller
                 $q->where('name', 'like', '%' . $guidanceSearch . '%');
             });
         }
-        if ($guidanceStatus) {
+        if ($guidanceStatus === 'resolved_closed') {
+            // the "Resolved / Closed" stat card's filter — same rule as its count below
+            $guidanceQuery->whereIn('status', ['resolved', 'closed']);
+        } elseif ($guidanceStatus) {
             $guidanceQuery->where('status', $guidanceStatus);
         }
         if ($guidanceConcern) {
@@ -1207,6 +1215,12 @@ class EnrollmentController extends Controller
                 'school_year'      => $enr?->school_year,
                 'status'           => $enr ? $enr->status : 'inactive',
                 'payment_status'   => $enr->payment_status ?? 'unpaid',
+                // A later school year's enrollment (see studentManagementData) — "→ Grade 2 · S.Y. 2027-2028 (Enrolled)"
+                'next'             => ($n = $s->relationLoaded('nextEnrollment') ? $s->nextEnrollment : null) ? [
+                    'grade_label' => $grades[$n->grade_level] ?? ($n->grade_level ?: '—'),
+                    'school_year' => $n->school_year,
+                    'status'      => ucfirst($n->status),
+                ] : null,
             ];
         })->values();
 
@@ -1215,6 +1229,7 @@ class EnrollmentController extends Controller
             'stats'        => [
                 'total' => $d['smTotal'], 'enrolled' => $d['smEnrolled'], 'approved' => $d['smApproved'], 'pending' => $d['smPending'],
                 'not_enrolled' => $d['smNotEnrolled'], 'paid' => $d['smPaid'], 'balance' => $d['smBalance'],
+                'no_section' => $d['smNoSection'],
             ],
             'school_year'  => $d['studentSchoolYearFilter'],
             'current_page' => $page->currentPage(),
@@ -1287,13 +1302,29 @@ class EnrollmentController extends Controller
             }
         }
 
-        if ($studentPaymentFilter && $studentPaymentFilter !== 'all') {
+        if ($studentPaymentFilter === 'balance') {
+            // "With Balance" — same rule as the With Balance stat card below
+            $hasEnr($studentsQuery, fn ($q) => $q->whereIn('payment_status', ['partial', 'pending', 'unpaid']));
+        } elseif ($studentPaymentFilter === 'unpaid') {
+            // "Not Paid" — nothing paid yet. Enrollments store that as 'pending' (or no status at all);
+            // matching only 'unpaid' listed nobody. Same rule as Enrollment's "Pending Payments" card.
+            $hasEnr($studentsQuery, fn ($q) => $q->where(fn ($p) => $p->whereIn('payment_status', ['pending', 'unpaid'])->orWhereNull('payment_status')));
+        } elseif ($studentPaymentFilter && $studentPaymentFilter !== 'all') {
             $hasEnr($studentsQuery, fn ($q) => $q->where('payment_status', $studentPaymentFilter));
         }
 
         // School year filter: students with a (non-cancelled) enrollment in that year
         if ($studentSy) {
             $hasEnr($studentsQuery, fn ($q) => $q);
+        }
+
+        // Enrolled but no section yet (e.g. paid before any section of their grade/year existed)
+        $noSection = fn ($q) => $q->where('status', 'enrolled')
+            ->where(fn ($s) => $s->whereNull('section')->orWhereIn('section', ['', 'Unassigned']));
+        $studentSectionFilter = $request->get('student_section') === 'none' ? 'none' : 'all';
+        $smNoSection = $hasEnr(clone $studentsQuery, $noSection)->count();
+        if ($studentSectionFilter === 'none') {
+            $hasEnr($studentsQuery, $noSection);
         }
 
         // Student Management stat cards — counted from the full filtered set
@@ -1352,12 +1383,24 @@ class EnrollmentController extends Controller
             foreach ($students as $s) {
                 $s->setRelation('latestEnrollment', $yearEnrollments->get($s->id)?->first());
             }
+
+            // Already moved on to a later school year (e.g. Completed in 2026-2027, Grade 2 in 2027-2028):
+            // the row says where, so a "Completed · Grade 1" row doesn't look like the student is stuck
+            $laterEnrollments = Enrollment::whereIn('user_id', $students->pluck('id'))
+                ->where('school_year', '>', $studentSy)
+                ->whereNotIn('status', ['cancelled', 'declined'])
+                ->orderBy('school_year')->orderByDesc('id')
+                ->get(['id', 'user_id', 'school_year', 'grade_level', 'status', 'section'])
+                ->groupBy('user_id');
+            foreach ($students as $s) {
+                $s->setRelation('nextEnrollment', $laterEnrollments->get($s->id)?->first());
+            }
         }
 
         return compact(
             'students', 'sort', 'studentSearch', 'studentGradeFilter',
-            'studentStatusFilter', 'studentPaymentFilter', 'studentSchoolYearFilter',
-            'smTotal', 'smEnrolled', 'smApproved', 'smPending', 'smNotEnrolled', 'smPaid', 'smBalance'
+            'studentStatusFilter', 'studentPaymentFilter', 'studentSchoolYearFilter', 'studentSectionFilter',
+            'smTotal', 'smEnrolled', 'smApproved', 'smPending', 'smNotEnrolled', 'smPaid', 'smBalance', 'smNoSection'
         );
     }
 
@@ -2125,9 +2168,16 @@ class EnrollmentController extends Controller
         $totalFeesCollected = $enrollmentFinanceSummary->total_collected ?? 0;
         $pendingPaymentsCount = $enrollmentFinanceSummary->unpaid_count ?? 0;
 
+        // Pending / Approved / Declined cards — the same count as Super Admin's Enrollments page
+        // (SuperAdminController::enrollmentsData): applications per status in the picked school year,
+        // or in every year under "All"
+        $enrollmentStatusCounts = Enrollment::selectRaw('status, count(*) as cnt')
+            ->when($enrollmentSy, fn ($q) => $q->where('school_year', $enrollmentSy))
+            ->groupBy('status')->pluck('cnt', 'status');
+
         return view('admin.sections.enrollment-content', compact(
             'enrollments', 'sort', 'statusFilter', 'gradeFilter', 'enrollmentSearch', 'enrollmentOpen',
-            'enrolledThisYear', 'totalFeesCollected', 'pendingPaymentsCount',
+            'enrolledThisYear', 'totalFeesCollected', 'pendingPaymentsCount', 'enrollmentStatusCounts',
             'enrollmentSyFilter', 'enrolledStatYear', 'pendingOtherYears'
         ));
     }
@@ -2922,21 +2972,27 @@ class EnrollmentController extends Controller
 
         $methodLabels = ['cash' => 'Cash', 'gcash' => 'GCash', 'maya' => 'Maya', 'grabpay' => 'GrabPay', 'bank' => 'Bank Transfer', 'otc' => 'Over-the-Counter'];
         $transactions = \App\Models\PaymentTransaction::where('user_id', $user->id)
-            ->with(['enrollment:id,school_year,grade_level', 'installment:id,month_name', 'processedBy:id,name'])
+            ->with(['enrollment:id,school_year,grade_level', 'installment:id,month_name', 'processedBy:id,name', 'paidInstallments:id,payment_transaction_id,late_fee'])
             ->when($schoolYear !== 'all', fn ($q) => $q->whereHas('enrollment', fn ($e) => $e->where('school_year', $schoolYear)))
             ->orderByDesc('created_at')->orderByDesc('id')
             ->get()
             ->map(function ($t) use ($methodLabels) {
                 $when = $t->processed_at ?? $t->created_at;
                 $online = $t->payment_type === 'online';
+                $description = $t->installment
+                    ? $t->installment->month_name . ' Installment'
+                    : ($t->description ?: ($t->installment_month ? $t->installment_month . ' Installment' : 'Payment'));
+                $lateFee = $t->lateFeePortion();
+                if ($lateFee > 0 && stripos($description, 'late fee') === false) {
+                    $description .= ' (incl. ₱' . number_format($lateFee, 2) . ' late fee)';
+                }
                 return [
                     'id'           => $t->id,
                     'date'         => $when?->format('M d, Y'),
                     'time'         => $when?->format('h:i A'),
                     'reference'    => $t->reference_number ?: ('OR-' . str_pad($t->id, 6, '0', STR_PAD_LEFT)),
-                    'description'  => $t->installment
-                        ? $t->installment->month_name . ' Installment'
-                        : ($t->description ?: ($t->installment_month ? $t->installment_month . ' Installment' : 'Payment')),
+                    'description'  => $description,
+                    'late_fee'     => $lateFee,
                     'school_year'  => $t->enrollment->school_year ?? '—',
                     'grade_level'  => $t->enrollment->grade_level ?? '—',
                     'method'       => ($methodLabels[$t->payment_method] ?? ucfirst((string) $t->payment_method)) . ($online ? ' (Online)' : ''),
@@ -3381,65 +3437,30 @@ class EnrollmentController extends Controller
                     continue;
                 }
 
-                // Get latest enrollment
-                $latestEnrollment = $user->latestEnrollment;
-                // Captured before update() below overwrites it in memory —
-                // undoPromotion() needs this to restore the old status.
-                $fromStatus = $latestEnrollment?->status;
-
-                // Update existing enrollment status to completed
-                if ($latestEnrollment) {
-                    $latestEnrollment->update([
-                        'status' => 'completed',
-                        'completed_at' => now(),
+                // Grade 1–6 need all four documents approved too (same rule as assessPromotion)
+                $approvedDocs = \App\Models\StudentDocument::approvedRequiredCount($studentId);
+                $alreadyAssessed = Promotion::where('student_id', $studentId)
+                    ->where('from_school_year', $validated['from_school_year'])->where('status', 'completed')->exists();
+                $skipReason = $alreadyAssessed ? 'Already assessed for ' . $validated['from_school_year']
+                    : (!in_array($fromGrade, ['nursery', 'kindergarten'], true) && $approvedDocs < count(\App\Models\StudentDocument::REQUIRED_TYPES)
+                        ? "Required documents incomplete ({$approvedDocs}/4 approved)" : null);
+                if ($skipReason) {
+                    $skippedCount++;
+                    Promotion::create([
+                        'student_id' => $studentId, 'lrn' => $user->lrn, 'from_grade' => $fromGrade, 'to_grade' => $nextGrade,
+                        'from_school_year' => $validated['from_school_year'], 'to_school_year' => $toSchoolYear,
+                        'promoted_by' => Auth::id(), 'promoted_at' => now(), 'status' => 'skipped', 'error_message' => $skipReason,
                     ]);
-
-                    // Remove from old section if assigned
-                    $oldSectionName = $latestEnrollment->section;
-                    if ($oldSectionName) {
-                        $oldSection = Section::where('name', $oldSectionName)
-                            ->where('grade_level', $latestEnrollment->grade_level)
-                            ->where('school_year', $validated['from_school_year'])
-                            ->first();
-                        if ($oldSection) {
-                            $oldSection->students()->detach($user->id);
-                        }
-                    }
+                    continue;
                 }
 
-                // Find default section in new grade for new school year (lowest
-                // live enrollment — see Section::getLiveEnrollmentCountAttribute())
-                $defaultSection = Section::where('grade_level', $nextGrade)
-                    ->where('school_year', $toSchoolYear)
-                    ->where('is_active', true)
-                    ->withCount('students')
-                    ->get()
-                    ->sortBy('students_count')
-                    ->first();
+                $oldSection = $fromEnrollment?->section
+                    ? Section::where('name', $fromEnrollment->section)->where('grade_level', $fromEnrollment->grade_level)
+                        ->where('school_year', $validated['from_school_year'])->first()
+                    : null;
 
-                $sectionName = $defaultSection ? $defaultSection->name : null;
-
-                // Create new enrollment for next school year
-                $newEnrollment = Enrollment::create([
-                    'user_id' => $studentId,
-                    'grade_level' => $nextGrade,
-                    'school_year' => $toSchoolYear,
-                    'status' => 'pending',
-                    'section' => $sectionName,
-                    'student_data' => $latestEnrollment ? array_merge(
-                        $latestEnrollment->student_data ?? [],
-                        ['grade_level' => $nextGrade, 'previous_school_year' => $validated['from_school_year']]
-                    ) : ['grade_level' => $nextGrade],
-                    'payment_status' => 'pending',
-                    'reference_number' => 'ENR-' . strtoupper(Str::random(8)),
-                ]);
-
-                // Assign to new section if found
-                if ($defaultSection) {
-                    $defaultSection->students()->attach($user->id);
-                }
-
-                // Record promotion in promotions table
+                // Only the result is recorded — the student re-enrolls from the portal, which creates the
+                // new enrollment, completes the old one and moves the section (see assessPromotion()).
                 Promotion::create([
                     'student_id' => $studentId,
                     'lrn' => $user->lrn,
@@ -3447,11 +3468,11 @@ class EnrollmentController extends Controller
                     'to_grade' => $nextGrade,
                     'from_school_year' => $validated['from_school_year'],
                     'to_school_year' => $toSchoolYear,
-                    'from_section_id' => $oldSection ? $oldSection->id : null,
-                    'to_section_id' => $defaultSection ? $defaultSection->id : null,
-                    'from_status' => $fromStatus,
-                    'enrollment_id' => $newEnrollment->id,
-                    'previous_enrollment_id' => $latestEnrollment?->id,
+                    'from_section_id' => $oldSection?->id,
+                    'to_section_id' => null,
+                    'from_status' => $fromEnrollment?->status,
+                    'enrollment_id' => null,
+                    'previous_enrollment_id' => $fromEnrollment?->id,
                     'promoted_by' => Auth::id(),
                     'promoted_at' => now(),
                     'status' => 'completed',
@@ -3482,9 +3503,9 @@ class EnrollmentController extends Controller
             }
         }
 
-        $message = "$promotedCount student(s) promoted successfully to " . ucfirst(str_replace('grade', 'Grade ', $nextGrade)) . " for $toSchoolYear.";
+        $message = "$promotedCount student(s) assessed as promoted to " . ucfirst(str_replace('grade', 'Grade ', $nextGrade)) . " — they can now re-enroll for $toSchoolYear from the Student Portal.";
         if ($skippedCount > 0) {
-            $message .= " $skippedCount student(s) were skipped because they already have an enrollment for $toSchoolYear.";
+            $message .= " $skippedCount student(s) were skipped (already enrolled or assessed, unpaid balance, or incomplete documents).";
         }
 
         ActivityLogger::log('update', "Mass promoted {$promotedCount} student(s) from {$fromGrade} to {$nextGrade} ({$validated['from_school_year']} → {$toSchoolYear}), {$skippedCount} skipped", 'Promotion');
@@ -3525,10 +3546,11 @@ class EnrollmentController extends Controller
         // computed here (one extra query per row, bounded by per_page) rather
         // than trusted to the frontend.
         $promotions->getCollection()->transform(function ($p) {
-            $p->can_undo = $p->status === 'completed'
-                && $p->enrollment
-                && $p->enrollment->status === 'pending'
-                && !\App\Models\PaymentTransaction::where('enrollment_id', $p->enrollment_id)->exists();
+            $p->can_undo = $p->status === 'completed' && (
+                (!$p->enrollment_id && $p->previous_enrollment_id) // assessed, not re-enrolled yet
+                || ($p->enrollment
+                    && $p->enrollment->status === 'pending'
+                    && !\App\Models\PaymentTransaction::where('enrollment_id', $p->enrollment_id)->exists()));
             return $p;
         });
 
@@ -3553,6 +3575,14 @@ class EnrollmentController extends Controller
                 'success' => false,
                 'message' => 'This promotion is already "' . $promotion->status . '" and cannot be undone.',
             ], 422);
+        }
+
+        // Assessed, student hasn't re-enrolled yet: nothing was created or moved — just withdraw the result
+        if (!$promotion->enrollment_id && $promotion->previous_enrollment_id) {
+            $promotion->update(['status' => 'reversed', 'undone_at' => now(), 'undone_by' => Auth::id()]);
+            $studentName = $promotion->student?->name ?? ('student #' . $promotion->student_id);
+            ActivityLogger::log('update', "Undid assessment for {$studentName}: {$promotion->from_grade} → {$promotion->to_grade} ({$promotion->from_school_year}) — not yet re-enrolled", 'Promotion', $promotion->id);
+            return response()->json(['success' => true, 'message' => 'Assessment undone — ' . $studentName . ' can be assessed again.']);
         }
 
         if (!$promotion->enrollment_id || !$promotion->previous_enrollment_id || !$promotion->from_status) {
@@ -3712,7 +3742,7 @@ class EnrollmentController extends Controller
     }
 
     /**
-     * Promote or retain a single student — creates Promotion record + pending enrollment for next year
+     * Promote or retain a single student — records the result (Promotion); the student re-enrolls from the portal
      */
     public function assessPromotion(Request $request, User $user)
     {
@@ -3752,6 +3782,14 @@ class EnrollmentController extends Controller
         }
 
         $fromGrade = $currentEnrollment->grade_level;
+
+        // Grade 1–6: all four required documents approved too — the same checklist the student sees on
+        // the portal's re-enrollment card. Assessing creates the next year's enrollment, so this is where
+        // the documents step is actually enforced (Nursery/Kinder advance without document checks).
+        if (!in_array($fromGrade, ['nursery', 'kindergarten'], true)
+            && ($approvedDocs = \App\Models\StudentDocument::approvedRequiredCount($user->id)) < count(\App\Models\StudentDocument::REQUIRED_TYPES)) {
+            return response()->json(['success' => false, 'message' => "Required documents incomplete ({$approvedDocs}/4 approved). Approve the student's documents before moving them to the next school year."], 422);
+        }
         $toGrade   = $validated['action'] === 'promote'
             ? ($gradeMap[$fromGrade] ?? null)
             : $fromGrade; // retain = same grade
@@ -3774,105 +3812,55 @@ class EnrollmentController extends Controller
             return response()->json(['success' => false, 'message' => 'Student already has an enrollment for ' . $validated['to_school_year'] . '.'], 422);
         }
 
-        $toSectionId   = $validated['to_section_id']   ?? null;
-        $fromSchoolYear = $validated['from_school_year'] ?? null;
-        $toSchoolYear   = $validated['to_school_year'];
-
-        \DB::beginTransaction();
-        try {
-            // Find or use specified section for new year
-            $toSection = null;
-            if ($toSectionId) {
-                $toSection = Section::find($toSectionId);
-            } else {
-                // Lowest live enrollment — see Section::getLiveEnrollmentCountAttribute()
-                $toSection = Section::where('grade_level', $toGrade)
-                    ->where('school_year', $toSchoolYear)
-                    ->where('is_active', true)
-                    ->withCount('students')
-                    ->get()
-                    ->sortBy('students_count')
-                    ->first();
-            }
-
-            // Captured before the update() below overwrites it in memory —
-            // undoPromotion() needs to know what to restore this back to.
-            $fromStatus = $currentEnrollment->status;
-
-            // Mark old enrollment as completed
-            $currentEnrollment->update(['status' => 'completed', 'completed_at' => now()]);
-
-            // Remove from old section
-            $oldSection = $currentEnrollment->section
-                ? Section::where('name', $currentEnrollment->section)
-                    ->where('grade_level', $fromGrade)
-                    ->where('school_year', $fromSchoolYear)
-                    ->first()
-                : null;
-            if ($oldSection) {
-                $oldSection->students()->detach($user->id);
-            }
-
-            // Create new pending enrollment
-            $newEnrollment = Enrollment::create([
-                'user_id'      => $user->id,
-                'grade_level'  => $toGrade,
-                'school_year'  => $toSchoolYear,
-                'status'       => 'pending',
-                'section'      => $toSection?->name,
-                'student_data' => array_merge(
-                    $currentEnrollment->student_data ?? [],
-                    [
-                        'grade_level'          => $toGrade,
-                        'student_type'         => 'returning',
-                        'previous_school_year' => $fromSchoolYear,
-                    ]
-                ),
-                'payment_status'    => 'pending',
-                'reference_number'  => 'ENR-' . strtoupper(uniqid()),
-            ]);
-
-            // Attach to new section
-            if ($toSection) {
-                $toSection->students()->attach($user->id);
-            }
-
-            // Record promotion
-            Promotion::create([
-                'student_id'       => $user->id,
-                'lrn'              => $user->lrn,
-                'from_grade'       => $fromGrade,
-                'to_grade'         => $toGrade,
-                'from_school_year' => $currentEnrollment->school_year,
-                'to_school_year'   => $toSchoolYear,
-                'from_section_id'  => $oldSection?->id,
-                'to_section_id'    => $toSection?->id,
-                'from_status'      => $fromStatus,
-                'enrollment_id'    => $newEnrollment->id,
-                'previous_enrollment_id' => $currentEnrollment->id,
-                'promoted_by'      => Auth::id(),
-                'promoted_at'      => now(),
-                'status'           => 'completed',
-                'remarks'          => $validated['remarks'] ?? null,
-            ]);
-
-            \DB::commit();
-
-            $actionLabel = $validated['action'] === 'promote'
-                ? "Promoted to " . ucfirst(str_replace('_', ' ', $toGrade))
-                : "Retained at " . ucfirst(str_replace('_', ' ', $toGrade));
-
-            ActivityLogger::log('update', "{$user->name}: {$actionLabel} (from {$fromGrade}, {$fromSchoolYear} → {$toSchoolYear})", 'Promotion', $user->id);
-
-            return response()->json([
-                'success'       => true,
-                'message'       => $user->name . ' — ' . $actionLabel . '. Enrollment created for ' . $toSchoolYear . '.',
-                'enrollment_id' => $newEnrollment->id,
-            ]);
-        } catch (\Exception $e) {
-            \DB::rollBack();
-            return response()->json(['success' => false, 'message' => 'Failed: ' . $e->getMessage()], 500);
+        // Already assessed out of this school year (and not undone) — change it through Undo instead
+        $alreadyAssessed = Promotion::where('student_id', $user->id)
+            ->where('from_school_year', $currentEnrollment->school_year)
+            ->where('status', 'completed')
+            ->exists();
+        if ($alreadyAssessed) {
+            return response()->json(['success' => false, 'message' => $user->name . ' is already assessed for S.Y. ' . $currentEnrollment->school_year . '. Use Undo in Assessment History to change it.'], 422);
         }
+
+        $toSchoolYear = $validated['to_school_year'];
+        $toSection = !empty($validated['to_section_id']) ? Section::find($validated['to_section_id']) : null;
+        $fromSection = $currentEnrollment->section
+            ? Section::where('name', $currentEnrollment->section)->where('grade_level', $fromGrade)
+                ->where('school_year', $currentEnrollment->school_year)->first()
+            : null;
+
+        // The assessment only RECORDS the result (decision October 28, 2026). The student then
+        // re-enrolls from the portal — or not — and that creates the new enrollment, completes this
+        // one and moves the section (StudentPortalController::submitReenrollment). Every grade now
+        // re-enrolls the same way; the parent confirms the student is coming back.
+        $promotion = Promotion::create([
+            'student_id'             => $user->id,
+            'lrn'                    => $user->lrn,
+            'from_grade'             => $fromGrade,
+            'to_grade'               => $toGrade,
+            'from_school_year'       => $currentEnrollment->school_year,
+            'to_school_year'         => $toSchoolYear,
+            'from_section_id'        => $fromSection?->id,
+            'to_section_id'          => $toSection?->id,
+            'from_status'            => $currentEnrollment->status,
+            'enrollment_id'          => null, // set when the student re-enrolls
+            'previous_enrollment_id' => $currentEnrollment->id,
+            'promoted_by'            => Auth::id(),
+            'promoted_at'            => now(),
+            'status'                 => 'completed',
+            'remarks'                => $validated['remarks'] ?? null,
+        ]);
+
+        $actionLabel = $validated['action'] === 'promote'
+            ? 'Promoted to ' . ucfirst(str_replace('_', ' ', $toGrade))
+            : 'Retained at ' . ucfirst(str_replace('_', ' ', $toGrade));
+
+        ActivityLogger::log('update', "{$user->name}: {$actionLabel} (from {$fromGrade}, {$currentEnrollment->school_year} → {$toSchoolYear}) — awaiting re-enrollment", 'Promotion', $user->id);
+
+        return response()->json([
+            'success'      => true,
+            'message'      => $user->name . ' — ' . $actionLabel . '. They can now re-enroll for ' . $toSchoolYear . ' from the Student Portal.',
+            'promotion_id' => $promotion->id,
+        ]);
     }
 
     /**
@@ -4005,12 +3993,10 @@ class EnrollmentController extends Controller
 
         // Document / payment gates — the actual blockers. Same thresholds as
         // StudentPortalController::getCompletionProgress().
-        $requiredDocTypes = ['birth_certificate', 'form_137', 'report_card', 'two_by_two_picture'];
-        $studentsWithDocs = \App\Models\StudentDocument::whereIn('user_id', $studentIds)
-            ->whereIn('document_type', $requiredDocTypes)
-            ->where('status', 'approved')
-            ->pluck('user_id')
-            ->unique();
+        // All four approved (this used to pass a student with any ONE approved document)
+        $studentsWithDocs = collect($studentIds)
+            ->filter(fn ($id) => \App\Models\StudentDocument::approvedRequiredCount($id) >= count(\App\Models\StudentDocument::REQUIRED_TYPES))
+            ->values();
 
         $eligible = collect();
         $excluded = collect();
@@ -4168,6 +4154,8 @@ class EnrollmentController extends Controller
             ->with(['enrollments' => fn($q) => $fromYear($q)->latest('id')])
             // An undone (cancelled) or declined next-year row doesn't count — same as assessPromotion()
             ->whereDoesntHave('enrollments', fn($q) => $q->where('school_year', $toSchoolYear)->whereNotIn('status', ['declined', 'cancelled']))
+            // …and anyone already advanced (assessment only records it now; they re-enroll from the portal)
+            ->whereDoesntHave('promotions', fn($q) => $q->where('from_school_year', $fromSchoolYear)->where('status', 'completed'))
             ->get();
 
         $eligible = collect();

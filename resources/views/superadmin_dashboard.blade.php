@@ -272,6 +272,18 @@
             transition: box-shadow 0.2s, transform 0.2s;
         }
         .stat-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.08); transform: translateY(-2px); }
+        /* Clickable stat cards + "212 Enrolled" pill — same as Admin (public/css/adminDashboard.css) */
+        .stat-card-link { cursor: pointer; }
+        .stat-card-link.active { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue-pale); }
+        .stat-card-link:focus-visible, .stat-pill:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+        .stat-pill {
+            display: inline-flex; align-items: center; gap: 4px; margin-top: 6px;
+            padding: 2px 9px; border-radius: 20px; border: 1px solid transparent;
+            background: #e8f8f0; color: var(--green); font-size: 11px; font-weight: 700;
+            cursor: pointer; transition: border-color .15s;
+        }
+        .stat-pill:hover, .stat-pill.active { border-color: var(--green); }
+        #stm-list-card { scroll-margin-top: 86px; } /* scrolled to from a stat card: stop below the top bar */
         .stat-icon {
             width: 52px; height: 52px; border-radius: 12px;
             display: flex; align-items: center; justify-content: center;
@@ -661,6 +673,8 @@
     <script src="/js/page-window.js?v={{ filemtime(public_path('js/page-window.js')) }}"></script>
     {{-- ilcQuickJump: the top-bar "Go to…" box --}}
     <script src="/js/quick-jump.js?v={{ filemtime(public_path('js/quick-jump.js')) }}"></script>
+    {{-- Clickable stat cards: filter the list they count and scroll to it --}}
+    <script src="/js/stat-jump.js?v={{ filemtime(public_path('js/stat-jump.js')) }}" defer></script>
     {{-- data-capitalize="words": capital first letter of each word in name boxes --}}
     <script src="/js/name-case.js?v={{ filemtime(public_path('js/name-case.js')) }}"></script>
     @include('partials.password-eye-style')
@@ -765,9 +779,13 @@
         <i class="bi bi-people-fill"></i> User Management
         <span class="sidebar-badge">{{ $stats['total_users'] }}</span>
     </button>
-    <button class="sidebar-link {{ $section === 'roles' ? 'active' : '' }}" id="nav-roles" onclick="showSection('roles')">
+    {{-- Roles & Permissions is hidden (decided 2026-10-27): access is fixed in code per role, so the page was
+         only a read-only reference. Its section (#section-roles) is kept below; to bring it back, restore this
+         button, add 'roles' back to the sections list in the script, and drop the redirect in
+         SuperAdminController::dashboard(). --}}
+    {{-- <button class="sidebar-link {{ $section === 'roles' ? 'active' : '' }}" id="nav-roles" onclick="showSection('roles')">
         <i class="bi bi-shield-lock-fill"></i> Roles &amp; Permissions
-    </button>
+    </button> --}}
     <button class="sidebar-link {{ $section === 'logs' ? 'active' : '' }}" id="nav-logs" onclick="showSection('logs')">
         <i class="bi bi-journal-text"></i> System Logs
     </button>
@@ -867,7 +885,7 @@
     <!-- ═══════════════════════════
          SECTION: DASHBOARD
     ═══════════════════════════ -->
-    <div id="section-dashboard" class="dash-section" {{ $section !== 'dashboard' ? 'style="display:none;"' : '' }}>
+    <div id="section-dashboard" class="dash-section" @if($section !== 'dashboard') style="display:none;" @endif>
         <div class="section-header">
             <div>
                 <h1>Super Admin Dashboard</h1>
@@ -882,7 +900,7 @@
         <!-- Stat Cards -->
         <div class="row g-3 mb-4">
             <div class="col-md-4 col-lg-2">
-                <div class="stat-card">
+                <div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Open User Management (all users)" data-jump="{{ json_encode(['href' => url()->current() . '?' . http_build_query(['section' => 'users', 'role' => 'all']), 'to' => '#usersListCard', 'active' => false]) }}">
                     <div class="stat-icon blue"><i class="bi bi-people-fill"></i></div>
                     <div>
                         <div class="stat-value">{{ $stats['total_users'] }}</div>
@@ -891,7 +909,7 @@
                 </div>
             </div>
             <div class="col-md-4 col-lg-2">
-                <div class="stat-card">
+                <div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Show Admins and Super Admins in User Management" data-jump="{{ json_encode(['href' => url()->current() . '?' . http_build_query(['section' => 'users', 'role' => 'admins']), 'to' => '#usersListCard', 'active' => false]) }}">
                     <div class="stat-icon purple"><i class="bi bi-person-badge-fill"></i></div>
                     <div>
                         <div class="stat-value">{{ $stats['admins'] + $stats['superadmins'] }}</div>
@@ -900,7 +918,7 @@
                 </div>
             </div>
             <div class="col-md-4 col-lg-2">
-                <div class="stat-card">
+                <div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Show Teachers in User Management" data-jump="{{ json_encode(['href' => url()->current() . '?' . http_build_query(['section' => 'users', 'role' => 'teacher']), 'to' => '#usersListCard', 'active' => false]) }}">
                     <div class="stat-icon gold"><i class="bi bi-easel-fill"></i></div>
                     <div>
                         <div class="stat-value">{{ $stats['total_teachers'] }}</div>
@@ -909,7 +927,7 @@
                 </div>
             </div>
             <div class="col-md-4 col-lg-2">
-                <div class="stat-card">
+                <div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Show Students in User Management" data-jump="{{ json_encode(['href' => url()->current() . '?' . http_build_query(['section' => 'users', 'role' => 'student']), 'to' => '#usersListCard', 'active' => false]) }}">
                     <div class="stat-icon green"><i class="bi bi-mortarboard-fill"></i></div>
                     <div>
                         <div class="stat-value">{{ $stats['total_students'] }}</div>
@@ -918,7 +936,7 @@
                 </div>
             </div>
             <div class="col-md-4 col-lg-2">
-                <div class="stat-card">
+                <div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Show inactive accounts in User Management" data-jump="{{ json_encode(['href' => url()->current() . '?' . http_build_query(['section' => 'users', 'role' => 'all', 'user_status' => 'inactive']), 'to' => '#usersListCard', 'active' => false]) }}">
                     <div class="stat-icon red"><i class="bi bi-exclamation-triangle-fill"></i></div>
                     <div>
                         <div class="stat-value">{{ $stats['inactive_users'] }}</div>
@@ -927,7 +945,7 @@
                 </div>
             </div>
             <div class="col-md-4 col-lg-2">
-                <div class="stat-card">
+                <div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Show active accounts in User Management" data-jump="{{ json_encode(['href' => url()->current() . '?' . http_build_query(['section' => 'users', 'role' => 'all', 'user_status' => 'active']), 'to' => '#usersListCard', 'active' => false]) }}">
                     <div class="stat-icon orange"><i class="bi bi-database-fill"></i></div>
                     <div>
                         <div class="stat-value">{{ $stats['active_users'] }}</div>
@@ -1097,7 +1115,7 @@
     <!-- ═══════════════════════════
          SECTION: USER MANAGEMENT
     ═══════════════════════════ -->
-    <div id="section-users" class="dash-section" {{ $section !== 'users' ? 'style="display:none;"' : '' }}>
+    <div id="section-users" class="dash-section" @if($section !== 'users') style="display:none;" @endif>
         <div class="section-header">
             <div>
                 <h1>User Management</h1>
@@ -1106,6 +1124,28 @@
             <a href="#" class="btn-dash btn-primary" onclick="openCreateUserModal()">
                 <i class="bi bi-person-plus-fill"></i> Add User
             </a>
+        </div>
+
+        {{-- Stat cards — click: list those accounts below (Archived opens Archives) — js/stat-jump.js --}}
+        @php
+            $umStatus = $userStatus ?? '';
+            $umUrl = fn ($status) => url()->current() . '?' . http_build_query(array_filter(['section' => 'users', 'role' => 'all', 'sort' => $sort, 'user_status' => $status]));
+            $umCards = [
+                ['blue', 'bi-people-fill', $stats['total_users'], 'Total Users', 'Show every account below', ['href' => $umUrl(''), 'to' => '#usersListCard', 'active' => $roleFilter === 'all' && $umStatus === '']],
+                ['green', 'bi-person-check-fill', $stats['active_users'], 'Active', 'Show active accounts below', ['href' => $umUrl('active'), 'to' => '#usersListCard', 'active' => $roleFilter === 'all' && $umStatus === 'active']],
+                ['red', 'bi-person-x-fill', $stats['inactive_users'], 'Inactive', 'Show inactive accounts below', ['href' => $umUrl('inactive'), 'to' => '#usersListCard', 'active' => $roleFilter === 'all' && $umStatus === 'inactive']],
+                ['gold', 'bi-archive-fill', $stats['archived_users'], 'Archived', 'Open Archives', ['section' => 'archives', 'to' => '#section-archives', 'active' => false]],
+            ];
+        @endphp
+        <div class="row g-3 mb-4">
+            @foreach($umCards as [$color, $icon, $count, $label, $tip, $jump])
+            <div class="col-md-3 col-6">
+                <div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="{{ $tip }}" data-jump="{{ json_encode($jump) }}">
+                    <div class="stat-icon {{ $color }}"><i class="bi {{ $icon }}"></i></div>
+                    <div><div class="stat-value">{{ $count }}</div><div class="stat-label">{{ $label }}</div></div>
+                </div>
+            </div>
+            @endforeach
         </div>
 
         <!-- Search & Filter -->
@@ -1132,7 +1172,7 @@
                 ];
             @endphp
             @foreach($roleTabs as $key => $label)
-            <a href="?role={{ $key }}&sort={{ $sort }}&section=users{{ $userSearch !== '' ? '&user_search=' . urlencode($userSearch) : '' }}" class="sa-user-role-tab"
+            <a href="?role={{ $key }}&sort={{ $sort }}&section=users{{ $userSearch !== '' ? '&user_search=' . urlencode($userSearch) : '' }}{{ ($userStatus ?? '') !== '' ? '&user_status=' . $userStatus : '' }}" class="sa-user-role-tab"
                 style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:20px;font-size:12px;font-weight:700;text-decoration:none;border:1.5px solid {{ $roleFilter === $key ? 'var(--blue)' : 'var(--border)' }};background:{{ $roleFilter === $key ? 'var(--blue)' : '#fff' }};color:{{ $roleFilter === $key ? '#fff' : 'var(--text)' }};transition:all .15s;">
                 {{ $label }}
                 <span style="background:{{ $roleFilter === $key ? 'rgba(255,255,255,.25)' : 'var(--blue-pale)' }};color:{{ $roleFilter === $key ? '#fff' : 'var(--blue)' }};padding:1px 7px;border-radius:20px;font-size:10px;">{{ $roleCounts[$key] }}</span>
@@ -1143,6 +1183,11 @@
                     <i class="bi bi-search"></i>
                     <input type="text" id="userSearchInput" placeholder="Search name or email…" value="{{ $userSearch }}" oninput="filterUsersTable(this.value)" autocomplete="off">
                 </div>
+                <select class="form-fld" id="userStatusFilter" style="width:auto;padding:7px 10px;font-size:12px;" onchange="saUsersGo({ user_status: this.value })" title="Status">
+                    <option value="" {{ ($userStatus ?? '') === '' ? 'selected' : '' }}>All Status</option>
+                    <option value="active" {{ ($userStatus ?? '') === 'active' ? 'selected' : '' }}>Active</option>
+                    <option value="inactive" {{ ($userStatus ?? '') === 'inactive' ? 'selected' : '' }}>Inactive</option>
+                </select>
                 <select class="form-fld" style="width:auto;padding:7px 10px;font-size:12px;" onchange="saUsersGo({ sort: this.value })">
                     <option value="newest" {{ $sort==='newest'?'selected':'' }}>Newest</option>
                     <option value="oldest" {{ $sort==='oldest'?'selected':'' }}>Oldest</option>
@@ -1253,7 +1298,7 @@
         </div>
     </div>
     <!-- ═══════════════════════════ -->
-    <div id="section-roles" class="dash-section" {{ $section !== 'roles' ? 'style="display:none;"' : '' }}>
+    <div id="section-roles" class="dash-section" @if($section !== 'roles') style="display:none;" @endif>
         <div class="section-header">
             <div>
                 <h1>Roles &amp; Permissions</h1>
@@ -1439,7 +1484,7 @@
     <!-- ═══════════════════════════
          SECTION: SYSTEM LOGS
     ═══════════════════════════ -->
-    <div id="section-logs" class="dash-section" {{ $section !== 'logs' ? 'style="display:none;"' : '' }}>
+    <div id="section-logs" class="dash-section" @if($section !== 'logs') style="display:none;" @endif>
         <div class="section-header">
             <div>
                 <h1>System Logs</h1>
@@ -1608,7 +1653,7 @@
     <!-- ═══════════════════════════
          SECTION: BACKUP & RESTORE
     ═══════════════════════════ -->
-    <div id="section-backup" class="dash-section" {{ $section !== 'backup' ? 'style="display:none;"' : '' }}>
+    <div id="section-backup" class="dash-section" @if($section !== 'backup') style="display:none;" @endif>
         <div class="section-header">
             <div>
                 <h1>Backup &amp; Restore</h1>
@@ -1755,7 +1800,7 @@
     <!-- ══════════════════════════
          SECTION: ANNOUNCEMENTS
     ══════════════════════════ -->
-    <div id="section-announcements" class="dash-section" {{ $section !== 'announcements' ? 'style="display:none;"' : '' }}>
+    <div id="section-announcements" class="dash-section" @if($section !== 'announcements') style="display:none;" @endif>
         <div class="section-header">
             <div>
                 <h1><i class="bi bi-megaphone-fill me-2" style="color:var(--blue);"></i>Announcements</h1>
@@ -1904,7 +1949,7 @@
     <!-- ══════════════════════════
          SECTION: NEWS
     ══════════════════════════ -->
-    <div id="section-news" class="dash-section" {{ $section !== 'news' ? 'style="display:none;"' : '' }}>
+    <div id="section-news" class="dash-section" @if($section !== 'news') style="display:none;" @endif>
         <div class="section-header">
             <div>
                 <h1><i class="bi bi-newspaper me-2" style="color:var(--blue);"></i>News</h1>
@@ -2045,7 +2090,7 @@
     @include('partials.contact-messages-modal')
     <script src="/js/contact-messages.js?v={{ filemtime(public_path('js/contact-messages.js')) }}"></script>
 
-    <div id="section-reports" class="dash-section" {{ $section !== 'reports' ? 'style="display:none;"' : '' }}>
+    <div id="section-reports" class="dash-section" @if($section !== 'reports') style="display:none;" @endif>
         <div class="section-header">
             <div>
                 <h1>Reports</h1>
@@ -2117,7 +2162,7 @@
     <!-- ═══════════════════════════
          SECTION: SETTINGS
     ═══════════════════════════ -->
-    <div id="section-settings" class="dash-section" {{ $section !== 'settings' ? 'style="display:none;"' : '' }}>
+    <div id="section-settings" class="dash-section" @if($section !== 'settings') style="display:none;" @endif>
         <div class="section-header">
             <div>
                 <h1>Settings</h1>
@@ -2277,12 +2322,12 @@
         {{-- Status counts, plus Admin's two money cards — all for the chosen school year --}}
         {{-- Three per row (Admin's money cards are a third wide too): enough room for a peso amount --}}
         <div class="row g-3 mb-4" id="enr-stats">
-            <div class="col-6 col-md-4"><div class="stat-card"><div class="stat-icon gold"><i class="bi bi-hourglass-split"></i></div><div><div class="stat-value" id="enr-cnt-pending">—</div><div class="stat-label">Pending</div></div></div></div>
-            <div class="col-6 col-md-4"><div class="stat-card"><div class="stat-icon blue"><i class="bi bi-check-circle-fill"></i></div><div><div class="stat-value" id="enr-cnt-approved">—</div><div class="stat-label">Approved</div></div></div></div>
-            <div class="col-6 col-md-4"><div class="stat-card"><div class="stat-icon green"><i class="bi bi-person-check-fill"></i></div><div><div class="stat-value" id="enr-cnt-enrolled">—</div><div class="stat-label">Enrolled</div></div></div></div>
-            <div class="col-6 col-md-4"><div class="stat-card"><div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div><div><div class="stat-value" id="enr-cnt-declined">—</div><div class="stat-label">Declined</div></div></div></div>
-            <div class="col-6 col-md-4"><div class="stat-card"><div class="stat-icon gold"><i class="bi bi-cash-stack"></i></div><div style="min-width:0;"><div class="stat-value" id="enr-fees-collected" style="white-space:nowrap;">—</div><div class="stat-label">Total Fees Collected</div></div></div></div>
-            <div class="col-6 col-md-4"><div class="stat-card"><div class="stat-icon red"><i class="bi bi-exclamation-circle-fill"></i></div><div><div class="stat-value" id="enr-pending-payments">—</div><div class="stat-label">Pending Payments</div></div></div></div>
+            <div class="col-6 col-md-4"><div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Show pending applications below" data-jump='{"set": {"#enr-search": "", "#enr-grade-filter": "all", "#enr-status-filter": "pending"}, "to": "#section-enrollments .content-card:has(#enr-tbody)"}'><div class="stat-icon gold"><i class="bi bi-hourglass-split"></i></div><div><div class="stat-value" id="enr-cnt-pending">—</div><div class="stat-label">Pending</div></div></div></div>
+            <div class="col-6 col-md-4"><div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Show approved applications below" data-jump='{"set": {"#enr-search": "", "#enr-grade-filter": "all", "#enr-status-filter": "approved"}, "to": "#section-enrollments .content-card:has(#enr-tbody)"}'><div class="stat-icon blue"><i class="bi bi-check-circle-fill"></i></div><div><div class="stat-value" id="enr-cnt-approved">—</div><div class="stat-label">Approved</div></div></div></div>
+            <div class="col-6 col-md-4"><div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Show enrolled students below" data-jump='{"set": {"#enr-search": "", "#enr-grade-filter": "all", "#enr-status-filter": "enrolled"}, "to": "#section-enrollments .content-card:has(#enr-tbody)"}'><div class="stat-icon green"><i class="bi bi-person-check-fill"></i></div><div><div class="stat-value" id="enr-cnt-enrolled">—</div><div class="stat-label">Enrolled</div></div></div></div>
+            <div class="col-6 col-md-4"><div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Show declined applications below" data-jump='{"set": {"#enr-search": "", "#enr-grade-filter": "all", "#enr-status-filter": "declined"}, "to": "#section-enrollments .content-card:has(#enr-tbody)"}'><div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div><div><div class="stat-value" id="enr-cnt-declined">—</div><div class="stat-label">Declined</div></div></div></div>
+            <div class="col-6 col-md-4"><div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Open Student Management" data-jump='{"section": "students", "set": {"#stm-status": "all", "#stm-payment": "all"}, "to": "#stm-list-card", "active": false}'><div class="stat-icon gold"><i class="bi bi-cash-stack"></i></div><div style="min-width:0;"><div class="stat-value" id="enr-fees-collected" style="white-space:nowrap;">—</div><div class="stat-label">Total Fees Collected</div></div></div></div>
+            <div class="col-6 col-md-4"><div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Show students with nothing paid yet (Student Management)" data-jump='{"section": "students", "set": {"#stm-status": "all", "#stm-payment": "unpaid"}, "to": "#stm-list-card", "active": false}'><div class="stat-icon red"><i class="bi bi-exclamation-circle-fill"></i></div><div><div class="stat-value" id="enr-pending-payments">—</div><div class="stat-label">Pending Payments</div></div></div></div>
         </div>
         <div class="content-card mb-3">
             <div class="p-3">
@@ -2438,12 +2483,22 @@
             </div>
         </div>
 
+        {{-- Clickable, as on Admin: a card sets the Status / Payment filter and scrolls to the list
+             (stmStatClick); "Enrolled" is the green pill inside Total Students --}}
         <div class="row g-3 mb-4">
-            @foreach([['total', 'blue', 'bi-people-fill', 'Total Students'], ['enrolled', 'green', 'bi-check-circle-fill', 'Enrolled'], ['approved', 'teal', 'bi-check2-square', 'Approved'], ['pending', 'gold', 'bi-hourglass-split', 'Pending'], ['not_enrolled', 'red', 'bi-x-circle-fill', 'Not Enrolled'], ['paid', 'green', 'bi-cash-stack', 'Fully Paid'], ['balance', 'red', 'bi-exclamation-triangle-fill', 'With Balance']] as [$k, $color, $icon, $label])
+            @foreach([['total', 'all', 'all', 'blue', 'bi-people-fill', 'Total Students'], ['approved', 'approved', 'all', 'teal', 'bi-check2-square', 'Approved'], ['pending', 'pending', 'all', 'gold', 'bi-hourglass-split', 'Pending'], ['not_enrolled', 'not_enrolled', 'all', 'red', 'bi-x-circle-fill', 'Not Enrolled'], ['paid', 'all', 'paid', 'green', 'bi-cash-stack', 'Fully Paid'], ['balance', 'all', 'balance', 'red', 'bi-exclamation-triangle-fill', 'With Balance']] as [$k, $cSt, $cPay, $color, $icon, $label])
             <div class="col-md-2 col-sm-4 col-6">
-                <div class="stat-card">
+                <div class="stat-card stat-card-link h-100 {{ $k === 'total' ? 'active' : '' }}" role="button" tabindex="0"
+                     data-stm-status="{{ $cSt }}" data-stm-payment="{{ $cPay }}" title="Show {{ $k === 'total' ? 'all students' : $label }} in the list below">
                     <div class="stat-icon {{ $color }}"><i class="bi {{ $icon }}"></i></div>
-                    <div><div class="stat-value" id="stm-cnt-{{ $k }}">—</div><div class="stat-label">{{ $label }}</div></div>
+                    <div>
+                        <div class="stat-value" id="stm-cnt-{{ $k }}">—</div><div class="stat-label">{{ $label }}</div>
+                        @if($k === 'total')
+                        <span class="stat-pill" role="button" tabindex="0" data-stm-status="enrolled" data-stm-payment="all" title="Show enrolled students in the list below">
+                            <i class="bi bi-check-circle-fill"></i> <span id="stm-cnt-enrolled">—</span> Enrolled
+                        </span>
+                        @endif
+                    </div>
                 </div>
             </div>
             @endforeach
@@ -2502,6 +2557,7 @@
                             <option value="paid">Paid</option>
                             <option value="partial">Partial</option>
                             <option value="unpaid">Not Paid</option>
+                            <option value="balance">With Balance</option>
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -2525,7 +2581,10 @@
             </div>
         </div>
 
-        <div class="content-card">
+        {{-- Enrolled students still without a section — filled by loadStudentsMgmt() (same notice as Admin's) --}}
+        <div id="stm-nosection-banner" style="display:none;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:12px 16px;background:#fff8f0;border:1px solid #fed7aa;border-radius:10px;font-size:13px;color:#92400e;"></div>
+
+        <div class="content-card" id="stm-list-card">
             <div class="content-card-header"><h6>All Students</h6></div>
             <div style="overflow-x:auto;">
                 <table class="dash-table">
@@ -2572,10 +2631,10 @@
         </div>
         {{-- Same cards as Admin's Teacher Management (filled by loadTeachers) --}}
         <div class="row g-3 mb-4">
-            <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon purple"><i class="bi bi-person-badge-fill"></i></div><div><div class="stat-value" id="tch-cnt-total">—</div><div class="stat-label">Total Teachers</div></div></div></div>
-            <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div><div><div class="stat-value" id="tch-cnt-active">—</div><div class="stat-label">Active</div></div></div></div>
-            <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div><div><div class="stat-value" id="tch-cnt-inactive">—</div><div class="stat-label">Inactive</div></div></div></div>
-            <div class="col-6 col-md-3"><div class="stat-card"><div class="stat-icon gold"><i class="bi bi-calendar3"></i></div><div><div class="stat-value" id="tch-cnt-schedules">—</div><div class="stat-label">With Schedules</div></div></div></div>
+            <div class="col-6 col-md-3"><div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Show all teachers below" data-jump='{"set": {"#tch-search": "", "#tch-status-filter": ""}, "to": "#section-teachers .content-card:has(table)"}'><div class="stat-icon purple"><i class="bi bi-person-badge-fill"></i></div><div><div class="stat-value" id="tch-cnt-total">—</div><div class="stat-label">Total Teachers</div></div></div></div>
+            <div class="col-6 col-md-3"><div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Show active teachers below" data-jump='{"set": {"#tch-search": "", "#tch-status-filter": "active"}, "to": "#section-teachers .content-card:has(table)"}'><div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div><div><div class="stat-value" id="tch-cnt-active">—</div><div class="stat-label">Active</div></div></div></div>
+            <div class="col-6 col-md-3"><div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Show inactive teachers below" data-jump='{"set": {"#tch-search": "", "#tch-status-filter": "inactive"}, "to": "#section-teachers .content-card:has(table)"}'><div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div><div><div class="stat-value" id="tch-cnt-inactive">—</div><div class="stat-label">Inactive</div></div></div></div>
+            <div class="col-6 col-md-3"><div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Open Class Schedules" data-jump='{"section": "schedules", "to": "#section-schedules"}'><div class="stat-icon gold"><i class="bi bi-calendar3"></i></div><div><div class="stat-value" id="tch-cnt-schedules">—</div><div class="stat-label">With Schedules</div></div></div></div>
         </div>
         <div class="content-card">
             <div class="content-card-header">
@@ -2629,9 +2688,9 @@
         </div>
         {{-- Same cards as Admin's Subject Management (filled by loadSubjects) --}}
         <div class="row g-3 mb-4">
-            <div class="col-md-4"><div class="stat-card"><div class="stat-icon blue"><i class="bi bi-book-fill"></i></div><div><div class="stat-value" id="subj-cnt-total">—</div><div class="stat-label">Total Subjects</div></div></div></div>
-            <div class="col-md-4"><div class="stat-card"><div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div><div><div class="stat-value" id="subj-cnt-active">—</div><div class="stat-label">Active</div></div></div></div>
-            <div class="col-md-4"><div class="stat-card"><div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div><div><div class="stat-value" id="subj-cnt-inactive">—</div><div class="stat-label">Inactive</div></div></div></div>
+            <div class="col-md-4"><div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Show all subjects below" data-jump='{"set": {"#subj-search": "", "#subj-grade-filter": "", "#subj-status-filter": ""}, "to": "#section-subjects .content-card:has(table)"}'><div class="stat-icon blue"><i class="bi bi-book-fill"></i></div><div><div class="stat-value" id="subj-cnt-total">—</div><div class="stat-label">Total Subjects</div></div></div></div>
+            <div class="col-md-4"><div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Show active subjects below" data-jump='{"set": {"#subj-search": "", "#subj-grade-filter": "", "#subj-status-filter": "1"}, "to": "#section-subjects .content-card:has(table)"}'><div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div><div><div class="stat-value" id="subj-cnt-active">—</div><div class="stat-label">Active</div></div></div></div>
+            <div class="col-md-4"><div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Show inactive subjects below" data-jump='{"set": {"#subj-search": "", "#subj-grade-filter": "", "#subj-status-filter": "0"}, "to": "#section-subjects .content-card:has(table)"}'><div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div><div><div class="stat-value" id="subj-cnt-inactive">—</div><div class="stat-label">Inactive</div></div></div></div>
         </div>
         <div class="content-card">
             <div class="content-card-header">
@@ -2699,9 +2758,9 @@
         </div>
         {{-- Same cards as Admin's Section Management, for the chosen school year (filled by loadSectionsMgmt) --}}
         <div class="row g-3 mb-4">
-            <div class="col-md-4"><div class="stat-card"><div class="stat-icon green"><i class="bi bi-diagram-3-fill"></i></div><div><div class="stat-value" id="sec-cnt-total">—</div><div class="stat-label">Total Sections</div></div></div></div>
-            <div class="col-md-4"><div class="stat-card"><div class="stat-icon blue"><i class="bi bi-check-circle-fill"></i></div><div><div class="stat-value" id="sec-cnt-active">—</div><div class="stat-label">Active Sections</div></div></div></div>
-            <div class="col-md-4"><div class="stat-card"><div class="stat-icon gold"><i class="bi bi-people-fill"></i></div><div><div class="stat-value" id="sec-cnt-enrolled">—</div><div class="stat-label">Total Enrolled</div></div></div></div>
+            <div class="col-md-4"><div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Show all sections below" data-jump='{"set": {"#sec-grade-filter": "", "#sec-status-filter": ""}, "to": "#section-sections-mgmt .content-card:has(table)"}'><div class="stat-icon green"><i class="bi bi-diagram-3-fill"></i></div><div><div class="stat-value" id="sec-cnt-total">—</div><div class="stat-label">Total Sections</div></div></div></div>
+            <div class="col-md-4"><div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Show active sections below" data-jump='{"set": {"#sec-grade-filter": "", "#sec-status-filter": "active"}, "to": "#section-sections-mgmt .content-card:has(table)"}'><div class="stat-icon blue"><i class="bi bi-check-circle-fill"></i></div><div><div class="stat-value" id="sec-cnt-active">—</div><div class="stat-label">Active Sections</div></div></div></div>
+            <div class="col-md-4"><div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="Show enrolled students in Student Management" data-jump='{"section": "students", "set": {"#stm-status": "enrolled", "#stm-payment": "all"}, "to": "#stm-list-card", "active": false}'><div class="stat-icon gold"><i class="bi bi-people-fill"></i></div><div><div class="stat-value" id="sec-cnt-enrolled">—</div><div class="stat-label">Total Enrolled</div></div></div></div>
         </div>
         <div class="content-card">
             <div class="content-card-header">
@@ -2758,7 +2817,13 @@
                 <h1>Schedule Management</h1>
                 <p>Manage class schedules by grade level and section.</p>
             </div>
-            <div style="display:flex;gap:10px;">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button class="btn-dash btn-secondary" onclick="openSubjectTeachersModal()" title="Who teaches each subject in each section">
+                    <i class="bi bi-person-video3"></i> Subject Teachers
+                </button>
+                <button class="btn-dash btn-secondary" onclick="openGenerateScheduleModal()" title="Build a whole grade's timetables at once">
+                    <i class="bi bi-magic"></i> Generate Schedule
+                </button>
                 <button class="btn-dash btn-secondary" onclick="openCopyTermModal()">
                     <i class="bi bi-copy"></i> Copy Term
                 </button>
@@ -2989,8 +3054,8 @@
                             </div>
                         </div>
                         <div style="font-size:12px;color:var(--muted);background:#f8fafc;border-radius:8px;padding:10px 14px;line-height:1.6;">
-                            When <strong>On</strong>: a reminder email 3 days before each installment is due; a warning email at 1 week overdue,
-                            a reminder at 2 weeks, and a <strong>₱{{ number_format(\App\Services\PaymentService::LATE_FEE_AMOUNT) }} late fee</strong> at 3 weeks.
+                            When <strong>On</strong>: a reminder email 3 days before each installment is due and on the due date itself; if it is still unpaid
+                            at the end of the due date, a <strong>₱{{ number_format(\App\Services\PaymentService::LATE_FEE_AMOUNT) }} late fee</strong> the next morning, then a reminder every week until paid.
                             Keep it <strong>Off</strong> while the system holds test data, so no one receives emails or fees that aren't real.
                         </div>
                         <div style="margin-top:10px;font-size:12px;color:{{ $schedOk ? 'var(--green)' : 'var(--red)' }};">
@@ -3450,8 +3515,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+    // 'roles' (Roles & Permissions) is hidden — leaving it out also stops a saved last section from reopening it
     const sections = [
-        'dashboard','users','roles','logs','backup','reports','settings',
+        'dashboard','users','logs','backup','reports','settings',
         'enrollments','students','teachers','subjects','sections-mgmt','schedules','sys-settings',
         'announcements','news','messages','archives'
     ];
@@ -5352,7 +5418,7 @@
         var qs = new URLSearchParams({
             student_page: _studentsPage, student_search: val('stm-search', ''), student_grade: val('stm-grade', 'all'),
             student_status: val('stm-status', 'all'), student_payment: val('stm-payment', 'all'), sort: val('stm-sort', 'newest'),
-            student_schoolyear: val('stm-sy', 'all')
+            student_schoolyear: val('stm-sy', 'all'), student_section: window._stmNoSection ? 'none' : ''
         });
         try {
             var r = await fetch('/admin/section/students-data?' + qs.toString(), { headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken } });
@@ -5364,6 +5430,26 @@
                 var el = document.getElementById('stm-cnt-' + k);
                 if (el) el.textContent = s[k] != null ? s[k] : '—';
             });
+            // Enrolled but no section yet (paid before a section of their grade/year existed)
+            var nsb = document.getElementById('stm-nosection-banner'), ns = s.no_section || 0;
+            if (nsb) {
+                nsb.style.display = (ns > 0 || window._stmNoSection) ? 'flex' : 'none';
+                nsb.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i>' + (window._stmNoSection
+                    ? '<span>Showing the <strong>' + ns + '</strong> enrolled student(s) with no section yet. Create a section for their grade and school year in Section Management (you\'ll be offered to place them).</span>'
+                      + '<button type="button" class="btn-dash" style="margin-left:auto;padding:5px 12px;font-size:12px;" onclick="window._stmNoSection=false;loadStudentsMgmt(1);">Show all students</button>'
+                    : '<span><strong>' + ns + '</strong> enrolled student(s) have no section yet.</span>'
+                      + '<button type="button" class="btn-dash" style="margin-left:auto;padding:5px 12px;font-size:12px;" onclick="window._stmNoSection=true;loadStudentsMgmt(1);">Show them</button>');
+            }
+            // Outline the card (or the Enrolled pill) that matches the current Status / Payment filter
+            var curSt = val('stm-status', 'all'), curPay = val('stm-payment', 'all');
+            document.querySelectorAll('#section-students [data-stm-status]').forEach(function (c) {
+                c.classList.toggle('active', c.dataset.stmStatus === curSt && c.dataset.stmPayment === curPay);
+            });
+            if (window._stmScrollToList) {
+                window._stmScrollToList = false;
+                var list = document.getElementById('stm-list-card');
+                if (list) list.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
             renderStudentsTable(_studentsData);
             renderPagerControls('stm-pagination', d, 'student(s)', 'goToStudentsPage');
         } catch (e) {
@@ -5372,6 +5458,22 @@
     }
 
     function goToStudentsPage(p) { loadStudentsMgmt(p); }
+
+    // Stat cards / Enrolled pill: set Status + Payment to the card's, keep the other filters, reload, scroll to the list
+    function stmStatClick(card) {
+        document.getElementById('stm-status').value  = card.dataset.stmStatus;
+        document.getElementById('stm-payment').value = card.dataset.stmPayment;
+        window._stmScrollToList = true;
+        loadStudentsMgmt(1);
+    }
+    document.addEventListener('click', function (e) {
+        var card = e.target.closest('#section-students [data-stm-status]');
+        if (card) stmStatClick(card);
+    });
+    document.addEventListener('keydown', function (e) {
+        var card = (e.key === 'Enter' || e.key === ' ') && e.target.closest('#section-students [data-stm-status]');
+        if (card) { e.preventDefault(); stmStatClick(card); }
+    });
 
     function renderStudentsTable(rows) {
         var tbody = document.getElementById('stm-tbody');
@@ -5396,7 +5498,10 @@
                 '<td>' + saEsc(s.grade_label) + '</td>' +
                 '<td>' + (s.section ? saEsc(s.section) : '<span style="color:var(--muted);">—</span>') + '</td>' +
                 '<td class="fs-12">' + saEsc(s.email) + '</td>' +
-                '<td><span class="status-badge ' + cls + '">' + (label[s.status] || 'Not Enrolled') + '</span></td>' +
+                '<td><span class="status-badge ' + cls + '">' + (label[s.status] || 'Not Enrolled') + '</span>' +
+                    // Moved on to a later school year: say where, so "Completed · Grade 1" doesn't look stuck
+                    (s.next ? '<div style="font-size:11px;color:#1a3a6c;margin-top:3px;white-space:nowrap;">&rarr; ' + saEsc(s.next.grade_label) + ' &middot; S.Y. ' + saEsc(s.next.school_year) + ' (' + saEsc(s.next.status) + ')</div>' : '') +
+                '</td>' +
                 '<td>' + pay(s.payment_status) + '</td>' +
                 '<td style="white-space:nowrap;">' +
                     '<button class="action-btn view" title="View" onclick="viewStudentDetails(' + s.id + ')"><i class="bi bi-eye-fill"></i></button>' +
@@ -5647,7 +5752,7 @@
             return '<tr>' +
                 '<td style="white-space:nowrap;">' + esc(t.date) + '<div style="font-size:11px;color:var(--muted);">' + esc(t.time) + '</div></td>' +
                 '<td style="font-size:11.5px;">' + esc(t.reference) + '</td>' +
-                '<td>' + esc(t.description) + '</td>' +
+                '<td>' + esc(t.description).replace(/(\(incl\.[^)]*late fees?\))/i, '<span style="color:#b91c1c;font-weight:700;">$1</span>') + '</td>' +
                 '<td style="white-space:nowrap;">' + esc(t.school_year) + '</td>' +
                 '<td>' + esc(t.method) + '</td>' +
                 '<td style="font-size:12px;">' + esc(t.processed_by) + '</td>' +
@@ -6603,6 +6708,27 @@
                 var syFilter = document.getElementById('sec-sy-filter');
                 if (syFilter && syFilter.value !== 'all' && syFilter.value !== body.school_year) syFilter.value = body.school_year;
                 _loaded['sections-mgmt'] = false; loadSectionsMgmt();
+                // A new section: offer to place the students of that grade/year still waiting for one
+                if (!id && d.waiting_count > 0) {
+                    saConfirm({
+                        title: 'Place Waiting Students',
+                        msg: d.waiting_count + ' student(s) of this grade for S.Y. ' + body.school_year + ' are enrolled but have no section yet. Place them into "' + (d.name || name) + '" now (up to its capacity)?',
+                        icon: 'bi-people-fill',
+                        btnLabel: 'Place Students',
+                        onConfirm: async function () {
+                            try {
+                                var pr = await fetch('/admin/sections/auto-assign', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                                    body: JSON.stringify({ grade_level: body.grade_level, school_year: body.school_year })
+                                });
+                                var pd = await pr.json();
+                                saToast(pr.ok ? 'success' : 'error', pd.message || (pr.ok ? 'Done.' : 'Could not place the students.'));
+                                _loaded['sections-mgmt'] = false; loadSectionsMgmt();
+                            } catch (e) { saToast('error', 'Network error.'); }
+                        }
+                    });
+                }
             } else {
                 var msg = d.errors ? Object.values(d.errors).flat().join(', ') : (d.message || 'Error saving section.');
                 saToast('error', msg);
@@ -7490,5 +7616,7 @@
 <script src="{{ asset('js/section-tools.js') }}?v={{ @filemtime(public_path('js/section-tools.js')) }}"></script>
 <script src="{{ asset('js/print-pdf.js') }}?v={{ @filemtime(public_path('js/print-pdf.js')) }}"></script>
 @include('partials.idle-logout', ['portal' => 'web'])
+{{-- Schedule Management › Subject Teachers / Generate Schedule (shared with Admin) --}}
+@include('admin.schedules.generator')
 </body>
 </html>

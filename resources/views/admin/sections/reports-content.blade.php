@@ -73,25 +73,25 @@
             {{-- Stat cards --}}
             <div class="row g-3 mb-4">
                 <div class="col-6 col-md-3">
-                    <div class="stat-card">
+                    <div class="stat-card stat-card-link" role="button" tabindex="0" title="Open the Master List" data-jump='{"click": "#rpt-panel-students .rpt-sub-btn[data-subreport=\"master\"]", "to": "#rpt-sub-students-master"}'>
                         <div class="stat-icon blue"><i class="bi bi-people-fill"></i></div>
                         <div><div class="stat-value">{{ $rptTotalStudents }}</div><div class="stat-label">Total Students</div></div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="stat-card">
+                    <div class="stat-card stat-card-link" role="button" tabindex="0" title="Open Students by Grade Level" data-jump='{"click": "#rpt-panel-students .rpt-sub-btn[data-subreport=\"grade\"]", "to": "#rpt-sub-students-grade"}'>
                         <div class="stat-icon green"><i class="bi bi-person-check-fill"></i></div>
                         <div><div class="stat-value">{{ $rptActiveStudents }}</div><div class="stat-label">Active Students</div></div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="stat-card">
+                    <div class="stat-card stat-card-link" role="button" tabindex="0" title="Open New vs Returning" data-jump='{"click": "#rpt-panel-students .rpt-sub-btn[data-subreport=\"newret\"]", "to": "#rpt-sub-students-newret"}'>
                         <div class="stat-icon gold"><i class="bi bi-person-plus-fill"></i></div>
                         <div><div class="stat-value">{{ $rptEnrollNew }}</div><div class="stat-label">New This Year</div></div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="stat-card">
+                    <div class="stat-card stat-card-link" role="button" tabindex="0" title="Open New vs Returning" data-jump='{"click": "#rpt-panel-students .rpt-sub-btn[data-subreport=\"newret\"]", "to": "#rpt-sub-students-newret", "active": false}'>
                         <div class="stat-icon" style="background:rgba(139,92,246,0.12);color:#7c3aed;"><i class="bi bi-arrow-repeat"></i></div>
                         <div><div class="stat-value">{{ $rptEnrollReturning }}</div><div class="stat-label">Returning</div></div>
                     </div>
@@ -278,7 +278,7 @@
                     </div>
                     @php $rptNRTotal = max(1, $rptEnrollNew + $rptEnrollReturning + $rptEnrollTransferee); @endphp
                     <div style="display:flex;gap:16px;padding:16px;flex-wrap:wrap;">
-                        <div class="stat-card" style="flex:1;min-width:180px;">
+                        <div class="stat-card stat-card-link" role="button" tabindex="0" title="Go to the table below" data-jump='{"to": "#rpt-sub-students-newret table", "active": false}' style="flex:1;min-width:180px;">
                             <div class="stat-icon blue"><i class="bi bi-person-plus-fill"></i></div>
                             <div>
                                 <div class="stat-value">{{ $rptEnrollNew }}</div>
@@ -286,7 +286,7 @@
                                 <div class="stat-change" style="color:var(--blue);">{{ round($rptEnrollNew / $rptNRTotal * 100) }}% of enrollees</div>
                             </div>
                         </div>
-                        <div class="stat-card" style="flex:1;min-width:180px;">
+                        <div class="stat-card stat-card-link" role="button" tabindex="0" title="Go to the table below" data-jump='{"to": "#rpt-sub-students-newret table", "active": false}' style="flex:1;min-width:180px;">
                             <div class="stat-icon green"><i class="bi bi-arrow-repeat"></i></div>
                             <div>
                                 <div class="stat-value">{{ $rptEnrollReturning }}</div>
@@ -294,7 +294,7 @@
                                 <div class="stat-change" style="color:var(--green);">{{ round($rptEnrollReturning / $rptNRTotal * 100) }}% of enrollees</div>
                             </div>
                         </div>
-                        <div class="stat-card" style="flex:1;min-width:180px;">
+                        <div class="stat-card stat-card-link" role="button" tabindex="0" title="Go to the table below" data-jump='{"to": "#rpt-sub-students-newret table", "active": false}' style="flex:1;min-width:180px;">
                             <div class="stat-icon gold"><i class="bi bi-signpost-split-fill"></i></div>
                             <div>
                                 <div class="stat-value">{{ $rptEnrollTransferee }}</div>
@@ -356,7 +356,7 @@
                     </div>
                     @php $rptDocTotal = max(1, $rptTotalDocs); @endphp
                     <div style="display:flex;gap:16px;padding:16px;flex-wrap:wrap;">
-                        <div class="stat-card" style="flex:1;min-width:180px;">
+                        <div class="stat-card stat-card-link" role="button" tabindex="0" title="Go to the table below" data-jump='{"to": "#rpt-sub-students-docs table", "active": false}' style="flex:1;min-width:180px;">
                             <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
                             <div>
                                 <div class="stat-value">{{ $rptApprovedDocs }}</div>
@@ -364,7 +364,7 @@
                                 <div class="stat-change" style="color:var(--green);">{{ round($rptApprovedDocs / $rptDocTotal * 100) }}%</div>
                             </div>
                         </div>
-                        <div class="stat-card" style="flex:1;min-width:180px;">
+                        <div class="stat-card stat-card-link" role="button" tabindex="0" title="Go to the table below" data-jump='{"to": "#rpt-sub-students-docs table", "active": false}' style="flex:1;min-width:180px;">
                             <div class="stat-icon gold"><i class="bi bi-hourglass-split"></i></div>
                             <div>
                                 <div class="stat-value">{{ $rptPendingDocs }}</div>
@@ -372,7 +372,7 @@
                                 <div class="stat-change" style="color:var(--gold);">{{ round($rptPendingDocs / $rptDocTotal * 100) }}%</div>
                             </div>
                         </div>
-                        <div class="stat-card" style="flex:1;min-width:180px;">
+                        <div class="stat-card stat-card-link" role="button" tabindex="0" title="Go to the table below" data-jump='{"to": "#rpt-sub-students-docs table", "active": false}' style="flex:1;min-width:180px;">
                             <div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div>
                             <div>
                                 <div class="stat-value">{{ $rptRejectedDocs }}</div>
@@ -380,7 +380,7 @@
                                 <div class="stat-change" style="color:var(--red);">{{ round($rptRejectedDocs / $rptDocTotal * 100) }}%</div>
                             </div>
                         </div>
-                        <div class="stat-card" style="flex:1;min-width:180px;">
+                        <div class="stat-card stat-card-link" role="button" tabindex="0" title="Go to the table below" data-jump='{"to": "#rpt-sub-students-docs table", "active": false}' style="flex:1;min-width:180px;">
                             <div class="stat-icon blue"><i class="bi bi-file-earmark-text-fill"></i></div>
                             <div>
                                 <div class="stat-value">{{ $rptTotalDocs }}</div>
@@ -434,25 +434,25 @@
 
             <div class="row g-3 mb-4">
                 <div class="col-6 col-md-3">
-                    <div class="stat-card">
+                    <div class="stat-card stat-card-link" role="button" tabindex="0" title="Open the Status Summary" data-jump='{"click": "#rpt-panel-enrollment .rpt-sub-btn[data-subreport=\"status\"]", "to": "#rpt-sub-enrollment-status"}'>
                         <div class="stat-icon blue"><i class="bi bi-clipboard-fill"></i></div>
                         <div><div class="stat-value">{{ $rptEnrollTotal }}</div><div class="stat-label">Total Enrollments</div></div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="stat-card">
+                    <div class="stat-card stat-card-link" role="button" tabindex="0" title="Open the Status Summary" data-jump='{"click": "#rpt-panel-enrollment .rpt-sub-btn[data-subreport=\"status\"]", "to": "#rpt-sub-enrollment-status", "active": false}'>
                         <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
                         <div><div class="stat-value">{{ $rptEnrollApproved }}</div><div class="stat-label">Approved / Enrolled</div></div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="stat-card">
+                    <div class="stat-card stat-card-link" role="button" tabindex="0" title="Show the pending applications in Enrollment Management" data-jump="{{ json_encode(['section' => 'enrollment', 'set' => ['#enrollmentSyFilter' => $currentSchoolYear, '#gradeFilter' => 'all', '#statusFilter' => 'pending'], 'to' => '#enrollment-records-card', 'active' => false]) }}">
                         <div class="stat-icon gold"><i class="bi bi-hourglass-split"></i></div>
                         <div><div class="stat-value">{{ $rptEnrollPending }}</div><div class="stat-label">Pending</div></div>
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="stat-card">
+                    <div class="stat-card stat-card-link" role="button" tabindex="0" title="Open the Status Summary" data-jump='{"click": "#rpt-panel-enrollment .rpt-sub-btn[data-subreport=\"status\"]", "to": "#rpt-sub-enrollment-status", "active": false}'>
                         <div class="stat-icon red"><i class="bi bi-person-dash-fill"></i></div>
                         <div><div class="stat-value">{{ $rptEnrollDropped }}</div><div class="stat-label">Dropped</div></div>
                     </div>
@@ -707,7 +707,7 @@
 
             <div class="row g-3 mb-4">
                 <div class="col-6 col-md-3">
-                    <div class="stat-card">
+                    <div class="stat-card stat-card-link" role="button" tabindex="0" title="Open the Collection Summary" data-jump='{"click": "#rpt-panel-financial .rpt-sub-btn[data-subreport=\"collection\"]", "to": "#rpt-sub-financial-collection"}'>
                         <div class="stat-icon blue"><i class="bi bi-cash-coin"></i></div>
                         <div>
                             <div class="stat-value" style="font-size:18px;">&#8369;{{ number_format($rptTotalFees, 0) }}</div>
@@ -716,7 +716,7 @@
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="stat-card">
+                    <div class="stat-card stat-card-link" role="button" tabindex="0" title="Open the Collection Summary" data-jump='{"click": "#rpt-panel-financial .rpt-sub-btn[data-subreport=\"collection\"]", "to": "#rpt-sub-financial-collection", "active": false}'>
                         <div class="stat-icon green"><i class="bi bi-cash-stack"></i></div>
                         <div>
                             <div class="stat-value" style="font-size:18px;">&#8369;{{ number_format($rptTotalCollected, 0) }}</div>
@@ -725,7 +725,7 @@
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="stat-card">
+                    <div class="stat-card stat-card-link" role="button" tabindex="0" title="Open Outstanding Balances" data-jump='{"click": "#rpt-panel-financial .rpt-sub-btn[data-subreport=\"outstanding\"]", "to": "#rpt-sub-financial-outstanding"}'>
                         <div class="stat-icon red"><i class="bi bi-exclamation-circle-fill"></i></div>
                         <div>
                             <div class="stat-value" style="font-size:18px;">&#8369;{{ number_format($rptOutstanding, 0) }}</div>
@@ -734,7 +734,7 @@
                     </div>
                 </div>
                 <div class="col-6 col-md-3">
-                    <div class="stat-card">
+                    <div class="stat-card stat-card-link" role="button" tabindex="0" title="Open Financial by Grade Level" data-jump='{"click": "#rpt-panel-financial .rpt-sub-btn[data-subreport=\"grade\"]", "to": "#rpt-sub-financial-grade"}'>
                         <div class="stat-icon gold"><i class="bi bi-percent"></i></div>
                         <div>
                             <div class="stat-value" style="font-size:22px;">{{ $rptCollectionRate }}%</div>
@@ -1010,28 +1010,28 @@
                         </div>
                     </div>
                     <div style="display:flex;gap:16px;padding:16px;flex-wrap:wrap;">
-                        <div class="stat-card" style="flex:1;min-width:180px;">
+                        <div class="stat-card stat-card-link" role="button" tabindex="0" title="Open the promotion list" data-jump='{"click": "#rpt-panel-promotion .rpt-sub-btn[data-subreport=\"list\"]", "to": "#rpt-sub-promotion-list"}' style="flex:1;min-width:180px;">
                             <div class="stat-icon green"><i class="bi bi-arrow-up-circle-fill"></i></div>
                             <div>
                                 <div class="stat-value">{{ $rptPromoPromoted }}</div>
                                 <div class="stat-label">Promoted</div>
                             </div>
                         </div>
-                        <div class="stat-card" style="flex:1;min-width:180px;">
+                        <div class="stat-card stat-card-link" role="button" tabindex="0" title="Open the promotion list" data-jump='{"click": "#rpt-panel-promotion .rpt-sub-btn[data-subreport=\"list\"]", "to": "#rpt-sub-promotion-list", "active": false}' style="flex:1;min-width:180px;">
                             <div class="stat-icon gold"><i class="bi bi-arrow-repeat"></i></div>
                             <div>
                                 <div class="stat-value">{{ $rptPromoRetained }}</div>
                                 <div class="stat-label">Retained</div>
                             </div>
                         </div>
-                        <div class="stat-card" style="flex:1;min-width:180px;">
+                        <div class="stat-card stat-card-link" role="button" tabindex="0" title="Open the promotion list" data-jump='{"click": "#rpt-panel-promotion .rpt-sub-btn[data-subreport=\"list\"]", "to": "#rpt-sub-promotion-list", "active": false}' style="flex:1;min-width:180px;">
                             <div class="stat-icon blue"><i class="bi bi-star-fill"></i></div>
                             <div>
                                 <div class="stat-value">{{ $rptPromoGraduated }}</div>
                                 <div class="stat-label">Graduated</div>
                             </div>
                         </div>
-                        <div class="stat-card" style="flex:1;min-width:180px;">
+                        <div class="stat-card stat-card-link" role="button" tabindex="0" title="Show the students still waiting in Assessment & Promotion" data-jump='{"section": "assessment", "click": "[data-assess-status=\"pending\"]", "to": "#assess-table-card", "active": false}' style="flex:1;min-width:180px;">
                             <div class="stat-icon red"><i class="bi bi-hourglass-split"></i></div>
                             <div>
                                 <div class="stat-value">{{ $rptPromoPending }}</div>
@@ -1225,7 +1225,11 @@
                     <p style="color:var(--muted);font-size:13px;margin:4px 0 0;">Key Performance Indicators &mdash; S.Y. {{ $currentSchoolYear }}</p>
                 </div>
                 <div style="display:flex;gap:6px;">
+                    {{-- The KPI PDF is Super Admin only (downloadKpiOverviewReportPdf) — the button used to show for
+                         Admin too and led to a 403 error page --}}
+                    @if(auth()->user()?->role === 'superadmin')
                     <a href="{{ route('admin.reports.kpi-overview-pdf') }}" class="btn-dash btn-primary"><i class="bi bi-file-earmark-pdf"></i> Download PDF</a>
+                    @endif
                 </div>
             </div>
 

@@ -51,7 +51,7 @@
         }
     </style>
     <style>
-        /* â”€â”€ ADMISSION PAGE SPECIFIC â”€â”€ */
+        /* ── ADMISSION PAGE SPECIFIC ── */
         :root {
             --ilc-blue: #1a3a6c;
             --ilc-gold: #f5a623;
@@ -60,7 +60,7 @@
             --ilc-border: #ddd;
         }
 
-        /* â”€â”€ REQUIREMENTS SECTION â”€â”€ */
+        /* ── REQUIREMENTS SECTION ── */
         .req-section { padding: 50px 0 40px; background: #fff; }
 
         .req-section-title {
@@ -127,7 +127,7 @@
         .req-card ul li:last-child { border-bottom: none; }
         .req-card ul li i { color: #c5a059; font-size: 14px; flex-shrink: 0; margin-top: 1px; }
 
-        /* â”€â”€ APPLY NOW BUTTON â”€â”€ */
+        /* ── APPLY NOW BUTTON ── */
         .btn-apply-now {
             display: inline-flex; align-items: center; justify-content: center;
             gap: 10px; min-width: 220px;
@@ -154,14 +154,14 @@
             box-shadow: 0 6px 20px rgba(26,58,108,0.2);
         }
 
-        /* â”€â”€ APPLICATION FORM SECTION â”€â”€ */
+        /* ── APPLICATION FORM SECTION ── */
         .application-section {
             padding: 50px 0 60px;
             background: var(--ilc-gray-bg);
             border-top: 3px solid var(--ilc-blue);
         }
 
-        /* â”€â”€ STEP PROGRESS BAR â”€â”€ */
+        /* ── STEP PROGRESS BAR ── */
         .step-progress {
             display: flex; align-items: center;
             justify-content: center; gap: 0;
@@ -201,7 +201,7 @@
         .step-labels span.active { color: var(--ilc-blue); }
         .step-labels span.done   { color: #27ae60; }
 
-        /* â”€â”€ FORM CARD â”€â”€ */
+        /* ── FORM CARD ── */
         .form-card {
             background: #fff; border: 1px solid var(--ilc-border);
             border-radius: 8px; padding: 32px 28px;
@@ -258,7 +258,7 @@
             width: 14px; height: 14px; margin: 0;
         }
 
-        /* â”€â”€ FORM STEP BUTTONS â”€â”€ */
+        /* ── FORM STEP BUTTONS ── */
         .step-btn-row {
             display: flex; gap: 10px;
             margin-top: 24px; justify-content: flex-end;
@@ -297,7 +297,7 @@
 
         .btn-step-submit:hover { background: #219a52; }
 
-        /* â”€â”€ SUMMARY BOX (step 4) â”€â”€ */
+        /* ── SUMMARY BOX (step 4) ── */
         .summary-section {
             background: #f8fafc; border: 1px solid var(--ilc-border);
             border-radius: 8px; padding: 20px; margin-bottom: 20px;
@@ -317,7 +317,7 @@
         .sum-row span:first-child { color: #888; }
         .sum-row span:last-child  { font-weight: 600; color: #333; }
 
-        /* â”€â”€ SUCCESS STATE â”€â”€ */
+        /* ── SUCCESS STATE ── */
         .success-box {
             text-align: center; padding: 40px 20px;
         }

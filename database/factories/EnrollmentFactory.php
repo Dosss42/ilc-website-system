@@ -65,4 +65,17 @@ class EnrollmentFactory extends Factory
     {
         return $this->state(fn () => ['status' => 'pending']);
     }
+
+    /** The four required documents uploaded and approved (needed to be assessed / to re-enroll). */
+    public function withApprovedDocuments(): static
+    {
+        return $this->afterCreating(function (\App\Models\Enrollment $e) {
+            foreach (\App\Models\StudentDocument::REQUIRED_TYPES as $type) {
+                \App\Models\StudentDocument::create([
+                    'user_id' => $e->user_id, 'enrollment_id' => $e->id, 'document_type' => $type,
+                    'file_path' => 'documents/test-' . $type . '.pdf', 'original_name' => $type . '.pdf', 'status' => 'approved',
+                ]);
+            }
+        });
+    }
 }

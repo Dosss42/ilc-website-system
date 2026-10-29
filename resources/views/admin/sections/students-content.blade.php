@@ -18,71 +18,41 @@
 
         {{-- Analysis Summary Cards — $smTotal/$smEnrolled/etc. computed in
              EnrollmentController@adminIndex from the full filtered query,
-             not from the paginated $students list (which is capped at 15). --}}
+             not from the paginated $students list (which is capped at 15).
+             Clickable: each card sets the Status / Payment filter below and scrolls to the list
+             (smStatClick in adminDashboard); the card matching the current filter is outlined.
+             "Enrolled" is the green pill inside Total Students. --}}
+        @php
+            $smSt = ($studentStatusFilter ?? null) ?: 'all';
+            $smPay = ($studentPaymentFilter ?? null) ?: 'all';
+            $smCards = [
+                ['all', 'all', 'blue', 'bi-people-fill', $smTotal ?? 0, 'Total Students', 'sm-total-count'],
+                ['approved', 'all', 'teal', 'bi-check2-square', $smApproved ?? 0, 'Approved', 'sm-approved-count'],
+                ['pending', 'all', 'gold', 'bi-hourglass-split', $smPending ?? 0, 'Pending', 'sm-pending-count'],
+                ['not_enrolled', 'all', 'red', 'bi-x-circle-fill', $smNotEnrolled ?? 0, 'Not Enrolled', 'sm-notenrolled-count'],
+                ['all', 'paid', 'green', 'bi-cash-stack', $smPaid ?? 0, 'Fully Paid', 'sm-paid-count'],
+                ['all', 'balance', 'red', 'bi-exclamation-triangle-fill', $smBalance ?? 0, 'With Balance', 'sm-balance-count'],
+            ];
+        @endphp
         <div class="row g-3 mb-4">
+            @foreach($smCards as [$cSt, $cPay, $color, $icon, $count, $label, $id])
             <div class="col-md-2 col-sm-4 col-6">
-                <div class="stat-card">
-                    <div class="stat-icon blue"><i class="bi bi-people-fill"></i></div>
+                <div class="stat-card stat-card-link h-100 {{ $smSt === $cSt && $smPay === $cPay ? 'active' : '' }}" role="button" tabindex="0"
+                     data-sm-status="{{ $cSt }}" data-sm-payment="{{ $cPay }}" title="Show {{ $label === 'Total Students' ? 'all students' : $label }} in the list below">
+                    <div class="stat-icon {{ $color }}"><i class="bi {{ $icon }}"></i></div>
                     <div>
-                        <div class="stat-value" id="sm-total-count">{{ $smTotal ?? 0 }}</div>
-                        <div class="stat-label">Total Students</div>
+                        <div class="stat-value" id="{{ $id }}">{{ $count }}</div>
+                        <div class="stat-label">{{ $label }}</div>
+                        @if($label === 'Total Students')
+                        <span class="stat-pill {{ $smSt === 'enrolled' && $smPay === 'all' ? 'active' : '' }}" role="button" tabindex="0"
+                              data-sm-status="enrolled" data-sm-payment="all" title="Show enrolled students in the list below">
+                            <i class="bi bi-check-circle-fill"></i> <span id="sm-enrolled-count">{{ $smEnrolled ?? 0 }}</span> Enrolled
+                        </span>
+                        @endif
                     </div>
                 </div>
             </div>
-            <div class="col-md-2 col-sm-4 col-6">
-                <div class="stat-card">
-                    <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
-                    <div>
-                        <div class="stat-value" id="sm-enrolled-count">{{ $smEnrolled ?? 0 }}</div>
-                        <div class="stat-label">Enrolled</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-2 col-sm-4 col-6">
-                <div class="stat-card">
-                    <div class="stat-icon teal"><i class="bi bi-check2-square"></i></div>
-                    <div>
-                        <div class="stat-value" id="sm-approved-count">{{ $smApproved ?? 0 }}</div>
-                        <div class="stat-label">Approved</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-2 col-sm-4 col-6">
-                <div class="stat-card">
-                    <div class="stat-icon gold"><i class="bi bi-hourglass-split"></i></div>
-                    <div>
-                        <div class="stat-value" id="sm-pending-count">{{ $smPending ?? 0 }}</div>
-                        <div class="stat-label">Pending</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-2 col-sm-4 col-6">
-                <div class="stat-card">
-                    <div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div>
-                    <div>
-                        <div class="stat-value" id="sm-notenrolled-count">{{ $smNotEnrolled ?? 0 }}</div>
-                        <div class="stat-label">Not Enrolled</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-2 col-sm-4 col-6">
-                <div class="stat-card">
-                    <div class="stat-icon green"><i class="bi bi-cash-stack"></i></div>
-                    <div>
-                        <div class="stat-value" id="sm-paid-count">{{ $smPaid ?? 0 }}</div>
-                        <div class="stat-label">Fully Paid</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-2 col-sm-4 col-6">
-                <div class="stat-card">
-                    <div class="stat-icon red"><i class="bi bi-exclamation-triangle-fill"></i></div>
-                    <div>
-                        <div class="stat-value" id="sm-balance-count">{{ $smBalance ?? 0 }}</div>
-                        <div class="stat-label">With Balance</div>
-                    </div>
-                </div>
-            </div>
+            @endforeach
         </div>
 
         {{-- Status Legend --}}
@@ -148,6 +118,7 @@
                             <option value="paid" {{ ($studentPaymentFilter ?? '') === 'paid' ? 'selected' : '' }}>Paid</option>
                             <option value="partial" {{ ($studentPaymentFilter ?? '') === 'partial' ? 'selected' : '' }}>Partial</option>
                             <option value="unpaid" {{ ($studentPaymentFilter ?? '') === 'unpaid' ? 'selected' : '' }}>Not Paid</option>
+                            <option value="balance" {{ ($studentPaymentFilter ?? '') === 'balance' ? 'selected' : '' }}>With Balance</option>
                         </select>
                     </div>
                     <div class="col-md-2">
@@ -159,6 +130,7 @@
                         </select>
                     </div>
                     <div class="col-md-3">
+                        <input type="hidden" name="student_section" value="{{ ($studentSectionFilter ?? 'all') === 'none' ? 'none' : '' }}">
                         <select name="student_schoolyear" class="form-fld" onchange="this.form.requestSubmit()">
                             @php $smCurSy = \App\Models\Setting::getCurrentSchoolYear(); @endphp
                             <option value="all" {{ ($studentSchoolYearFilter ?? '') === 'all' ? 'selected' : '' }}>All School Years</option>
@@ -171,7 +143,25 @@
             </div>
         </div>
 
-        <div class="content-card">
+        {{-- Enrolled students still without a section (paid before a section of their grade/year existed).
+             Section Management offers to place them when such a section is created; Auto-Assign works too. --}}
+        @php $smNoSecOn = ($studentSectionFilter ?? 'all') === 'none'; @endphp
+        @if(($smNoSection ?? 0) > 0 || $smNoSecOn)
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;padding:12px 16px;background:#fff8f0;border:1px solid #fed7aa;border-radius:10px;font-size:13px;color:#92400e;">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            @if($smNoSecOn)
+                <span>Showing the <strong>{{ $smNoSection }}</strong> enrolled student(s) with no section yet. Create a section for their grade and school year in Section Management (you'll be offered to place them), or use Auto-Assign there.</span>
+                <button type="button" class="btn-dash" style="margin-left:auto;padding:5px 12px;font-size:12px;"
+                    onclick="var f=document.getElementById('student-filter-form');f.student_section.value='';f.requestSubmit();">Show all students</button>
+            @else
+                <span><strong>{{ $smNoSection }}</strong> enrolled student(s) have no section yet.</span>
+                <button type="button" class="btn-dash" style="margin-left:auto;padding:5px 12px;font-size:12px;"
+                    onclick="var f=document.getElementById('student-filter-form');f.student_section.value='none';f.requestSubmit();">Show them</button>
+            @endif
+        </div>
+        @endif
+
+        <div class="content-card" id="sm-list-card">
 
             <div class="content-card-header">
 
@@ -290,7 +280,15 @@
 
                                 <td class="fs-12">{{ $s->email }}</td>
 
-                                <td><span class="status-badge {{ $statusClass }}">{{ $statusLabel }}</span></td>
+                                <td>
+                                    <span class="status-badge {{ $statusClass }}">{{ $statusLabel }}</span>
+                                    {{-- Moved on to a later school year: say where, so "Completed · Grade 1" doesn't look stuck --}}
+                                    @if($s->relationLoaded('nextEnrollment') && ($nx = $s->nextEnrollment))
+                                        <div style="font-size:11px;color:#1a3a6c;margin-top:3px;white-space:nowrap;" title="This student's enrollment in a later school year">
+                                            &rarr; {{ $gradeMap[$nx->grade_level] ?? ($nx->grade_level ?: '—') }} &middot; S.Y. {{ $nx->school_year }} ({{ ucfirst($nx->status) }})
+                                        </div>
+                                    @endif
+                                </td>
 
                                 <td>
                                     @if($payStatus === 'paid')

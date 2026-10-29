@@ -12,6 +12,7 @@ use App\Models\Schedule;
 use App\Models\Setting;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Services\PaymentService;
 use App\Models\PaymentInstallment;
@@ -185,6 +186,7 @@ class StudentPortalController extends Controller
                 'currentSchoolYear' => Setting::getCurrentSchoolYear(),
                 'promotionRecord' => null,
                 'enrollmentWindowOpen' => Setting::get('enrollment_open', true),
+                'movedUp' => null,
                 'profile' => $user->profile,
                 'address' => $user->address,
                 'guardian' => $user->guardian,
@@ -397,6 +399,18 @@ class StudentPortalController extends Controller
             }
         }
 
+        // The new school year already exists but isn't confirmed yet — the school assessed the student
+        // (that creates it) or the student re-enrolled. The portal now shows this enrollment, so it says
+        // what happened and what's next instead of the re-enrollment card just disappearing.
+        $movedUp = null;
+        if ($enrollment && in_array($enrollment->status, ['pending', 'approved'], true)
+            && !empty($enrollment->student_data['previous_school_year'])) {
+            $movedUp = [
+                'promotion' => Promotion::where('enrollment_id', $enrollment->id)->where('status', 'completed')->latest('id')->first(),
+                'from_year' => $enrollment->student_data['previous_school_year'],
+            ];
+        }
+
         // Load normalized profile models for inline editing
         $profile        = $user->profile;
         $address        = $user->address;
@@ -412,7 +426,7 @@ class StudentPortalController extends Controller
             'paymentInstallments', 'paymentSummary', 'examPermitStatus', 'availableSections',
             'advisoryTeachersBySection',
             'needsReenrollment', 'reenrollmentOpen', 'suggestedGrade',
-            'currentSchoolYear', 'promotionRecord', 'enrollmentWindowOpen',
+            'currentSchoolYear', 'promotionRecord', 'enrollmentWindowOpen', 'movedUp',
             'profile', 'address', 'guardian', 'mother', 'father', 'previousSchool',
             'justPaidTransaction', 'paymentOutcome', 'summerClassEnrollments'
         ));
@@ -462,6 +476,11 @@ class StudentPortalController extends Controller
             return back()->with('error', $blocked . '. Please settle it before re-enrolling.');
         }
 
+        // …and all four required documents approved — the checklist locks the button; this is the real check
+        if (($approvedDocs = StudentDocument::approvedRequiredCount($user->id)) < count(StudentDocument::REQUIRED_TYPES)) {
+            return back()->with('error', "Your required documents are not complete yet ({$approvedDocs}/4 approved). Please upload them and wait for the school to approve them.");
+        }
+
         // Full grade progression map
         $gradeProgressionMap = [
             'nursery'     => 'kindergarten',
@@ -494,14 +513,13 @@ class StudentPortalController extends Controller
             // Transferee: auto-advance to next grade, no assessment needed
             $newGrade = $gradeProgressionMap[$prevGrade] ?? $prevGrade;
         } else {
-            // Returning Grade 1–6: requires admin assessment first
-            // This path should normally not be reachable because the button is hidden
-            // in the view until assessment is done — but as a safeguard, keep same grade.
-            $newGrade = $prevGrade;
+            // Returning Grade 1–6: the school's assessment decides the grade — the portal only shows the
+            // button after it; this refuses a direct request too (it used to keep the same grade silently)
+            return back()->with('error', 'The school has not assessed you for S.Y. ' . $prevEnrollment->school_year . ' yet. You can re-enroll once the assessment is done.');
         }
 
         // Create new enrollment for current school year
-        Enrollment::create([
+        $newEnrollment = Enrollment::create([
             'user_id'          => $user->id,
             'grade_level'      => $newGrade,
             'school_year'      => $currentSchoolYear,
@@ -517,6 +535,24 @@ class StudentPortalController extends Controller
             'payment_status'   => 'pending',
             'reference_number' => 'ENR-' . strtoupper(uniqid()),
         ]);
+
+        // Assessed by the school: the assessment only recorded the result — confirming it here does what
+        // the assessment used to do (link it, finish last year, move from last year's section into the one
+        // the school chose, if it has room). Undo / declining this enrollment reverses it all.
+        if ($promotion) {
+            DB::transaction(function () use ($promotion, $prevEnrollment, $newEnrollment, $user) {
+                $promotion->update(['enrollment_id' => $newEnrollment->id]);
+                $prevEnrollment->update(['status' => 'completed', 'completed_at' => now()]);
+                if ($promotion->from_section_id) {
+                    Section::find($promotion->from_section_id)?->students()->detach($user->id);
+                }
+                $toSection = $promotion->to_section_id ? Section::find($promotion->to_section_id) : null;
+                if ($toSection && $toSection->is_active && $toSection->live_enrollment_count < $toSection->max_students) {
+                    $toSection->students()->syncWithoutDetaching([$user->id]);
+                    $newEnrollment->update(['section' => $toSection->name]);
+                }
+            });
+        }
 
         return back()->with('success', 'Re-enrollment application submitted for S.Y. ' . $currentSchoolYear . '. Please wait for admin approval.');
     }
@@ -1195,11 +1231,6 @@ class StudentPortalController extends Controller
     {
         $user = Auth::user();
 
-        // Section changes follow the admin's enrollment switch, same as re-enrollment.
-        if (!Setting::get('enrollment_open', true)) {
-            return response()->json(['success' => false, 'message' => 'Section changes are closed because enrollment is currently closed.'], 403);
-        }
-
         $validated = $request->validate([
             'section_id' => 'required|exists:sections,id',
         ]);
@@ -1211,6 +1242,12 @@ class StudentPortalController extends Controller
 
         if (!$enrollment) {
             return response()->json(['success' => false, 'message' => 'No active enrolled record found.'], 403);
+        }
+
+        // Once per school year, before classes start (it used to be any number of times, all year, while
+        // "Enrollment Open" was on — which it is mid-year for next year's enrollment). Admin can always move.
+        if ($blocked = $enrollment->sectionChangeBlockReason()) {
+            return response()->json(['success' => false, 'message' => $blocked], 403);
         }
 
         $newSection = Section::find($validated['section_id']);
@@ -1233,26 +1270,33 @@ class StudentPortalController extends Controller
             return response()->json(['success' => false, 'message' => "Section {$newSection->name} is full ({$newSection->max_students} max)."], 422);
         }
 
-        // Remove from old section in pivot table
-        \Illuminate\Support\Facades\DB::table('section_student')
-            ->where('user_id', $user->id)
-            ->delete();
+        if ($newSection->name === $enrollment->section) {
+            return response()->json(['success' => false, 'message' => "You're already in {$newSection->name}."], 422);
+        }
 
-        // Add to new section
-        \Illuminate\Support\Facades\DB::table('section_student')->insert([
-            'section_id' => $newSection->id,
-            'user_id'    => $user->id,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        DB::transaction(function () use ($user, $enrollment, $newSection) {
+            // Leave this school year's section only — it used to remove the student from EVERY
+            // section they were ever in, wiping past years' class lists too
+            DB::table('section_student')
+                ->where('user_id', $user->id)
+                ->whereIn('section_id', Section::where('school_year', $enrollment->school_year)->select('id'))
+                ->delete();
 
-        $enrollment->update(['section' => $newSection->name]);
+            DB::table('section_student')->insert([
+                'section_id' => $newSection->id,
+                'user_id'    => $user->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
-        Log::info("Student {$user->id} changed section to {$newSection->name}");
+            $enrollment->update(['section' => $newSection->name, 'section_changed_at' => now()]);
+        });
+
+        \App\Services\ActivityLogger::log('update', "{$user->name} changed section to {$newSection->name} (S.Y. {$enrollment->school_year}) — their one change this school year", 'Enrollment', $enrollment->id);
 
         return response()->json([
             'success' => true,
-            'message' => "Section changed to {$newSection->name} successfully.",
+            'message' => "Section changed to {$newSection->name}. This was your one section change for S.Y. {$enrollment->school_year}.",
             'section_name' => $newSection->name,
         ]);
     }
@@ -1403,11 +1447,44 @@ class StudentPortalController extends Controller
             }
         }
 
+        // Same accepted amounts as the Cashier Portal (PaymentService::paymentLimits): due now (the rest of the
+        // down payment, the full balance on plan A, or the next month + late fee less any credit), that plus
+        // whole months in advance, or the full balance. The student's chosen amount is used only if it is
+        // exactly one of them; anything else gets "due now" — never an amount the cashier would refuse.
+        $allowed = \App\Services\PaymentService::paymentLimits($enrollment)['allowed'] ?? [];
+        if (!empty($allowed)) {
+            $requested = round((float) $request->amount, 2);
+            $match = collect($allowed)->first(fn ($o) => abs($o['amount'] - $requested) < 0.005);
+            $expectedAmount = $match ? $match['amount'] : $allowed[0]['amount'];
+        }
+
         if (!$expectedAmount || $expectedAmount <= 0) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unable to determine the amount due. Please refresh the page and try again, or contact the Finance Office.',
             ], 422);
+        }
+
+        // Xendit is asked for the EXACT amount, centavos included, and the payment is credited with exactly
+        // what Xendit accepted (it used to charge round($expectedAmount) but credit the unrounded amount, so a
+        // ₱2,083.33 installment charged ₱2,083 yet credited ₱2,083.33) — see PaymentService::createXenditInvoice()
+        $exactAmount = round($expectedAmount, 2);
+
+        // One open link per student — the same rule as the Cashier Portal (PaymentService::openXenditLink):
+        // the same amount → that link again; a different amount (e.g. switching to "+1 month advance") → the
+        // old link is cancelled at Xendit first, so the two can never both be paid
+        [$existingPending, $openError] = \App\Services\PaymentService::openXenditLink($enrollment->id, $exactAmount, $apiKey);
+        if ($openError) {
+            return response()->json(['success' => false, 'message' => $openError], 422);
+        }
+        if ($existingPending) {
+            return response()->json([
+                'success'     => true,
+                'invoice_url' => $existingPending->xendit_invoice_url,
+                'invoice_id'  => $existingPending->xendit_invoice_id,
+                'reused'      => true,
+                'amount'      => (float) $existingPending->amount,
+            ]);
         }
 
         $externalId = 'STU-' . $user->id . '-' . $enrollment->id . '-' . time();
@@ -1420,10 +1497,8 @@ class StudentPortalController extends Controller
             default => [],
         };
 
-        $response = \Illuminate\Support\Facades\Http::withBasicAuth($apiKey, '')
-            ->post('https://api.xendit.co/v2/invoices', [
+        [$response, $chargeAmount] = \App\Services\PaymentService::createXenditInvoice($apiKey, [
                 'external_id'          => $externalId,
-                'amount'               => (int) round($expectedAmount),
                 'description'          => 'ILC Tuition — ' . $request->payment_type . ' (' . $user->name . ')',
                 'invoice_duration'     => 86400,
                 'currency'             => 'PHP',
@@ -1434,7 +1509,7 @@ class StudentPortalController extends Controller
                 // what happened (declined / cancelled / expired) and tell the
                 // student clearly, instead of a bare redirect with zero context.
                 'failure_redirect_url' => route('student.portal', ['paid_ref' => $externalId, 'outcome' => 'failed']),
-            ]);
+            ], $exactAmount);
 
         if (!$response->successful()) {
             Log::error('Student Xendit invoice failed', ['response' => $response->json(), 'user' => $user->id]);
@@ -1452,7 +1527,7 @@ class StudentPortalController extends Controller
             'user_id'            => $user->id,
             'payment_type'       => 'online',
             'payment_method'     => $request->payment_method,
-            'amount'             => $expectedAmount,
+            'amount'             => $chargeAmount, // what Xendit actually charges — and what gets credited
             'reference_number'   => $externalId,
             'xendit_invoice_id'  => $invoice['id'],
             'xendit_invoice_url' => $invoice['invoice_url'],
@@ -1466,6 +1541,7 @@ class StudentPortalController extends Controller
             'invoice_url' => $invoice['invoice_url'],
             'invoice_id'  => $invoice['id'],
             'expiry'      => $invoice['expiry_date'] ?? null,
+            'amount'      => $chargeAmount, // shown in the portal, so it matches Xendit's page
         ]);
     }
 

@@ -43,7 +43,7 @@ class ReportController extends Controller
         }
 
         if ($request->filled('quarter')) {
-            $query->where('quarter', $request->quarter);
+            $query->where('term', $request->quarter); // ?quarter= kept as the parameter name; the column is `term`
         }
 
         if ($request->filled('date_from')) {
@@ -56,16 +56,17 @@ class ReportController extends Controller
 
         $grades = $query->orderBy('created_at', 'desc')->get();
 
-        // Calculate statistics
+        // Calculate statistics — the grades table's columns are `grade` and `term` (it had `final_grade`
+        // and `quarter`, which don't exist, so the average was always blank and passed/failed 0)
         $stats = [
             'total_grades' => $grades->count(),
-            'average_grade' => $grades->avg('final_grade'),
-            'passed' => $grades->where('final_grade', '>=', 75)->count(),
-            'failed' => $grades->where('final_grade', '<', 75)->count(),
-            'by_quarter' => $grades->groupBy('quarter')->map(function($g) {
+            'average_grade' => $grades->avg('grade'),
+            'passed' => $grades->whereNotNull('grade')->where('grade', '>=', 75)->count(),
+            'failed' => $grades->whereNotNull('grade')->where('grade', '<', 75)->count(),
+            'by_quarter' => $grades->groupBy('term')->map(function($g) {
                 return [
                     'count' => $g->count(),
-                    'average' => $g->avg('final_grade')
+                    'average' => $g->avg('grade')
                 ];
             })
         ];
@@ -136,7 +137,8 @@ class ReportController extends Controller
      */
     public function enrollmentReport(Request $request)
     {
-        $query = Enrollment::with('student:id,name');
+        // An enrollment belongs to its student through user() (there is no student() relation)
+        $query = Enrollment::with('user:id,name');
 
         if ($request->filled('date_from')) {
             $query->whereDate('created_at', '>=', $request->date_from);
@@ -155,7 +157,8 @@ class ReportController extends Controller
         }
 
         if ($request->filled('student_type')) {
-            $query->where('student_type', $request->student_type);
+            // student type lives in the student_data JSON, not in its own column
+            $query->where('student_data->student_type', $request->student_type);
         }
 
         $enrollments = $query->orderBy('created_at', 'desc')->get();
@@ -163,9 +166,9 @@ class ReportController extends Controller
         // Calculate statistics
         $stats = [
             'total' => $enrollments->count(),
-            'new_students' => $enrollments->where('student_type', 'new')->count(),
-            'returning' => $enrollments->where('student_type', 'returning')->count(),
-            'transferees' => $enrollments->where('student_type', 'transferee')->count(),
+            'new_students' => $enrollments->filter(fn ($e) => ($e->student_data['student_type'] ?? '') === 'new')->count(),
+            'returning' => $enrollments->filter(fn ($e) => ($e->student_data['student_type'] ?? '') === 'returning')->count(),
+            'transferees' => $enrollments->filter(fn ($e) => ($e->student_data['student_type'] ?? '') === 'transferee')->count(),
             'approved' => $enrollments->where('status', 'approved')->count(),
             'pending' => $enrollments->where('status', 'pending')->count(),
             'by_grade' => $enrollments->groupBy('grade_level')->map->count(),
@@ -263,7 +266,7 @@ class ReportController extends Controller
                 'grades' => [
                     'total_entries' => Grade::count(),
                     'this_month' => Grade::whereMonth('created_at', $thisMonth->month)->count(),
-                    'average_grade' => Grade::avg('final_grade'),
+                    'average_grade' => Grade::avg('grade'), // the grades table has `grade`, not `final_grade`
                 ],
                 'guidance' => [
                     'open_cases' => GuidanceRecord::where('status', 'open')->count(),

@@ -38,6 +38,8 @@
     <script src="/js/page-window.js?v={{ filemtime(public_path('js/page-window.js')) }}"></script>
     {{-- ilcQuickJump: the top-bar "Go to…" box --}}
     <script src="/js/quick-jump.js?v={{ filemtime(public_path('js/quick-jump.js')) }}"></script>
+    {{-- Clickable stat cards: filter the list they count and scroll to it --}}
+    <script src="/js/stat-jump.js?v={{ filemtime(public_path('js/stat-jump.js')) }}" defer></script>
     {{-- data-capitalize="words": capital first letter of each word in name boxes --}}
     <script src="/js/name-case.js?v={{ filemtime(public_path('js/name-case.js')) }}"></script>
     {{-- printOfficialReceipt(): the one receipt layout used across the system --}}
@@ -648,7 +650,7 @@
             background: var(--sch-blue-tint);
         }
 
-        /* â”€â”€ Report Tabs â”€â”€ */
+        /* ── Report Tabs ── */
         .rpt-tab-btn {
             padding: 8px 20px; border: none; background: transparent;
             border-radius: 7px; font-size: 13px; font-weight: 600;
@@ -659,7 +661,7 @@
         .rpt-tab-btn:hover { background: var(--bg); color: var(--text); }
         .rpt-tab-btn.active { background: var(--blue); color: #fff; }
         .rpt-panel { animation: fadeIn 0.2s ease; }
-        /* â”€â”€ Report Sub-navigation â”€â”€ */
+        /* ── Report Sub-navigation ── */
         .rpt-subnav { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:20px; }
         .rpt-sub-btn {
             padding:6px 16px; border:1.5px solid var(--border); background:#fff;
@@ -669,7 +671,7 @@
         }
         .rpt-sub-btn:hover { border-color:var(--blue); color:var(--blue); background:#f0f4ff; }
         .rpt-sub-btn.active { border-color:var(--blue); color:var(--blue); background:#e8f0fe; font-weight:700; }
-        /* â”€â”€ KPI Cards â”€â”€ */
+        /* ── KPI Cards ── */
         .kpi-card {
             background:#fff; border:1px solid var(--border); border-radius:12px;
             padding:18px 16px; position:relative; overflow:hidden; transition:box-shadow 0.2s;
@@ -1229,7 +1231,15 @@ function loadStudentsSection(url) {
             if (!r.ok) throw new Error('HTTP ' + r.status);
             return r.text();
         })
-        .then(html => { swapSectionContent('students', html); })
+        .then(html => {
+            swapSectionContent('students', html);
+            // Came from a stat card: bring the filtered list into view
+            if (window._smScrollToList) {
+                window._smScrollToList = false;
+                const list = document.getElementById('sm-list-card');
+                if (list) list.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        })
         .catch(() => {
             swapSectionContent('students', '<div style="text-align:center;padding:60px 20px;color:#dc2626;">' +
                 '<i class="bi bi-exclamation-triangle-fill" style="font-size:32px;display:block;margin-bottom:10px;"></i>' +
@@ -1237,6 +1247,24 @@ function loadStudentsSection(url) {
                 '</div>');
         });
 }
+// Stat cards (and the "Enrolled" pill inside Total Students): set the Status / Payment
+// filters to that card's, keep search / grade / school year, reload, then scroll to the list
+function smStatClick(card) {
+    const form = document.getElementById('student-filter-form');
+    if (!form) return;
+    form.elements['student_status'].value  = card.dataset.smStatus;
+    form.elements['student_payment'].value = card.dataset.smPayment;
+    window._smScrollToList = true;
+    form.requestSubmit();
+}
+document.addEventListener('click', function (e) {
+    const card = e.target.closest('#section-students [data-sm-status]');
+    if (card) smStatClick(card);
+});
+document.addEventListener('keydown', function (e) {
+    const card = (e.key === 'Enter' || e.key === ' ') && e.target.closest('#section-students [data-sm-status]');
+    if (card) { e.preventDefault(); smStatClick(card); }
+});
 document.addEventListener('submit', function (e) {
     if (e.target && e.target.id === 'student-filter-form') {
         e.preventDefault();
@@ -1382,7 +1410,7 @@ function _showPortalRedirectModal(section) {
     modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
 }
 
-// â”€â”€ Report Tabs â”€â”€
+// ── Report Tabs ──
 // ── HTML escaping helper (prevents XSS when inserting user data into innerHTML) ──
 function escHtml(str) {
     if (str == null) return '';
@@ -1904,10 +1932,10 @@ function openWalkInEnrollmentModal() {
     }
     </script>
 
-    {{-- â”€â”€ Change Status Modal â”€â”€ --}}
+    {{-- ── Change Status Modal ── --}}
     @include('admin.students.change-status-modal')
 
-    {{-- â”€â”€ SM Assess Modal (Student Management inline assessment) â”€â”€ --}}
+    {{-- ── SM Assess Modal (Student Management inline assessment) ── --}}
     <div class="modal fade" id="smAssessModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content" style="border:0;border-radius:14px;overflow:hidden;">
@@ -2232,7 +2260,7 @@ function openWalkInEnrollmentModal() {
 
     @include('admin.sections.installments')
 
-    {{-- â”€â”€ Promissory Note Modal (Admin) â”€â”€ --}}
+    {{-- ── Promissory Note Modal (Admin) ── --}}
     <div class="modal fade" id="adminPromissoryModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered" style="max-width:520px;">
             <div class="modal-content" style="border-radius:14px;border:none;box-shadow:0 20px 60px rgba(0,0,0,0.15);">
@@ -2714,7 +2742,7 @@ function openWalkInEnrollmentModal() {
         goSetOptions('goFilterSection', 'All Sections', [...new Set(names)].filter(n => n && n !== '—').sort().map(s => [s, s]));
     }
     function goClearFilters() {
-        ['goFilterSy', 'goFilterTerm', 'goFilterGrade', 'goFilterSection', 'goFilterSearch'].forEach(id => document.getElementById(id).value = '');
+        ['goFilterSy', 'goFilterTerm', 'goFilterGrade', 'goFilterSection', 'goFilterSearch', 'goFilterShow'].forEach(id => document.getElementById(id).value = '');
         goFillSections();
         renderGradeOversight(true);
     }
@@ -2759,8 +2787,10 @@ function openWalkInEnrollmentModal() {
             grade: document.getElementById('goFilterGrade').value,
             section: document.getElementById('goFilterSection').value,
             q: document.getElementById('goFilterSearch').value.trim().toLowerCase(),
+            show: (document.getElementById('goFilterShow') || {}).value || '',
         };
         _goShown = _goData.filter(b =>
+            (f.show !== 'failed' || b.failed > 0) &&
             (!f.sy || b.school_year === f.sy) &&
             (!f.term || String(b.term) === f.term) &&
             (!f.grade || b.grade_level === f.grade) &&
@@ -3696,7 +3726,7 @@ function openWalkInEnrollmentModal() {
 
     ];
 
-    // â”€â”€ Grade-specific Time Slots (Nursery/Kindergarten have fewer hours) â”€â”€
+    // ── Grade-specific Time Slots (Nursery/Kindergarten have fewer hours) ──
 
     const gradeTimeSlots = {
 
@@ -3708,7 +3738,7 @@ function openWalkInEnrollmentModal() {
 
     };
 
-    // â”€â”€ Term Information â”€â”€
+    // ── Term Information ──
 
     const termInfo = {
 
@@ -3720,13 +3750,13 @@ function openWalkInEnrollmentModal() {
 
     };
 
-    // â”€â”€ Cached schedule data for current grid â”€â”€
+    // ── Cached schedule data for current grid ──
     let _scheduleCache = [];
     let _scheduleCacheKey = '';
-    // â”€â”€ Entry currently being drag-and-dropped on the schedule grid â”€â”€
+    // ── Entry currently being drag-and-dropped on the schedule grid ──
     let _draggedScheduleEntry = null;
 
-    // â”€â”€ Quick-pick a grade from the empty-state chips â”€â”€ sets the dropdown,
+    // ── Quick-pick a grade from the empty-state chips ── sets the dropdown,
     // dispatches a real 'change' event (the existing section-repopulation
     // listener is bound via addEventListener, which setting .value alone
     // does not trigger), then loads the grid immediately.
@@ -3737,7 +3767,7 @@ function openWalkInEnrollmentModal() {
         loadScheduleGrid();
     }
 
-    // â”€â”€ Load Schedule Grid â”€â”€
+    // ── Load Schedule Grid ──
 
     // School year chosen in Schedule Management (schedules belong to that year's sections)
     function schedSelectedYear() {
@@ -3810,7 +3840,7 @@ function openWalkInEnrollmentModal() {
         });
     }
 
-    // â”€â”€ Build Schedule Grid with data â”€â”€
+    // ── Build Schedule Grid with data ──
 
     function buildScheduleGrid(grade, term, sectionId, schedules) {
         const slots = gradeTimeSlots[grade] || gradeTimeSlots['default'];
@@ -3906,7 +3936,7 @@ function openWalkInEnrollmentModal() {
         });
     }
 
-    // â”€â”€ Edit schedule from cell click â”€â”€
+    // ── Edit schedule from cell click ──
     function editScheduleFromCell(entry, day, slot, grade, sectionId, term) {
         document.getElementById('scheduleModalTitle').innerHTML = '<i class="bi bi-pencil-fill me-2"></i>Edit Schedule';
         document.getElementById('sched-id').value = entry.id;
@@ -3924,7 +3954,7 @@ function openWalkInEnrollmentModal() {
         new bootstrap.Modal(document.getElementById('scheduleModal')).show();
     }
 
-    // â”€â”€ Open Schedule Modal for Cell (add new) â”€â”€
+    // ── Open Schedule Modal for Cell (add new) ──
 
     function openScheduleModalForCell(day, slot, grade, sectionId, term) {
         document.getElementById('scheduleModalTitle').innerHTML = '<i class="bi bi-plus-circle me-2"></i>Add Schedule';
@@ -3951,7 +3981,7 @@ function openWalkInEnrollmentModal() {
         new bootstrap.Modal(document.getElementById('scheduleModal')).show();
     }
 
-    // â”€â”€ Filter subjects dropdown by grade level â”€â”€
+    // ── Filter subjects dropdown by grade level ──
     function filterSubjectsByGrade(gradeLevel) {
         const subjectSelect = document.getElementById('sched-subject');
         const allOptions = subjectSelect.querySelectorAll('option');
@@ -3984,7 +4014,7 @@ function openWalkInEnrollmentModal() {
         window.open(url, '_blank');
     }
 
-    // â”€â”€ Populate Section Filter based on Grade â”€â”€
+    // ── Populate Section Filter based on Grade ──
 
     const scheduleGradeFilter = document.getElementById('scheduleGradeFilter');
     if (scheduleGradeFilter) {
@@ -4013,7 +4043,7 @@ function openWalkInEnrollmentModal() {
     });
     }
 
-    // â”€â”€ Schedule Templates per Grade Level â”€â”€
+    // ── Schedule Templates per Grade Level ──
 
     const scheduleTemplates = {
 
@@ -4291,7 +4321,7 @@ function openWalkInEnrollmentModal() {
 
     };
 
-    // â”€â”€ Standard Subjects per Grade Level (based on DepEd K-6 curriculum) â”€â”€
+    // ── Standard Subjects per Grade Level (based on DepEd K-6 curriculum) ──
 
     const standardSubjects = {
 
@@ -4433,7 +4463,7 @@ function openWalkInEnrollmentModal() {
 
     };
 
-    // â”€â”€ Custom Alert System â”€â”€
+    // ── Custom Alert System ──
 
     function showCustomAlert(type, title, message) {
         // title/message can be server/user-controlled (e.g. a student's
@@ -4446,7 +4476,7 @@ function openWalkInEnrollmentModal() {
         showToast(combined, type === 'loading' ? 'info' : type, true);
     }
 
-    // â”€â”€ Lightweight confirmation modal â”€â”€ for simple yes/no prompts like
+    // ── Lightweight confirmation modal ── for simple yes/no prompts like
     // "log out?" that don't need the full delete-confirm modal's dedicated
     // HTML/Bootstrap machinery below. Same look as every other portal now.
     // Named differently from the Bootstrap-modal showConfirm(title, message,
@@ -4508,7 +4538,7 @@ function openWalkInEnrollmentModal() {
         return false;
     }
 
-    // â”€â”€ Delete Confirmation System â”€â”€
+    // ── Delete Confirmation System ──
     let deleteConfirmCallback = null;
 
     function showDeleteConfirm(message, onConfirm) {
@@ -4541,7 +4571,7 @@ function openWalkInEnrollmentModal() {
         });
     }
 
-    // â”€â”€ Password-Confirmation ("type your password to confirm") â”€â”€
+    // ── Password-Confirmation ("type your password to confirm") ──
     // Used for destructive student actions (archive / permanent delete) —
     // unlike the plain delete-confirm modal, this one stays open on a wrong
     // password (shows an inline error, lets the admin retry) and only closes
@@ -4599,7 +4629,7 @@ function openWalkInEnrollmentModal() {
         });
     }
 
-    // â”€â”€ Schedule Conflict Confirmation ("Save Anyway") â”€â”€
+    // ── Schedule Conflict Confirmation ("Save Anyway") ──
     let scheduleConflictConfirmCallback = null;
 
     const confirmScheduleConflictBtn = document.getElementById('confirmScheduleConflictBtn');
@@ -4618,7 +4648,7 @@ function openWalkInEnrollmentModal() {
         });
     }
 
-    // â”€â”€ Promotion Confirmation System â”€â”€
+    // ── Promotion Confirmation System ──
     let promoteConfirmCallback = null;
 
     function showPromoteConfirm(message, onConfirm) {
@@ -4680,7 +4710,11 @@ function openWalkInEnrollmentModal() {
         const headerIcon = options.headerIcon || 'bi-question-circle-fill';
 
         document.getElementById('genericConfirmTitle').innerHTML   = '<i class="bi ' + headerIcon + ' me-2"></i>' + title;
-        document.getElementById('genericConfirmMessage').textContent = message;
+        // Escaped as text (names etc. can't inject markup), then only plain formatting tags are let back
+        // in — callers write "<strong>Name</strong>" and "<br>", which used to show up as literal tags
+        document.getElementById('genericConfirmMessage').innerHTML = escHtml(String(message ?? ''))
+            .replace(/&lt;(\/?)(strong|b|em|i)&gt;/g, '<$1$2>')
+            .replace(/&lt;br\s*\/?&gt;/g, '<br>');
         document.getElementById('genericConfirmHeader').style.background = headerBg;
 
         const btn = document.getElementById('genericConfirmBtn');
@@ -4716,7 +4750,7 @@ function openWalkInEnrollmentModal() {
         );
     }
 
-    // â”€â”€ Switch sections (function defined above at line 14650) â”€â”€
+    // ── Switch sections (function defined above at line 14650) ──
 
     // ── Auto-refresh when tab becomes visible again ──
     // Handles returning from another browser, tab, or window after ≥30 s away.
@@ -6070,7 +6104,7 @@ function openWalkInEnrollmentModal() {
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-    // â”€â”€ Data for schedule modal dropdowns â”€â”€
+    // ── Data for schedule modal dropdowns ──
     // Js::from() HTML-encodes the output for safe embedding in a script tag,
     // unlike a raw ->toJson() call would — section/subject/teacher names are
     // free-text fields admins type in, and a name containing a closing
@@ -6209,7 +6243,7 @@ function openWalkInEnrollmentModal() {
         if (currentVal) teacherSel.value = currentVal;
     }
 
-    // â”€â”€ Helper: populate schedule modal dropdowns for edit (handles async subject load) â”€â”€
+    // ── Helper: populate schedule modal dropdowns for edit (handles async subject load) ──
     function _loadScheduleModalForEdit(grade, sectionId, subjectId, teacherId, savedRoom) {
         const sectionSel = document.getElementById('sched-section');
         const subjectSel = document.getElementById('sched-subject');
@@ -6250,7 +6284,7 @@ function openWalkInEnrollmentModal() {
         }
 
         // Fetch subjects for this grade, then restore selection
-        subjectSel.innerHTML = '<option value="">Loadingâ€¦</option>';
+        subjectSel.innerHTML = '<option value="">Loading…</option>';
         subjectSel.disabled = true;
         fetch('/admin/subjects?grade_level=' + encodeURIComponent(grade) + '&is_active=1', {
             headers: { 'Accept': 'application/json' }
@@ -6277,7 +6311,7 @@ function openWalkInEnrollmentModal() {
         });
     }
 
-    // â”€â”€ Installment data for modal â”€â”€
+    // ── Installment data for modal ──
     window.installmentData = @json($allInstallmentData ?? []);
 
     // Subject modal: wire status radio buttons
@@ -6832,7 +6866,7 @@ function openWalkInEnrollmentModal() {
         });
     }
 
-    // â”€â”€ Teacher email real-time validation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Teacher email real-time validation ────────────────────────────────
     const _emailRfc = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
     const _commonTypos = {
         'gmial.com':'gmail.com','gmal.com':'gmail.com','gmail.co':'gmail.com',
@@ -6948,7 +6982,7 @@ function openWalkInEnrollmentModal() {
     function saveTeacher(confirmed) {
 
         if (!confirmed) {
-            // â”€â”€ Client-side validation before showing confirm dialog â”€â”€
+            // ── Client-side validation before showing confirm dialog ──
             const nameVal  = document.getElementById('teacher-name').value.trim();
             const emailVal = document.getElementById('teacher-email').value.trim();
 
@@ -7116,7 +7150,7 @@ function openWalkInEnrollmentModal() {
 
     // WALK-IN ENROLLMENT
 
-    // â”€â”€ Auto-capitalize walk-in enrollment text inputs â”€â”€
+    // ── Auto-capitalize walk-in enrollment text inputs ──
     (function() {
         var skipNames = ['email','password','reference'];
         function capWords(el) {
@@ -8229,7 +8263,7 @@ function openWalkInEnrollmentModal() {
                 <div>
                     <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
                         <span>Monthly (9 months, July-March):</span>
-                        <span>₱${monthly.toLocaleString()} Ã— 9 = ₱${(monthly * 9).toLocaleString()}</span>
+                        <span>₱${monthly.toLocaleString()} × 9 = ₱${(monthly * 9).toLocaleString()}</span>
                     </div>
                     <div style="display:flex; justify-content:space-between; font-weight:700; color:var(--green);">
                         <span>Total:</span><span>₱${total.toLocaleString()}</span>
@@ -8300,7 +8334,7 @@ function openWalkInEnrollmentModal() {
                 <div>
                     <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
                         <span>Monthly (9 months, July-March):</span>
-                        <span>₱${monthly.toLocaleString()} Ã— 9 = ₱${(monthly * 9).toLocaleString()}</span>
+                        <span>₱${monthly.toLocaleString()} × 9 = ₱${(monthly * 9).toLocaleString()}</span>
                     </div>
                     <div style="display:flex; justify-content:space-between; font-weight:700; color:var(--green);">
                         <span>Total:</span><span>₱${total.toLocaleString()}</span>
@@ -8367,7 +8401,7 @@ function openWalkInEnrollmentModal() {
                 <div>
                     <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
                         <span>Monthly (9 months, July-March):</span>
-                        <span>₱${monthly.toLocaleString()} Ã— 9 = ₱${(monthly * 9).toLocaleString()}</span>
+                        <span>₱${monthly.toLocaleString()} × 9 = ₱${(monthly * 9).toLocaleString()}</span>
                     </div>
                     <div style="display:flex; justify-content:space-between; font-weight:700; color:var(--green);">
                         <span>Total:</span><span>₱${total.toLocaleString()}</span>
@@ -8646,7 +8680,7 @@ function openWalkInEnrollmentModal() {
             '<tr>' +
             '<td style="white-space:nowrap;">' + esc(t.date) + '<div style="font-size:11px;color:var(--muted);">' + esc(t.time) + '</div></td>' +
             '<td style="font-family:monospace;font-size:11.5px;">' + esc(t.reference) + '</td>' +
-            '<td>' + esc(t.description) + '</td>' +
+            '<td>' + esc(t.description).replace(/(\(incl\.[^)]*late fees?\))/i, '<span style="color:#b91c1c;font-weight:700;">$1</span>') + '</td>' +
             '<td style="white-space:nowrap;">' + esc(t.school_year) + '</td>' +
             '<td>' + esc(t.method) + '</td>' +
             '<td style="font-size:12px;">' + esc(t.processed_by) + '</td>' +
@@ -8858,9 +8892,11 @@ function openWalkInEnrollmentModal() {
 
             // Saved into a different school year than the one being viewed? Show that year.
             const viewingSy = (document.getElementById('sectionSyFilter') || {}).value;
-            const reloadSections = () => (viewingSy && viewingSy !== 'all' && viewingSy !== body.school_year)
+            const reloadSectionList = () => (viewingSy && viewingSy !== 'all' && viewingSy !== body.school_year)
                 ? changeSectionSchoolYear(body.school_year)
                 : reloadWithSection();
+            // A new section: offer to place the students of that grade/year still waiting for one
+            const reloadSections = () => offerPlaceWaitingStudents(d, body, reloadSectionList);
 
             // If creating a new section, auto-create and assign standard subjects
 
@@ -9850,14 +9886,70 @@ function openWalkInEnrollmentModal() {
         );
     }
 
-    function autoAssignStudents() {
+    // After creating a section: students of that grade and school year who are approved/enrolled but have
+    // no section yet (e.g. they paid before any section existed) can be placed into it straight away.
+    function offerPlaceWaitingStudents(created, body, then) {
+        const waiting = created && created.waiting_count ? created.waiting_count : 0;
+        if (!waiting) { then(); return; }
+        const gl = (body.grade_level || '').replace('grade', 'Grade ').replace('kindergarten', 'Kinder').replace('nursery', 'Nursery');
+        showConfirm('Place Waiting Students',
+            '<strong>' + waiting + '</strong> ' + escHtml(gl) + ' student(s) for S.Y. ' + escHtml(body.school_year)
+                + ' are enrolled but have no section yet.<br><br>Place them into <strong>' + escHtml(created.name || body.name) + '</strong> now (up to its capacity)?',
+            function () {
+                fetch('/admin/sections/auto-assign', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                    body: JSON.stringify({ grade_level: body.grade_level, school_year: body.school_year })
+                })
+                .then(r => { if (!r.ok) throw r; return r.json(); })
+                .then(res => { showCustomAlert('success', 'Students Placed', res.message || 'Done.'); setTimeout(then, 1200); })
+                .catch(() => { showCustomAlert('error', 'Error', 'Could not place the students. Use Auto-Assign or add them one by one.'); setTimeout(then, 1200); });
+            },
+            { btnText: 'Place Students', btnClass: 'btn btn-primary', btnIcon: 'bi-people-fill',
+              headerBg: 'linear-gradient(135deg,var(--blue),#1565c0)', headerIcon: 'bi-people-fill' }
+        );
+    }
+
+    // Auto-Assign for the school year being viewed: first a preview (who is waiting, free seats per
+    // grade, how many will be placed), then the Admin confirms. Nothing waiting → just says so.
+    async function autoAssignStudents() {
+        const sy = (document.getElementById('sectionSyFilter') || {}).value;
+        const scope = sy && sy !== 'all' ? { school_year: sy } : {};
+        const glName = g => ({ nursery: 'Nursery', kindergarten: 'Kinder' })[g] || String(g || '').replace('grade', 'Grade ');
+        let p;
+        try {
+            const r = await fetch('/admin/sections/auto-assign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+                body: JSON.stringify(Object.assign({ preview: true }, scope))
+            });
+            if (!r.ok) throw r;
+            p = await r.json();
+        } catch (e) { showCustomAlert('error', 'Error', 'Could not check for students without a section.'); return; }
+
+        const where = scope.school_year ? 'S.Y. ' + scope.school_year : 'any school year';
+        if (!p.waiting) {
+            showCustomAlert('success', 'Nothing to Assign', 'Every approved or enrolled student in ' + where + ' already has a section.');
+            return;
+        }
+        const lines = p.grades.map(g => '<strong>' + glName(g.grade_level) + '</strong>'
+            + (scope.school_year ? '' : ' (S.Y. ' + g.school_year + ')') + ': ' + g.waiting + ' waiting, '
+            + (g.sections.length ? g.free_seats + ' free seat(s) in ' + g.sections.join(', ') + ' → ' + g.will_place + ' will be placed'
+                                 : 'no section yet — create one first'));
+        if (!p.will_place) {
+            // showCustomAlert escapes its text — plain wording, no tags
+            showCustomAlert('warning', 'No Free Seats', 'Students are waiting in ' + where + ', but no section has room: '
+                + lines.join('; ').replace(/<\/?strong>/g, '') + '.');
+            return;
+        }
         showConfirm('Auto-Assign Students',
-            'Automatically assign all <strong>unassigned enrolled students</strong> to available sections based on their grade level and section capacity.<br><br>Students who are already in a section will not be affected.',
+            'Students without a section in ' + where + ':<br><br>' + lines.join('<br>')
+                + '<br><br>Place <strong>' + p.will_place + '</strong> student(s) now? Students who already have a section are not moved.',
             function() {
                 fetch('/admin/sections/auto-assign', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-                    body: JSON.stringify({})
+                    body: JSON.stringify(scope)
                 })
                 .then(r => { if (!r.ok) throw r; return r.json(); })
                 .then(d => {
@@ -11308,7 +11400,8 @@ function openWalkInEnrollmentModal() {
 
             const matchSearch = !search || row.dataset.search.includes(search);
 
-            const matchStatus = !status || row.dataset.status === status;
+            // "With Schedules" (also the stat card of that name) — any teacher with a class schedule
+            const matchStatus = !status || (status === 'scheduled' ? row.dataset.scheduled === '1' : row.dataset.status === status);
 
             const show = matchSearch && matchStatus;
 
@@ -11324,7 +11417,7 @@ function openWalkInEnrollmentModal() {
 
     }
 
-    // â”€â”€ Assessment & Promotion filters â”€â”€
+    // ── Assessment & Promotion filters ──
     // Grade/status/search filtering + pagination is now server-side (GET params
     // assess_grade / assess_status / assess_search / assess_page, handled in
     // EnrollmentController::adminIndex) — the chips and search box are plain
@@ -12175,7 +12268,7 @@ function openWalkInEnrollmentModal() {
 
             // Warn if opening enrollment with unassessed students
             if (data.enrollment_open && data.unassessed_count > 0) {
-                showAdminToast(`âš  ${data.unassessed_count} Grade 1“6 student(s) have not been assessed yet. Consider completing assessments first.`, 'warning');
+                showAdminToast(`⚠ ${data.unassessed_count} Grade 1“6 student(s) have not been assessed yet. Consider completing assessments first.`, 'warning');
             } else {
                 showAdminToast(data.message, data.enrollment_open ? 'success' : 'error');
             }
@@ -12253,7 +12346,7 @@ function openWalkInEnrollmentModal() {
 
     let _csEnrollmentId = null;
 
-    // â”€â”€ Admin Promissory Note â”€â”€
+    // ── Admin Promissory Note ──
     var _apnEnrollmentId = null;
     function openAdminPromissoryModal(enrollmentId, studentName, balance) {
         _apnEnrollmentId = enrollmentId;
@@ -12589,7 +12682,7 @@ function openWalkInEnrollmentModal() {
         });
     }
 
-    // â”€â”€ Document card helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ── Document card helpers ──────────────────────────────────────────────
 
     const DOC_TYPES = [
         { key: 'birth_certificate',  label: 'Birth Certificate',   icon: 'bi-file-earmark-person-fill' },
@@ -12612,7 +12705,7 @@ function openWalkInEnrollmentModal() {
             if (!doc) {
                 border  = '1px dashed #d0d7de'; bg = '#fafafa';
                 iconBg  = '#f0f0f0'; iconColor = '#bbb';
-                badge   = '<span style="font-size:11px;font-weight:700;background:#f0f0f0;color:#999;padding:3px 10px;border-radius:20px;">â—‹ Missing</span>';
+                badge   = '<span style="font-size:11px;font-weight:700;background:#f0f0f0;color:#999;padding:3px 10px;border-radius:20px;">○ Missing</span>';
             } else if (doc.status === 'approved') {
                 border  = '1px solid #bbf7d0'; bg = '#f0fdf4';
                 iconBg  = '#dcfce7'; iconColor = '#16a34a';
@@ -12625,7 +12718,7 @@ function openWalkInEnrollmentModal() {
             } else {
                 border  = '1px solid #bfdbfe'; bg = '#eff6ff';
                 iconBg  = '#dbeafe'; iconColor = '#1d4ed8';
-                badge   = '<span style="font-size:11px;font-weight:700;background:#dbeafe;color:#1d4ed8;padding:3px 10px;border-radius:20px;">â— Pending Review</span>';
+                badge   = '<span style="font-size:11px;font-weight:700;background:#dbeafe;color:#1d4ed8;padding:3px 10px;border-radius:20px;">● Pending Review</span>';
             }
 
             if (doc && doc.file_path) {
@@ -14264,6 +14357,8 @@ function openWalkInEnrollmentModal() {
 <script src="{{ asset('js/section-summary.js') }}?v={{ @filemtime(public_path('js/section-summary.js')) }}"></script>
 <script src="{{ asset('js/print-pdf.js') }}?v={{ @filemtime(public_path('js/print-pdf.js')) }}"></script>
 @include('partials.idle-logout', ['portal' => 'web'])
+{{-- Schedule Management › Subject Teachers / Generate Schedule (shared with Super Admin) --}}
+@include('admin.schedules.generator')
 </body>
 
 </html>

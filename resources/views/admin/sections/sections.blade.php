@@ -36,62 +36,30 @@
 
         @endphp
 
+        {{-- Click a card: filter the section list below (Total Enrolled opens those students in Student
+             Management, same school year) — js/stat-jump.js --}}
+        @php
+            $secF = fn ($st) => ['set' => ['#sectionSearchInput' => '', '#sectionGradeFilterQuick' => '', '#sectionStatusFilter' => $st], 'to' => '#section-list-card'];
+            $secCards = [
+                ['green', 'bi-diagram-3-fill', $totalSections, 'Total Sections', 'Show all sections below', $secF('')],
+                ['blue', 'bi-check-circle-fill', $activeSections, 'Active Sections', 'Show active sections below', $secF('active')],
+                ['gold', 'bi-people-fill', $totalEnrolled, 'Total Enrolled', 'Show these enrolled students in Student Management',
+                    ['section' => 'students', 'set' => ['#student-filter-form [name=student_schoolyear]' => $sectionSyFilter, '#student-filter-form [name=student_payment]' => 'all',
+                        '#student-filter-form [name=student_status]' => 'enrolled'], 'to' => '#sm-list-card', 'active' => false]],
+            ];
+        @endphp
         <div class="row g-3 mb-4">
-
+            @foreach($secCards as [$color, $icon, $count, $label, $tip, $jump])
             <div class="col-md-4 col-sm-6">
-
-                <div class="stat-card">
-
-                    <div class="stat-icon green"><i class="bi bi-diagram-3-fill"></i></div>
-
+                <div class="stat-card stat-card-link" role="button" tabindex="0" title="{{ $tip }}" data-jump="{{ json_encode($jump) }}">
+                    <div class="stat-icon {{ $color }}"><i class="bi {{ $icon }}"></i></div>
                     <div>
-
-                        <div class="stat-value">{{ $totalSections }}</div>
-
-                        <div class="stat-label">Total Sections</div>
-
+                        <div class="stat-value">{{ $count }}</div>
+                        <div class="stat-label">{{ $label }}</div>
                     </div>
-
                 </div>
-
             </div>
-
-            <div class="col-md-4 col-sm-6">
-
-                <div class="stat-card">
-
-                    <div class="stat-icon blue"><i class="bi bi-check-circle-fill"></i></div>
-
-                    <div>
-
-                        <div class="stat-value">{{ $activeSections }}</div>
-
-                        <div class="stat-label">Active Sections</div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            <div class="col-md-4 col-sm-6">
-
-                <div class="stat-card">
-
-                    <div class="stat-icon gold"><i class="bi bi-people-fill"></i></div>
-
-                    <div>
-
-                        <div class="stat-value">{{ $totalEnrolled }}</div>
-
-                        <div class="stat-label">Total Enrolled</div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
+            @endforeach
         </div>
 
         <div class="module-toolbar">
@@ -131,7 +99,7 @@
             <span class="toolbar-count"><span id="sectionVisibleCount">{{ $totalSections }}</span> of {{ $totalSections }} sections</span>
         </div>
 
-        <div class="content-card">
+        <div class="content-card" id="section-list-card">
 
             <div class="content-card-header">
 

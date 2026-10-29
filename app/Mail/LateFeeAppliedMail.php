@@ -30,7 +30,7 @@ class LateFeeAppliedMail extends Mailable
      */
     public function build(): self
     {
-        return $this->subject('Late Fee Applied: ' . $this->installment->month_name . ' Tuition')
+        return $this->subject('Late Fee Notice: ' . $this->installment->due_date->format('F Y') . ' Tuition - IEMELIF Learning Center')
             ->view('emails.late-fee-applied')
             ->with([
                 'installment' => $this->installment,

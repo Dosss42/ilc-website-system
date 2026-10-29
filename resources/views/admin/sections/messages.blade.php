@@ -9,26 +9,18 @@
         {{-- Counts — independent COUNT queries (EnrollmentController@adminIndex), not derived from
              $contactMessages, which is capped at 50 rows. They update live when a message is
              opened, marked or deleted (msgRecount()). --}}
+        {{-- Click a card: clicks the matching status chip of the Inbox and scrolls to it — js/stat-jump.js --}}
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px;" class="msg-stats">
-            <div class="stat-card">
-                <div class="stat-icon blue"><i class="bi bi-envelope-fill"></i></div>
-                <div><div class="stat-value" id="msgStatTotal">{{ $totalMessagesCount ?? 0 }}</div><div class="stat-label">Total Messages</div></div>
+            @foreach([['', 'blue', 'bi-envelope-fill', 'msgStatTotal', $totalMessagesCount ?? 0, 'Total Messages'], ['unread', 'gold', 'bi-envelope-exclamation-fill', 'msgStatUnread', $unreadMessagesCount ?? 0, 'Unread'], ['read', 'purple', 'bi-envelope-open-fill', 'msgStatRead', $readMessagesCount ?? 0, 'Read'], ['replied', 'green', 'bi-reply-fill', 'msgStatReplied', $repliedMessagesCount ?? 0, 'Replied']] as [$mk, $color, $icon, $id, $count, $label])
+            <div class="stat-card stat-card-link" role="button" tabindex="0" title="Show {{ $mk === '' ? 'all messages' : $label . ' messages' }} in the Inbox"
+                 data-jump="{{ json_encode(["set" => ["#msgSearch" => ""], "click" => "#section-messages .msg-chip[data-status=\"" . $mk . "\"]", "to" => "#msg-inbox-card"]) }}">
+                <div class="stat-icon {{ $color }}"><i class="bi {{ $icon }}"></i></div>
+                <div><div class="stat-value" id="{{ $id }}">{{ $count }}</div><div class="stat-label">{{ $label }}</div></div>
             </div>
-            <div class="stat-card">
-                <div class="stat-icon gold"><i class="bi bi-envelope-exclamation-fill"></i></div>
-                <div><div class="stat-value" id="msgStatUnread">{{ $unreadMessagesCount ?? 0 }}</div><div class="stat-label">Unread</div></div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon purple"><i class="bi bi-envelope-open-fill"></i></div>
-                <div><div class="stat-value" id="msgStatRead">{{ $readMessagesCount ?? 0 }}</div><div class="stat-label">Read</div></div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon green"><i class="bi bi-reply-fill"></i></div>
-                <div><div class="stat-value" id="msgStatReplied">{{ $repliedMessagesCount ?? 0 }}</div><div class="stat-label">Replied</div></div>
-            </div>
+            @endforeach
         </div>
 
-        <div class="content-card">
+        <div class="content-card" id="msg-inbox-card">
             <div class="content-card-header">
                 <h6><i class="bi bi-inbox-fill me-2" style="color:var(--gold);"></i>Inbox</h6>
             </div>

@@ -197,13 +197,13 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
     <div class="container">
         <div class="row g-4">
 
-            {{-- â”€â”€ LEFT: NEWS ARTICLES â”€â”€ --}}
+            {{-- ── LEFT: NEWS ARTICLES ── --}}
             <div class="col-lg-8">
 
                 <h2 class="news-section-title">Latest News</h2>
                 <p class="news-section-subtitle">Stay updated with the latest happenings at IEMELIF Learning Center.</p>
 
-                {{-- â”€â”€ CATEGORY FILTER TABS â”€â”€ --}}
+                {{-- ── CATEGORY FILTER TABS ── --}}
                 {{-- =============================================
                      FILTER TABS: When connected to a database,
                      add ?category= query param to each link
@@ -446,7 +446,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
 
                 </div>{{-- /row --}}
 
-                {{-- â”€â”€ PAGINATION â”€â”€ --}}
+                {{-- ── PAGINATION ── --}}
                 {{-- =============================================
                      PAGINATION: When using database, replace with:
                      {{ $news->links() }}
@@ -461,7 +461,7 @@ body, h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, button, input, select, tex
 
             </div>{{-- /col-lg-8 --}}
 
-            {{-- â”€â”€ RIGHT: SIDEBAR â”€â”€ --}}
+            {{-- ── RIGHT: SIDEBAR ── --}}
             <div class="col-lg-4">
                 <div class="news-sidebar">
 

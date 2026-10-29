@@ -11,7 +11,7 @@
                     </div>
                     <div>
                         <div style="font-size:18px;font-weight:800;color:#fff;line-height:1.1;">Edit Student</div>
-                        <div id="se-header-name" style="font-size:12px;color:rgba(255,255,255,.7);margin-top:2px;">Loading student detailsâ€¦</div>
+                        <div id="se-header-name" style="font-size:12px;color:rgba(255,255,255,.7);margin-top:2px;">Loading student details…</div>
                     </div>
                 </div>
                 <button type="button" data-bs-dismiss="modal"

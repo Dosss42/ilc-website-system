@@ -61,4 +61,16 @@ class PaymentTransaction extends Model
     {
         return $this->belongsTo(User::class, 'processed_by');
     }
+
+    /** The months this payment paid (PaymentService::linkPaidMonths links them). */
+    public function paidInstallments()
+    {
+        return $this->hasMany(PaymentInstallment::class, 'payment_transaction_id');
+    }
+
+    /** How much of this payment went to late fees — shown beside the amount in every portal. */
+    public function lateFeePortion(): float
+    {
+        return (float) $this->paidInstallments->sum('late_fee');
+    }
 }

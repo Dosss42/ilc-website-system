@@ -1762,7 +1762,7 @@ class DashboardController extends Controller
                 ->get();
 
             if ($drafts->isEmpty()) {
-                return response()->json(['success' => false, 'message' => 'No draft grades to submit.'], 422);
+                return response()->json(['success' => false, 'message' => 'No draft grades to post.'], 422);
             }
 
             $promoted = 0;
@@ -1805,14 +1805,14 @@ class DashboardController extends Controller
 
             DB::commit();
 
-            $message = $promoted . ' grade(s) submitted successfully.';
+            $message = $promoted . ' grade(s) posted successfully.';
             if ($skipped > 0) {
                 $message .= ' ' . $skipped . ' skipped — already posted and locked from editing.';
             }
             return response()->json(['success' => true, 'message' => $message, 'submitted_count' => $promoted, 'locked_count' => $skipped]);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => 'Submit failed: ' . $e->getMessage()], 500);
+            return response()->json(['success' => false, 'message' => 'Post failed: ' . $e->getMessage()], 500);
         }
     }
 

@@ -314,7 +314,7 @@ class CashierController extends Controller
         $online = $baseQuery()->whereNotIn('payment_method', ['cash'])->sum('amount');
         $count  = $baseQuery()->count();
 
-        $rows = PaymentTransaction::with(['user', 'enrollment'])
+        $rows = PaymentTransaction::with(['user', 'enrollment', 'paidInstallments'])
             ->where('status', 'completed')
             ->whereDate('processed_at', $date)
             ->latest('processed_at')
@@ -327,6 +327,8 @@ class CashierController extends Controller
                     'grade'       => $tx->enrollment?->grade_level ? ucfirst($tx->enrollment->grade_level) : '—',
                     'school_year' => $tx->enrollment?->school_year ?? '—',
                     'type'        => ucwords(str_replace('_', ' ', $tx->payment_type ?? '—')),
+                    'description' => $tx->description,
+                    'late_fee'    => $tx->lateFeePortion(),
                     'method'      => ucfirst($tx->payment_method ?? '—'),
                     'amount'      => number_format($tx->amount, 2),
                     'reference'   => $tx->reference_number ?? '—',
@@ -408,7 +410,7 @@ class CashierController extends Controller
         $method = $request->get('method');
         $date   = $request->get('date');
 
-        $query = PaymentTransaction::with(['user', 'enrollment'])
+        $query = PaymentTransaction::with(['user', 'enrollment', 'paidInstallments'])
             ->latest('processed_at');
 
         if ($status && $status !== 'all') {
@@ -446,6 +448,8 @@ class CashierController extends Controller
                 'grade'       => $tx->enrollment?->grade_level ? ucfirst($tx->enrollment->grade_level) : '—',
                 'school_year' => $tx->enrollment?->school_year ?? '—',
                 'type'        => ucwords(str_replace('_', ' ', $tx->payment_type ?? '—')),
+                'description' => $tx->description,
+                'late_fee'    => $tx->lateFeePortion(),
                 'method'      => ucfirst($tx->payment_method ?? '—'),
                 'amount'      => number_format($tx->amount, 2),
                 'status'      => $tx->status,
@@ -496,6 +500,8 @@ class CashierController extends Controller
                     'enrollment_id'      => $enrollment?->id,
                     'grade_level'        => $enrollment?->grade_level,
                     'balance'            => $enrollment?->remaining_balance ?? 0,
+                    // smallest / largest payment the cashier may take now (PaymentService::paymentLimits)
+                    'pay_limits'         => $enrollment ? \App\Services\PaymentService::paymentLimits($enrollment) : null,
                     'payment_status'     => $enrollment?->payment_status ?? 'unpaid',
                     'enrollment_status'  => $enrollment?->status ?? 'pending',
                     'payment_option'     => $enrollment?->payment_option ?? 'A',
@@ -547,6 +553,7 @@ class CashierController extends Controller
             'enrollment_id'      => $enrollment->id,
             'grade_level'        => $enrollment->grade_level,
             'balance'            => $enrollment->remaining_balance ?? 0,
+            'pay_limits'         => \App\Services\PaymentService::paymentLimits($enrollment),
             'payment_status'     => $enrollment->payment_status ?? 'unpaid',
             'enrollment_status'  => $enrollment->status ?? 'pending',
             'payment_option'     => $enrollment->payment_option ?? 'A',
@@ -632,6 +639,7 @@ class CashierController extends Controller
                     'total_fee'          => $e?->total_fee ?? 0,
                     'payment_amount'     => $e?->payment_amount ?? 0,
                     'balance'            => $e?->remaining_balance ?? 0,
+                    'pay_limits'         => $e ? \App\Services\PaymentService::paymentLimits($e) : null,
                     'downpayment_amount' => $e?->downpayment_amount ?? 0,
                     'monthly_amount'     => $e?->monthly_amount ?? 0,
                     'prior_balance'             => $prior['amount'],
@@ -814,6 +822,13 @@ class CashierController extends Controller
                 ], 422);
             }
 
+            // At least what is due now (down payment / next installment / full balance for plan A), at
+            // most the remaining balance — paying ahead is fine, paying short or overpaying is not
+            if ($limitError = \App\Services\PaymentService::paymentLimitError($enrollment, $amount)) {
+                DB::rollBack();
+                return response()->json(['success' => false, 'message' => $limitError], 422);
+            }
+
             // Double-click / retried-request guard — a cash payment is recorded
             // as already 'completed' immediately, so a double-click here
             // creates two independent, fully-credited transactions for the
@@ -852,7 +867,7 @@ class CashierController extends Controller
             $enrollment->refresh();
 
             if ($enrollment->payment_type === 'installment' || in_array($enrollment->payment_option, ['B', 'C', 'D'])) {
-                \App\Services\PaymentService::reconcileInstallmentStatuses($enrollment);
+                \App\Services\PaymentService::reconcileInstallmentStatuses($enrollment, $transaction);
             }
 
             \App\Services\PaymentService::advanceEnrollmentAfterPayment($enrollment->fresh());
@@ -927,37 +942,37 @@ class CashierController extends Controller
             ], 422);
         }
 
-        // Guard against duplicate pending links — clicking "Generate Payment
-        // Link" twice (or leaving one abandoned and generating another) used
-        // to create a second, unrelated PaymentTransaction row every time.
-        // Xendit invoices are created with invoice_duration=86400 (24h), so
-        // an existing 'pending' row younger than that is still a live link —
-        // reuse it instead of minting a new one.
-        $existingPending = PaymentTransaction::where('enrollment_id', $request->enrollment_id)
-            ->where('payment_type', 'online')
-            ->where('status', 'pending')
-            ->whereNotNull('xendit_invoice_url')
-            ->where('created_at', '>=', now()->subSeconds(86400))
-            ->latest()
-            ->first();
+        // Same rule as cash: only an exact accepted amount (due now, + whole months in advance, full balance)
+        if ($limitError = \App\Services\PaymentService::paymentLimitError($enrollment, (float) $request->amount)) {
+            return response()->json(['success' => false, 'message' => $limitError], 422);
+        }
 
+        // One open link per student (shared with the Student Portal): the same amount → that link again;
+        // a different amount → the old link is cancelled at Xendit first, so both can never be paid.
+        // (It used to return the open link whatever its amount — e.g. a "due now" link when the cashier
+        // asked for the full balance — without saying which amount it was for.)
+        [$existingPending, $openError] = \App\Services\PaymentService::openXenditLink($enrollment->id, (float) $request->amount, $apiKey);
+        if ($openError) {
+            return response()->json(['success' => false, 'message' => $openError], 422);
+        }
         if ($existingPending) {
             return response()->json([
                 'success'     => true,
                 'invoice_url' => $existingPending->xendit_invoice_url,
                 'invoice_id'  => $existingPending->xendit_invoice_id,
                 'reused'      => true,
-                'message'     => 'A payment link for this enrollment is already pending — reusing it instead of creating a duplicate.',
+                'amount'      => (float) $existingPending->amount,
+                'message'     => 'A payment link for ₱' . number_format((float) $existingPending->amount, 2) . ' is already open — showing it again instead of making a duplicate.',
             ]);
         }
 
         $externalId = 'ILC-' . $request->enrollment_id . '-' . time();
 
         try {
-            $response = Http::withBasicAuth($apiKey, '')
-                ->post('https://api.xendit.co/v2/invoices', [
+            // The exact amount, centavos included — and the transaction records the amount Xendit accepted
+            // (`(int) $request->amount` used to drop the centavos while still crediting them)
+            [$response, $chargeAmount] = \App\Services\PaymentService::createXenditInvoice($apiKey, [
                     'external_id'          => $externalId,
-                    'amount'               => (int) $request->amount,
                     'description'          => 'ILC Tuition — ' . $request->payment_type . ' (' . $request->student_name . ')',
                     'invoice_duration'     => 86400,
                     'currency'             => 'PHP',
@@ -973,7 +988,7 @@ class CashierController extends Controller
                     // thank-you screen for whoever actually paid.
                     'success_redirect_url' => route('cashier.payment-result'),
                     'failure_redirect_url' => route('cashier.payment-result', ['outcome' => 'failed']),
-                ]);
+                ], (float) $request->amount);
         } catch (\Throwable $e) {
             Log::error('Xendit invoice request failed (network/connection error)', ['error' => $e->getMessage()]);
             return response()->json([
@@ -997,7 +1012,7 @@ class CashierController extends Controller
             'user_id'            => $enrollment->user_id,
             'payment_type'       => 'online',
             'payment_method'     => $request->payment_method,
-            'amount'             => $request->amount,
+            'amount'             => $chargeAmount, // what Xendit actually charges — and what gets credited
             'reference_number'   => $externalId,
             'xendit_invoice_id'  => $invoice['id'],
             'xendit_invoice_url' => $invoice['invoice_url'],
@@ -1009,7 +1024,7 @@ class CashierController extends Controller
 
         ActivityLogger::log(
             'xendit_link_generated',
-            'Generated ' . $request->payment_method . ' payment link for ₱' . number_format($request->amount, 2) . ' — ' . $request->student_name,
+            'Generated ' . $request->payment_method . ' payment link for ₱' . number_format($chargeAmount, 2) . ' — ' . $request->student_name,
             'PaymentTransaction',
             $transaction->id
         );
@@ -1019,6 +1034,7 @@ class CashierController extends Controller
             'invoice_url' => $invoice['invoice_url'],
             'invoice_id'  => $invoice['id'],
             'expiry'      => $invoice['expiry_date'] ?? null,
+            'amount'      => $chargeAmount, // the amount on Xendit's page
         ]);
     }
 
@@ -1118,6 +1134,14 @@ class CashierController extends Controller
             // with this webhook arriving at the same time.)
             if ($transaction->status === 'completed') {
                 return response()->json(['message' => 'Already processed']);
+            }
+
+            // The token proves it came from Xendit; this proves it's about THIS payment, for THIS amount
+            // (reference, amount to the centavo, pesos). A mismatch is never credited — it is logged and
+            // left pending for staff to check. 200, so Xendit doesn't keep re-sending it.
+            if ($why = \App\Services\PaymentService::xenditInvoiceMismatch($transaction, $data)) {
+                \App\Services\PaymentService::logXenditMismatch($transaction, $why);
+                return response()->json(['message' => 'Not credited: invoice does not match the payment']);
             }
 
             \App\Services\PaymentService::completeXenditPayment($transaction);

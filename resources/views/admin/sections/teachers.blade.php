@@ -59,72 +59,20 @@
             }
         @endphp
 
+        {{-- Click a card: filter the teacher list below and scroll to it — js/stat-jump.js --}}
         <div class="row g-3 mb-4">
-
+            @foreach([['purple', 'bi-person-badge-fill', $totalTeachers, 'Total Teachers', ''], ['green', 'bi-check-circle-fill', $activeTeachers, 'Active', 'active'], ['red', 'bi-x-circle-fill', $inactiveTeachers, 'Inactive', 'inactive'], ['gold', 'bi-calendar3', $teacherScheduleMap->pluck('teacher_id')->unique()->count(), 'With Schedules', 'scheduled']] as [$color, $icon, $count, $label, $st])
             <div class="col-md-3 col-sm-6">
-
-                <div class="stat-card">
-
-                    <div class="stat-icon purple"><i class="bi bi-person-badge-fill"></i></div>
-
+                <div class="stat-card stat-card-link" role="button" tabindex="0" title="Show {{ $st === '' ? 'all teachers' : $label . ' teachers' }} below"
+                     data-jump="{{ json_encode(["set" => ["#teacherSearchInput" => "", "#teacherStatusFilter" => $st], "to" => "#teacher-list-card"]) }}">
+                    <div class="stat-icon {{ $color }}"><i class="bi {{ $icon }}"></i></div>
                     <div>
-
-                        <div class="stat-value">{{ $totalTeachers }}</div>
-
-                        <div class="stat-label">Total Teachers</div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            <div class="col-md-3 col-sm-6">
-
-                <div class="stat-card">
-
-                    <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
-
-                    <div>
-
-                        <div class="stat-value">{{ $activeTeachers }}</div>
-
-                        <div class="stat-label">Active</div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            <div class="col-md-3 col-sm-6">
-
-                <div class="stat-card">
-
-                    <div class="stat-icon red"><i class="bi bi-x-circle-fill"></i></div>
-
-                    <div>
-
-                        <div class="stat-value">{{ $inactiveTeachers }}</div>
-
-                        <div class="stat-label">Inactive</div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            <div class="col-md-3 col-sm-6">
-                <div class="stat-card">
-                    <div class="stat-icon gold"><i class="bi bi-calendar3"></i></div>
-                    <div>
-                        <div class="stat-value">{{ $teacherScheduleMap->pluck('teacher_id')->unique()->count() }}</div>
-                        <div class="stat-label">With Schedules</div>
+                        <div class="stat-value">{{ $count }}</div>
+                        <div class="stat-label">{{ $label }}</div>
                     </div>
                 </div>
             </div>
-
+            @endforeach
         </div>
 
         <div class="module-toolbar">
@@ -147,6 +95,8 @@
 
                     <option value="inactive">Inactive</option>
 
+                    <option value="scheduled">With Schedules</option>
+
                 </select>
 
             </div>
@@ -155,7 +105,7 @@
 
         </div>
 
-        <div class="content-card">
+        <div class="content-card" id="teacher-list-card">
 
             <div class="content-card-header">
 
@@ -199,7 +149,7 @@
                             $glMap = ['nursery'=>'Nursery','kindergarten'=>'Kinder','grade1'=>'G1','grade2'=>'G2','grade3'=>'G3','grade4'=>'G4','grade5'=>'G5','grade6'=>'G6'];
                         @endphp
 
-                        <tr data-search="{{ strtolower($t->name . ' ' . $t->email) }}" data-status="{{ $tStatus }}">
+                        <tr data-search="{{ strtolower($t->name . ' ' . $t->email) }}" data-status="{{ $tStatus }}" data-scheduled="{{ $tScheduleSec->isNotEmpty() ? 1 : 0 }}">
 
                             <td>
                                 <div class="user-row-name">

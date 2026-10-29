@@ -15,7 +15,11 @@ class CashPaymentTest extends TestCase
     public function test_cashier_can_record_a_cash_payment(): void
     {
         $cashier = User::factory()->cashier()->create();
+        // Installment plan: the ₱5,000 down payment is the amount due now
         $enrollment = Enrollment::factory()->create([
+            'payment_type' => 'installment',
+            'payment_option' => 'B',
+            'downpayment_amount' => 5000,
             'total_fee' => 14504,
             'payment_amount' => 0,
             'remaining_balance' => 14504,
@@ -80,8 +84,8 @@ class CashPaymentTest extends TestCase
         $this->actingAs($cashier, 'cashier')
             ->postJson('/cashier/payment/cash', [
                 'enrollment_id' => $enrollment->id,
-                'amount' => 1000,
-                'payment_type' => 'Partial',
+                'amount' => 14504, // pay-in-full plan: the whole balance is due
+                'payment_type' => 'Full Payment',
             ])
             ->assertOk();
 

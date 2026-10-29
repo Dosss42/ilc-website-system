@@ -188,7 +188,30 @@ class SectionController extends Controller
 
         ActivityLogger::log('create', "Created section \"{$section->name}\" — {$section->grade_level} (S.Y. {$section->school_year})", 'Section', $section->id);
 
-        return response()->json($section->load(['teacher', 'subjects']), 201);
+        // Students of this grade and year who are approved/enrolled but have no section yet (e.g. they
+        // paid before any section existed) — the page offers to place them into the new section
+        return response()->json(array_merge($section->load(['teacher', 'subjects'])->toArray(), [
+            'waiting_count' => self::studentsWithoutSection($section->grade_level, $section->school_year)->count(),
+        ]), 201);
+    }
+
+    /**
+     * Approved/enrolled students of a grade and school year who aren't in any section OF THAT YEAR.
+     * Last year's section doesn't count — the old checks treated "ever in any section" as placed, so a
+     * returning student could never be auto-assigned. Used by store(), autoAssign() and Student Management.
+     */
+    public static function studentsWithoutSection(?string $gradeLevel, ?string $schoolYear)
+    {
+        return \App\Models\Enrollment::query()
+            ->whereIn('status', ['approved', 'enrolled'])
+            ->when($gradeLevel, fn ($q) => $q->where('grade_level', $gradeLevel))
+            ->when($schoolYear, fn ($q) => $q->where('school_year', $schoolYear))
+            ->whereHas('user', fn ($q) => $q->where('role', 'student'))
+            ->whereNotExists(fn ($q) => $q->select(DB::raw(1))
+                ->from('section_student')
+                ->join('sections', 'sections.id', '=', 'section_student.section_id')
+                ->whereColumn('section_student.user_id', 'enrollments.user_id')
+                ->whereColumn('sections.school_year', 'enrollments.school_year'));
     }
 
     /**
@@ -491,12 +514,14 @@ class SectionController extends Controller
                 ->orWhere(fn ($p) => $p->where('status', 'pending')->whereExists(fn ($x) => $x->select(DB::raw(1))
                     ->from('promotions')->whereColumn('promotions.enrollment_id', 'enrollments.id')->where('promotions.status', 'completed'))))
             ->whereHas('user', fn ($q) => $q->where('role', 'student'))
-            // Same rule addStudent() enforces: not already in a section of this grade
+            // Same rule addStudent() enforces: not already in a section of this grade — in that
+            // enrollment's school year (last year's section doesn't count: a retained student was hidden)
             ->whereNotExists(function ($q) use ($section) {
                 $q->select(DB::raw(1))
                   ->from('section_student')
                   ->join('sections', 'sections.id', '=', 'section_student.section_id')
                   ->whereColumn('section_student.user_id', 'enrollments.user_id')
+                  ->whereColumn('sections.school_year', 'enrollments.school_year')
                   ->where('sections.grade_level', $section->grade_level);
             });
 
@@ -577,10 +602,11 @@ class SectionController extends Controller
                 return response()->json(['error' => 'Student is already in this section'], 400);
             }
 
-            // Check if student is already in another section for the same grade level
+            // Check if student is already in another section for the same grade level — this school
+            // year (a retained student is still on last year's list of the same grade)
             $existingSection = Section::whereHas('students', function($q) use ($validated) {
                 $q->where('user_id', $validated['student_id']);
-            })->where('grade_level', $section->grade_level)->first();
+            })->where('grade_level', $section->grade_level)->where('school_year', $section->school_year)->first();
 
             if ($existingSection) {
                 return response()->json(['error' => 'Student is already assigned to section ' . $existingSection->name], 400);
@@ -712,6 +738,7 @@ class SectionController extends Controller
     public function autoAssign(Request $request)
     {
         $gradeLevel = $request->input('grade_level');
+        $schoolYear = $request->input('school_year'); // e.g. right after creating a section for that year
 
         // All active sections (optionally filtered by grade). current_enrollment
         // is initialized from the live section_student count below (the stored
@@ -719,26 +746,44 @@ class SectionController extends Controller
         // the loop further down keeps it in sync in-memory as students are added.
         $sections = Section::where('is_active', true)
             ->when($gradeLevel, fn($q) => $q->where('grade_level', $gradeLevel))
+            ->when($schoolYear, fn($q) => $q->where('school_year', $schoolYear))
             ->withCount('students')
             ->get();
         $sections->each(fn($s) => $s->current_enrollment = $s->students_count);
 
-        // Student IDs already in any section
-        $assignedIds = DB::table('section_student')->pluck('user_id')->toArray();
-
-        // Unassigned students with an active enrollment
-        $students = User::where('role', 'student')
-            ->whereNotIn('id', $assignedIds)
-            ->with('latestEnrollment')
+        // Approved/enrolled students with no section in THEIR enrollment's school year. This used to
+        // skip anyone who had ever been in a section — so every returning student (still on last
+        // year's class list) was skipped. Each student is placed by that year's enrollment.
+        $waiting = self::studentsWithoutSection($gradeLevel, $schoolYear)
+            ->whereNotNull('grade_level')
+            ->with('user')
+            ->orderBy('id')
             ->get()
-            ->filter(fn($u) =>
-                $u->latestEnrollment
-                && in_array($u->latestEnrollment->status, ['approved', 'enrolled'])
-                && $u->latestEnrollment->grade_level
-            );
+            ->unique('user_id');
+        $students = $waiting->map(function ($e) {
+            $u = $e->user;
+            $u->setRelation('latestEnrollment', $e);
+            return $u;
+        });
 
-        if ($gradeLevel) {
-            $students = $students->filter(fn($u) => $u->latestEnrollment->grade_level === $gradeLevel);
+        // Preview (nothing saved): per grade, how many are waiting, the free seats in that grade's
+        // sections and how many would be placed — the page shows this before the Admin confirms
+        if ($request->boolean('preview')) {
+            $grades = $waiting->groupBy(fn ($e) => $e->school_year . '|' . $e->grade_level)->map(function ($rows, $key) use ($sections) {
+                [$sy, $grade] = explode('|', $key);
+                $gradeSections = $sections->where('grade_level', $grade)->where('school_year', $sy);
+                $free = $gradeSections->sum(fn ($s) => max(0, ($s->max_students ?? 30) - $s->current_enrollment));
+                return [
+                    'school_year' => $sy,
+                    'grade_level' => $grade,
+                    'waiting'     => $rows->count(),
+                    'sections'    => $gradeSections->pluck('name')->values(),
+                    'free_seats'  => $free,
+                    'will_place'  => min($rows->count(), $free),
+                ];
+            })->sortBy(fn ($g) => $g['school_year'] . array_search($g['grade_level'], ['nursery', 'kindergarten', 'grade1', 'grade2', 'grade3', 'grade4', 'grade5', 'grade6']))->values();
+
+            return response()->json(['preview' => true, 'grades' => $grades, 'waiting' => $waiting->count(), 'will_place' => $grades->sum('will_place')]);
         }
 
         $assigned = 0;

@@ -46,64 +46,39 @@
         </div>
         @endif
 
-        {{-- Enrollment Stats --}}
-
+        {{-- Enrollment Stats — same six cards, in the same order, as Super Admin's Enrollments page.
+             Click: the status cards filter the list below; the money cards open the lists they count
+             (Finance; Student Management › Not Paid for the same school year) — js/stat-jump.js --}}
+        @php
+            $enrSy = $enrolledStatYear ?? '';
+            $enrSyPick = $enrollmentSyFilter ?? 'all';
+            $enrStatus = fn ($st) => ['set' => ['#enrollmentSyFilter' => $enrSyPick, '#gradeFilter' => 'all', '#statusFilter' => $st], 'to' => '#enrollment-records-card'];
+            $enrCount = fn ($st) => (int) (($enrollmentStatusCounts ?? collect())[$st] ?? 0);
+            $enrCards = [
+                ['gold', 'bi-hourglass-split', $enrCount('pending'), 'Pending', 'Show pending applications in the list below', $enrStatus('pending')],
+                ['blue', 'bi-check-circle-fill', $enrCount('approved'), 'Approved', 'Show approved applications in the list below', $enrStatus('approved')],
+                ['green', 'bi-clipboard-check-fill', $enrolledThisYear ?? 0, 'Enrolled · S.Y. ' . $enrSy, 'Show enrolled students of S.Y. ' . $enrSy . ' in the list below',
+                    ['set' => ['#enrollmentSyFilter' => $enrSy, '#gradeFilter' => 'all', '#statusFilter' => 'enrolled'], 'to' => '#enrollment-records-card']],
+                ['red', 'bi-x-circle-fill', $enrCount('declined'), 'Declined', 'Show declined applications in the list below', $enrStatus('declined')],
+                ['gold', 'bi-cash-stack', '₱' . number_format($totalFeesCollected ?? 0, 2), 'Total Fees Collected', 'Open Finance',
+                    ['section' => 'finance', 'to' => '#section-finance']],
+                ['red', 'bi-exclamation-circle-fill', $pendingPaymentsCount ?? 0, 'Pending Payments', 'Show students with nothing paid yet (Student Management)',
+                    ['section' => 'students', 'set' => ['#student-filter-form [name=student_schoolyear]' => ($enrollmentSyFilter ?? 'all') === 'all' ? 'all' : $enrSy,
+                        '#student-filter-form [name=student_status]' => 'all', '#student-filter-form [name=student_payment]' => 'unpaid'], 'to' => '#sm-list-card', 'active' => false]],
+            ];
+        @endphp
         <div class="row g-3 mb-4">
-
-            <div class="col-md-4">
-
-                <div class="stat-card">
-
-                    <div class="stat-icon green"><i class="bi bi-clipboard-check-fill"></i></div>
-
+            @foreach($enrCards as [$color, $icon, $value, $label, $tip, $jump])
+            <div class="col-6 col-md-4">
+                <div class="stat-card stat-card-link h-100" role="button" tabindex="0" title="{{ $tip }}" data-jump="{{ json_encode($jump) }}">
+                    <div class="stat-icon {{ $color }}"><i class="bi {{ $icon }}"></i></div>
                     <div>
-
-                        <div class="stat-value">{{ $enrolledThisYear ?? 0 }}</div>
-
-                        <div class="stat-label">Enrolled · S.Y. {{ $enrolledStatYear ?? '' }}</div>
-
+                        <div class="stat-value">{{ $value }}</div>
+                        <div class="stat-label">{{ $label }}</div>
                     </div>
-
                 </div>
-
             </div>
-
-            <div class="col-md-4">
-
-                <div class="stat-card">
-
-                    <div class="stat-icon gold"><i class="bi bi-cash-stack"></i></div>
-
-                    <div>
-
-                        <div class="stat-value">₱{{ number_format($totalFeesCollected ?? 0, 2) }}</div>
-
-                        <div class="stat-label">Total Fees Collected</div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            <div class="col-md-4">
-
-                <div class="stat-card">
-
-                    <div class="stat-icon red"><i class="bi bi-exclamation-circle-fill"></i></div>
-
-                    <div>
-
-                        <div class="stat-value">{{ $pendingPaymentsCount ?? 0 }}</div>
-
-                        <div class="stat-label">Pending Payments</div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
+            @endforeach
         </div>
 
         {{-- The list opens on one school year — don't let other years' new applications go unnoticed --}}
@@ -198,7 +173,7 @@
             </div>
         </div>
 
-        <div class="content-card">
+        <div class="content-card" id="enrollment-records-card">
 
             <div class="content-card-header"><h6>Enrollment Records</h6></div>
 

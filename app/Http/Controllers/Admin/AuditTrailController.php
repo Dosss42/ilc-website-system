@@ -38,7 +38,10 @@ class AuditTrailController extends Controller
         // Counted as all rows minus the Super Admin's: both use an index, while counting the
         // "null or not superadmin" condition reads the whole table (3.5 s at ~330,000 rows)
         $total = ActivityLog::count() - ActivityLog::where('user_role', 'superadmin')->count();
-        $filtered = $search !== '' || isset(ActivityLog::EVENT_TYPES[$type]) || isset($this->roles()[$role])
+        // "Failed / Denied": both kinds at once — the filter behind the stat card of that name
+        $failedTypes = ['failed_login', 'denied'];
+        $isFailedDenied = $type === 'failed_denied';
+        $filtered = $search !== '' || isset(ActivityLog::EVENT_TYPES[$type]) || $isFailedDenied || isset($this->roles()[$role])
             || $this->isDate($from) || $this->isDate($to);
 
         $query = (clone $base)
@@ -47,6 +50,7 @@ class AuditTrailController extends Controller
                 $q->where(fn ($w) => $w->where('description', 'like', $like)->orWhere('user_name', 'like', $like));
             })
             ->when(isset(ActivityLog::EVENT_TYPES[$type]), fn ($q) => $q->where('event_type', $type))
+            ->when($isFailedDenied, fn ($q) => $q->whereIn('event_type', $failedTypes))
             ->when(isset($this->roles()[$role]), fn ($q) => $q->where('user_role', $role))
             // Date ranges, not DATE(created_at), so the created_at index is used
             ->when($this->isDate($from), fn ($q) => $q->where('created_at', '>=', $from . ' 00:00:00'))
@@ -65,8 +69,12 @@ class AuditTrailController extends Controller
             'stats'       => [
                 'total'  => $total,
                 'today'  => (clone $base)->where('created_at', '>=', today())->count(),
-                'failed' => (clone $base)->whereIn('event_type', ['failed_login', 'denied'])->where('created_at', '>=', now()->subDays(7))->count(),
+                // from the start of the day 7 days ago, so the count equals its card's date filter
+                'failed' => (clone $base)->whereIn('event_type', $failedTypes)->where('created_at', '>=', today()->subDays(7))->count(),
             ],
+            // Dates the stat cards filter by (Today; Failed / Denied = the last 7 days)
+            'auditToday'   => today()->toDateString(),
+            'auditWeekAgo' => today()->subDays(7)->toDateString(),
             'retention'   => AuditLogRetention::label(),
             'roles'       => $this->roles(),
             'eventTypes'  => ActivityLog::EVENT_TYPES,

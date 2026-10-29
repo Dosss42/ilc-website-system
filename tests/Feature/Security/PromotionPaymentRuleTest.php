@@ -38,11 +38,11 @@ class PromotionPaymentRuleTest extends TestCase
             'student_data' => ['first_name' => 'Ana', 'last_name' => 'Cruz', 'grade_level' => $grade, 'student_type' => 'returning'],
         ];
         return match ($paid) {
-            'full'    => Enrollment::factory()->fullyPaid()->create($attrs),
-            'partial' => Enrollment::factory()->withInstallment()->create($attrs + [
+            'full'    => Enrollment::factory()->fullyPaid()->withApprovedDocuments()->create($attrs),
+            'partial' => Enrollment::factory()->withInstallment()->withApprovedDocuments()->create($attrs + [
                 'payment_amount' => 3000, 'remaining_balance' => 11504, 'payment_status' => 'partial',
             ]),
-            'none'    => Enrollment::factory()->create($attrs + [
+            'none'    => Enrollment::factory()->withApprovedDocuments()->create($attrs + [
                 'payment_option' => null, 'total_fee' => 0, 'remaining_balance' => 0, 'payment_status' => 'pending',
             ]),
         };
@@ -60,6 +60,12 @@ class PromotionPaymentRuleTest extends TestCase
         return Enrollment::where('user_id', $e->user_id)->where('school_year', '2027-2028')->exists();
     }
 
+    /** Assessed out of 2026-2027 (the assessment records it; the student then re-enrolls) */
+    private function isAssessed(Enrollment $e): bool
+    {
+        return \App\Models\Promotion::where('student_id', $e->user_id)->where('from_school_year', '2026-2027')->where('status', 'completed')->exists();
+    }
+
     public function test_assess_refuses_promote_and_retain_until_fully_paid(): void
     {
         $owing = $this->enrollment('grade3', 'partial');
@@ -72,9 +78,12 @@ class PromotionPaymentRuleTest extends TestCase
         $noFee = $this->enrollment('grade3', 'none');
         $this->assertStringStartsWith('No tuition fee recorded', $this->assess($noFee)->assertStatus(422)->json('message'));
 
+        $this->assertFalse($this->isAssessed($owing));
+
         $paid = $this->enrollment('grade3', 'full');
         $this->assess($paid)->assertOk()->assertJson(['success' => true]);
-        $this->assertTrue($this->hasNextYear($paid));
+        $this->assertTrue($this->isAssessed($paid));
+        $this->assertFalse($this->hasNextYear($paid), 'the student re-enrolls themselves');
     }
 
     public function test_nursery_and_kinder_auto_advance_skips_students_with_a_balance(): void
@@ -92,9 +101,11 @@ class PromotionPaymentRuleTest extends TestCase
 
         $this->actingAs($this->admin, 'web')->postJson('/admin/assessment/auto-advance', $q)
             ->assertOk()->assertJson(['promoted_count' => 1, 'skipped_count' => 2]);
-        $this->assertTrue($this->hasNextYear($paid));
-        $this->assertFalse($this->hasNextYear($owing));
-        $this->assertFalse($this->hasNextYear($noFee));
+        $this->assertTrue($this->isAssessed($paid));
+        $this->assertFalse($this->isAssessed($owing));
+        $this->assertFalse($this->isAssessed($noFee));
+        // Already advanced: not listed again
+        $this->assertSame(0, $this->actingAs($this->admin, 'web')->getJson('/admin/assessment/auto-advance-preview?' . http_build_query($q))->json('count'));
     }
 
     public function test_bulk_promote_no_longer_accepts_a_downpayment_as_paid(): void
@@ -115,13 +126,43 @@ class PromotionPaymentRuleTest extends TestCase
             ->assertSessionHas('error', fn ($m) => str_contains($m, 'Unpaid balance of ₱11,504.00'));
         $this->assertFalse($this->hasNextYear($owing));
 
-        // The portal card shows it locked, with the balance
+        // The portal card says re-enrollment opens once the fees are complete, with the balance — not "Open"
         $this->actingAs($owing->user, 'web')->get('/student/portal')->assertOk()
-            ->assertSee('Settle outstanding balance of', false);
+            ->assertSee('Opens once your S.Y. 2026-2027 fees are complete', false)
+            ->assertSee('₱11,504.00</strong> left of', false)
+            ->assertDontSee('Enrollment for S.Y. 2027-2028 is Open', false);
 
         $paid = $this->enrollment('nursery', 'full');
         $this->actingAs($paid->user, 'web')->post('/student/reenroll', ['target_school_year' => '2027-2028']);
         $this->assertSame('kindergarten', Enrollment::where('user_id', $paid->user_id)->where('school_year', '2027-2028')->value('grade_level'));
+    }
+
+    /** Fees AND all four documents — the same checklist the student sees — before moving up, on every path. */
+    public function test_moving_up_needs_all_four_documents_and_the_student_then_sees_the_result(): void
+    {
+        // Grade 1, fully paid, only 3 of 4 documents approved → the school can't assess yet
+        $e = Enrollment::factory()->fullyPaid()->create(['grade_level' => 'grade1',
+            'student_data' => ['first_name' => 'Ana', 'last_name' => 'Cruz', 'grade_level' => 'grade1', 'student_type' => 'returning']]);
+        foreach (array_slice(\App\Models\StudentDocument::REQUIRED_TYPES, 0, 3) as $t) {
+            \App\Models\StudentDocument::create(['user_id' => $e->user_id, 'document_type' => $t, 'file_path' => 'x', 'original_name' => 'x', 'status' => 'approved']);
+        }
+        $this->assess($e)->assertStatus(422)->assertJson(['message' => "Required documents incomplete (3/4 approved). Approve the student's documents before moving them to the next school year."]);
+        $this->assertFalse($this->hasNextYear($e));
+
+        // 4th approved → assessed → the student re-enrolls → the portal says what happened and what's next
+        \App\Models\StudentDocument::create(['user_id' => $e->user_id, 'document_type' => 'two_by_two_picture', 'file_path' => 'x', 'original_name' => 'x', 'status' => 'approved']);
+        $this->assess($e)->assertOk();
+        $this->actingAs($e->user, 'web')->post('/student/reenroll')->assertSessionHas('success');
+        $this->actingAs($e->user, 'web')->get('/student/portal')->assertOk()
+            ->assertSee('S.Y. 2027-2028 &mdash; Promoted to Grade 2', false)
+            ->assertSee('Next: choose a payment plan and pay the first payment', false);
+
+        // Nursery re-enrolls from the portal: also refused without the documents
+        $nursery = Enrollment::factory()->fullyPaid()->create(['grade_level' => 'nursery',
+            'student_data' => ['first_name' => 'Ben', 'last_name' => 'Reyes', 'grade_level' => 'nursery', 'student_type' => 'returning']]);
+        $this->actingAs($nursery->user, 'web')->post('/student/reenroll', ['target_school_year' => '2027-2028'])
+            ->assertSessionHas('error', fn ($m) => str_contains($m, '(0/4 approved)'));
+        $this->assertFalse($this->hasNextYear($nursery));
     }
 
     public function test_payment_plans_are_limited_by_grade(): void

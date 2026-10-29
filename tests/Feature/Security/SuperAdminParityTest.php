@@ -114,7 +114,8 @@ class SuperAdminParityTest extends TestCase
         $this->assertSame(1, $res->json('total'));
         $row = $res->json('students.0');
         $this->assertSame(['enrolled', 'partial', 'Grade 1', '2026-2027'], [$row['status'], $row['payment_status'], $row['grade_label'], $row['school_year']]);
-        $this->assertStringContainsString('>' . $row['name'] . '<', $html, 'the same student Admin lists');
+        // e(): a random name like "O'Connor" is HTML-escaped on the page (was a flaky failure)
+        $this->assertStringContainsString('>' . e($row['name']) . '<', $html, 'the same student Admin lists');
         $this->assertStringContainsString('id="sm-total-count">1<', $html);
         $this->assertSame(1, $res->json('stats.total'));
 
@@ -127,6 +128,13 @@ class SuperAdminParityTest extends TestCase
         $s = $all->json('stats');
         $this->assertSame($adminCards, ['total' => $s['total'], 'enrolled' => $s['enrolled'], 'approved' => $s['approved'], 'pending' => $s['pending'],
             'notenrolled' => $s['not_enrolled'], 'paid' => $s['paid'], 'balance' => $s['balance']]);
+
+        // Clicking a card filters the list: "With Balance" lists exactly the students that card counts
+        $this->assertStringContainsString('data-sm-status="all" data-sm-payment="balance"', $adminHtml);
+        $this->assertStringContainsString('data-sm-status="enrolled" data-sm-payment="all"', $adminHtml, 'Enrolled pill inside Total Students');
+        $withBalance = $this->getJson('/admin/section/students-data?student_schoolyear=all&student_payment=balance')->assertOk();
+        $this->assertSame($s['balance'], $withBalance->json('total'));
+        $this->assertNotContains('paid', array_column($withBalance->json('students'), 'payment_status'));
 
         // Students and teachers can't read it
         $this->actingAs(User::factory()->teacher()->create(), 'web')->getJson('/admin/section/students-data')->assertForbidden();

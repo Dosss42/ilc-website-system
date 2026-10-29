@@ -40,6 +40,7 @@ class Enrollment extends Model
         'reminder_sent_at',
         'enrolled_at',
         'section',
+        'section_changed_at', // the student's one self-service section change this school year
         'installment_schedule',
         'installment_number',
         'penalty_amount',
@@ -68,6 +69,7 @@ class Enrollment extends Model
         'reminder_sent' => 'boolean',
         'reminder_sent_at' => 'datetime',
         'enrolled_at' => 'datetime',
+        'section_changed_at' => 'datetime',
         'assessed_at' => 'datetime',
         'teacher_recommended_at' => 'datetime',
         'installment_schedule' => 'integer',
@@ -76,6 +78,35 @@ class Enrollment extends Model
         'late_payment_count' => 'integer',
         'account_blocked' => 'boolean',
     ];
+
+    /** First day of classes of this enrollment's school year: the School Year Start setting's month/day (default June 1). */
+    public function classesStartDate(): \Carbon\Carbon
+    {
+        preg_match('/^(\d{4})/', (string) $this->school_year, $m);
+        $start = \Carbon\Carbon::parse(Setting::get('school_year_start', '') ?: '2000-06-01');
+        return \Carbon\Carbon::create((int) ($m[1] ?? now()->year), $start->month, $start->day)->startOfDay();
+    }
+
+    /**
+     * Why the student can't change their own section right now, or null when they can.
+     * Rule (school decision, October 28, 2026): once per school year, before classes start.
+     * After that the school office (Admin) moves the student.
+     */
+    public function sectionChangeBlockReason(): ?string
+    {
+        if ($this->status !== 'enrolled') {
+            return 'You can change your section once your enrollment is confirmed.';
+        }
+        if ($this->section_changed_at) {
+            return 'You already changed your section once this school year (' . $this->section_changed_at->format('F j, Y')
+                . '). For another change, please ask the school office.';
+        }
+        $start = $this->classesStartDate();
+        if (now()->gte($start)) {
+            return 'Section changes closed when classes started on ' . $start->format('F j, Y') . '. For a change, please ask the school office.';
+        }
+        return null;
+    }
 
     public function user()
     {

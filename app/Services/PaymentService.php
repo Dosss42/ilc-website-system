@@ -19,9 +19,10 @@ use Carbon\Carbon;
 class PaymentService
 {
     const LATE_FEE_AMOUNT = 500;
-    const WARNING_WEEKS = 1;  // First reminder after 1 week overdue
-    const GRACE_PERIOD_WEEKS = 2; // 2 weeks = 14 days total (7 days after due date + 7 days grace)
-    const LATE_FEE_WEEKS = 3; // Late fee applied after 3 weeks (2 weeks + 1 week grace)
+    // Late fee the morning after the due date — the day the due date ends unpaid (school decision,
+    // October 28, 2026; it used to be 3 weeks after, with a 1-week warning and a 2-week grace period).
+    // Reminders: 3 days before and on the due date (app:check-payment-due-dates), then weekly while unpaid.
+    const LATE_FEE_DAYS = 1;
     const MONTHS = ['July', 'August', 'September', 'October', 'November', 'December', 'January', 'February', 'March'];
 
     // Exam Permit Hold: how many consecutive unpaid months trigger it.
@@ -41,9 +42,8 @@ class PaymentService
     }
 
     /**
-     * Check and process all overdue payments.
-     * Sends the week-1 warning / week-2 reminder emails and applies the
-     * week-3 late fee, per installment.
+     * Check and process all overdue payments (installments whose due date has ended unpaid):
+     * the ₱500 late fee the morning after the due date, then a weekly reminder email.
      */
     public function checkAndProcessOverduePayments(): void
     {
@@ -325,87 +325,44 @@ class PaymentService
     }
 
     /**
-     * Process a single overdue installment: mark it overdue, and send
-     * whichever of the warning (week 1) / reminder (week 2) / late-fee
-     * (week 3) / weekly-after-that emails are newly due.
+     * Process a single overdue installment (its due date has ended unpaid): mark it overdue, add the
+     * ₱500 late fee once — the morning after the due date — with the "Late Fee Applied" email, then a
+     * reminder email every week it stays unpaid (1, 2, 3 … weeks after the due date).
      *
-     * There's no dedicated "reminder_sent" or "weekly_reminder_N" column on
-     * payment_installments (only weeks_overdue, warning_sent and
-     * late_fee_applied actually exist — see the create-table migration) —
-     * an earlier version of this tried to set those anyway, which either
-     * silently no-opped (mass-assignment drops unknown keys) or would have
-     * thrown on save() (direct property assignment doesn't). Fixed here by
-     * comparing the previously-persisted weeks_overdue against the newly
-     * computed one: the grace-period reminder and every weekly reminder
-     * after the late fee each fire exactly once, on the run where
-     * weeks_overdue first reaches that value — no extra column needed, and
-     * it stays correct even if this job runs more than once in a day.
+     * The weekly reminder fires exactly once per week: it compares the previously-saved weeks_overdue
+     * with today's, so it stays correct even if this job runs more than once in a day (there is no
+     * per-week "reminder sent" column — only weeks_overdue, warning_sent and late_fee_applied exist).
      */
     private function processOverdueInstallment($installment, ?Carbon $today = null): void
     {
         $today ??= Carbon::now()->startOfDay();
-        $dueDate = Carbon::parse($installment->due_date);
+        $dueDate = Carbon::parse($installment->due_date)->startOfDay();
         $previousWeeksOverdue = (int) ($installment->weeks_overdue ?? 0);
-        $weeksOverdue = (int) floor($dueDate->diffInDays($today) / 7);
+        $daysOverdue  = (int) round($dueDate->diffInDays($today));
+        $weeksOverdue = intdiv($daysOverdue, 7);
 
         $installment->status = 'overdue';
         $installment->weeks_overdue = $weeksOverdue;
 
-        if ($weeksOverdue >= self::WARNING_WEEKS && !$installment->warning_sent) {
-            self::sendWarningEmail($installment);
-            $installment->warning_sent = true;
-        }
-
-        if ($weeksOverdue >= self::LATE_FEE_WEEKS && !$installment->late_fee_applied) {
+        // The due date has ended unpaid → late fee now (once), owed on top of tuition
+        if ($daysOverdue >= self::LATE_FEE_DAYS && !$installment->late_fee_applied) {
+            $lateFeeBefore = (float) ($installment->late_fee ?? 0);
             $installment->late_fee = self::LATE_FEE_AMOUNT;
             $installment->late_fee_applied = true;
+            self::shiftTotalForLateFee($installment, self::LATE_FEE_AMOUNT - $lateFeeBefore);
             self::sendLateFeeEmail($installment);
         }
 
-        if ($weeksOverdue !== $previousWeeksOverdue) {
-            if ($weeksOverdue === self::GRACE_PERIOD_WEEKS) {
-                self::sendReminderEmail($installment);
-            } elseif ($weeksOverdue > self::LATE_FEE_WEEKS) {
-                self::sendWeeklyReminderEmail($installment, $weeksOverdue);
-            }
+        // Then a reminder every week while unpaid
+        if ($weeksOverdue >= 1 && $weeksOverdue !== $previousWeeksOverdue) {
+            self::sendWeeklyReminderEmail($installment, $weeksOverdue);
         }
 
         $installment->save();
     }
 
     /**
-     * Send warning email for overdue payment (Week 1)
-     */
-    private static function sendWarningEmail(PaymentInstallment $installment): void
-    {
-        try {
-            Mail::to($installment->user->email)->send(new PaymentReminderMail($installment));
-        } catch (\Exception $e) {
-            \Log::error('Failed to send warning email', [
-                'installment_id' => $installment->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
-
-    /**
-     * Send reminder email during grace period (Week 2)
-     */
-    private static function sendReminderEmail(PaymentInstallment $installment): void
-    {
-        try {
-            // Send a gentler reminder - no late fee yet
-            Mail::to($installment->user->email)->send(new PaymentReminderMail($installment));
-        } catch (\Exception $e) {
-            \Log::error('Failed to send reminder email', [
-                'installment_id' => $installment->id,
-                'error' => $e->getMessage(),
-            ]);
-        }
-    }
-
-    /**
-     * Send late fee applied email (Week 3+)
+     * Send late fee applied email (the morning after the due date)
      */
     private static function sendLateFeeEmail(PaymentInstallment $installment): void
     {
@@ -486,7 +443,7 @@ class PaymentService
      * but the status wasn't updated (e.g. due to the old overdue-lookup bug).
      * Safe to call repeatedly — only marks installments that math says should be paid.
      */
-    public static function reconcileInstallmentStatuses(Enrollment $enrollment): void
+    public static function reconcileInstallmentStatuses(Enrollment $enrollment, ?PaymentTransaction $transaction = null): void
     {
         $monthly     = (float) ($enrollment->monthly_amount ?? 0);
         $downpayment = (float) ($enrollment->downpayment_amount ?? 0);
@@ -529,11 +486,84 @@ class PaymentService
                 ]);
             }
 
+            if ($transaction) {
+                self::linkPaidMonths($transaction, $unpaid);
+            }
+
             // Refresh relationship so callers see updated statuses
             $enrollment->load('paymentInstallments');
         }
 
         self::syncNextInstallmentDate($enrollment);
+        self::fulfilPromissoryNoteIfCaughtUp($enrollment);
+    }
+
+    /**
+     * Ties the months a payment paid to that payment, and writes them — with any late fee — into its
+     * description, e.g. "Overdue — October (incl. ₱500.00 late fee)". Every portal lists payments by their
+     * description (Student Portal, Admin Student Management, Cashier, Finance, the Official Receipt), so the
+     * family and the staff see what the money covered, late fee included. Before this, months paid through
+     * the Cashier or online kept no link to the payment (no method or reference on the month) and the
+     * payment just read "Installment".
+     */
+    public static function linkPaidMonths(PaymentTransaction $transaction, $months): void
+    {
+        $months = collect($months)->filter()->sortBy('due_date')->values();
+        if ($months->isEmpty()) {
+            return;
+        }
+
+        foreach ($months as $inst) {
+            $inst->update(array_filter([
+                'payment_transaction_id' => $inst->payment_transaction_id ?: $transaction->id,
+                'payment_method'         => $inst->payment_method ?: $transaction->payment_method,
+                'reference_number'       => $inst->reference_number ?: $transaction->reference_number,
+            ]));
+        }
+
+        $names = $months->pluck('month_name')->implode(', ');
+        $fees  = (float) $months->sum('late_fee');
+        $desc  = trim((string) $transaction->description) ?: 'Payment';
+        if (stripos($desc, 'late fee') === false) {
+            if (!$months->every(fn ($m) => stripos($desc, $m->month_name) !== false)) {
+                $desc .= ' — ' . $names;
+            }
+            if ($fees > 0) {
+                $desc .= ' (incl. ₱' . number_format($fees, 2) . ' late fee' . ($months->where('late_fee', '>', 0)->count() > 1 ? 's' : '') . ')';
+            }
+        }
+
+        $transaction->update(array_filter([
+            'description'       => $desc,
+            'installment_month' => $transaction->installment_month ?: $names,
+            'installment_id'    => $transaction->installment_id ?: ($months->count() === 1 ? $months->first()->id : null),
+        ]));
+    }
+
+    /**
+     * A family that has caught up — no month past due and still unpaid — has kept its Promissory Note, so
+     * the note is marked fulfilled. Only Finance could do this by hand before: a note left "pending" after
+     * the family paid everything turned "broken" on its promised date and withheld the Exam Permit of a
+     * student who owed nothing. A partial payment never fulfils a note (the school's policy stays: being
+     * behind after a broken promise still needs settling or a new note). Runs after every payment —
+     * Cashier, Finance, online, Student Portal — through reconcileInstallmentStatuses().
+     */
+    public static function fulfilPromissoryNoteIfCaughtUp(Enrollment $enrollment): void
+    {
+        $note = $enrollment->promissoryNotes()->first(); // newest
+        if (!$note || !in_array($note->status, ['pending', 'extended', 'broken'], true)) {
+            return;
+        }
+        $stillBehind = $enrollment->paymentInstallments()
+            ->whereNotIn('status', ['paid'])
+            ->whereDate('due_date', '<', Carbon::today())
+            ->exists();
+        if ($stillBehind) {
+            return;
+        }
+        $note->update(['status' => 'fulfilled', 'fulfilled_at' => now()]);
+        \App\Services\ActivityLogger::log('update', 'Promissory Note ' . $note->reference_number
+            . ' marked fulfilled automatically — the family caught up on all past-due months', 'PromissoryNote', $note->id);
     }
 
     /**
@@ -565,13 +595,34 @@ class PaymentService
     }
 
     /**
+     * A late fee is money owed ON TOP of tuition, so it has to change the enrollment's total and balance
+     * too. It used to be stored on the installment only: paying "month + ₱500" then took the ₱500 off the
+     * TUITION balance, leaving the balance ₱500 too low — the account could show "fully paid" with a
+     * month still unpaid. Every late-fee change goes through here: +₱500 when added, −₱500 when waived.
+     */
+    public static function shiftTotalForLateFee(PaymentInstallment $installment, float $change): void
+    {
+        $change = round($change, 2);
+        $enrollment = $installment->enrollment;
+        if (!$enrollment || abs($change) < 0.005) {
+            return;
+        }
+        $enrollment->update([
+            'total_fee'         => max(0, round((float) $enrollment->total_fee + $change, 2)),
+            'remaining_balance' => max(0, round((float) $enrollment->remaining_balance + $change, 2)),
+        ]);
+    }
+
+    /**
      * Apply late fee to an installment
      */
     public static function applyLateFee(PaymentInstallment $installment): void
     {
+        $before = (float) ($installment->late_fee ?? 0);
         $installment->update([
             'late_fee' => self::LATE_FEE_AMOUNT,
         ]);
+        self::shiftTotalForLateFee($installment, self::LATE_FEE_AMOUNT - $before);
     }
 
     /**
@@ -583,10 +634,12 @@ class PaymentService
             return false;
         }
 
+        $waived = (float) $installment->late_fee;
         $installment->update([
             'late_fee' => 0,
             'status' => 'pending', // Reset status if it was overdue
         ]);
+        self::shiftTotalForLateFee($installment, -$waived);
 
         return true;
     }
@@ -762,6 +815,116 @@ class PaymentService
     }
 
     /**
+     * The exact amounts the cashier may take now (cash or a payment link). Only whole parts of the
+     * plan are accepted — no odd amounts (₱2,000 on a ₱1,400 monthly) that leave a "credit" and
+     * shift every later month:
+     *   pay-in-full plan (A) → the whole remaining balance
+     *   installment plan     → what is due now (the rest of the down payment, or the next unpaid
+     *                          month + its late fee, less any credit already paid toward it), or that
+     *                          plus 1, 2, 3… whole months in advance, or the full balance
+     * Returns ['min' => float|null, 'max' => float|null, 'allowed' => [['label' =>, 'amount' =>], …]];
+     * nulls / [] = no rule (no fee plan yet), max 0 = fully paid.
+     */
+    public static function paymentLimits(Enrollment $enrollment): array
+    {
+        $max = self::balanceDue($enrollment);
+        if ($max === null) {
+            $stored = (float) ($enrollment->remaining_balance ?? 0);
+            $max = $stored > 0 ? round($stored, 2) : null;
+        }
+        if ($max === null) {
+            return ['min' => null, 'max' => null, 'allowed' => []];
+        }
+        if ($max <= 0) {
+            return ['min' => 0.0, 'max' => 0.0, 'allowed' => []];
+        }
+
+        $paid        = (float) ($enrollment->payment_amount ?? 0);
+        $downpayment = (float) ($enrollment->downpayment_amount ?? 0);
+        $monthly     = (float) ($enrollment->monthly_amount ?? 0);
+        $installment = $enrollment->payment_type === 'installment' || in_array($enrollment->payment_option, ['B', 'C', 'D']);
+
+        // The parts still to pay, in order: [label, amount, overdue?]
+        $parts = [];
+        if ($installment) {
+            $rows   = $enrollment->paymentInstallments()->orderBy('due_date')->get();
+            $unpaid = $rows->whereIn('status', ['pending', 'overdue'])->values();
+            $owed   = fn ($i) => (float) $i->amount + (float) ($i->late_fee ?? 0);
+            $isOverdue = fn ($i) => $i->due_date && $i->due_date->lt(Carbon::today());
+
+            if ($downpayment > 0 && $paid < $downpayment - 0.005) {
+                $parts[] = ['Downpayment', $downpayment - $paid];
+                // the months after it — from the schedule if it exists yet, else the plan's monthly amount
+                if ($unpaid->isNotEmpty()) {
+                    foreach ($unpaid as $i) $parts[] = [$i->month_name ?: 'Month', $owed($i), $isOverdue($i)];
+                } elseif ($monthly > 0) {
+                    for ($left = $max - ($downpayment - $paid); $left > 0.005; $left -= $monthly) $parts[] = ['Month', min($monthly, $left)];
+                }
+            } elseif ($unpaid->isNotEmpty()) {
+                // credit = paid beyond the down payment and the months already marked paid (e.g. an old odd
+                // payment) — it lowers the first month still due
+                $credit = max(0, $paid - $downpayment - $rows->where('status', 'paid')->sum($owed));
+                foreach ($unpaid as $k => $i) {
+                    $parts[] = [$i->month_name ?: 'Month', $k === 0 ? max(0, $owed($i) - $credit) : $owed($i), $isOverdue($i)];
+                }
+            }
+        }
+
+        // Cumulative options: due now, + 1 month ahead, + 2 …, then the full balance. Months already past
+        // their due date are "overdue", not "in advance": with July–September unpaid the options read
+        // "Due now (July)", "Overdue July – August", "Overdue July – September", "… + 1 month in advance".
+        $allowed = [];
+        $sum = 0.0;
+        $overdueCount = count(array_filter($parts, fn ($p) => !empty($p[2])));
+        foreach ($parts as $k => $part) {
+            [$label, $amount] = $part;
+            $sum = round($sum + $amount, 2);
+            // below Xendit's ₱1 minimum, or within ₱1 of the full balance (centavo rounding across the months
+            // would leave a few centavos nobody can pay online) — then only "Full balance" is offered
+            if ($sum < 1 || $sum > $max - 1) continue;
+            if ($parts[0][0] === 'Downpayment') {
+                $text = $k === 0 ? 'Downpayment' : 'Downpayment + ' . $k . ' month' . ($k > 1 ? 's' : '') . ' in advance';
+            } elseif ($k === 0) {
+                $text = 'Due now (' . $label . ')';
+            } elseif ($k < $overdueCount) {
+                $text = 'Overdue ' . $parts[0][0] . ' – ' . $label;
+            } else {
+                $base    = $overdueCount > 1 ? 'All overdue (' . $parts[0][0] . ' – ' . $parts[$overdueCount - 1][0] . ')' : 'Due now';
+                $advance = $k + 1 - max(1, $overdueCount);
+                $text    = $base . ' + ' . $advance . ' month' . ($advance > 1 ? 's' : '') . ' in advance';
+            }
+            $allowed[] = ['label' => $text, 'amount' => $sum];
+        }
+        $allowed[] = ['label' => 'Full balance', 'amount' => round($max, 2)];
+
+        return ['min' => $allowed[0]['amount'], 'max' => round($max, 2), 'allowed' => $allowed];
+    }
+
+    /**
+     * Why the cashier can't take $amount now, or null when it is exactly one of the accepted amounts
+     * (paymentLimits()['allowed'], compared to the centavo).
+     */
+    public static function paymentLimitError(Enrollment $enrollment, float $amount): ?string
+    {
+        $limits = self::paymentLimits($enrollment);
+        if (empty($limits['allowed'])) {
+            return null; // no fee plan rule to check against (handled by the callers' own checks)
+        }
+        $amount = round($amount, 2);
+        foreach ($limits['allowed'] as $option) {
+            if (abs($option['amount'] - $amount) < 0.005) {
+                return null;
+            }
+        }
+        $options = collect($limits['allowed']);
+        if ($options->count() > 4) { // due now, 2 months ahead … full balance
+            $options = $options->take(3)->push(['label' => '…', 'amount' => null])->push($options->last());
+        }
+        $list = $options->map(fn ($o) => $o['amount'] === null ? '…' : '₱' . number_format($o['amount'], 2) . ' (' . $o['label'] . ')')->implode(', ');
+        return 'Only exact amounts are accepted, so each payment covers whole months. For this student: ' . $list . '.';
+    }
+
+    /**
      * Why this enrollment's school year blocks moving the student to the next one, or null
      * when it is fully paid. Every way a student moves up (assess, bulk promote, Nursery/Kinder
      * auto-advance, portal re-enrollment) requires the old school year to be settled.
@@ -866,6 +1029,115 @@ class PaymentService
      * and reconcileXenditInvoice() below, so there is exactly one place this
      * logic lives rather than two copies that could disagree.
      */
+    /**
+     * Creates a Xendit invoice for the EXACT amount, centavos included (₱2,083.33), and returns
+     * [Http response, the amount Xendit accepted]. Xendit's docs don't say clearly whether invoices
+     * take centavos, so if a centavo amount is refused it retries once with the amount rounded up
+     * to the whole peso — and the caller records (and later credits) whatever amount was accepted,
+     * so what is charged and what is credited are always the same number.
+     */
+    public static function createXenditInvoice(string $apiKey, array $payload, float $amount): array
+    {
+        $exact = round($amount, 2);
+        $send  = fn ($value) => Http::withBasicAuth($apiKey, '')
+            ->post('https://api.xendit.co/v2/invoices', array_merge($payload, ['amount' => $value]));
+
+        $response = $send($exact);
+        if (!$response->successful() && $exact != floor($exact)) {
+            $whole = (int) ceil($exact);
+            Log::info('Xendit refused a centavo amount; retrying with whole pesos', [
+                'amount' => $exact, 'retry' => $whole, 'error' => $response->json('message'),
+            ]);
+            $retry = $send($whole);
+            if ($retry->successful()) {
+                return [$retry, (float) $whole];
+            }
+        }
+        return [$response, $exact];
+    }
+
+    /**
+     * One open payment link per student at a time, used by both the Cashier and the Student Portal.
+     * Returns [the open link to reuse (same amount) or null, an error message or null].
+     * An open link for a DIFFERENT amount (e.g. due now → full balance) is cancelled at Xendit first
+     * (POST /invoices/{id}/expire!) so the two can never both be paid; if it can't be cancelled (e.g.
+     * it was just paid), the new link is refused and the old one stands.
+     */
+    public static function openXenditLink(int $enrollmentId, float $amount, string $apiKey): array
+    {
+        $open = PaymentTransaction::where('enrollment_id', $enrollmentId)
+            ->where('payment_type', 'online')
+            ->where('status', 'pending')
+            ->whereNotNull('xendit_invoice_url')
+            ->where('created_at', '>=', now()->subSeconds(86400))
+            ->latest()
+            ->get();
+
+        $amount = round($amount, 2);
+        $same = $open->first(fn ($t) => abs((float) $t->amount - $amount) < 0.005 || abs((float) $t->amount - ceil($amount)) < 0.005);
+        if ($same) {
+            return [$same, null];
+        }
+
+        foreach ($open as $old) {
+            try {
+                $res = Http::withBasicAuth($apiKey, '')->post('https://api.xendit.co/invoices/' . $old->xendit_invoice_id . '/expire!');
+            } catch (\Throwable $e) {
+                $res = null;
+            }
+            if (!$res || !$res->successful()) {
+                return [null, 'A payment link for ₱' . number_format((float) $old->amount, 2) . ' is still open and could not be cancelled'
+                    . ' (it may have just been paid). Please wait a moment and check the payment status first.'];
+            }
+            $old->update(['status' => 'expired', 'processed_at' => now()]);
+            \App\Services\ActivityLogger::log('update', 'Cancelled the open ₱' . number_format((float) $old->amount, 2)
+                . ' payment link (Invoice: ' . $old->xendit_invoice_id . ') — replaced by a link for ₱' . number_format($amount, 2), 'PaymentTransaction', $old->id);
+        }
+        return [null, null];
+    }
+
+    /**
+     * Why a "paid" Xendit invoice must NOT be credited to this transaction, or null when it matches.
+     * Checked before every credit (webhook and live status check): the invoice must carry our
+     * reference, the same amount to the centavo, and pesos. The webhook token proves the message
+     * came from Xendit; this proves it is about this exact payment, for this exact amount.
+     */
+    public static function xenditInvoiceMismatch(PaymentTransaction $transaction, array $invoice): ?string
+    {
+        $externalId = $invoice['external_id'] ?? null;
+        if ($externalId !== null && $transaction->reference_number && $externalId !== $transaction->reference_number) {
+            return 'reference ' . $externalId . ' is not this payment\'s ' . $transaction->reference_number;
+        }
+        $paid = $invoice['paid_amount'] ?? $invoice['amount'] ?? null;
+        if ($paid === null) {
+            return 'no amount in the invoice';
+        }
+        if (abs(round((float) $paid, 2) - round((float) $transaction->amount, 2)) >= 0.01) {
+            return 'paid ₱' . number_format((float) $paid, 2) . ' but the payment is for ₱' . number_format((float) $transaction->amount, 2);
+        }
+        $currency = $invoice['currency'] ?? 'PHP';
+        if (strtoupper((string) $currency) !== 'PHP') {
+            return 'currency ' . $currency . ', not PHP';
+        }
+        return null;
+    }
+
+    /** Records a refused credit (see xenditInvoiceMismatch) for Admin's Audit Trail and the server log. */
+    public static function logXenditMismatch(PaymentTransaction $transaction, string $why): void
+    {
+        // The status check is polled every few seconds — record each mismatched payment once an hour
+        if (!\Illuminate\Support\Facades\Cache::add('xendit-mismatch-' . $transaction->id, true, 3600)) {
+            return;
+        }
+        Log::warning('Xendit payment NOT credited — invoice does not match', ['transaction' => $transaction->id, 'invoice' => $transaction->xendit_invoice_id, 'why' => $why]);
+        \App\Services\ActivityLogger::log(
+            'error',
+            'Xendit payment NOT credited (Invoice: ' . $transaction->xendit_invoice_id . '): ' . $why . ' — please check it in Xendit',
+            'PaymentTransaction',
+            $transaction->id
+        );
+    }
+
     public static function completeXenditPayment(PaymentTransaction $transaction): void
     {
         // Idempotency guard — Xendit can and does redeliver the same "paid"
@@ -895,7 +1167,7 @@ class PaymentService
 
         if (in_array($fresh->payment_option, ['B', 'C', 'D']) || $fresh->payment_type === 'installment') {
             self::createInstallments($fresh);
-            self::reconcileInstallmentStatuses($fresh);
+            self::reconcileInstallmentStatuses($fresh, $transaction);
         }
 
         self::advanceEnrollmentAfterPayment($fresh->fresh());
@@ -943,9 +1215,10 @@ class PaymentService
             return $transaction->status;
         }
 
-        $liveStatus = $response->json('status');
+        $invoice    = (array) $response->json();
+        $liveStatus = $invoice['status'] ?? null;
 
-        return DB::transaction(function () use ($transaction, $liveStatus) {
+        return DB::transaction(function () use ($transaction, $liveStatus, $invoice) {
             $locked = PaymentTransaction::where('id', $transaction->id)->lockForUpdate()->first();
             if (!$locked || $locked->status !== 'pending') {
                 // Already resolved (e.g. a webhook that did get through, or
@@ -954,6 +1227,11 @@ class PaymentService
             }
 
             if (in_array($liveStatus, ['PAID', 'SETTLED'])) {
+                // same check as the webhook: never credit an invoice that doesn't match this payment
+                if ($why = self::xenditInvoiceMismatch($locked, $invoice)) {
+                    self::logXenditMismatch($locked, $why);
+                    return 'pending';
+                }
                 self::completeXenditPayment($locked);
                 return 'completed';
             }

@@ -23,12 +23,14 @@ class AdminSchoolYearFiltersTest extends TestCase
     {
         parent::setUp();
         Setting::set('current_school_year', '2026-2027');
+        Setting::set('enrollment_target_year', '2027-2028');
+        Setting::set('enrollment_open', '1', 'boolean');
         $this->admin = User::factory()->admin()->create();
     }
 
     private function enrolled(string $grade, string $sy = '2026-2027', array $extra = []): Enrollment
     {
-        return Enrollment::factory()->fullyPaid()->create(array_merge([
+        return Enrollment::factory()->fullyPaid()->withApprovedDocuments()->create(array_merge([
             'grade_level' => $grade, 'school_year' => $sy,
             'student_data' => ['first_name' => 'Ana', 'last_name' => 'Cruz', 'grade_level' => $grade, 'student_type' => 'returning'],
         ], $extra));
@@ -39,6 +41,8 @@ class AdminSchoolYearFiltersTest extends TestCase
         $this->actingAs($this->admin, 'web')->postJson("/admin/assessment/{$e->user_id}/promote", [
             'action' => 'promote', 'from_school_year' => $e->school_year, 'to_school_year' => '2027-2028',
         ])->assertOk()->assertJson(['success' => true]);
+        // The assessment records the result; the student's Re-enroll creates the 2027-2028 enrollment
+        $this->actingAs(User::find($e->user_id), 'web')->post('/student/reenroll')->assertSessionHas('success');
         return Promotion::where('student_id', $e->user_id)->latest('id')->firstOrFail();
     }
 

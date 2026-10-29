@@ -25,39 +25,28 @@
             </div>
         </div>
 
-        {{-- Summary Cards --}}
+        {{-- Summary Cards — click: scroll to the assignments (Active Teachers also sorts them by teacher,
+             Sections Covered opens Section Management) — js/stat-jump.js --}}
         <div class="row g-3 mb-4" id="ta-summary-cards">
+            @foreach([
+                ['blue', 'bi-star-fill', 'ta-advisory-count', 'Advisory Assignments', 'Show the assignments below (newest first)', ['set' => ['#ta-sort-filter' => 'newest'], 'to' => '#ta-list-card']],
+                ['gold', 'bi-person-badge-fill', 'ta-teacher-count', 'Active Teachers', 'Show the assignments below sorted by teacher', ['set' => ['#ta-sort-filter' => 'teacher_asc'], 'to' => '#ta-list-card']],
+                ['purple', 'bi-building', 'ta-section-count', 'Sections Covered', 'Open Section Management', ['section' => 'sections', 'to' => '#section-sections']],
+            ] as [$color, $icon, $id, $label, $tip, $jump])
             <div class="col-md-4">
-                <div class="stat-card">
-                    <div class="stat-icon blue"><i class="bi bi-star-fill"></i></div>
+                <div class="stat-card stat-card-link" role="button" tabindex="0" title="{{ $tip }}" data-jump="{{ json_encode($jump) }}">
+                    <div class="stat-icon {{ $color }}"><i class="bi {{ $icon }}"></i></div>
                     <div>
-                        <div class="stat-value" id="ta-advisory-count">0</div>
-                        <div class="stat-label">Advisory Assignments</div>
+                        <div class="stat-value" id="{{ $id }}">0</div>
+                        <div class="stat-label">{{ $label }}</div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
-                <div class="stat-card">
-                    <div class="stat-icon gold"><i class="bi bi-person-badge-fill"></i></div>
-                    <div>
-                        <div class="stat-value" id="ta-teacher-count">0</div>
-                        <div class="stat-label">Active Teachers</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="stat-card">
-                    <div class="stat-icon purple"><i class="bi bi-building"></i></div>
-                    <div>
-                        <div class="stat-value" id="ta-section-count">0</div>
-                        <div class="stat-label">Sections Covered</div>
-                    </div>
-                </div>
-            </div>
+            @endforeach
         </div>
 
         {{-- Assignments Table --}}
-        <div class="dash-card">
+        <div class="dash-card" id="ta-list-card">
             <div class="dash-card-header">
                 <h6><i class="bi bi-table me-2"></i>Advisory Assignments</h6>
             </div>

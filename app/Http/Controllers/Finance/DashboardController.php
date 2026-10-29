@@ -1713,7 +1713,10 @@ class DashboardController extends Controller
 
             // Reconcile installment statuses for installment plans
             if ($enrollment->payment_type === 'installment' || in_array($enrollment->payment_option, ['B', 'C', 'D'])) {
-                \App\Services\PaymentService::reconcileInstallmentStatuses($enrollment);
+                if ($installment && !$isDownpayment) {
+                    \App\Services\PaymentService::linkPaidMonths($payment, [$installment->fresh()]); // late fee into the description
+                }
+                \App\Services\PaymentService::reconcileInstallmentStatuses($enrollment, $payment);
             }
 
             // Update enrollment status (approved -> enrolled)
@@ -1936,8 +1939,12 @@ class DashboardController extends Controller
                     ]);
                 }
 
+                if ($resolvedInstallmentId) {
+                    PaymentService::linkPaidMonths($payment->fresh(), [PaymentInstallment::find($resolvedInstallmentId)]); // late fee into the description
+                }
+
                 // Reconcile installment statuses
-                PaymentService::reconcileInstallmentStatuses($enrollment);
+                PaymentService::reconcileInstallmentStatuses($enrollment, $payment);
 
                 // Get payment summary for next due date
                 $summary = PaymentService::getPaymentSummary($enrollment);

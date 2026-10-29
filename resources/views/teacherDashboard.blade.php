@@ -15,6 +15,10 @@
         @keyframes pSkelShimmer{0%{background-position:-600px 0}100%{background-position:600px 0}}
         .skel{background:linear-gradient(90deg,#e8edf2 25%,#f5f7fa 50%,#e8edf2 75%);background-size:600px 100%;animation:pSkelShimmer 1.4s ease-in-out infinite;border-radius:6px;display:block}
         .p-skel{position:absolute;top:0;left:0;right:0;bottom:0;padding:28px;z-index:50;background:var(--bg,#f0f4f8);pointer-events:none;min-height:100vh;transition:opacity .32s ease}
+        /* Grade table: skeleton rows while it reloads (same height as real rows), then the rows fade in */
+        tr.ms-skel-row td{height:64px;vertical-align:middle}
+        @keyframes msFadeIn{from{opacity:0}to{opacity:1}}
+        .ms-fade-in{animation:msFadeIn .3s ease}
         [id^="section-"]{position:relative}
 
         :root {
@@ -782,7 +786,7 @@
                             <div style="background:#ffebee;border:1px solid #ef9a9a;border-radius:8px;padding:12px 16px;margin-bottom:10px;text-align:left;">
                                 <i class="bi bi-x-circle-fill" style="color:#c62828;"></i>
                                 <strong style="color:#c62828;"> {{ $rejectedCount }} grade submission(s) were returned by admin for revision.</strong>
-                                <div style="font-size:11px;color:#b71c1c;margin-top:4px;">Please open the Class Record, correct the grades, and re-submit.</div>
+                                <div style="font-size:11px;color:#b71c1c;margin-top:4px;">Please open the Class Record, correct the grades, and post them again.</div>
                             </div>
                         @endif
                         @if($draftCount > 0)
@@ -790,7 +794,7 @@
                             <strong style="color:var(--text);">{{ $draftCount }} draft grade(s)</strong> awaiting review and submission.
                         @elseif(($rejectedCount ?? 0) == 0)
                             <i class="bi bi-check-circle-fill" style="font-size:30px;display:block;margin-bottom:8px;color:var(--green);opacity:0.7;"></i>
-                            No pending drafts. All grades are submitted.
+                            No pending drafts. All grades are posted.
                         @endif
                     </div>
                 </div>
@@ -1121,7 +1125,7 @@
                         <i class="bi bi-exclamation-triangle-fill" style="color:var(--gold);font-size:18px;"></i>
                         <div>
                             <div style="font-size:13px;font-weight:700;color:var(--text);">{{ $draftCount }} Draft(s) Pending</div>
-                            <div style="font-size:11px;color:var(--muted);">Open a subject to review and submit.</div>
+                            <div style="font-size:11px;color:var(--muted);">Open a subject to review and post.</div>
                         </div>
                     </div>
                 @endif
@@ -1312,7 +1316,7 @@
                     <div style="display:flex;align-items:flex-start;gap:10px;">
                         <i class="bi bi-pencil-square" style="color:var(--gold);font-size:20px;margin-top:2px;flex-shrink:0;"></i>
                         <div>
-                            <div style="font-size:13px;font-weight:700;color:var(--text);">Draft grades saved — review before submitting</div>
+                            <div style="font-size:13px;font-weight:700;color:var(--text);">Draft grades saved — review before posting</div>
                             <div id="ms-draft-count-text" style="font-size:12px;color:var(--muted);margin-top:2px;"></div>
                         </div>
                     </div>
@@ -1321,11 +1325,11 @@
                     <strong>How to review:</strong>
                     Draft grades are shown in the <strong>Grade</strong> column with an <span style="background:#fff8ec;border:1px solid #f5a623;border-radius:4px;padding:1px 6px;font-weight:700;">amber highlight</span>.
                     You can still edit any grade — the button above the table changes to <strong>Save as Draft</strong> until you save.
-                    When you're satisfied, click <strong>Submit Grades</strong> above the table to make them visible to students.
+                    When you're satisfied, click <strong>Post Grades</strong> above the table to make them visible to students.
                 </div>
             </div>
 
-            <!-- Exam Permit Hold notice — appears only when students in this class have a hold -->
+            <!-- Results Hold notice — appears only when students in this class have a hold (they still take the exam) -->
             <div id="ms-permit-banner" style="display:none;margin-bottom:14px;padding:12px 16px;background:#ffebee;border:1px solid #ffcdd2;border-radius:10px;color:#c62828;font-size:12.5px;align-items:center;gap:10px;">
                 <i class="bi bi-exclamation-triangle-fill" style="font-size:16px;"></i>
                 <span id="ms-permit-banner-text"></span>
@@ -1336,9 +1340,9 @@
                 <div class="content-card-header">
                     <h6 id="ms-table-title">Loading...</h6>
                     <div style="display:flex;gap:8px;align-items:center;">
-                        <span id="ms-grade-action-hint" style="font-size:11px;color:var(--muted);">Enter grades below, then save as draft to review before submitting.</span>
+                        <span id="ms-grade-action-hint" style="font-size:11px;color:var(--muted);">Enter grades below, then save as draft to review before posting.</span>
                         {{-- One button that follows the grades: Save as Draft while there are unsaved changes
-                             (typed or just imported), Submit Grades once the draft is saved, hidden otherwise --}}
+                             (typed or just imported), Post Grades once the draft is saved, hidden otherwise --}}
                         <button id="btn-save-draft" class="btn-dash btn-secondary" style="padding:7px 16px;font-size:12px;display:none;" onclick="gradeActionClick()">
                             <i class="bi bi-floppy-fill"></i> Save as Draft
                         </button>
@@ -2245,9 +2249,9 @@
 
     // ── The grade table's action button ──
     // Save as Draft while there are unsaved changes (typed, or just imported → review then save),
-    // Submit Grades once the draft is saved with no new changes, hidden when there is nothing to do.
+    // Post Grades once the draft is saved with no new changes, hidden when there is nothing to do.
     let msGradesDirty   = false; // grades changed since the table was loaded / last saved
-    let msDraftCount    = 0;     // saved drafts waiting to be submitted
+    let msDraftCount    = 0;     // saved drafts waiting to be posted
     let msHasEditable   = false; // any grade in the table not yet posted (still editable)
     let msImportPending = false; // the next table load follows an import
 
@@ -2265,21 +2269,39 @@
             btn.className = 'btn-dash btn-secondary';
             btn.innerHTML = '<i class="bi bi-floppy-fill"></i> Save as Draft';
             btn.style.display = '';
-            hint.textContent = 'You have unsaved changes — save them as a draft to review before submitting.';
+            hint.textContent = 'You have unsaved changes — save them as a draft to review before posting.';
         } else if (msDraftCount > 0) {
             btn.className = 'btn-dash btn-success';
-            btn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Submit Grades';
+            btn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Post Grades';
             btn.style.display = '';
-            hint.textContent = 'Draft saved. Review the grades, then submit them.';
+            hint.textContent = 'Draft saved. Review the grades, then post them.';
         } else {
             btn.style.display = 'none';
-            hint.textContent = msHasEditable ? 'Enter grades below, then save as draft to review before submitting.' : '';
+            hint.textContent = msHasEditable ? 'Enter grades below, then save as draft to review before posting.' : '';
         }
     }
 
     function gradeActionClick() {
         if (msHasEditable && msGradesDirty) saveManualGrades();
         else if (msDraftCount > 0) submitDraft();
+    }
+
+    // ── Grade table skeleton (shown while the table reloads) ──
+    const MS_SKEL_MIN_MS = 350;
+    function msSkeletonRows(n) {
+        n = Math.min(15, Math.max(5, n || 8));
+        const cell = (w, h, r) => '<td><span class="skel" style="width:' + w + ';height:' + (h || 12) + 'px;border-radius:' + (r || 4) + 'px;"></span></td>';
+        let html = '';
+        for (let i = 0; i < n; i++) {
+            html += '<tr class="ms-skel-row">' + cell('14px') + cell((55 + (i * 37) % 35) + '%', 13) + cell('95px')
+                + cell('88px', 30, 8) + cell('70px', 20, 20) + cell('60px', 20, 20) + cell('46px', 24, 6) + '</tr>';
+        }
+        return html;
+    }
+    function msFadeIn(el) {
+        el.classList.remove('ms-fade-in');
+        void el.offsetWidth; // restart the animation
+        el.classList.add('ms-fade-in');
     }
 
     function loadGradeView() {
@@ -2294,8 +2316,11 @@
             msCurrentSubjectName + ' · S.Y. ' + schoolYear + ' · Term ' + term;
         const tbody = document.getElementById('ms-grade-body');
         const title = document.getElementById('ms-table-title');
-        title.textContent = 'Loading...';
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--muted);"><i class="bi bi-hourglass-split"></i> Loading...</td></tr>';
+        // Skeleton rows instead of a "Loading..." line: as many rows as the table already shows (so the page
+        // doesn't jump after Save as Draft / Post Grades), shown at least MS_SKEL_MIN_MS so it never flickers
+        const skelStart = Date.now();
+        title.innerHTML = '<span class="skel" style="display:inline-block;width:260px;height:16px;vertical-align:middle;"></span>';
+        tbody.innerHTML = msSkeletonRows(tbody.querySelectorAll('tr').length);
         hideDraftNotice();
 
         fetch('/teacher/grades/load-class', {
@@ -2305,8 +2330,12 @@
             body: JSON.stringify({ section_id: msCurrentSection, subject_id: msCurrentSubject, term: term, school_year: schoolYear })
         })
         .then(r => r.json())
+        // keep the skeleton up for its minimum time, then fade the real rows in
+        .then(data => new Promise(done => setTimeout(() => done(data), Math.max(0, MS_SKEL_MIN_MS - (Date.now() - skelStart)))))
         .then(data => {
+            msFadeIn(tbody);
             if (!data.success) {
+                title.textContent = '';
                 tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--red);">' + (data.message || 'Error loading students.') + '</td></tr>';
                 return;
             }
@@ -2405,13 +2434,13 @@
                 const sf9Url = '{{ route("teacher.sf9", ":sid") }}'.replace(':sid', s.student_id)
                     + '?school_year=' + encodeURIComponent(schoolYear);
                 const permitBadge = s.exam_permit_held
-                    ? '<div style="font-size:10px;color:#c62828;margin-top:2px;font-weight:600;" title="' + (s.exam_permit_reason === 'broken_promise' ? 'Promissory Note broken — payment promise date passed unpaid' : 'Payments 3+ consecutive months behind') + '"><i class="bi bi-exclamation-triangle-fill"></i> Exam Permit Withheld</div>'
+                    ? '<div style="font-size:10px;color:#c62828;margin-top:2px;font-weight:600;" title="' + (s.exam_permit_reason === 'broken_promise' ? 'Promissory Note broken — payment promise date passed unpaid' : 'Payments 3+ consecutive months behind') + '"><i class="bi bi-lock-fill"></i> Results on Hold</div>'
                     : '';
                 // Fixed height so rows with the Exam Permit line under the name line up with the rest
                 html += '<tr style="height:64px;" data-student-id="' + s.student_id + '" data-enrollment-id="' + (s.enrollment_id || '') + '">'
                     + '<td style="color:var(--muted);font-size:12px;">' + (i+1) + '</td>'
                     + '<td><div style="font-weight:600;font-size:13px;">' + s.name + '</div>'
-                    +   (isDraftFill ? '<div style="font-size:10px;color:#d68910;margin-top:2px;"><i class="bi bi-upload"></i> Imported draft — verify before submitting</div>' : '')
+                    +   (isDraftFill ? '<div style="font-size:10px;color:#d68910;margin-top:2px;"><i class="bi bi-upload"></i> Imported draft — verify before posting</div>' : '')
                     +   permitBadge
                     + '</td>'
                     + '<td style="font-size:12px;color:var(--muted);">' + (s.lrn || '—') + '</td>'
@@ -2428,7 +2457,7 @@
             if (heldCount > 0) {
                 document.getElementById('ms-permit-banner-text').textContent =
                     heldCount + ' student' + (heldCount > 1 ? 's' : '') + ' in this class ' + (heldCount > 1 ? 'have' : 'has') +
-                    ' an Exam Permit Hold for unpaid tuition — do not release their periodic exam results until Finance confirms the hold is lifted.';
+                    ' a Results Hold for unpaid tuition — they take the exams as usual (RA 11984), but their periodic exam results are not released to them until the hold is lifted.';
                 permitBanner.style.display = 'flex';
             } else {
                 permitBanner.style.display = 'none';
@@ -2439,12 +2468,13 @@
             }
 
             msDraftCount = data.draft_count || 0;
-            // Imported grades are saved as drafts already, but get reviewed first: Save as Draft, then Submit
+            // Imported grades are saved as drafts already, but get reviewed first: Save as Draft, then Post Grades
             if (msImportPending) { msGradesDirty = true; msImportPending = false; }
             updateGradeActionButton();
         })
         .catch(function(err) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--red);">Error loading students.</td></tr>';
+            title.textContent = ''; // clear the skeleton title
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:30px;color:var(--red);">Error loading students.</td></tr>';
             console.error(err);
         });
     }
@@ -2621,7 +2651,7 @@
 
     function showDraftNotice(count) {
         const notice = document.getElementById('ms-draft-notice');
-        document.getElementById('ms-draft-count-text').textContent = count + ' student grade(s) in draft. Review below, then submit.';
+        document.getElementById('ms-draft-count-text').textContent = count + ' student grade(s) in draft. Review below, then post.';
         notice.style.display = 'flex';
     }
 
@@ -2635,7 +2665,7 @@
         const schoolYear = document.getElementById('ms-sy').value;
         const btn = document.getElementById('btn-save-draft');
         btn.disabled = true;
-        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Submitting…';
+        btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Posting…';
         fetch('/teacher/grades/submit-draft', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
@@ -2645,8 +2675,8 @@
         .then(r => r.json())
         .then(data => {
             btn.disabled = false;
-            if (data.success) { showToast(data.message || 'Grades submitted!', 'success'); loadGradeView(); }
-            else { showToast(data.message || 'Submit failed.', 'error'); updateGradeActionButton(); }
+            if (data.success) { showToast(data.message || 'Grades posted!', 'success'); loadGradeView(); }
+            else { showToast(data.message || 'Post failed.', 'error'); updateGradeActionButton(); }
         })
         .catch(function () {
             btn.disabled = false;

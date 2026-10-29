@@ -18,34 +18,20 @@
 
         </div>
 
+        {{-- Click a card: list those classes below (the counts cover every school year) — js/stat-jump.js --}}
         <div class="row g-3 mb-4">
+            @foreach([['blue', 'bi-sun-fill', $summerTotalCount ?? 0, 'Total Classes', ''], ['gold', 'bi-hourglass-split', $summerOngoingCount ?? 0, 'Ongoing', 'ongoing'], ['green', 'bi-check-circle-fill', $summerCompletedCount ?? 0, 'Completed', 'completed']] as [$color, $icon, $count, $label, $st])
             <div class="col-md-4 col-sm-6">
-                <div class="stat-card">
-                    <div class="stat-icon blue"><i class="bi bi-sun-fill"></i></div>
+                <div class="stat-card stat-card-link" role="button" tabindex="0" title="Show {{ $st === '' ? 'all summer classes' : $label . ' classes' }} below"
+                     data-jump="{{ json_encode(["set" => ["#summer-sy-filter" => "", "#summer-status-filter" => $st], "to" => "#summer-list-card"]) }}">
+                    <div class="stat-icon {{ $color }}"><i class="bi {{ $icon }}"></i></div>
                     <div>
-                        <div class="stat-value">{{ $summerTotalCount ?? 0 }}</div>
-                        <div class="stat-label">Total Classes</div>
+                        <div class="stat-value">{{ $count }}</div>
+                        <div class="stat-label">{{ $label }}</div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4 col-sm-6">
-                <div class="stat-card">
-                    <div class="stat-icon gold"><i class="bi bi-hourglass-split"></i></div>
-                    <div>
-                        <div class="stat-value">{{ $summerOngoingCount ?? 0 }}</div>
-                        <div class="stat-label">Ongoing</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4 col-sm-6">
-                <div class="stat-card">
-                    <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
-                    <div>
-                        <div class="stat-value">{{ $summerCompletedCount ?? 0 }}</div>
-                        <div class="stat-label">Completed</div>
-                    </div>
-                </div>
-            </div>
+            @endforeach
         </div>
 
         <div class="module-toolbar">
@@ -68,7 +54,7 @@
             </div>
         </div>
 
-        <div class="content-card">
+        <div class="content-card" id="summer-list-card">
 
             <div class="content-card-header">
 

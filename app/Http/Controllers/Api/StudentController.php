@@ -146,6 +146,26 @@ class StudentController extends Controller
             ];
         });
 
+        // Results hold (docs/LATE-PAYMENTS-AND-REMINDERS.md §5a). Every student TAKES the exams — RA 11984,
+        // the No Permit, No Exam Prohibition Act. A family 3 months behind, or with a broken Promissory
+        // Note, has the exam RESULTS held instead (the law keeps the school's right to withhold records):
+        // the portal shows the subjects but not the grades, until the family catches up or a new
+        // Promissory Note is signed. Same rule as PaymentService::getExamPermitStatus().
+        $resultsHold = null;
+        if ($enrollment && ($enrollment->payment_type === 'installment' || in_array($enrollment->payment_option, ['B', 'C', 'D'], true))) {
+            $status = \App\Services\PaymentService::getExamPermitStatus($enrollment);
+            if ($status['held']) {
+                $resultsHold = [
+                    'reason'  => $status['reason'],
+                    'message' => $status['reason'] === 'broken_promise'
+                        ? 'Exam results are on hold: the promised payment date on file has passed without payment. Please settle the balance or arrange a new Promissory Note with the Finance Office.'
+                        : 'Exam results are on hold: payments are ' . $status['overdue_months'] . ' months behind. Please settle the overdue months or arrange a Promissory Note with the Finance Office — the results are released as soon as the hold is lifted.',
+                ];
+                $grades   = collect();
+                $subjects = $subjects->map(fn ($s) => array_merge($s, ['final_grade' => null, 'descriptive_grade' => null, 'remarks' => '']));
+            }
+        }
+
         $pendingCount = Grade::where('student_id', $user->id)
             ->where('term', $term)
             ->where('status', 'submitted')
@@ -162,7 +182,7 @@ class StudentController extends Controller
         // registrar hasn't signed off on yet. Skipped for Nursery/Kinder, which
         // use descriptive ratings and auto-advance rather than numeric pass/fail.
         $failingSubjects = [];
-        if (!$isDescriptive) {
+        if (!$isDescriptive && !$resultsHold) { // results on hold: no averages either
             $yearGrades = Grade::where('student_id', $user->id)
                 ->where('status', 'approved')
                 ->whereNotNull('grade')
@@ -195,6 +215,7 @@ class StudentController extends Controller
                 'has_grades'       => $grades->isNotEmpty(),
                 'subjects'         => $subjects,
                 'failing_subjects' => $failingSubjects,
+                'results_hold'     => $resultsHold, // null = released as usual
             ],
         ]);
     }

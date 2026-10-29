@@ -5,7 +5,13 @@
                 <h1>Schedule Management</h1>
                 <p>Manage class schedules by grade level and section.</p>
             </div>
-            <div style="display:flex;gap:10px;">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button class="btn-dash btn-secondary" onclick="openSubjectTeachersModal()" title="Who teaches each subject in each section">
+                    <i class="bi bi-person-video3"></i> Subject Teachers
+                </button>
+                <button class="btn-dash btn-secondary" onclick="openGenerateScheduleModal()" title="Build a whole grade's timetables at once">
+                    <i class="bi bi-magic"></i> Generate Schedule
+                </button>
                 <button class="btn-dash btn-secondary" onclick="openCopyTermModal()">
                     <i class="bi bi-copy"></i> Copy Term
                 </button>

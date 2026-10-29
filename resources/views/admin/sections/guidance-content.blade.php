@@ -16,34 +16,28 @@
 
         </div>
 
+        {{-- Click a card: filter the records below by that status and scroll to them — js/stat-jump.js --}}
+        @php
+            $gF = fn ($status) => ['#guidance-filter-form [name=guidance_search]' => '', '#guidance-filter-form [name=guidance_concern]' => '', '#guidance-filter-form [name=guidance_status]' => $status];
+            $gCards = [
+                ['blue', 'bi-journal-medical', $guidanceTotalCount ?? 0, 'Total Records', ''],
+                ['gold', 'bi-exclamation-circle-fill', $guidanceOpenCount ?? 0, 'Open', 'open'],
+                ['green', 'bi-check-circle-fill', $guidanceResolvedCount ?? 0, 'Resolved / Closed', 'resolved_closed'],
+            ];
+        @endphp
         <div class="row g-3 mb-4">
+            @foreach($gCards as [$color, $icon, $count, $label, $st])
             <div class="col-md-4 col-sm-6">
-                <div class="stat-card">
-                    <div class="stat-icon blue"><i class="bi bi-journal-medical"></i></div>
+                <div class="stat-card stat-card-link" role="button" tabindex="0" title="Show {{ $st === '' ? 'all records' : $label . ' records' }} below"
+                     data-jump="{{ json_encode(["set" => $gF($st), "to" => "#guidance-records-card"]) }}">
+                    <div class="stat-icon {{ $color }}"><i class="bi {{ $icon }}"></i></div>
                     <div>
-                        <div class="stat-value">{{ $guidanceTotalCount ?? 0 }}</div>
-                        <div class="stat-label">Total Records</div>
+                        <div class="stat-value">{{ $count }}</div>
+                        <div class="stat-label">{{ $label }}</div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-4 col-sm-6">
-                <div class="stat-card">
-                    <div class="stat-icon gold"><i class="bi bi-exclamation-circle-fill"></i></div>
-                    <div>
-                        <div class="stat-value">{{ $guidanceOpenCount ?? 0 }}</div>
-                        <div class="stat-label">Open</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4 col-sm-6">
-                <div class="stat-card">
-                    <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
-                    <div>
-                        <div class="stat-value">{{ $guidanceResolvedCount ?? 0 }}</div>
-                        <div class="stat-label">Resolved / Closed</div>
-                    </div>
-                </div>
-            </div>
+            @endforeach
         </div>
 
         {{-- Guidance Filter Bar --}}
@@ -71,6 +65,7 @@
                         <option value="in_progress" {{ ($guidanceStatus ?? '') === 'in_progress' ? 'selected' : '' }}>In Progress</option>
                         <option value="resolved" {{ ($guidanceStatus ?? '') === 'resolved' ? 'selected' : '' }}>Resolved</option>
                         <option value="closed" {{ ($guidanceStatus ?? '') === 'closed' ? 'selected' : '' }}>Closed</option>
+                        <option value="resolved_closed" {{ ($guidanceStatus ?? '') === 'resolved_closed' ? 'selected' : '' }}>Resolved / Closed</option>
                     </select>
                     <select name="guidance_sort" onchange="this.form.requestSubmit()">
                         <option value="date_desc" {{ ($guidanceSort ?? 'date_desc') === 'date_desc' ? 'selected' : '' }}>Newest First</option>
@@ -86,7 +81,7 @@
             </div>
         </form>
 
-        <div class="content-card">
+        <div class="content-card" id="guidance-records-card">
 
             <div class="content-card-header">
                 <h6><i class="bi bi-list-ul me-2" style="color:var(--blue);"></i>All Guidance Records</h6>

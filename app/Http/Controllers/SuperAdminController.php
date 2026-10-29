@@ -29,9 +29,13 @@ class SuperAdminController extends Controller
         $sort       = $request->input('sort', 'newest');
         $roleFilter = $request->input('role', 'all');
         $section    = $request->input('section', 'dashboard');
+        if ($section === 'roles') $section = 'dashboard'; // Roles & Permissions is hidden (see the sidebar)
 
         $usersQuery = User::query();
-        if ($roleFilter !== 'all' && in_array($roleFilter, self::ALL_ROLES)) {
+        if ($roleFilter === 'admins') {
+            // the Dashboard's "Admins" card counts Admins and Super Admins together
+            $usersQuery->whereIn('role', ['admin', 'superadmin']);
+        } elseif ($roleFilter !== 'all' && in_array($roleFilter, self::ALL_ROLES)) {
             $usersQuery->where('role', $roleFilter);
         }
 
@@ -49,6 +53,11 @@ class SuperAdminController extends Controller
         if ($userSearch !== '') {
             $like = '%' . addcslashes($userSearch, '%_\\') . '%';
             $userListQuery->where(fn ($q) => $q->where('name', 'like', $like)->orWhere('email', 'like', $like));
+        }
+        // Status filter (and the Active / Inactive stat cards) — User Management only
+        $userStatus = in_array($request->input('user_status'), ['active', 'inactive'], true) ? $request->input('user_status') : '';
+        if ($userStatus !== '') {
+            $userListQuery->where('is_active', $userStatus === 'active');
         }
 
         $userManagementUsers = $userListQuery->paginate(15)->withQueryString();
@@ -84,7 +93,7 @@ class SuperAdminController extends Controller
 
         return view('superadmin_dashboard', compact(
             'users', 'dashboardUsers', 'userManagementUsers',
-            'stats', 'sort', 'roleFilter', 'userSearch', 'logs', 'section', 'backups',
+            'stats', 'sort', 'roleFilter', 'userSearch', 'userStatus', 'logs', 'section', 'backups',
             'announcements', 'newsArticles', 'logRetentionPeriod', 'paymentAutomation', 'schedulerLastRun'
         ) + \App\Models\ContactMessage::inboxData()); // Contact Messages inbox — same data as Admin
     }

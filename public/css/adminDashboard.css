@@ -396,6 +396,21 @@
         .stat-change.up   { color: var(--green); }
         .stat-change.down { color: var(--red); }
 
+        /* Clickable stat cards (Student Management): filter the list below; the current filter is outlined */
+        .stat-card-link { cursor: pointer; }
+        .stat-card-link.active { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue-pale); }
+        .stat-card-link:focus-visible, .stat-pill:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+        /* Small count inside a card, e.g. "212 Enrolled" under Total Students */
+        .stat-pill {
+            display: inline-flex; align-items: center; gap: 4px; margin-top: 6px;
+            padding: 2px 9px; border-radius: 20px; border: 1px solid transparent;
+            background: #e8f8f0; color: var(--green); font-size: 11px; font-weight: 700;
+            cursor: pointer; transition: border-color .15s;
+        }
+        .stat-pill:hover, .stat-pill.active { border-color: var(--green); }
+        /* Scrolled to from a stat card: stop below the top bar */
+        #sm-list-card, #stm-list-card { scroll-margin-top: calc(var(--topbar-h, 70px) + 16px); }
+
         /* ── CONTENT CARDS ── */
         .content-card {
             background: var(--white);

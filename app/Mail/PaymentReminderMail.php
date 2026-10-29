@@ -30,14 +30,15 @@ class PaymentReminderMail extends Mailable
      */
     public function build(): self
     {
-        return $this->subject('Payment Reminder: ' . $this->installment->month_name . ' Tuition Due')
+        return $this->subject('Overdue Payment Reminder: ' . $this->installment->due_date->format('F Y') . ' Tuition - IEMELIF Learning Center')
             ->view('emails.payment-reminder')
             ->with([
                 'installment' => $this->installment,
                 'student' => $this->student,
                 'enrollment' => $this->enrollment,
                 'dueDate' => $this->installment->due_date->format('F d, Y'),
-                'amount' => number_format($this->installment->amount, 2),
+                // the month + its late fee — the late fee is already added by the time this reminder goes out
+                'amount' => number_format((float) $this->installment->amount + (float) ($this->installment->late_fee ?? 0), 2),
             ]);
     }
 }

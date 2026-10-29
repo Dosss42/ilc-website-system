@@ -330,6 +330,14 @@
         .pay-method-icon.gcash { background: linear-gradient(135deg,#007bff22,#007bff11); color: #007bff; }
         .pay-method-icon.cash  { background: linear-gradient(135deg,#28a74522,#28a74511); color: #28a745; }
         .pay-method-info { flex: 1; text-align: left; }
+        /* Amount choices (due now / + months in advance / full balance) — same list as the Cashier Portal */
+        .pay-choices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+        .pay-choices:empty { display: none; }
+        .pay-choice { border: 1.5px solid #bbf7d0; background: #fff; color: #166534; border-radius: 10px; padding: 6px 10px; font-size: 11.5px; font-weight: 700; cursor: pointer; font-family: inherit; text-align: left; line-height: 1.25; }
+        .pay-choice small { display: block; font-weight: 600; opacity: .75; font-size: 10.5px; }
+        .pay-choice.active { background: #16a34a; border-color: #16a34a; color: #fff; }
+        .pay-choices-dark .pay-choice { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.35); color: #fff; }
+        .pay-choices-dark .pay-choice.active { background: #fff; border-color: #fff; color: #1a3a6c; }
         .pay-method-info strong { display: block; font-size: 14px; font-weight: 700; color: var(--text); }
         .pay-method-info span   { font-size: 12px; color: #777; }
 
@@ -1395,7 +1403,8 @@
                         ['Student Type',ucfirst($d['student_type']??'—'),'col-md-6'],
                         ['Enrollment Status',ucfirst($enrollment->status??'—'),'col-md-6'],
                         ['Date Enrolled',$enrollment->created_at->format('F d, Y'),'col-md-6'],
-                        ['LRN',$d['lrn']??'—','col-md-6'],
+                        {{-- The LRN lives on the student's account (users.lrn) — the enrollment form data rarely has it --}}
+                        ['LRN',Auth::user()->lrn ?: ($d['lrn'] ?? '—'),'col-md-6'],
                     ] as [$l,$v,$c])
                         <div class="{{ $c }}"><div style="{{ $fl }}">{{ $l }}</div><div style="{{ $fv }}">{{ $v ?: '—' }}</div></div>
                     @endforeach
@@ -2401,7 +2410,60 @@
         </div>
         @endif
 
-        {{-- ── RE-ENROLLMENT CHECKLIST ── --}}
+        {{-- ── NEW SCHOOL YEAR, NOT CONFIRMED YET ──
+             The student re-enrolled (Grade 1–6 after the school's assessment). The portal now shows that
+             new enrollment, so this says what happened and what's next. --}}
+        @if(!empty($movedUp))
+        @php
+            $mvGl     = ['nursery'=>'Nursery','kindergarten'=>'Kindergarten','grade1'=>'Grade 1','grade2'=>'Grade 2','grade3'=>'Grade 3','grade4'=>'Grade 4','grade5'=>'Grade 5','grade6'=>'Grade 6','graduated'=>'Graduated'];
+            $mvPromo  = $movedUp['promotion'];
+            $mvGrade  = $mvGl[$enrollment->grade_level] ?? ucfirst((string) $enrollment->grade_level);
+            $mvResult = !$mvPromo ? 'Re-enrollment submitted'
+                : ($mvPromo->to_grade === 'graduated' ? 'Graduated'
+                : ($mvPromo->from_grade === $mvPromo->to_grade ? 'Continuing in ' . $mvGrade : 'Promoted to ' . $mvGrade));
+            $mvWhen   = ($mvPromo?->promoted_at ?? $enrollment->created_at)?->format('F j, Y');
+            $mvHasPlan = !empty($enrollment->payment_option);
+        @endphp
+        <div style="background:#fff;border:1px solid #e0e0e0;border-radius:14px;margin-bottom:24px;overflow:hidden;">
+            <div style="background:linear-gradient(135deg,#1a3a6c,#2471a3);padding:18px 22px;color:#fff;display:flex;align-items:center;gap:14px;">
+                <i class="bi bi-mortarboard-fill" style="font-size:24px;"></i>
+                <div>
+                    <div style="font-size:16px;font-weight:700;">S.Y. {{ $enrollment->school_year }} &mdash; {{ $mvResult }}</div>
+                    <div style="font-size:12px;opacity:0.8;margin-top:2px;">
+                        {{ $mvPromo ? 'Assessed by the school' : 'Submitted' }} on {{ $mvWhen }} &middot; Ref {{ $enrollment->reference_number }}
+                    </div>
+                </div>
+            </div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:12px;">
+                <div style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:10px;background:#f0fdf4;border:1px solid #86efac;">
+                    <div style="width:34px;height:34px;border-radius:50%;background:#22c55e;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="bi bi-check-lg" style="color:#fff;font-size:15px;"></i></div>
+                    <div style="flex:1;font-size:13px;color:#166534;"><strong>S.Y. {{ $movedUp['from_year'] }} fees complete</strong></div>
+                </div>
+                <div style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:10px;background:#f0fdf4;border:1px solid #86efac;">
+                    <div style="width:34px;height:34px;border-radius:50%;background:#22c55e;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="bi bi-check-lg" style="color:#fff;font-size:15px;"></i></div>
+                    <div style="flex:1;font-size:13px;color:#166534;">
+                        <strong>{{ $mvPromo ? 'Assessed: ' . $mvResult : 'Re-enrollment submitted for ' . $mvGrade }}</strong>
+                        @if($mvPromo?->remarks)<div style="font-size:12px;color:#4b5563;margin-top:2px;">Remarks: {{ $mvPromo->remarks }}</div>@endif
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:14px;padding:12px 16px;border-radius:10px;background:#fff8f0;border:1px solid #fed7aa;">
+                    <div style="width:34px;height:34px;border-radius:50%;background:#fb923c;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><i class="bi bi-credit-card" style="color:#fff;font-size:15px;"></i></div>
+                    <div style="flex:1;font-size:13px;color:#9a3412;">
+                        <strong>Next: {{ $mvHasPlan ? 'pay the first payment' : 'choose a payment plan and pay the first payment' }}</strong>
+                        <div style="font-size:12px;color:#666;margin-top:2px;">Your S.Y. {{ $enrollment->school_year }} enrollment is confirmed once the first payment is received.</div>
+                    </div>
+                    <button type="button" onclick="showSection('payment')" style="padding:7px 14px;font-size:12px;background:var(--blue);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;flex-shrink:0;">
+                        <i class="bi bi-credit-card me-1"></i>Go to Payment
+                    </button>
+                </div>
+            </div>
+        </div>
+        @endif
+
+        {{-- ── RE-ENROLLMENT ──
+             Fees still being paid → "opens once your fees are complete" (no "Enrollment is Open" while the
+             family is mid-way through its monthly plan). Fees complete → the checklist. Every student clicks
+             Re-enroll; Grade 1–6 once the school's assessment has decided their grade. --}}
         @if(isset($needsReenrollment) && $needsReenrollment)
         @php
             $reenrollGlMap  = ['nursery'=>'Nursery','kindergarten'=>'Kindergarten','grade1'=>'Grade 1','grade2'=>'Grade 2','grade3'=>'Grade 3','grade4'=>'Grade 4','grade5'=>'Grade 5','grade6'=>'Grade 6','graduated'=>'Graduated'];
@@ -2409,18 +2471,19 @@
             $currentGradeForCheck = $enrollment->student_data['grade_level'] ?? $enrollment->grade_level ?? '';
             $studentTypeForCheck  = $enrollment->student_data['student_type'] ?? 'returning';
             $isAutoAdvance  = in_array($currentGradeForCheck, ['nursery','kindergarten']) || $studentTypeForCheck === 'transferee';
-            $isAssessed     = $promotionRecord !== null;
-            $promoResult    = null;
-            if ($isAssessed) {
-                $promoResult = $promotionRecord->to_grade === 'graduated' ? 'Graduated'
-                    : ($promotionRecord->from_grade === $promotionRecord->to_grade ? 'Retained' : 'Promoted');
-            }
-            // Same rule the server enforces: the school year must be fully paid (no fee set = not paid)
+            // Same rules the server enforces: the school year fully paid (no fee set = not paid), 4/4 documents
             $reenrollBlock   = \App\Services\PaymentService::promotionBlockReason($enrollment);
             $reenrollBalance = \App\Services\PaymentService::balanceDue($enrollment) ?? 0;
             $balanceCleared  = $reenrollBlock === null;
             $docsVerified    = $enrollApproved === 4;
+            // Grade 1–6 need the school's assessment first (it decides the grade); Nursery/Kinder/transferees don't
+            $isAssessed      = $promotionRecord !== null;
+            $promoResult     = !$isAssessed ? null : ($promotionRecord->to_grade === 'graduated' ? 'Graduated'
+                : ($promotionRecord->from_grade === $promotionRecord->to_grade ? 'Retained in ' . $suggestedLabel : 'Promoted to ' . $suggestedLabel));
             $canReenroll     = ($isAutoAdvance || $isAssessed) && $docsVerified && $balanceCleared;
+            $reTotalFee      = (float) ($enrollment->total_fee ?? 0);
+            $rePaidPct       = $reTotalFee > 0 ? min(100, round(((float) $enrollment->payment_amount / $reTotalFee) * 100)) : 0;
+            $reLastDue       = ($paymentInstallments ?? collect())->max('due_date');
         @endphp
 
         <div style="background:#fff;border:1px solid #e0e0e0;border-radius:14px;margin-bottom:24px;overflow:hidden;">
@@ -2429,150 +2492,134 @@
                 <i class="bi bi-mortarboard-fill" style="font-size:24px;"></i>
                 <div>
                     <div style="font-size:16px;font-weight:700;">
-                        {{ ($reenrollmentOpen ?? false) ? 'Enrollment for S.Y. '.($currentSchoolYear ?? '').' is Open' : 'Preparing for S.Y. '.($currentSchoolYear ?? '') }}
+                        @if(!$balanceCleared)
+                            Re-enrollment for S.Y. {{ $currentSchoolYear ?? '' }}
+                        @else
+                            {{ ($reenrollmentOpen ?? false) ? 'Enrollment for S.Y. '.($currentSchoolYear ?? '').' is Open' : 'Preparing for S.Y. '.($currentSchoolYear ?? '') }}
+                        @endif
                     </div>
                     <div style="font-size:12px;opacity:0.8;margin-top:2px;">
-                        Complete the checklist below then click Re-enroll
+                        @if(!$balanceCleared)
+                            Opens once your S.Y. {{ $enrollment->school_year }} fees are complete
+                        @else
+                            Complete the checklist below, then click Re-enroll
+                        @endif
                     </div>
                 </div>
             </div>
 
-            {{-- Checklist --}}
             <div style="padding:20px;display:flex;flex-direction:column;gap:12px;">
 
-                {{-- Assessment (Grade 1-6 only, not auto-advance) --}}
-                @if(!$isAutoAdvance)
+                {{-- 1. Fees --}}
                 <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:10px;
-                    background:{{ $isAssessed ? '#f0fdf4' : '#fff8f0' }};border:1px solid {{ $isAssessed ? '#86efac' : '#fed7aa' }};">
-                    <div style="width:40px;height:40px;border-radius:50%;background:{{ $isAssessed ? '#22c55e' : '#fb923c' }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                        <i class="bi bi-{{ $isAssessed ? 'check-lg' : 'hourglass-split' }}" style="color:#fff;font-size:17px;"></i>
+                    background:{{ $balanceCleared ? '#f0fdf4' : '#fff8f0' }};border:1px solid {{ $balanceCleared ? '#86efac' : '#fed7aa' }};">
+                    <div style="width:40px;height:40px;border-radius:50%;background:{{ $balanceCleared ? '#22c55e' : '#fb923c' }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="bi bi-{{ $balanceCleared ? 'check-lg' : 'wallet2' }}" style="color:#fff;font-size:17px;"></i>
                     </div>
-                    <div style="flex:1;">
-                        <div style="font-weight:700;font-size:14px;color:{{ $isAssessed ? '#166534' : '#9a3412' }};">
-                            Admin Assessment
-                        </div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:700;font-size:14px;color:{{ $balanceCleared ? '#166534' : '#9a3412' }};">S.Y. {{ $enrollment->school_year }} Fees</div>
                         <div style="font-size:12px;color:#666;margin-top:3px;">
-                            @if($isAssessed)
-                                Result: <strong style="color:{{ $promoResult==='Promoted'?'#16a34a':($promoResult==='Graduated'?'#1a3a6c':'#d97706') }};">
-                                    {{ $promoResult }} → {{ $suggestedLabel }}
-                                </strong>
+                            @if($balanceCleared)
+                                Fully paid &mdash; you're clear.
+                            @elseif($reenrollBalance > 0)
+                                <strong style="color:#dc2626;">₱{{ number_format($reenrollBalance, 2) }}</strong> left of ₱{{ number_format($reTotalFee, 2) }}
+                                @if($reLastDue) &middot; last installment due {{ \Carbon\Carbon::parse($reLastDue)->format('F j, Y') }} (you may also pay ahead) @endif
                             @else
-                                Admin will review your grades and balance before marking this complete.
+                                No payment plan was chosen for S.Y. {{ $enrollment->school_year }} &mdash; please contact the Cashier / Finance Office.
                             @endif
                         </div>
+                        @if(!$balanceCleared && $reTotalFee > 0)
+                        <div style="height:6px;background:#fde7cf;border-radius:4px;margin-top:8px;overflow:hidden;">
+                            <div style="height:100%;width:{{ $rePaidPct }}%;background:#fb923c;"></div>
+                        </div>
+                        <div style="font-size:11px;color:#9a3412;margin-top:3px;">{{ $rePaidPct }}% paid</div>
+                        @endif
                     </div>
-                    <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;
-                        background:{{ $isAssessed ? '#dcfce7' : '#fef3c7' }};
-                        color:{{ $isAssessed ? '#15803d' : '#b45309' }};">
-                        {{ $isAssessed ? '✓ Done' : 'Pending' }}
-                    </span>
+                    @if($balanceCleared)
+                        <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:#dcfce7;color:#15803d;">✓ Paid</span>
+                    @else
+                        <button type="button" onclick="showSection('payment')" style="padding:7px 14px;font-size:12px;background:var(--blue);color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600;flex-shrink:0;">
+                            <i class="bi bi-credit-card me-1"></i>Go to Payment
+                        </button>
+                    @endif
                 </div>
-                @endif
 
-                {{-- Documents --}}
+                {{-- 2. Documents --}}
                 <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:10px;
                     background:{{ $docsVerified ? '#f0fdf4' : '#fff8f0' }};border:1px solid {{ $docsVerified ? '#86efac' : '#fed7aa' }};">
                     <div style="width:40px;height:40px;border-radius:50%;background:{{ $docsVerified ? '#22c55e' : '#fb923c' }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
                         <i class="bi bi-{{ $docsVerified ? 'check-lg' : 'file-earmark-x-fill' }}" style="color:#fff;font-size:17px;"></i>
                     </div>
                     <div style="flex:1;">
-                        <div style="font-weight:700;font-size:14px;color:{{ $docsVerified ? '#166534' : '#9a3412' }};">
-                            Required Documents
-                        </div>
+                        <div style="font-weight:700;font-size:14px;color:{{ $docsVerified ? '#166534' : '#9a3412' }};">Required Documents</div>
                         <div style="font-size:12px;color:#666;margin-top:3px;">
                             @if($docsVerified)
-                                All documents verified and approved by admin.
+                                All documents verified and approved by the school.
                             @else
-                                {{ $enrollApproved }}/4 approved — upload missing documents below.
+                                {{ $enrollApproved }}/4 approved &mdash; {{ $balanceCleared ? 'upload the missing documents above.' : 'you can already upload the missing documents above.' }}
                             @endif
                         </div>
                     </div>
                     <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;
-                        background:{{ $docsVerified ? '#dcfce7' : '#fef3c7' }};
-                        color:{{ $docsVerified ? '#15803d' : '#b45309' }};">
+                        background:{{ $docsVerified ? '#dcfce7' : '#fef3c7' }};color:{{ $docsVerified ? '#15803d' : '#b45309' }};">
                         {{ $docsVerified ? '✓ Verified' : $enrollApproved.'/4' }}
                     </span>
                 </div>
 
-                {{-- Balance --}}
+                {{-- 3. Grade 1–6: the school's assessment decides the grade for next year --}}
+                @if(!$isAutoAdvance)
                 <div style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:10px;
-                    background:{{ $balanceCleared ? '#f0fdf4' : '#fff8f0' }};border:1px solid {{ $balanceCleared ? '#86efac' : '#fed7aa' }};">
-                    <div style="width:40px;height:40px;border-radius:50%;background:{{ $balanceCleared ? '#22c55e' : '#fb923c' }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-                        <i class="bi bi-{{ $balanceCleared ? 'check-lg' : 'wallet2' }}" style="color:#fff;font-size:17px;"></i>
+                    background:{{ $isAssessed ? '#f0fdf4' : '#f8fafc' }};border:1px solid {{ $isAssessed ? '#86efac' : '#e2e8f0' }};">
+                    <div style="width:40px;height:40px;border-radius:50%;background:{{ $isAssessed ? '#22c55e' : '#94a3b8' }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="bi bi-{{ $isAssessed ? 'check-lg' : 'hourglass-split' }}" style="color:#fff;font-size:17px;"></i>
                     </div>
                     <div style="flex:1;">
-                        <div style="font-weight:700;font-size:14px;color:{{ $balanceCleared ? '#166534' : '#9a3412' }};">
-                            Previous Balance
-                        </div>
+                        <div style="font-weight:700;font-size:14px;color:{{ $isAssessed ? '#166534' : '#334155' }};">School Assessment</div>
                         <div style="font-size:12px;color:#666;margin-top:3px;">
-                            @if($balanceCleared)
-                                No outstanding balance — you're clear.
-                            @elseif($reenrollBalance > 0)
-                                Balance: <strong style="color:#dc2626;">₱{{ number_format($reenrollBalance,2) }}</strong>
-                                — settle this before re-enrolling.
+                            @if($isAssessed)
+                                Result: <strong style="color:#166534;">{{ $promoResult }}</strong> for S.Y. {{ $currentSchoolYear ?? '' }}
+                                @if($promotionRecord->remarks)<br>Remarks: {{ $promotionRecord->remarks }}@endif
                             @else
-                                No payment plan was chosen for S.Y. {{ $enrollment->school_year }} — please contact the Cashier / Finance Office.
+                                Once your fees and documents are complete, the school reviews your grades and decides your grade for
+                                S.Y. {{ $currentSchoolYear ?? '' }}. Then you can re-enroll here.
                             @endif
                         </div>
                     </div>
                     <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;
-                        background:{{ $balanceCleared ? '#dcfce7' : '#fef3c7' }};
-                        color:{{ $balanceCleared ? '#15803d' : '#b45309' }};">
-                        {{ $balanceCleared ? '✓ Cleared' : 'Has Balance' }}
+                        background:{{ $isAssessed ? '#dcfce7' : '#f1f5f9' }};color:{{ $isAssessed ? '#15803d' : '#475569' }};">
+                        {{ $isAssessed ? '✓ Done' : ($balanceCleared && $docsVerified ? 'Waiting for school' : 'After steps 1–2') }}
                     </span>
                 </div>
+                @endif
 
-                {{-- Action --}}
-                @if($reenrollmentOpen ?? false)
-                    @if(!$isAutoAdvance && !$isAssessed)
-                    {{-- Grade 1-6: waiting for admin assessment --}}
-                    <div style="padding:14px 18px;background:#f0f7ff;border:1.5px dashed #93c5fd;border-radius:10px;text-align:center;color:#1e40af;font-size:13px;">
-                        <i class="bi bi-clock-history me-1"></i>
-                        Waiting for admin assessment — your re-enroll button will unlock once assessment is complete.
-                    </div>
+                {{-- Action: every student re-enrolls themselves; Grade 1–6 once assessed --}}
+                    @if(!($reenrollmentOpen ?? false))
+                        <div style="padding:14px 18px;background:#f5f5f5;border:1px solid #e0e0e0;border-radius:10px;text-align:center;color:#666;font-size:13px;">
+                            <i class="bi bi-lock me-1"></i>
+                            Enrollment for S.Y. {{ $currentSchoolYear ?? '' }} is not open yet. Check back soon.
+                        </div>
                     @elseif($canReenroll)
-                    {{-- All conditions met — button active --}}
-                    <form id="reenrollForm" method="POST" action="{{ route('student.reenroll') }}">
-                        @csrf
-                        <input type="hidden" name="target_school_year" value="{{ $currentSchoolYear ?? '' }}">
-                    </form>
-                    <button type="button"
-                        onclick="openReenrollConfirm('{{ $currentSchoolYear ?? '' }}','{{ $suggestedLabel }}',true,0)"
-                        style="width:100%;background:linear-gradient(135deg,#1a3a6c,#2471a3);color:#fff;border:none;border-radius:10px;padding:14px 20px;font-weight:700;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;position:relative;">
-                        <i class="bi bi-arrow-repeat" style="font-size:18px;"></i>
-                        Re-enroll for S.Y. {{ $currentSchoolYear ?? '' }} &mdash; {{ $suggestedLabel }}
-                        <span style="position:absolute;top:-10px;right:12px;background:#22c55e;color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.5px;text-transform:uppercase;box-shadow:0 2px 6px rgba(0,0,0,.2);">
-                            Ready
-                        </span>
-                    </button>
+                        <form id="reenrollForm" method="POST" action="{{ route('student.reenroll') }}">
+                            @csrf
+                            <input type="hidden" name="target_school_year" value="{{ $currentSchoolYear ?? '' }}">
+                        </form>
+                        <button type="button"
+                            onclick="openReenrollConfirm('{{ $currentSchoolYear ?? '' }}','{{ $suggestedLabel }}',true,0)"
+                            style="width:100%;background:linear-gradient(135deg,#1a3a6c,#2471a3);color:#fff;border:none;border-radius:10px;padding:14px 20px;font-weight:700;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;position:relative;">
+                            <i class="bi bi-arrow-repeat" style="font-size:18px;"></i>
+                            Re-enroll for S.Y. {{ $currentSchoolYear ?? '' }} &mdash; {{ $suggestedLabel }}
+                            <span style="position:absolute;top:-10px;right:12px;background:#22c55e;color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.5px;text-transform:uppercase;box-shadow:0 2px 6px rgba(0,0,0,.2);">
+                                Ready
+                            </span>
+                        </button>
                     @else
-                    {{-- Locked — documents or balance not cleared --}}
-                    <div>
                         <button type="button" disabled
                             style="width:100%;background:#94a3b8;color:#fff;border:none;border-radius:10px;padding:14px 20px;font-weight:700;font-size:15px;cursor:not-allowed;display:flex;align-items:center;justify-content:center;gap:10px;">
                             <i class="bi bi-lock-fill" style="font-size:18px;"></i>
-                            Re-enroll for S.Y. {{ $currentSchoolYear ?? '' }} — Locked
+                            Re-enroll for S.Y. {{ $currentSchoolYear ?? '' }} &mdash;
+                            {{ !$balanceCleared || !$docsVerified ? 'unlocks after steps 1–2' : 'unlocks after the school\'s assessment' }}
                         </button>
-                        <div style="margin-top:10px;padding:12px 16px;background:#fff8f0;border:1px solid #fed7aa;border-radius:8px;font-size:12px;color:#92400e;">
-                            <i class="bi bi-exclamation-triangle-fill me-1"></i>
-                            <strong>Complete the following to unlock:</strong>
-                            <ul style="margin:6px 0 0 16px;padding:0;line-height:1.8;">
-                                @if(!$docsVerified)
-                                <li>Get all required documents approved ({{ $enrollApproved }}/4 verified)</li>
-                                @endif
-                                @if(!$balanceCleared)
-                                <li>@if($reenrollBalance > 0)Settle outstanding balance of <strong>₱{{ number_format($reenrollBalance, 2) }}</strong>@else Pay the tuition for S.Y. {{ $enrollment->school_year }} @endif</li>
-                                @endif
-                            </ul>
-                        </div>
-                    </div>
                     @endif
-                @else
-                <div style="padding:14px 18px;background:#f5f5f5;border:1px solid #e0e0e0;border-radius:10px;text-align:center;color:#666;font-size:13px;">
-                    <i class="bi bi-lock me-1"></i>
-                    Enrollment is not yet open. Check back soon.
-                </div>
-                @endif
 
             </div>
 
@@ -2593,12 +2640,15 @@
                             {{ ucfirst($enrollment->status) }}
                         </span>
                         @if($enrollment->status === 'enrolled' && $availableSections->count() > 1)
-                            @if($enrollmentWindowOpen)
-                            <button type="button" class="btn-dash" style="padding:5px 14px; font-size:12px; background:#f0f4ff; color:var(--blue); border:1px solid #c8d6f0; border-radius:8px;" onclick="openChangeSectionModal()">
+                            {{-- Once per school year, before classes start (Enrollment::sectionChangeBlockReason) --}}
+                            @php $sectionChangeBlock = $enrollment->sectionChangeBlockReason(); @endphp
+                            @if(!$sectionChangeBlock)
+                            <button type="button" class="btn-dash" style="padding:5px 14px; font-size:12px; background:#f0f4ff; color:var(--blue); border:1px solid #c8d6f0; border-radius:8px;" onclick="openChangeSectionModal()"
+                                title="You can change your section once, before classes start on {{ $enrollment->classesStartDate()->format('F j, Y') }}.">
                                 <i class="bi bi-arrow-left-right me-1"></i>Change Section
                             </button>
                             @else
-                            <button type="button" class="btn-dash" disabled title="Section changes are only allowed while enrollment is open." style="padding:5px 14px; font-size:12px; background:#f3f4f6; color:#9ca3af; border:1px solid #e5e7eb; border-radius:8px; cursor:not-allowed;">
+                            <button type="button" class="btn-dash" disabled title="{{ $sectionChangeBlock }}" style="padding:5px 14px; font-size:12px; background:#f3f4f6; color:#9ca3af; border:1px solid #e5e7eb; border-radius:8px; cursor:not-allowed;">
                                 <i class="bi bi-lock-fill me-1"></i>Change Section
                             </button>
                             @endif
@@ -2789,7 +2839,7 @@
                     </div>
                     <div style="font-size:12px;color:#6b7280;margin-top:12px;line-height:1.5;">
                         <i class="bi bi-info-circle me-1"></i>Each term is that term's monthly payments added together; you can still pay month by month.
-                        The Exam Permit is only withheld when payments are 3 months behind.
+                        Exam results are only held when payments are 3 months behind — the exams can always be taken.
                     </div>
                 </div>
             </div>
@@ -2897,23 +2947,23 @@
                 </div>
             </div>
 
-            {{-- Exam Permit status — only relevant for installment plans --}}
+            {{-- Results hold status (RA 11984: the exams can always be taken; results are held instead) — installment plans only --}}
             @if($examPermitStatus)
             @php
                 $epHeld = $examPermitStatus['held'] ?? false;
                 $epReason = $examPermitStatus['reason'] ?? null;
                 $epMonths = $examPermitStatus['overdue_months'] ?? 0;
                 if ($epReason === 'broken_promise') {
-                    $epTitle = 'Exam Permit Withheld — Promissory Note Broken';
-                    $epMsg = 'The promised payment date on file has passed without payment. Please visit the Finance Office to settle the balance or arrange a new Promissory Note.';
+                    $epTitle = 'Exam Results on Hold — Promissory Note Broken';
+                    $epMsg = 'The promised payment date on file has passed without payment. Your child can still take the exams, but the exam results and school records are held. Please visit the Finance Office to settle the balance or arrange a new Promissory Note.';
                 } elseif ($epHeld) {
-                    $epTitle = 'Exam Permit Withheld';
-                    $epMsg = "Payments are {$epMonths} consecutive months behind. Please settle the balance or arrange a Promissory Note with the Finance Office to restore the Exam Permit.";
+                    $epTitle = 'Exam Results on Hold';
+                    $epMsg = "Payments are {$epMonths} consecutive months behind. Your child can still take the exams, but the exam results and school records are held until the overdue months are paid or a Promissory Note is arranged with the Finance Office.";
                 } else {
-                    $epTitle = 'Exam Permit Clear';
+                    $epTitle = 'No Results Hold';
                     $epMsg = $examPermitStatus['note'] ?? null
-                        ? 'A Promissory Note is on file and in good standing. Please pay by the promised date to keep the Exam Permit clear.'
-                        : 'No hold on file. The Exam Permit is available for periodic exams.';
+                        ? 'A Promissory Note is on file and in good standing. Please pay by the promised date to avoid a hold on exam results.'
+                        : 'No hold on file. Exam results are released as usual.';
                 }
             @endphp
             <div class="content-card mb-4" style="border-left:4px solid {{ $epHeld ? '#c62828' : '#2e7d32' }};">
@@ -3077,6 +3127,8 @@
                                 <div style="background:#fff;border-radius:14px;padding:18px 20px;margin-bottom:16px;border:1px solid #bbf7d0;">
                                     <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;">Amount Due</div>
                                     <div style="font-size:30px;font-weight:900;color:#15803d;letter-spacing:-.5px;">₱<span id="cash-amount-display">0.00</span></div>
+                                    {{-- Same choices the cashier accepts: due now, + months in advance, full balance --}}
+                                    <div class="pay-choices" id="cash-amount-choices"></div>
                                 </div>
                                 <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;color:#166534;">
                                     <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fff;border-radius:10px;border:1px solid #bbf7d0;">
@@ -3131,6 +3183,8 @@
                                 </div>
                                 {{-- Hidden actual amount input (set programmatically) --}}
                                 <input type="number" id="xendit-amount" style="display:none;" min="1" step="0.01">
+                                {{-- Same choices the cashier accepts: due now, + months in advance, full balance --}}
+                                <div class="pay-choices pay-choices-dark" id="xendit-amount-choices"></div>
                             </div>
 
                             {{-- Payment method cards --}}
@@ -3629,8 +3683,13 @@
                 </div>
                 {{-- Amount bubble --}}
                 <div style="margin-top:16px;background:rgba(255,255,255,0.15);border-radius:12px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
-                    <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.8);text-transform:uppercase;letter-spacing:.5px;">Monthly Amount Due</div>
+                    <div style="font-size:11px;font-weight:600;color:rgba(255,255,255,0.8);text-transform:uppercase;letter-spacing:.5px;" id="inst-modal-amount-label">Monthly Amount Due</div>
                     <div style="font-size:22px;font-weight:800;color:#fff;">₱<span id="inst-modal-amount">0</span></div>
+                </div>
+                {{-- Month + late fee, shown only when the month has a late fee --}}
+                <div id="inst-modal-breakdown" style="display:none;margin-top:8px;background:rgba(255,255,255,0.10);border-radius:10px;padding:8px 16px;font-size:12px;color:rgba(255,255,255,0.9);">
+                    <div style="display:flex;justify-content:space-between;"><span id="inst-modal-month-label">Installment</span><span>₱<span id="inst-modal-month-amount">0</span></span></div>
+                    <div style="display:flex;justify-content:space-between;margin-top:2px;color:#fecaca;"><span>Late fee <span id="inst-modal-fee-note" style="opacity:.8;"></span></span><span>+ ₱<span id="inst-modal-fee-amount">0</span></span></div>
                 </div>
             </div>
 
@@ -3761,9 +3820,16 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" style="padding:24px;">
-                <p style="font-size:13px; color:#666; margin-bottom:16px;">
+                <p style="font-size:13px; color:#666; margin-bottom:10px;">
                     Select a section to transfer to. You can only move to a section that has available slots.
                 </p>
+                @if($enrollment)
+                <div style="font-size:12px; color:#92400e; background:#fff8f0; border:1px solid #fed7aa; border-radius:8px; padding:8px 12px; margin-bottom:16px;">
+                    <i class="bi bi-info-circle me-1"></i>
+                    You can change your section <strong>once</strong> this school year, before classes start on
+                    <strong>{{ $enrollment->classesStartDate()->format('F j, Y') }}</strong>. After that, please ask the school office.
+                </div>
+                @endif
                 <div id="sectionCards" style="display:flex; flex-direction:column; gap:12px;">
                     @foreach($availableSections as $sec)
                     @php $isFull = $sec->current_enrollment >= $sec->max_students; @endphp
@@ -3888,6 +3954,9 @@
             'reference_number' => $enrollment->reference_number ?? '',
             'school_year' => $enrollment->school_year ?? '',
             'account_blocked' => $enrollment->account_blocked ?? false,
+            // The amounts that can be paid now — the same list the Cashier Portal uses
+            // (PaymentService::paymentLimits): due now, + whole months in advance, full balance
+            'pay_limits' => \App\Services\PaymentService::paymentLimits($enrollment),
         ];
         // Real payment records — Cashier (cash), Finance (walk-in cash/GCash)
         // and the student's own Xendit payments all write to PaymentTransaction
@@ -4235,6 +4304,10 @@
 
     var currentGradeTerm = 1;
 
+    function escapeHtmlGrades(t) {
+        return String(t == null ? '' : t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; });
+    }
+
     function loadGrades(quarter, tabEl) {
         currentGradeTerm = quarter || 1;
 
@@ -4327,6 +4400,13 @@
                         + (syLabel ? ', S.Y. ' + syLabel : '') + ' — subjects are listed below, grades will appear once encoded.';
                 } else {
                     statusBannerEl.style.display = 'none';
+                }
+                // Results hold (unpaid tuition, RA 11984-compliant): the student took the exams; the results
+                // are held until the family catches up or signs a Promissory Note — the server sends no grades
+                if (res.data.results_hold) {
+                    statusBannerEl.style.display = 'block';
+                    statusBannerEl.innerHTML = '<i class="bi bi-lock-fill" style="color:#c62828;margin-right:6px;"></i>'
+                        + '<strong style="color:#c62828;">Exam Results on Hold</strong> — ' + escapeHtmlGrades(res.data.results_hold.message);
                 }
             }
 
@@ -5009,6 +5089,19 @@
             }
         }
 
+        // Plan already set: use the same accepted amounts as the Cashier Portal (PaymentService::paymentLimits)
+        // — "due now" by default (credit and late fees included), with buttons for whole months in advance and
+        // the full balance. A plan picked just now has no list yet; the amount above is used (the server
+        // decides the real amount either way).
+        const limits = enrollmentData && enrollmentData.pay_limits;
+        const planUnchanged = enrollmentData && enrollmentData.payment_option && enrollmentData.payment_option === selectedPaymentOption;
+        if (planUnchanged && limits && limits.allowed && limits.allowed.length) {
+            amount = limits.allowed[0].amount;
+            renderPayChoices(limits.allowed);
+        } else {
+            renderPayChoices([]);
+        }
+
         // Also pre-fill the xendit amount field and display
         const xenditAmountInput = document.getElementById('xendit-amount');
         if (xenditAmountInput && amount > 0) {
@@ -5048,6 +5141,27 @@
             if (methodLabel) methodLabel.textContent = 'Generate a secure online payment link';
             if (methodSub)   methodSub.textContent   = 'Pay via GCash';
         }
+    }
+
+    // ── Amount choices (cash and online) — the same list the cashier accepts ──
+    function renderPayChoices(allowed) {
+        const fmt = v => Number(v).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const label = (o, k) => k === allowed.length - 1 ? 'Full balance'
+            : (k === 0 ? (o.label === 'Downpayment' ? 'Downpayment' : 'Due now') : o.label); // "Overdue July – August" / "… + 1 month in advance"
+        const html = allowed.length > 1
+            ? allowed.map((o, k) => '<button type="button" class="pay-choice' + (k === 0 ? ' active' : '') + '" data-amount="' + o.amount + '" title="' + o.label + '"'
+                + ' onclick="choosePayAmount(' + o.amount + ')">' + label(o, k) + '<small>₱' + fmt(o.amount) + '</small></button>').join('')
+            : '';
+        ['xendit-amount-choices', 'cash-amount-choices'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = html; });
+    }
+
+    function choosePayAmount(amount) {
+        const fmt = Number(amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const input = document.getElementById('xendit-amount');
+        if (input) input.value = Number(amount).toFixed(2);
+        ['xendit-amount-display', 'cash-amount-display'].forEach(id => { const el = document.getElementById(id); if (el) el.textContent = fmt; });
+        document.querySelectorAll('.pay-choice').forEach(b => b.classList.toggle('active', Math.abs(parseFloat(b.dataset.amount) - amount) < 0.005));
+        document.getElementById('xendit-link-result').style.display = 'none'; // a link is for one amount
     }
 
     // ── Xendit method card selection ──
@@ -5116,10 +5230,11 @@
             if (d.success) {
                 document.getElementById('xendit-link-url').value = d.invoice_url;
                 document.getElementById('xendit-link-open').href = d.invoice_url;
-                if (d.expiry) {
-                    document.getElementById('xendit-link-expiry').textContent =
-                        'Link expires: ' + new Date(d.expiry).toLocaleString('en-PH');
-                }
+                // Online payments are charged in whole pesos (rounded up) — show the exact amount on Xendit's page
+                const linkInfo = [];
+                if (d.amount) linkInfo.push('Amount on the payment page: ₱' + Number(d.amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+                if (d.expiry) linkInfo.push('Link expires: ' + new Date(d.expiry).toLocaleString('en-PH'));
+                document.getElementById('xendit-link-expiry').textContent = linkInfo.join(' · ');
                 resultEl.style.display = 'block';
                 resultEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                 window.open(d.invoice_url, '_blank');
@@ -5536,7 +5651,7 @@
     }
 
     function confirmSectionChange(sectionId, sectionName) {
-        showConfirm(`Move to section "${sectionName}"?`, function () { doSectionChange(sectionId, sectionName); },
+        showConfirm(`Move to section "${sectionName}"? This is your one section change for this school year — after this, only the school office can move you.`, function () { doSectionChange(sectionId, sectionName); },
             { title: 'Change Section', confirmLabel: 'Move' });
     }
 
@@ -5894,6 +6009,19 @@
             document.getElementById('inst-modal-option').textContent = enrollmentData.payment_option || 'B';
             document.getElementById('inst-modal-amount').textContent = Number(totalAmount).toLocaleString('en-PH', {minimumFractionDigits: 2});
             document.getElementById('installmentPaymentModalLabel').innerHTML = '<i class="bi bi-calendar-check me-2"></i>Pay ' + monthName + ' Installment';
+
+            // Show the month and its late fee separately, so the family sees why the amount is higher
+            const inst = (paymentInstallments || []).find(i => i.id === installmentId);
+            const fee = inst ? Number(inst.late_fee) || 0 : 0;
+            const peso = n => Number(n).toLocaleString('en-PH', {minimumFractionDigits: 2});
+            document.getElementById('inst-modal-amount-label').textContent = fee > 0 ? 'Amount Due (with late fee)' : 'Monthly Amount Due';
+            document.getElementById('inst-modal-breakdown').style.display = fee > 0 ? 'block' : 'none';
+            if (fee > 0) {
+                document.getElementById('inst-modal-month-label').textContent = monthName + ' installment';
+                document.getElementById('inst-modal-month-amount').textContent = peso(Number(totalAmount) - fee);
+                document.getElementById('inst-modal-fee-amount').textContent = peso(fee);
+                document.getElementById('inst-modal-fee-note').textContent = dueDate ? '(not paid by ' + new Date(dueDate).toLocaleDateString('en-PH', {month: 'short', day: 'numeric'}) + ')' : '';
+            }
         }
         // Store installment ID for Xendit link generation
         window._instInstallmentId = installmentId;
@@ -5994,6 +6122,10 @@
             if (d.success) {
                 document.getElementById('inst-xendit-link-url').value = d.invoice_url;
                 document.getElementById('inst-xendit-link-open').href  = d.invoice_url;
+                // The amount actually on Xendit's page (the server's "due now" — may differ from the plan's
+                // monthly amount when credit was already paid toward this month)
+                if (d.amount) document.getElementById('inst-modal-amount').textContent =
+                    Number(d.amount).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 resultEl.style.display = 'block';
                 window.open(d.invoice_url, '_blank');
             } else {

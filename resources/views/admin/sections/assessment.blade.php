@@ -26,20 +26,16 @@
             $assessUrl = fn($overrides) => url()->current() . '?' . http_build_query(array_merge($assessBaseQuery, $overrides));
         @endphp
 
-        {{-- Stats --}}
+        {{-- Stats — click a card to show those students in the table (clicks the matching status chip below) --}}
+        @php $assessSt = $assessStatusFilter ?? 'all'; @endphp
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;">
-            <div class="stat-card">
-                <div class="stat-icon blue"><i class="bi bi-people-fill"></i></div>
-                <div><div class="stat-value">{{ $assessTotal }}</div><div class="stat-label">Eligible Students</div></div>
+            @foreach([['all', 'blue', 'bi-people-fill', $assessTotal, 'Eligible Students'], ['pending', 'gold', 'bi-hourglass-split', $assessPending, 'Pending Assessment'], ['done', 'green', 'bi-check-circle-fill', $assessDone, 'Already Assessed']] as [$sk, $color, $icon, $count, $label])
+            <div class="stat-card stat-card-link" role="button" tabindex="0" title="Show {{ $sk === 'all' ? 'all eligible students' : $label }} in the table below"
+                 data-jump="{{ json_encode(["click" => '[data-assess-status="' . $sk . '"]', "to" => '#assess-table-card', "active" => $assessSt === $sk]) }}">
+                <div class="stat-icon {{ $color }}"><i class="bi {{ $icon }}"></i></div>
+                <div><div class="stat-value">{{ $count }}</div><div class="stat-label">{{ $label }}</div></div>
             </div>
-            <div class="stat-card">
-                <div class="stat-icon gold"><i class="bi bi-hourglass-split"></i></div>
-                <div><div class="stat-value">{{ $assessPending }}</div><div class="stat-label">Pending Assessment</div></div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon green"><i class="bi bi-check-circle-fill"></i></div>
-                <div><div class="stat-value">{{ $assessDone }}</div><div class="stat-label">Already Assessed</div></div>
-            </div>
+            @endforeach
         </div>
 
         {{-- Info banner --}}
@@ -61,7 +57,7 @@
                     <option value="{{ $sy }}" {{ $assessSchoolYear === $sy ? 'selected' : '' }}>S.Y. {{ $sy }}{{ $sy === ($currentSchoolYear ?? '') ? ' (current)' : '' }}</option>
                 @endforeach
             </select>
-            <span style="font-size:12px;color:var(--muted);">Students enrolled in S.Y. {{ $assessSchoolYear }} — promoting them creates their S.Y. {{ $assessNextSchoolYear }} enrollment.</span>
+            <span style="font-size:12px;color:var(--muted);">Students enrolled in S.Y. {{ $assessSchoolYear }} — assessing records the result; the student then re-enrolls for S.Y. {{ $assessNextSchoolYear }} from the Student Portal.</span>
         </div>
 
         {{-- Grade filter chips --}}
@@ -90,9 +86,9 @@
 
             {{-- Status filter --}}
             <div style="margin-left:auto;display:flex;gap:6px;">
-                @foreach(['all' => 'All', 'pending' => 'Pending', 'done' => 'Assessed'] as $sk => $sl)
+                @foreach(['all' => 'All', 'pending' => 'Pending', 'done' => 'Assessed', 'waiting' => 'Not Yet Re-enrolled (' . ($assessWaiting ?? 0) . ')'] as $sk => $sl)
                     @php $assessStatusActive = ($assessStatusFilter ?? 'all') === $sk; @endphp
-                    <a href="{{ $assessUrl(['assess_status' => $sk, 'assess_page' => 1]) }}"
+                    <a href="{{ $assessUrl(['assess_status' => $sk, 'assess_page' => 1]) }}" data-assess-status="{{ $sk }}"
                         style="padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;text-decoration:none;display:inline-block;
                             border:1.5px solid {{ $assessStatusActive ? 'var(--blue)' : '#ddd' }};
                             background:{{ $assessStatusActive ? 'var(--blue)' : '#f8f9fa' }};
@@ -171,7 +167,7 @@
         </div>
 
         {{-- Assessment Table --}}
-        <div class="content-card">
+        <div class="content-card" id="assess-table-card">
             <div class="content-card-header" style="display:flex;justify-content:space-between;align-items:center;">
                 <h6><i class="bi bi-table me-2" style="color:var(--gold);"></i>Students for Assessment</h6>
                 <span style="font-size:12px;color:var(--muted);" id="assess-count-label">{{ $assessStudents->total() }} student(s)</span>
@@ -240,6 +236,11 @@
                                     <i class="bi bi-{{ $isDone ? 'check-circle-fill' : 'hourglass-split' }}"></i>
                                     {{ $isDone ? 'Assessed' : 'Pending' }}
                                 </span>
+                                @if($isDone)
+                                    <div style="font-size:10.5px;margin-top:3px;font-weight:600;color:{{ $asPromo->enrollment_id ? '#2e7d32' : '#b45309' }};">
+                                        {{ $asPromo->enrollment_id ? 'Re-enrolled' : 'Not yet re-enrolled' }}
+                                    </div>
+                                @endif
                             </td>
                             <td>
                                 @if($isDone && $asPromo)

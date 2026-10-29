@@ -20,10 +20,10 @@
         {{-- ═══ STUDENTS PANEL ═══ --}}
         <div id="archive-panel-students">
 
-        {{-- Summary cards --}}
+        {{-- Summary cards — click: clear the filters and scroll to the archived list (js/stat-jump.js) --}}
         <div class="row g-3 mb-4">
             <div class="col-md-3 col-sm-6">
-                <div class="stat-card">
+                <div class="stat-card stat-card-link" role="button" tabindex="0" title="Show every archived student below" data-jump="{{ json_encode(['set' => ['#archive-grade-filter' => '', '#archive-search-input' => ''], 'to' => '#archive-students-card']) }}">
                     <div class="stat-icon amber"><i class="bi bi-archive-fill"></i></div>
                     <div>
                         <div class="stat-value" style="color:#b45309;">{{ isset($archivedStudents) ? $archivedStudents->total() : 0 }}</div>
@@ -32,7 +32,7 @@
                 </div>
             </div>
             <div class="col-md-3 col-sm-6">
-                <div class="stat-card">
+                <div class="stat-card stat-card-link" role="button" tabindex="0" title="Show the archived students below" data-jump="{{ json_encode(['set' => ['#archive-grade-filter' => '', '#archive-search-input' => ''], 'to' => '#archive-students-card', 'active' => false]) }}">
                     <div class="stat-icon green"><i class="bi bi-arrow-counterclockwise"></i></div>
                     <div>
                         <div class="stat-value">
@@ -84,7 +84,7 @@
             </div>
         </div>
 
-        <div class="content-card">
+        <div class="content-card" id="archive-students-card">
             <div class="content-card-header">
                 <h6><i class="bi bi-people me-2" style="color:#b45309;"></i>Archived Students</h6>
             </div>
@@ -213,7 +213,7 @@
 
         <div class="row g-3 mb-4">
             <div class="col-md-4 col-sm-6">
-                <div class="stat-card">
+                <div class="stat-card stat-card-link" role="button" tabindex="0" title="Show every archived teacher below" data-jump="{{ json_encode(['set' => ['#archive-teacher-search-input' => ''], 'to' => '#archive-teachers-card']) }}">
                     <div class="stat-icon amber"><i class="bi bi-archive-fill"></i></div>
                     <div>
                         <div class="stat-value" style="color:#b45309;">{{ isset($archivedTeachers) ? $archivedTeachers->total() : 0 }}</div>
@@ -240,7 +240,7 @@
             </div>
         </div>
 
-        <div class="content-card">
+        <div class="content-card" id="archive-teachers-card">
             <div class="content-card-header">
                 <h6><i class="bi bi-person-badge me-2" style="color:#b45309;"></i>Archived Teachers</h6>
             </div>
