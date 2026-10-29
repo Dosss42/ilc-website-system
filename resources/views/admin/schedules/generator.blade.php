@@ -3,6 +3,14 @@
     dashboards (both include this file). Rules: App\Services\ScheduleGenerator. Self-contained: own helpers,
     CSRF from the page's meta tag, messages shown inside the windows. Existing classes only.
 --}}
+@php
+    // Schedules are made for the current school year (Settings) or the next one being prepared
+    $sgenCurrentSy = \App\Models\Setting::getCurrentSchoolYear();
+    $sgenNextSy = ((int) substr($sgenCurrentSy, 0, 4) + 1) . '-' . ((int) substr($sgenCurrentSy, 0, 4) + 2);
+    $sgenYears = [$sgenCurrentSy => $sgenCurrentSy . ' (current)', $sgenNextSy => $sgenNextSy . ' (next)'];
+@endphp
+{{--
+--}}
 
 {{-- ── Subject Teachers ── --}}
 <div class="modal fade" id="sgenTeachersModal" tabindex="-1">
@@ -17,7 +25,7 @@
                 <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px;">
                     <div><label style="font-size:12px;font-weight:600;">School Year</label>
                         <select class="form-fld" id="sgenTSy" onchange="sgenLoadTeachers()">
-                            @foreach(\App\Models\Setting::schoolYearOptions() as $sy)<option value="{{ $sy }}">{{ $sy }}</option>@endforeach
+                            @foreach($sgenYears as $sy => $label)<option value="{{ $sy }}">{{ $label }}</option>@endforeach
                         </select></div>
                     <div><label style="font-size:12px;font-weight:600;">Grade</label>
                         <select class="form-fld" id="sgenTGrade" onchange="sgenLoadTeachers()"></select></div>
@@ -88,12 +96,14 @@
                                 <div class="row g-2 mb-2">
                                     <div class="col-6"><label class="sgen-lbl">School Year</label>
                                         <select class="form-fld" id="sgenSy" onchange="sgenLoadDefaults()">
-                                            @foreach(\App\Models\Setting::schoolYearOptions() as $sy)<option value="{{ $sy }}">{{ $sy }}</option>@endforeach
+                                            @foreach($sgenYears as $sy => $label)<option value="{{ $sy }}">{{ $label }}</option>@endforeach
                                         </select></div>
                                     <div class="col-6"><label class="sgen-lbl">Grade</label>
                                         <select class="form-fld" id="sgenGrade" onchange="sgenLoadDefaults()"></select></div>
                                 </div>
-                                <label class="sgen-lbl">Terms</label>
+                                <label class="sgen-lbl">Sections <span style="font-weight:400;color:var(--muted);">— which ones to build</span></label>
+                                <div id="sgenSections"></div>
+                                <label class="sgen-lbl" style="margin-top:4px;">Terms</label>
                                 <div>@foreach([1,2,3] as $t)<label class="sgen-pill {{ $t === 1 ? 'on' : '' }}"><input type="checkbox" class="sgen-term" value="{{ $t }}" {{ $t === 1 ? 'checked' : '' }}>Term {{ $t }}</label>@endforeach</div>
                                 <label class="sgen-lbl" style="margin-top:4px;">Days</label>
                                 <div>@foreach(\App\Services\ScheduleGenerator::DAYS as $d)<label class="sgen-pill {{ $d !== 'Saturday' ? 'on' : '' }}"><input type="checkbox" class="sgen-day" value="{{ $d }}" {{ $d !== 'Saturday' ? 'checked' : '' }}>{{ substr($d, 0, 3) }}</label>@endforeach</div>
@@ -102,8 +112,9 @@
                             <div class="sgen-card">
                                 <div class="sgen-card-title"><i class="bi bi-clock"></i> School day</div>
                                 <div class="row g-2 mb-2">
-                                    <div class="col-6"><label class="sgen-lbl">First period starts</label><input type="time" class="form-fld" id="sgenStart" value="07:00"></div>
-                                    <div class="col-6"><label class="sgen-lbl">Minutes per period</label><input type="number" class="form-fld" id="sgenMinutes" value="60" min="20" max="120"></div>
+                                    <div class="col-4"><label class="sgen-lbl">Classes start</label><input type="time" class="form-fld" id="sgenStart" value="07:00"></div>
+                                    <div class="col-4"><label class="sgen-lbl">Dismissal</label><input type="time" class="form-fld" id="sgenEnd" value="14:00"></div>
+                                    <div class="col-4"><label class="sgen-lbl">Minutes / period</label><input type="number" class="form-fld" id="sgenMinutes" value="60" min="20" max="120"></div>
                                 </div>
                                 <label class="sgen-lbl">Breaks (no classes)</label>
                                 <div id="sgenBreaks"></div>
@@ -127,7 +138,11 @@
                                     <a href="#" style="font-size:12px;font-weight:600;" onclick="bootstrap.Modal.getInstance(document.getElementById('sgenGenModal')).hide();openSubjectTeachersModal();return false;"><i class="bi bi-person-video3"></i> Assign teachers</a>
                                 </div>
                                 <div id="sgenSubjects"></div>
-                                <div id="sgenSubjectsTotal" style="font-size:12px;color:var(--muted);margin-top:8px;"></div>
+                                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;">
+                                    <span id="sgenSubjectsTotal" style="font-size:12px;color:var(--muted);"></span>
+                                    <a href="#" style="font-size:12px;font-weight:600;" onclick="sgenSpread();return false;" title="Share the day's periods evenly among the subjects"><i class="bi bi-distribute-horizontal"></i> Spread evenly</a>
+                                </div>
+                                <div id="sgenOtherSubjects" style="font-size:11.5px;color:var(--muted);margin-top:6px;"></div>
                             </div>
                         </div>
                     </div>
@@ -176,6 +191,8 @@
     };
     const fillGrades = sel => { sel.innerHTML = Object.entries(GRADES).map(([k, v]) => '<option value="' + k + '">' + v + '</option>').join(''); };
     const pageValue = (id, fallback) => { const el = $(id); return el && el.value ? el.value : fallback; };
+    // The page's year when it is the current or next one, otherwise the current school year
+    const setYear = (sel, sy) => { sel.value = sy; if (!sel.value) sel.value = @json($sgenCurrentSy); };
 
     // ── Subject Teachers ──
     // Subjects down the side, sections across (a grade has few sections, so it fits without scrolling
@@ -184,7 +201,7 @@
     let showAll = false;   // also show subjects no section of this grade has
     window.openSubjectTeachersModal = function () {
         fillGrades($('sgenTGrade'));
-        $('sgenTSy').value = pageValue('scheduleYearFilter', $('sgenTSy').value);
+        setYear($('sgenTSy'), pageValue('scheduleYearFilter', ''));
         $('sgenTGrade').value = pageValue('scheduleGradeFilter', 'grade1');
         new bootstrap.Modal($('sgenTeachersModal')).show();
         sgenLoadTeachers();
@@ -325,7 +342,7 @@
     let lastInput = null;
     window.openGenerateScheduleModal = function (sy, grade) {
         fillGrades($('sgenGrade'));
-        $('sgenSy').value = sy || pageValue('scheduleYearFilter', $('sgenSy').value);
+        setYear($('sgenSy'), sy || pageValue('scheduleYearFilter', ''));
         $('sgenGrade').value = grade || pageValue('scheduleGradeFilter', 'grade1');
         sgenShowStep(1);
         msg('sgenGMsg', null, '');
@@ -344,8 +361,15 @@
     window.sgenLoadDefaults = async function () {
         try { D = await api(EP.defaults + '?grade=' + encodeURIComponent($('sgenGrade').value) + '&school_year=' + encodeURIComponent($('sgenSy').value)); }
         catch (e) { msg('sgenGMsg', 'error', esc(e.message)); return; }
+        // The grade's usual day: Nursery/Kinder 7:00–10:20, Grades 1–6 7:00–2:00
+        $('sgenStart').value = D.start_time; $('sgenEnd').value = D.end_time; $('sgenMinutes').value = D.period_minutes;
         $('sgenBreaks').innerHTML = '';
         (D.breaks || []).forEach(b => sgenAddBreak(b));
+        $('sgenOtherSubjects').innerHTML = (D.other_subjects || []).length
+            ? '<i class="bi bi-info-circle"></i> Not scheduled (not linked to these sections in Section Management › Subjects): ' + D.other_subjects.map(esc).join(', ') : '';
+        $('sgenSections').innerHTML = D.sections.length
+            ? D.sections.map(s => '<label class="sgen-pill on"><input type="checkbox" class="sgen-section" value="' + s.id + '" checked>' + esc(s.name) + '</label>').join('')
+            : '<div style="font-size:12px;color:#b45309;margin-bottom:6px;">No sections yet for this grade and year.</div>';
         renderSubjects(D.subjects || []);
         msg('sgenGMsg', null, '');
         if (!D.sections.length) msg('sgenGMsg', 'info', 'No active sections for ' + esc(GRADES[$('sgenGrade').value]) + ' in S.Y. ' + esc($('sgenSy').value) + ' — create them in Section Management first.');
@@ -411,6 +435,20 @@
         }
         return { out, fmt };
     }
+    // Periods that fit before dismissal, per day
+    function capacity(c) {
+        const minutes = Math.max(20, Math.min(120, c.period_minutes || 60));
+        const end = (t => { const [h, m] = (t || '0:0').split(':').map(Number); return h * 60 + m; })(c.end_time);
+        return daySlots(c.start_time, minutes, c.breaks, 40).out.filter(s => s[1] <= end).length;
+    }
+    // Share the week's periods evenly, top subjects first getting the extra (15 over 6 → 3,3,3,2,2,2)
+    window.sgenSpread = function () {
+        const c = collect();
+        const rows = [...document.querySelectorAll('.sgen-subject')];
+        const total = capacity(c) * (c.days.length || 1);
+        rows.forEach((r, i) => { r.querySelector('.sgen-perweek').value = Math.floor(total / rows.length) + (i < total % rows.length ? 1 : 0); markSubject(r); });
+        sgenSummary();
+    };
     window.sgenSummary = function () {
         if (!D) return;
         const c = collect();
@@ -419,16 +457,22 @@
         const perDay = Math.ceil(total / days);
         const minutes = Math.max(20, Math.min(120, c.period_minutes || 60));
         const { out, fmt } = daySlots(c.start_time, minutes, c.breaks, perDay);
-        $('sgenSubjectsTotal').textContent = c.subjects.filter(s => s.per_week).length + ' subject(s) · ' + total + ' period(s) a week';
+        const cap = capacity(c), fits = cap * days;
+        $('sgenSubjectsTotal').innerHTML = c.subjects.filter(s => s.per_week).length + ' subject(s) · ' + total + ' of ' + fits + ' period(s) a week'
+            + (total > fits ? ' <span style="color:#b91c1c;font-weight:600;">— ' + (total - fits) + ' past dismissal</span>'
+               : total < fits ? ' <span style="color:#b45309;font-weight:600;">— ' + (fits - total) + ' free</span>' : ' <span style="color:#166534;font-weight:600;">— day is full</span>');
 
         $('sgenSummaryLine').innerHTML = !total ? 'Set at least one subject to 1 or more times a week.'
             : '<i class="bi bi-calendar-week"></i> ' + total + ' periods a week · ' + perDay + ' a day · classes '
-              + (out.length ? fmt(out[0][0]) + ' – ' + fmt(out[out.length - 1][1]) : '—')
+              + (out.length ? fmt(out[0][0]) + ' – ' + '<span style="' + (perDay > cap ? 'color:#b91c1c;' : '') + '">' + fmt(out[out.length - 1][1]) + '</span>' : '—')
+              + (perDay > cap ? ' <span style="color:#b91c1c;">(past dismissal — lower the times a week)</span>' : '')
               + ' · ' + (c.days.length ? c.days.map(d => d.slice(0, 3)).join(', ') : '<span style="color:#b91c1c;">no days chosen</span>')
               + ' · Term ' + (c.terms.length ? c.terms.join(', ') : '<span style="color:#b91c1c;">none</span>');
 
         const missing = (D.subjects || []).filter(s => c.subjects.find(x => x.id === s.id && x.per_week) && s.teachers < D.sections.length).length;
-        $('sgenSummarySections').innerHTML = D.sections.map(sec => {
+        const chosen = D.sections.filter(sec => c.section_ids.includes(sec.id));
+        $('sgenSummarySections').innerHTML = (D.sections.length && !chosen.length
+            ? '<span style="font-size:12px;font-weight:600;color:#b91c1c;">No section chosen</span>' : '') + chosen.map(sec => {
             const clash = sec.scheduled_terms.filter(t => c.terms.includes(t));
             const [bg, fg, txt] = !clash.length ? ['#f0fdf4', '#166534', 'will be built']
                 : (c.replace ? ['#fff7ed', '#b45309', 'replaces its Term ' + clash.join('/') + ' schedule'] : ['#f1f5f9', '#475569', 'skipped — already has Term ' + clash.join('/')]);
@@ -449,9 +493,10 @@
     function collect() {
         return {
             school_year: $('sgenSy').value, grade: $('sgenGrade').value,
+            section_ids: [...document.querySelectorAll('.sgen-section:checked')].map(c => +c.value),
             terms: [...document.querySelectorAll('.sgen-term:checked')].map(c => +c.value),
             days: [...document.querySelectorAll('.sgen-day:checked')].map(c => c.value),
-            start_time: $('sgenStart').value, period_minutes: +$('sgenMinutes').value,
+            start_time: $('sgenStart').value, end_time: $('sgenEnd').value, period_minutes: +$('sgenMinutes').value,
             breaks: [...document.querySelectorAll('.sgen-break')].map(r => ({ label: r.querySelector('.sgen-break-label').value, start: r.querySelector('.sgen-break-start').value, end: r.querySelector('.sgen-break-end').value }))
                 .filter(b => b.start && b.end),
             subjects: [...document.querySelectorAll('.sgen-subject')].map(r => ({ id: +r.dataset.id, per_week: +(r.querySelector('.sgen-perweek').value || 0) })),
@@ -461,7 +506,7 @@
     }
     window.sgenPreview = async function () {
         lastInput = collect();
-        if (!lastInput.terms.length || !lastInput.days.length) { msg('sgenGMsg', 'error', 'Choose at least one term and one day.'); return; }
+        if (!lastInput.section_ids.length || !lastInput.terms.length || !lastInput.days.length) { msg('sgenGMsg', 'error', 'Choose at least one section, one term and one day.'); return; }
         msg('sgenGMsg', 'info', 'Building the preview…');
         let p;
         try { p = await api(EP.preview, 'POST', lastInput); } catch (e) { msg('sgenGMsg', 'error', esc(e.message)); return; }

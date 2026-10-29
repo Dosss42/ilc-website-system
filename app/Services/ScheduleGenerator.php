@@ -26,14 +26,42 @@ class ScheduleGenerator
 {
     const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-    /** The school's usual day (from the existing Grade 1 and Grade 4 schedules) */
+    /** The school's usual day: 60-minute periods from 7:00, Grades 1–6 dismissed at 2:00 PM */
     const DEFAULTS = [
         'start_time'     => '07:00',
+        'end_time'       => '14:00',
         'period_minutes' => 60,
         'breaks'         => [['label' => 'Recess', 'start' => '09:00', 'end' => '09:20'], ['label' => 'Lunch', 'start' => '11:20', 'end' => '12:00']],
         'days'           => ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
         'limits'         => ['week_hours' => 30, 'day_periods' => 6, 'consecutive' => 4],
     ];
+
+    /** Nursery and Kinder are half day: 7:00 – 10:20 AM (3 periods around recess) */
+    const DISMISSAL = ['nursery' => '10:20', 'kindergarten' => '10:20'];
+
+    /** A grade's usual day — DEFAULTS with its dismissal time, keeping only the breaks before it. */
+    public static function gradeDay(string $grade): array
+    {
+        $end = self::DISMISSAL[$grade] ?? self::DEFAULTS['end_time'];
+        return ['end_time' => $end, 'breaks' => array_values(array_filter(self::DEFAULTS['breaks'], fn ($b) => $b['start'] < $end))] + self::DEFAULTS;
+    }
+
+    /** How many periods fit in a day before dismissal. */
+    public static function periodsBefore(string $start, int $minutes, array $breaks, string $end): int
+    {
+        $n = 0;
+        foreach (self::slots($start, $minutes, $breaks, 24) as $s) {
+            if ($s['end'] > substr($end, 0, 5) || $s['end'] < $s['start']) { break; } // past dismissal (or midnight)
+            $n++;
+        }
+        return $n;
+    }
+
+    /** The week's periods shared evenly by the subjects, the first ones getting the remainder (15 over 6 → 3,3,3,2,2,2). */
+    public static function spread(int $periods, int $subjects): array
+    {
+        return $subjects ? array_map(fn ($i) => intdiv($periods, $subjects) + ($i < $periods % $subjects ? 1 : 0), range(0, $subjects - 1)) : [];
+    }
 
     // ── Subject Teachers ─────────────────────────────────────────
 
@@ -131,6 +159,7 @@ class ScheduleGenerator
         $limits  = array_merge(self::DEFAULTS['limits'], array_map('intval', $in['limits'] ?? []));
         $replace = (bool) ($in['replace'] ?? false);
         $breaks  = $in['breaks'] ?? self::DEFAULTS['breaks'];
+        $dismiss = substr($in['end_time'] ?? self::gradeDay($grade)['end_time'], 0, 5);
 
         $subjects = collect($in['subjects'] ?? [])->map(fn ($s) => ['id' => (int) $s['id'], 'per_week' => max(0, min(15, (int) $s['per_week']))])
             ->filter(fn ($s) => $s['per_week'] > 0)->values();
@@ -151,7 +180,8 @@ class ScheduleGenerator
         $periodCount = max(array_map('count', $perDay) ?: [0]);
         $slots = self::slots($in['start_time'] ?? self::DEFAULTS['start_time'], (int) ($in['period_minutes'] ?? 60), $breaks, $periodCount);
 
-        $sections = Section::where('school_year', $sy)->where('grade_level', $grade)->where('is_active', true)->orderBy('name')->get();
+        $sections = Section::where('school_year', $sy)->where('grade_level', $grade)->where('is_active', true)->orderBy('name')
+            ->when(!empty($in['section_ids']), fn ($q) => $q->whereIn('id', array_map('intval', $in['section_ids'])))->get();
         $assign = TeacherAssignment::where('school_year', $sy)->whereIn('section_id', $sections->pluck('id'))->whereNotNull('subject_id')->get()
             ->groupBy('section_id')->map(fn ($g) => $g->pluck('teacher_id', 'subject_id'));
 
@@ -233,6 +263,9 @@ class ScheduleGenerator
                                 'start_time' => $slot['start'], 'end_time' => $slot['end']]);
                         }
                     }
+                    if ($slot['end'] > $dismiss) {
+                        $notes[] = 'After dismissal (' . Carbon::createFromFormat('H:i', $dismiss)->format('g:i A') . ')';
+                    }
                     $warnings += count($notes);
                     $row[] = ['slot' => $j, 'start' => $slot['start'], 'end' => $slot['end'], 'subject_id' => $sid,
                               'subject' => $subjectNames[$sid] ?? '?', 'teacher_id' => $tid, 'notes' => $notes];
@@ -254,7 +287,7 @@ class ScheduleGenerator
         })->sortByDesc('total')->values();
 
         return [
-            'school_year' => $sy, 'grade' => $grade, 'terms' => $terms, 'days' => $days, 'limits' => $limits,
+            'school_year' => $sy, 'grade' => $grade, 'terms' => $terms, 'days' => $days, 'limits' => $limits, 'end_time' => $dismiss,
             'slots' => $slots, 'breaks' => $breaks, 'sections' => $out, 'teacher_load' => $load,
             'teacher_names' => User::whereIn('id', $assign->flatten()->filter()->unique())->pluck('name', 'id'),
             'missing_teachers' => array_values($missing), 'warnings' => $warnings,

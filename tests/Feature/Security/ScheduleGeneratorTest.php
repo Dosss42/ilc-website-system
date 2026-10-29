@@ -112,4 +112,56 @@ class ScheduleGeneratorTest extends TestCase
         $this->actingAs($this->admin, 'web')->postJson('/admin/schedules/generator/save',
             $this->input(['limits' => ['week_hours' => 10, 'day_periods' => 6, 'consecutive' => 4]]))->assertOk()->assertJson(['created' => 30]);
     }
+
+    public function test_each_grade_gets_its_own_day_and_the_periods_are_shared_by_its_subjects(): void
+    {
+        // Nursery: half day 7:00–10:20 = 3 periods a day, 15 a week over 6 subjects → 3,3,3,2,2,2
+        $nursery = Section::create(['name' => 'Nursery', 'grade_level' => 'nursery', 'school_year' => '2027-2028', 'max_students' => 20, 'is_active' => true]);
+        foreach (['Aesthetic', 'Cognitive', 'Literacy', 'Physical', 'Socio-Emotional', 'Values'] as $n) {
+            $s = Subject::create(['name' => $n, 'code' => 'N' . substr($n, 0, 3), 'grade_level' => 'nursery', 'is_active' => true]);
+            $nursery->subjects()->attach($s->id);
+        }
+        $d = $this->actingAs($this->admin, 'web')->getJson('/admin/schedules/generator/defaults?grade=nursery&school_year=2027-2028')->assertOk();
+        $this->assertSame('10:20', $d->json('end_time'));
+        $this->assertSame(['Recess'], array_column($d->json('breaks'), 'label'));
+        $this->assertSame([3, 3, 3, 2, 2, 2], array_column($d->json('subjects'), 'per_week'));
+
+        // Grade 1: whole day 7:00–2:00 = 6 a day, 30 a week; an active subject not linked to the sections is left out
+        $hcii = Subject::create(['name' => 'Hcii', 'code' => 'HCI1', 'grade_level' => 'grade1', 'is_active' => true]);
+        foreach ($this->sec as $sec) { $sec->subjects()->attach(collect($this->sub)->pluck('id')); }
+        $d = $this->actingAs($this->admin, 'web')->getJson('/admin/schedules/generator/defaults?grade=grade1&school_year=2027-2028')->assertOk();
+        $this->assertSame('14:00', $d->json('end_time'));
+        $this->assertSame([10, 10, 10], array_column($d->json('subjects'), 'per_week'));
+        $this->assertSame(['Hcii'], $d->json('other_subjects'));
+        $this->assertNotContains($hcii->id, array_column($d->json('subjects'), 'id'));
+
+        // More periods than the day holds: the extra ones are flagged "After dismissal", not dropped
+        $p = $this->actingAs($this->admin, 'web')->postJson('/admin/schedules/generator/preview', $this->input([
+            'end_time' => '09:00', 'section_ids' => [$this->sec['A']->id]]))->assertOk()->json();
+        $late = collect($p['sections'][0]['grid']['Monday'])->filter(fn ($r) => in_array('After dismissal (9:00 AM)', $r['notes']));
+        $this->assertSame(['09:20'], $late->pluck('start')->values()->all());
+    }
+
+    public function test_only_the_chosen_sections_are_built_and_the_others_still_count_for_clashes(): void
+    {
+        $this->actingAs($this->admin, 'web')->postJson('/admin/schedules/subject-teachers', ['school_year' => '2027-2028',
+            'cells' => $this->cells(['A' => ['English' => 'Anya', 'Math' => 'Ben', 'Science' => 'Anya'], 'B' => ['English' => 'Cora', 'Math' => 'Ben', 'Science' => 'Cora']])])->assertOk();
+
+        // Grade 1-A only
+        $this->actingAs($this->admin, 'web')->postJson('/admin/schedules/generator/save', $this->input(['section_ids' => [$this->sec['A']->id]]))
+            ->assertOk()->assertJson(['created' => 15, 'sections' => 1, 'skipped' => 0]);
+        $this->assertSame(0, Schedule::where('section_id', $this->sec['B']->id)->count());
+
+        // Later Grade 1-B only: Ben's Math in 1-A stays put and 1-B's Math avoids those times
+        $p = $this->actingAs($this->admin, 'web')->postJson('/admin/schedules/generator/preview', $this->input(['section_ids' => [$this->sec['B']->id]]))->assertOk()->json();
+        $this->assertSame(['Grade 1-B'], array_column($p['sections'], 'name'));
+        $this->assertSame(0, $p['warnings']);
+        $benA = Schedule::where('section_id', $this->sec['A']->id)->where('teacher_id', $this->t['Ben']->id)->get()
+            ->map(fn ($s) => $s->day_of_week . substr($s->start_time, 0, 5))->all();
+        foreach ($p['sections'][0]['grid'] as $day => $rows) {
+            foreach (collect($rows)->where('teacher_id', $this->t['Ben']->id) as $r) {
+                $this->assertNotContains($day . $r['start'], $benA, "Ben double-booked on {$day} {$r['start']}");
+            }
+        }
+    }
 }

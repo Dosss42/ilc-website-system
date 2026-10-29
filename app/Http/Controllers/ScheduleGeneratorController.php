@@ -42,8 +42,9 @@ class ScheduleGeneratorController extends Controller
     }
 
     /**
-     * Defaults for the generator window: the school's usual day and the grade's subjects — 5 a week for
-     * the subjects its sections actually have (Section Management › Subjects), 0 for the rest.
+     * Defaults for the generator window: the grade's usual day (Nursery/Kinder 7:00–10:20, Grades 1–6
+     * 7:00–2:00) and the subjects its sections actually have (Section Management › Subjects), the day's
+     * periods shared evenly among them. Other active subjects of the grade are only named, not scheduled.
      */
     public function defaults(Request $request)
     {
@@ -57,11 +58,15 @@ class ScheduleGeneratorController extends Controller
         $scheduled = \App\Models\Schedule::whereIn('section_id', $sections->pluck('id'))->get(['section_id', 'term'])
             ->groupBy('section_id')->map(fn ($g) => $g->pluck('term')->unique()->sort()->values());
 
-        return response()->json(ScheduleGenerator::DEFAULTS + [
-            'subjects' => ScheduleGenerator::gradeSubjects($v['grade'])
-                ->map(fn ($s) => ['id' => $s->id, 'name' => $s->name, 'per_week' => ($taught->isEmpty() || $taught->contains($s->id)) ? 5 : 0,
-                                  'teachers' => $covered[$s->id] ?? 0])
-                ->sortByDesc('per_week')->values(),
+        $day = ScheduleGenerator::gradeDay($v['grade']);
+        [$used, $other] = ScheduleGenerator::gradeSubjects($v['grade'])->partition(fn ($s) => $taught->isEmpty() || $taught->contains($s->id));
+        $perDay = ScheduleGenerator::periodsBefore($day['start_time'], $day['period_minutes'], $day['breaks'], $day['end_time']);
+        $perWeek = ScheduleGenerator::spread($perDay * count($day['days']), $used->count());
+
+        return response()->json($day + [
+            'subjects' => $used->values()->map(fn ($s, $i) => ['id' => $s->id, 'name' => $s->name, 'per_week' => $perWeek[$i],
+                                                              'teachers' => $covered[$s->id] ?? 0]),
+            'other_subjects' => $other->pluck('name')->values(),
             'sections' => $sections->map(fn ($s) => ['id' => $s->id, 'name' => $s->name, 'scheduled_terms' => $scheduled[$s->id] ?? []])->values(),
         ]);
     }
@@ -86,11 +91,14 @@ class ScheduleGeneratorController extends Controller
         return $request->validate([
             'school_year'         => 'required|string|max:20',
             'grade'               => 'required|in:' . self::GRADES,
-            'terms'               => 'required|array|min:1',
+            'section_ids'         => 'nullable|array',
+            'section_ids.*'       => 'integer',
+            'terms'             => 'required|array|min:1',
             'terms.*'             => 'integer|min:1|max:3',
             'days'                => 'required|array|min:1',
             'days.*'              => 'in:' . implode(',', ScheduleGenerator::DAYS),
             'start_time'          => 'required|date_format:H:i',
+            'end_time'            => 'nullable|date_format:H:i|after:start_time',
             'period_minutes'      => 'required|integer|min:20|max:120',
             'breaks'              => 'array',
             'breaks.*.label'      => 'nullable|string|max:30',
