@@ -36,6 +36,9 @@ class PaymentService
      * email made-up addresses and charge late fees that aren't real. */
     const AUTOMATION_SETTING = 'payment_automation_enabled';
 
+    /** Whole months that may be paid ahead of what's due (1–3), else the full balance — Cashier, Finance, portal */
+    const MAX_ADVANCE_MONTHS = 3;
+
     public static function automationEnabled(): bool
     {
         return (bool) \App\Models\Setting::get(self::AUTOMATION_SETTING, false);
@@ -45,7 +48,7 @@ class PaymentService
      * Check and process all overdue payments (installments whose due date has ended unpaid):
      * the ₱500 late fee the morning after the due date, then a weekly reminder email.
      */
-    public function checkAndProcessOverduePayments(): void
+    public function checkAndProcessOverduePayments(?int $enrollmentId = null): void
     {
         $today = Carbon::now()->startOfDay();
 
@@ -60,6 +63,7 @@ class PaymentService
         // defaults.
         $overdueInstallments = PaymentInstallment::whereNotIn('status', ['paid', 'pending_approval'])
             ->whereDate('due_date', '<', $today)
+            ->when($enrollmentId, fn ($q) => $q->where('enrollment_id', $enrollmentId)) // one student (demo/testing)
             ->get();
 
         foreach ($overdueInstallments as $installment) {
@@ -882,8 +886,17 @@ class PaymentService
             // below Xendit's ₱1 minimum, or within ₱1 of the full balance (centavo rounding across the months
             // would leave a few centavos nobody can pay online) — then only "Full balance" is offered
             if ($sum < 1 || $sum > $max - 1) continue;
+            // At most MAX_ADVANCE_MONTHS months ahead of what's due (school decision, October 31, 2026) — every
+            // overdue month stays payable; past that, the full balance. Same list on every screen.
+            // (after a down payment, months already past their due date — a late enrollee's — are overdue, not ahead)
+            $dp = $parts[0][0] === 'Downpayment';
+            $advanceMonths = $dp ? max(0, $k - $overdueCount) : $k - max(0, $overdueCount - 1);
+            if ($advanceMonths > self::MAX_ADVANCE_MONTHS) continue;
             if ($parts[0][0] === 'Downpayment') {
-                $text = $k === 0 ? 'Downpayment' : 'Downpayment + ' . $k . ' month' . ($k > 1 ? 's' : '') . ' in advance';
+                // "Downpayment + July – August", with "(1 month in advance)" only for months not yet due
+                $ahead = max(0, $k - $overdueCount);
+                $text = $k === 0 ? 'Downpayment'
+                    : self::monthsCovered($parts, $k) . ($ahead ? ' (' . $ahead . ' month' . ($ahead > 1 ? 's' : '') . ' in advance)' : '');
             } elseif ($k === 0) {
                 $text = 'Due now (' . $label . ')';
             } elseif ($k < $overdueCount) {
@@ -893,11 +906,26 @@ class PaymentService
                 $advance = $k + 1 - max(1, $overdueCount);
                 $text    = $base . ' + ' . $advance . ' month' . ($advance > 1 ? 's' : '') . ' in advance';
             }
-            $allowed[] = ['label' => $text, 'amount' => $sum];
+            // For the Cashier's amount cards: what kind of payment, and which months it covers ("August – October")
+            $kind = $dp ? ($k === 0 ? 'downpayment' : ($k <= $overdueCount ? 'overdue' : 'advance'))
+                : ($k === 0 ? 'due' : ($k < $overdueCount ? 'overdue' : 'advance'));
+            $allowed[] = ['label' => $text, 'amount' => $sum, 'kind' => $kind, 'months' => self::monthsCovered($parts, $k),
+                          'late' => $dp ? ($k > 0 && $k <= $overdueCount) : $k < $overdueCount]; // only months already past due
         }
-        $allowed[] = ['label' => 'Full balance', 'amount' => round($max, 2)];
+        $allowed[] = ['label' => 'Full balance', 'amount' => round($max, 2), 'kind' => 'full',
+                      'months' => $parts ? self::monthsCovered($parts, count($parts) - 1) : ''];
 
         return ['min' => $allowed[0]['amount'], 'max' => round($max, 2), 'allowed' => $allowed];
+    }
+
+    /** The parts an option pays, as a range: "August", "August – October", "Downpayment + July – August". */
+    private static function monthsCovered(array $parts, int $k): string
+    {
+        $range = fn (int $from) => $from === $k ? $parts[$k][0] : $parts[$from][0] . ' – ' . $parts[$k][0];
+        if ($parts[0][0] === 'Downpayment') {
+            return $k === 0 ? 'Downpayment' : 'Downpayment + ' . $range(1);
+        }
+        return $range(0);
     }
 
     /**

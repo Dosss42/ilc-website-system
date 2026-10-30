@@ -55,8 +55,8 @@
                 <span id="sgenTDirty" style="font-size:12px;color:var(--muted);"></span>
                 <div style="display:flex;gap:8px;">
                     <button type="button" class="btn-dash btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" class="btn-dash btn-secondary" onclick="sgenSaveTeachers(true)"><i class="bi bi-magic"></i> Save &amp; Generate Schedule</button>
-                    <button type="button" class="btn-dash btn-primary" id="sgenTSaveBtn" onclick="sgenSaveTeachers(false)"><i class="bi bi-check-lg"></i> Save Teachers</button>
+                    {{-- One button: "Save Teachers (n)" while there are changes, then "Next: Generate Schedule" --}}
+                    <button type="button" class="btn-dash btn-primary" id="sgenTSaveBtn" onclick="sgenSaveTeachers()"><i class="bi bi-check-lg"></i> Save Teachers</button>
                 </div>
             </div>
         </div>
@@ -274,7 +274,8 @@
         $('sgenTSummary').innerHTML = chip(filled + ' of ' + cells.length + ' assigned', '#e8f0fb', '#1a3a6c')
             + (cells.length - filled ? chip((cells.length - filled) + ' without a teacher', '#fff7ed', '#b45309') : chip('All assigned', '#f0fdf4', '#166534'));
         $('sgenTDirty').innerHTML = changed ? '<span style="color:#b45309;font-weight:600;"><i class="bi bi-pencil-fill"></i> ' + changed + ' unsaved change(s)</span>' : 'No unsaved changes';
-        $('sgenTSaveBtn').innerHTML = '<i class="bi bi-check-lg"></i> Save Teachers' + (changed ? ' (' + changed + ')' : '');
+        $('sgenTSaveBtn').innerHTML = changed ? '<i class="bi bi-check-lg"></i> Save Teachers (' + changed + ')'
+            : '<i class="bi bi-magic"></i> Next: Generate Schedule <i class="bi bi-arrow-right"></i>';
 
         // Teachers used in this grade: how many subjects here, and their current load
         const used = {};
@@ -320,19 +321,20 @@
         refreshTeacherSummary();
         msg('sgenTMsg', 'info', n + ' empty cell(s) filled with last year\'s teachers — check them, then Save.');
     };
-    window.sgenSaveTeachers = async function (thenGenerate) {
+    // Saves the changed cells; with nothing to save, moves on to Generate Schedule for this year and grade
+    window.sgenSaveTeachers = async function () {
         // Only what changed — hidden subjects keep their teachers
         const cells = [...document.querySelectorAll('.sgen-cell')].filter(c => c.value !== c.dataset.orig)
             .map(c => ({ section_id: +c.dataset.section, subject_id: +c.dataset.subject, teacher_id: c.value ? +c.value : null }));
-        const go = () => { bootstrap.Modal.getInstance($('sgenTeachersModal')).hide(); openGenerateScheduleModal(T.school_year, T.grade); };
         if (!cells.length) {
-            if (thenGenerate) go(); else msg('sgenTMsg', 'info', 'No changes to save.');
+            if (!T) return;
+            bootstrap.Modal.getInstance($('sgenTeachersModal')).hide();
+            openGenerateScheduleModal(T.school_year, T.grade);
             return;
         }
         try {
             const d = await api(EP.gridSave, 'POST', { school_year: T.school_year, cells });
             if (typeof loadScheduleGrid === 'function') loadScheduleGrid();
-            if (thenGenerate) { go(); return; }
             await sgenLoadTeachers();
             msg('sgenTMsg', 'success', esc(d.message));
         } catch (e) { msg('sgenTMsg', 'error', esc(e.message)); }

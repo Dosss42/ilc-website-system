@@ -376,8 +376,6 @@ class StudentPortalController extends Controller
                     ?? $enrollment->grade_level
                     ?? null;
 
-                $studentType = $enrollment->student_data['student_type'] ?? 'returning';
-
                 $promotionRecord = Promotion::where('student_id', $user->id)
                     ->where('from_school_year', $enrollment->school_year)
                     ->where('status', 'completed')
@@ -389,11 +387,9 @@ class StudentPortalController extends Controller
                 } elseif (in_array($currentGrade, $autoAdvanceGrades)) {
                     // Nursery/Kindergarten auto-advance, no assessment needed
                     $suggestedGrade = $gradeProgressionMap[$currentGrade];
-                } elseif ($studentType === 'transferee') {
-                    // Transferee: auto-advance to next grade, no assessment needed
-                    $suggestedGrade = $gradeProgressionMap[$currentGrade] ?? $currentGrade;
                 } else {
-                    // Returning Grade 1-6 student: stays at same grade until admin assesses
+                    // Grade 1-6 (returning or transferee — after a year here the school assesses everyone):
+                    // stays at the same grade until the school assesses
                     $suggestedGrade = $currentGrade;
                 }
             }
@@ -477,8 +473,9 @@ class StudentPortalController extends Controller
         }
 
         // …and all four required documents approved — the checklist locks the button; this is the real check
-        if (($approvedDocs = StudentDocument::approvedRequiredCount($user->id)) < count(StudentDocument::REQUIRED_TYPES)) {
-            return back()->with('error', "Your required documents are not complete yet ({$approvedDocs}/4 approved). Please upload them and wait for the school to approve them.");
+        [$approvedDocs, $requiredDocs] = StudentDocument::requiredProgress($user->id);
+        if ($approvedDocs < $requiredDocs) {
+            return back()->with('error', "Your required documents are not complete yet ({$approvedDocs}/{$requiredDocs} approved). Please upload them and wait for the school to approve them.");
         }
 
         // Full grade progression map
@@ -495,7 +492,6 @@ class StudentPortalController extends Controller
         $autoAdvanceGrades = ['nursery', 'kindergarten'];
 
         $prevGrade   = $prevEnrollment->student_data['grade_level'] ?? $prevEnrollment->grade_level ?? null;
-        $studentType = $prevEnrollment->student_data['student_type'] ?? 'returning';
 
         // Get promotion record (only relevant for Grade 1–6 returning students)
         $promotion = Promotion::where('student_id', $user->id)
@@ -509,38 +505,40 @@ class StudentPortalController extends Controller
         } elseif (in_array($prevGrade, $autoAdvanceGrades)) {
             // Nursery → Kindergarten, Kindergarten → Grade 1 (no assessment needed)
             $newGrade = $gradeProgressionMap[$prevGrade];
-        } elseif ($studentType === 'transferee') {
-            // Transferee: auto-advance to next grade, no assessment needed
-            $newGrade = $gradeProgressionMap[$prevGrade] ?? $prevGrade;
         } else {
-            // Returning Grade 1–6: the school's assessment decides the grade — the portal only shows the
-            // button after it; this refuses a direct request too (it used to keep the same grade silently)
+            // Grade 1–6, returning or transferee: the school's assessment decides the grade — the portal only
+            // shows the button after it; this refuses a direct request too (transferees used to skip it)
             return back()->with('error', 'The school has not assessed you for S.Y. ' . $prevEnrollment->school_year . ' yet. You can re-enroll once the assessment is done.');
         }
 
-        // Create new enrollment for current school year
-        $newEnrollment = Enrollment::create([
-            'user_id'          => $user->id,
-            'grade_level'      => $newGrade,
-            'school_year'      => $currentSchoolYear,
-            'status'           => 'pending',
-            'student_data'     => array_merge(
-                $prevEnrollment->student_data ?? [],
-                [
-                    'grade_level'          => $newGrade,
-                    'student_type'         => 'returning',
-                    'previous_school_year' => $prevEnrollment->school_year,
-                ]
-            ),
-            'payment_status'   => 'pending',
-            'reference_number' => 'ENR-' . strtoupper(uniqid()),
-        ]);
+        // A Grade 6 graduate has no next grade here (the portal shows a congratulations note instead)
+        if ($newGrade === 'graduated') {
+            return back()->with('error', 'You have completed Grade 6 — there is no next grade to re-enroll into.');
+        }
 
-        // Assessed by the school: the assessment only recorded the result — confirming it here does what
-        // the assessment used to do (link it, finish last year, move from last year's section into the one
-        // the school chose, if it has room). Undo / declining this enrollment reverses it all.
-        if ($promotion) {
-            DB::transaction(function () use ($promotion, $prevEnrollment, $newEnrollment, $user) {
+        // The new enrollment and the promotion links are saved together — all or nothing
+        DB::transaction(function () use ($user, $newGrade, $currentSchoolYear, $prevEnrollment, $promotion) {
+            $newEnrollment = Enrollment::create([
+                'user_id'          => $user->id,
+                'grade_level'      => $newGrade,
+                'school_year'      => $currentSchoolYear,
+                'status'           => 'pending',
+                'student_data'     => array_merge(
+                    $prevEnrollment->student_data ?? [],
+                    [
+                        'grade_level'          => $newGrade,
+                        'student_type'         => 'returning',
+                        'previous_school_year' => $prevEnrollment->school_year,
+                    ]
+                ),
+                'payment_status'   => 'pending',
+                'reference_number' => 'ENR-' . strtoupper(uniqid()),
+            ]);
+
+            // Assessed by the school: the assessment only recorded the result — confirming it here does what
+            // the assessment used to do (link it, finish last year, move from last year's section into the one
+            // the school chose, if it has room). Undo / declining this enrollment reverses it all.
+            if ($promotion) {
                 $promotion->update(['enrollment_id' => $newEnrollment->id]);
                 $prevEnrollment->update(['status' => 'completed', 'completed_at' => now()]);
                 if ($promotion->from_section_id) {
@@ -551,8 +549,8 @@ class StudentPortalController extends Controller
                     $toSection->students()->syncWithoutDetaching([$user->id]);
                     $newEnrollment->update(['section' => $toSection->name]);
                 }
-            });
-        }
+            }
+        });
 
         return back()->with('success', 'Re-enrollment application submitted for S.Y. ' . $currentSchoolYear . '. Please wait for admin approval.');
     }

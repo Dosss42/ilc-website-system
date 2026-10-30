@@ -4723,6 +4723,7 @@
             // Cached for evmStartSectionEdit() — it needs the raw
             // grade_level, which isn't otherwise stored anywhere in the DOM.
             window._currentEnrollmentData = data;
+            if (typeof evmShowReturningCheck === 'function') evmShowReturningCheck(data);
 
             document.getElementById('modal-reference-number').textContent = data.reference_number || 'N/A';
             document.getElementById('modal-school-year').textContent       = data.school_year || 'N/A';
@@ -5554,7 +5555,9 @@
             set('sv-city', addr.municipality || sd.city || 'N/A');
             set('sv-province', addr.province || sd.province || 'N/A');
             var sf10 = document.getElementById('sv-sf10-btn');
-            if (sf10) { sf10.href = '/admin/students/' + studentId + '/sf10'; sf10.style.display = 'inline-block'; }
+            if (sf10) { sf10.href = '/admin/students/' + studentId + '/sf10'; sf10.style.display = 'inline-flex'; }
+            var gmBtn = document.getElementById('sv-goodmoral-btn');
+            if (gmBtn) { gmBtn.dataset.student = studentId; gmBtn.style.display = 'inline-flex'; }
             var re = document.getElementById('sv-reenroll-btn');
             if (re) {
                 re.style.display = (enr.status && ['approved', 'enrolled'].indexOf(enr.status) !== -1) ? 'none' : 'inline-block';

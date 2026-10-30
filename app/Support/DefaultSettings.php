@@ -28,6 +28,7 @@ class DefaultSettings
             ['key' => 'school_id', 'value' => '419002', 'type' => 'string', 'group' => 'school', 'label' => 'School ID', 'description' => 'DepEd School ID printed on the School Forms'],
             ['key' => 'school_district', 'value' => 'General Tinio', 'type' => 'string', 'group' => 'school', 'label' => 'District', 'description' => 'School district printed on the School Forms'],
             ['key' => 'principal_name', 'value' => 'Mrs. Teofila Guillermo', 'type' => 'string', 'group' => 'school', 'label' => 'Principal Name', 'description' => 'Name of school principal/director'],
+            ['key' => 'guidance_counselor_name', 'value' => 'Dss. Celia B. Cortez', 'type' => 'string', 'group' => 'school', 'label' => 'Guidance Counselor', 'description' => 'Signs the Certificate of Good Moral Character'],
             ['key' => 'school_motto', 'value' => '', 'type' => 'string', 'group' => 'school', 'label' => 'School Motto', 'description' => 'School motto or vision statement'],
             ['key' => 'gcash_number', 'value' => '', 'type' => 'string', 'group' => 'school', 'label' => 'GCash Number', 'description' => 'GCash mobile number shown to students for payment'],
             ['key' => 'gcash_account_name', 'value' => '', 'type' => 'string', 'group' => 'school', 'label' => 'GCash Account Name', 'description' => 'Account name associated with the GCash number'],

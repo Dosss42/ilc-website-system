@@ -108,6 +108,13 @@ class ScheduleGeneratorTest extends TestCase
 
         $anya = collect($p['teacher_load'])->firstWhere('name', 'Anya');
         $this->assertSame('over', $anya['status']); // 15 h a week > 10 h limit
+
+        // A day limit is flagged on the periods past it, in time order: only Anya's 3rd period of the day
+        $q = $this->actingAs($this->admin, 'web')->postJson('/admin/schedules/generator/preview',
+            $this->input(['section_ids' => [$this->sec['A']->id], 'limits' => ['week_hours' => 30, 'day_periods' => 2, 'consecutive' => 4]]))->assertOk()->json();
+        foreach ($q['sections'][0]['grid'] as $day => $rows) {
+            $this->assertSame([[], [], ["Teacher's 3rd period today (limit 2)"]], array_column($rows, 'notes'), $day);
+        }
         $this->assertCount(3, $p['missing_teachers']); // Grade 1-B has nobody yet
         $this->actingAs($this->admin, 'web')->postJson('/admin/schedules/generator/save',
             $this->input(['limits' => ['week_hours' => 10, 'day_periods' => 6, 'consecutive' => 4]]))->assertOk()->assertJson(['created' => 30]);
@@ -140,6 +147,31 @@ class ScheduleGeneratorTest extends TestCase
             'end_time' => '09:00', 'section_ids' => [$this->sec['A']->id]]))->assertOk()->json();
         $late = collect($p['sections'][0]['grid']['Monday'])->filter(fn ($r) => in_array('After dismissal (9:00 AM)', $r['notes']));
         $this->assertSame(['09:20'], $late->pluck('start')->values()->all());
+    }
+
+    public function test_a_period_left_in_a_clash_is_swapped_to_a_time_both_teachers_are_free(): void
+    {
+        // Ben already teaches Grade 2 at 8:00 every day (saved schedule of another grade)
+        $g2 = Section::create(['name' => 'Grade 2-A', 'grade_level' => 'grade2', 'school_year' => '2027-2028', 'max_students' => 30, 'is_active' => true]);
+        $g2math = Subject::create(['name' => 'Math 2', 'code' => 'MAT2', 'grade_level' => 'grade2', 'is_active' => true]);
+        foreach (['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] as $d) {
+            Schedule::create(['section_id' => $g2->id, 'subject_id' => $g2math->id, 'teacher_id' => $this->t['Ben']->id, 'day_of_week' => $d,
+                'start_time' => '08:00', 'end_time' => '09:00', 'is_active' => true, 'term' => 1]);
+        }
+        $this->actingAs($this->admin, 'web')->postJson('/admin/schedules/subject-teachers', ['school_year' => '2027-2028',
+            'cells' => $this->cells(['A' => ['English' => 'Anya', 'Math' => 'Ben']])])->assertOk();
+
+        // Grade 1-A: English and Math once a day. Filling in order puts English at 7:00, leaving Math (Ben) at 8:00 —
+        // the repair swaps them so nobody is double-booked
+        $p = $this->actingAs($this->admin, 'web')->postJson('/admin/schedules/generator/preview', $this->input([
+            'section_ids' => [$this->sec['A']->id],
+            'subjects' => [['id' => $this->sub['English']->id, 'per_week' => 5], ['id' => $this->sub['Math']->id, 'per_week' => 5]],
+        ]))->assertOk()->json();
+
+        $this->assertSame(0, $p['warnings']);
+        foreach ($p['sections'][0]['grid'] as $day => $rows) {
+            $this->assertSame(['07:00' => 'Math', '08:00' => 'English'], collect($rows)->pluck('subject', 'start')->all(), $day);
+        }
     }
 
     public function test_only_the_chosen_sections_are_built_and_the_others_still_count_for_clashes(): void

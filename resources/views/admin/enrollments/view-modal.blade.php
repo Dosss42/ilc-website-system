@@ -46,6 +46,8 @@
 
                 {{-- ── DETAILS TAB ── --}}
                 <div id="evm-pane-details" style="padding:24px;">
+                    {{-- Pending only: "possibly a student we already know" / old balance — filled by evmShowReturningCheck() --}}
+                    <div id="evm-returning-alert" style="display:none;margin-bottom:16px;"></div>
                     <div class="row g-3">
 
                         {{-- Student Info --}}
@@ -354,4 +356,39 @@ function evmSaveSection() {
 document.addEventListener('show.bs.modal', function (e) {
     if (e.target && e.target.id === 'enrollmentViewModal') evmCancelSectionEdit();
 });
+
+// Pending application: a possible returning student (same name + birthdate, another account) and/or an
+// unpaid balance from an earlier school year. A warning only — the admin decides (EnrollmentController::returningCheck).
+window.evmShowReturningCheck = function (data) {
+    var box = document.getElementById('evm-returning-alert');
+    if (!box) return;
+    var rc = data && data.returning_check;
+    var matches = (rc && rc.matches) || [], balances = (rc && rc.balances) || [];
+    if (!matches.length && !balances.length) { box.style.display = 'none'; box.innerHTML = ''; return; }
+    var esc = function (s) { var d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; };
+    var peso = function (n) { return '₱' + Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+    var html = '';
+    if (matches.length) {
+        html += '<div style="background:#fff7ed;border:1.5px solid #fdba74;border-radius:12px;padding:12px 16px;margin-bottom:8px;">'
+            + '<div style="font-weight:700;color:#9a3412;font-size:13px;"><i class="bi bi-person-exclamation"></i> Possibly a student ILC already knows</div>'
+            + '<div style="font-size:12px;color:#7c2d12;margin:4px 0 6px;">Another student account has the same name and birthdate. If it is the same child, '
+            + 'decline this application and let the family use that account (update its email in Student Management if they lost access). '
+            + 'If it is a different child, you can ignore this.</div>'
+            + matches.map(function (m) {
+                return '<div style="font-size:12px;padding:6px 10px;background:#fff;border:1px solid #fed7aa;border-radius:8px;margin-top:4px;">'
+                    + '<strong>' + esc(m.name) + '</strong> · ' + esc(m.email) + (m.lrn ? ' · LRN ' + esc(m.lrn) : '')
+                    + (m.last ? ' · last: ' + esc(m.last) : ' · no enrollment yet') + (m.archived ? ' · <em>archived</em>' : '') + '</div>';
+            }).join('') + '</div>';
+    }
+    if (balances.length) {
+        html += '<div style="background:#fef2f2;border:1.5px solid #fca5a5;border-radius:12px;padding:12px 16px;">'
+            + '<div style="font-weight:700;color:#991b1b;font-size:13px;"><i class="bi bi-cash-coin"></i> Unpaid balance from an earlier school year</div>'
+            + balances.map(function (b) {
+                return '<div style="font-size:12px;color:#7f1d1d;margin-top:4px;">' + esc(b.name) + ' — ' + esc(b.grade) + ', S.Y. ' + esc(b.school_year) + ': <strong>' + peso(b.amount) + '</strong></div>';
+            }).join('')
+            + '<div style="font-size:11.5px;color:#991b1b;margin-top:6px;">Settle it with the family (Cashier) before or after approving — the system does not block this application.</div></div>';
+    }
+    box.innerHTML = html;
+    box.style.display = '';
+};
 </script>

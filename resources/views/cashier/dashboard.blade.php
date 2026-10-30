@@ -599,10 +599,13 @@
         #payPanel .pp-tm-seg.paid { background:var(--pp-good); }
 
         /* presets */
-        #payPanel .pp-preset { flex:1;min-width:130px;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--pp-line);border-radius:8px;background:var(--pp-paper);cursor:pointer;font-size:12px;font-weight:600;color:var(--pp-soft);font-family:inherit; }
-        #payPanel .pp-preset .pp-amt { font-weight:700;color:var(--pp-ink); }
-        #payPanel .pp-preset.active { border-color:var(--pp-accent);background:var(--pp-accent-soft);color:var(--pp-accent); }
-        #payPanel .pp-preset.active .pp-amt { color:var(--pp-accent); }
+        /* Amount cards: a small tag (Due now / Overdue / Advance / Full balance), the months it covers, the amount */
+        #payPanel .pp-preset { flex:1 1 0;min-width:140px;display:flex;flex-direction:column;align-items:flex-start;gap:3px;padding:10px 12px;border:1px solid var(--pp-line);border-top:3px solid var(--pp-tag,var(--pp-line));border-radius:8px;background:var(--pp-paper);cursor:pointer;font-size:12px;font-weight:600;color:var(--pp-soft);font-family:inherit;text-align:left; }
+        #payPanel .pp-preset .pp-tag { font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--pp-tag,var(--pp-soft)); }
+        #payPanel .pp-preset .pp-months { font-size:12.5px;font-weight:600;color:var(--pp-ink);line-height:1.3; }
+        #payPanel .pp-preset .pp-amt { font-size:15px;font-weight:700;color:var(--pp-ink);margin-top:auto;padding-top:4px; }
+        #payPanel .pp-preset.active { border-color:var(--pp-accent);border-top-color:var(--pp-accent);background:var(--pp-accent-soft);box-shadow:0 0 0 1px var(--pp-accent) inset; }
+        #payPanel .pp-preset.active .pp-amt, #payPanel .pp-preset.active .pp-months { color:var(--pp-accent); }
 
         /* amount */
         #payPanel .pp-amount-row { display:flex;align-items:baseline;gap:10px;padding:4px 0 2px; }
@@ -3003,11 +3006,17 @@
             var dpLeft = Number(s.downpayment_amount) > 0 && Number(s.payment_amount || 0) < Number(s.downpayment_amount);
             lim.allowed.forEach(function (o, k) {
                 var last = k === lim.allowed.length - 1;
-                if (!last && k > 2) return; // keep the row short; typing a later "in advance" total still works
-                var type = last ? 'Full Payment' : (k === 0 ? (dpLeft ? 'Downpayment' : 'Monthly Installment') : (o.label.indexOf('in advance') === -1 ? 'Overdue Payment' : 'Advance Payment'));
-                // the server's own wording for the middle options — "Overdue July – August" vs "… + 1 month in advance"
-                var label = last ? 'Full Balance' : (k === 0 ? (dpLeft ? 'Downpayment' : 'Monthly Install.') : o.label);
-                btns.push({ label: label, amount: o.amount, type: type, color: last ? '#16a34a' : (k === 0 ? '#1a3a6c' : '#2471a3') });
+                // every accepted amount is a card — the server already limits them (up to 3 months in advance)
+                var type = last ? 'Full Payment' : (k === 0 ? (dpLeft ? 'Downpayment' : 'Monthly Installment')
+                    : (o.kind ? (o.kind === 'advance' ? 'Advance Payment' : 'Overdue Payment') : (o.label.indexOf('in advance') === -1 ? 'Overdue Payment' : 'Advance Payment')));
+                // Tag by kind (the server's paymentLimits()), then the months it covers — "August – October" reads
+                // at a glance where "All overdue (August – September) + 1 month in advance" wrapped over five lines
+                var kind = o.kind || (last ? 'full' : (k === 0 ? 'due' : (type === 'Overdue Payment' ? 'overdue' : 'advance')));
+                var tags = { due: [o.late ? 'Due now · overdue' : 'Due now', o.late ? '#b91c1c' : '#1a3a6c'],
+                             downpayment: ['Downpayment', '#1a3a6c'], overdue: ['Overdue', '#b91c1c'],
+                             advance: ['Advance', '#2471a3'], full: ['Full balance', '#16a34a'] };
+                var months = o.months && !/\bMonth\b/.test(o.months) ? o.months : o.label; // no schedule yet → the label
+                btns.push({ tag: tags[kind] ? tags[kind][0] : '', tagColor: tags[kind] ? tags[kind][1] : '', label: months, amount: o.amount, type: type });
             });
         } else {
             if (Number(s.downpayment_amount) > 0 && Number(s.payment_amount||0) < Number(s.downpayment_amount)) {
@@ -3024,8 +3033,10 @@
         var qBtns = document.getElementById('quickAmountBtns');
         if (btns.length > 0) {
             qBtns.innerHTML = btns.map(function(b) {
-                return '<button type="button" class="pp-preset" onclick="quickFillAmount(' + b.amount + ',\'' + b.type + '\',this)">'
-                    + '<span>' + b.label + '</span>'
+                return '<button type="button" class="pp-preset"' + (b.tagColor ? ' style="--pp-tag:' + b.tagColor + ';"' : '')
+                    + ' onclick="quickFillAmount(' + b.amount + ',\'' + b.type + '\',this)">'
+                    + (b.tag ? '<span class="pp-tag">' + b.tag + '</span>' : '')
+                    + '<span class="pp-months">' + String(b.label).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }) + '</span>'
                     + '<span class="pp-amt pp-mono">₱' + Number(b.amount).toLocaleString('en-PH',{minimumFractionDigits:2}) + '</span>'
                     + '</button>';
             }).join('');
@@ -3129,9 +3140,12 @@
         var match = !problem && raw !== '' ? lim.allowed.filter(function (o) { return Math.abs(o.amount - parseFloat(raw)) < 0.005; })[0] : null;
         hint.innerHTML = problem
             ? '<i class="bi bi-exclamation-circle-fill"></i> ' + problem
-            : '<i class="bi bi-info-circle"></i> ' + (match ? '<strong>' + match.label + '</strong> · ' : '')
-              + 'Due now: <strong>' + fmtPeso(lim.min) + '</strong>'
-              + (lim.allowed.length > 1 ? ' · paying whole months in advance or the full balance (' + fmtPeso(lim.max) + ') is accepted' : ' (the whole remaining balance)');
+            // "This pays August – October" for a picked amount; otherwise what's due now — then the rule, once
+            : '<i class="bi bi-info-circle"></i> '
+              + (match && match.months && !/\bMonth\b/.test(match.months)
+                    ? 'This pays <strong>' + match.months + '</strong>' + (match.late ? ' (overdue, late fees included)' : '')
+                    : 'Due now: <strong>' + fmtPeso(lim.min) + '</strong>')
+              + (lim.allowed.length > 1 ? ' · whole months only, up to the full balance of ' + fmtPeso(lim.max) : ' (the whole remaining balance)');
         hint.style.color = problem ? '#b91c1c' : '#64748b';
         hint.style.display = 'block';
     }

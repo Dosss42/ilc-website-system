@@ -12,15 +12,34 @@ class StudentDocument extends Model
     /** The four documents every student needs approved (enrollment checklist, re-enrollment, assessment). */
     const REQUIRED_TYPES = ['birth_certificate', 'form_137', 'report_card', 'two_by_two_picture'];
 
-    /** How many of the four required documents a student has approved (0–4) — the same count the portal shows. */
+    /**
+     * The documents a student must have approved, by how they last came into ILC (school decision,
+     * October 30, 2026): a NEW student (first time in any school) only brings the original PSA birth
+     * certificate — there is no Form 137 or report card yet, and ILC keeps its own records from then on.
+     * A transferee (or anyone else) brings all four, the other school's records included.
+     */
+    public static function requiredTypesFor(int $userId): array
+    {
+        $entry = Enrollment::where('user_id', $userId)->orderByDesc('id')->get()
+            ->first(fn ($e) => in_array($e->student_data['student_type'] ?? null, ['new', 'transferee'], true));
+        return ($entry?->student_data['student_type'] ?? null) === 'new' ? ['birth_certificate'] : self::REQUIRED_TYPES;
+    }
+
+    /** How many of the student's required documents are approved — the same count the portal shows. */
     public static function approvedRequiredCount(int $userId): int
     {
         return static::where(fn ($q) => $q->where('user_id', $userId)
                 ->orWhereIn('enrollment_id', Enrollment::where('user_id', $userId)->select('id')))
-            ->whereIn('document_type', self::REQUIRED_TYPES)
+            ->whereIn('document_type', self::requiredTypesFor($userId))
             ->where('status', 'approved')
             ->distinct()
             ->count('document_type');
+    }
+
+    /** [approved, required] — e.g. [3, 4], or [1, 1] for a new student with the PSA approved. */
+    public static function requiredProgress(int $userId): array
+    {
+        return [self::approvedRequiredCount($userId), count(self::requiredTypesFor($userId))];
     }
 
     protected $fillable = [

@@ -1658,6 +1658,13 @@ class DashboardController extends Controller
                 $installmentMonth = 'Downpayment';
             }
 
+            // Same accepted amounts as the Cashier and the portal (PaymentService::paymentLimits): due now,
+            // overdue months, up to 3 months in advance, or the full balance — no odd amounts
+            if ($limitError = PaymentService::paymentLimitError($enrollment, $amountPaid)) {
+                DB::rollBack();
+                return $this->walkInError($request, $limitError);
+            }
+
             // Create an already-approved payment transaction so it appears in payment history
             $payment = PaymentTransaction::create([
                 'user_id'       => $enrollment->user_id,
@@ -1841,6 +1848,13 @@ class DashboardController extends Controller
             if ((float) ($enrollment->remaining_balance ?? 0) <= 0 && $enrollment->payment_status === 'paid') {
                 DB::rollBack();
                 return redirect()->back()->with('error', 'This student is already fully paid — remaining balance is ₱0.00. No further payment is needed.');
+            }
+
+            // Same accepted amounts as the Cashier and the portal (PaymentService::paymentLimits). A plan being
+            // set by this very request has no list yet — then there's no rule to check (null).
+            if ($limitError = PaymentService::paymentLimitError($enrollment, $amountPaid)) {
+                DB::rollBack();
+                return redirect()->back()->with('error', $limitError);
             }
 
             // Create PaymentTransaction record (completed since it's admin payment)

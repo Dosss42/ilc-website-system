@@ -44,10 +44,67 @@ class PaymentRemindersTest extends TestCase
         Artisan::call('payments:check-overdue');
     }
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // The daily commands only run for everyone while the Super Admin switch is ON
+        \App\Models\Setting::set(PaymentService::AUTOMATION_SETTING, '1', 'boolean');
+    }
+
     protected function tearDown(): void
     {
         Carbon::setTestNow();
         parent::tearDown();
+    }
+
+    public function test_at_most_three_months_in_advance_then_the_full_balance_and_finance_follows_the_same_rule(): void
+    {
+        Mail::fake();
+        $e = $this->family(); // 9 months × ₱1,000, July due 2027-07-10
+        Carbon::setTestNow(Carbon::parse('2027-06-20'));
+
+        $allowed = PaymentService::paymentLimits($e)['allowed'];
+        $this->assertSame([1000.0, 2000.0, 3000.0, 4000.0, 9000.0], array_map('floatval', array_column($allowed, 'amount')));
+        $this->assertSame(['due', 'advance', 'advance', 'advance', 'full'], array_column($allowed, 'kind'));
+        $this->assertSame(['July', 'July – August', 'July – September', 'July – October', 'July – March'], array_column($allowed, 'months'));
+
+        // Finance (walk-in payment) uses the same list now: 4 months ahead is refused, 3 is fine
+        $finance = \App\Models\User::factory()->finance()->create();
+        $pay = fn ($amount) => $this->actingAs($finance, 'finance')->postJson("/finance/installments/{$e->id}/pay", ['payment_method' => 'cash', 'amount' => $amount]);
+        $pay(5000)->assertStatus(422);
+        $this->assertSame(0, \App\Models\PaymentTransaction::where('enrollment_id', $e->id)->count());
+        $pay(4000)->assertOk();
+        $this->assertSame(4, $e->paymentInstallments()->where('status', 'paid')->count());
+    }
+
+    public function test_with_the_switch_off_nothing_runs_except_a_one_student_test_whose_mail_can_be_redirected(): void
+    {
+        $e = $this->family();
+        $other = $this->family();
+        \App\Models\Setting::set(PaymentService::AUTOMATION_SETTING, '0', 'boolean');
+        Carbon::setTestNow(Carbon::parse('2027-07-11 08:10')); // the morning after July's due date
+
+        // Real (in-memory) mailer, so the redirect below is checked on the actual messages
+        config(['mail.default' => 'array']);
+        Mail::swap(app('mail.manager')->forgetMailers());
+        $sent = fn () => app('mail.manager')->mailer('array')->getSymfonyTransport()->messages();
+
+        // Switch OFF: nobody is touched (run by hand too — it used to ignore the switch)
+        Artisan::call('payments:check-overdue');
+        Artisan::call('app:check-payment-due-dates');
+        $this->assertCount(0, $sent());
+        $this->assertSame(0, PaymentInstallment::where('late_fee', '>', 0)->count());
+
+        // One student (demo): only that family gets the fee, and the email goes to the tester instead
+        Artisan::call('payments:check-overdue', ['--enrollment' => $e->id, '--to' => 'tester@example.com']);
+
+        $this->assertGreaterThan(0, (float) $e->paymentInstallments()->where('month_name', 'July')->value('late_fee'));
+        $this->assertSame(0, $other->paymentInstallments()->where('late_fee', '>', 0)->count());
+        $sent = $sent();
+        $this->assertGreaterThan(0, count($sent));
+        foreach ($sent as $m) {
+            $this->assertSame(['tester@example.com'], array_map(fn ($a) => $a->getAddress(), $m->getOriginalMessage()->getTo()));
+        }
     }
 
     public function test_reminders_go_out_three_days_before_and_on_the_due_date_once_each(): void

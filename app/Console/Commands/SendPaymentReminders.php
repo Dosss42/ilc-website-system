@@ -16,6 +16,12 @@ class SendPaymentReminders extends Command
 
     public function handle(): int
     {
+        // Older manual command (not scheduled — app:check-payment-due-dates is the daily one); same switch
+        if (!\App\Services\PaymentService::automationEnabled()) {
+            $this->warn('Payment automation is OFF (Super Admin › System Settings) — nothing was done.');
+            return Command::SUCCESS;
+        }
+
         $today = Carbon::today();
         $threeDaysFromNow = $today->copy()->addDays(3);
 

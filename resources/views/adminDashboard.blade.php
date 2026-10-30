@@ -5350,6 +5350,7 @@ function openWalkInEnrollmentModal() {
             // grade_level, which isn't otherwise stored anywhere in the DOM
             // (only the human-formatted label is rendered).
             window._currentEnrollmentData = data;
+            if (typeof evmShowReturningCheck === 'function') evmShowReturningCheck(data);
 
             // Header
             document.getElementById('modal-reference-number').textContent = data.reference_number || 'N/A';
@@ -5670,8 +5671,10 @@ function openWalkInEnrollmentModal() {
             const sf10Btn = document.getElementById('sv-sf10-btn');
             if (sf10Btn) {
                 sf10Btn.href = '{{ url("admin/students") }}/' + studentId + '/sf10';
-                sf10Btn.style.display = 'inline-block';
+                sf10Btn.style.display = 'inline-flex';
             }
+            const gmBtn = document.getElementById('sv-goodmoral-btn');
+            if (gmBtn) { gmBtn.dataset.student = studentId; gmBtn.style.display = 'inline-flex'; }
 
             // Show re-enroll button if student is not currently enrolled
             const reEnrollBtn = document.getElementById('sv-reenroll-btn');

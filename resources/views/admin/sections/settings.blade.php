@@ -84,6 +84,11 @@
                                 <input type="text" id="set-principal_name" class="form-fld" maxlength="120" placeholder="e.g. Mrs. Teofila Guillermo">
                                 <small class="text-muted" style="font-size:11px;">School ID, District and School Head are printed on the School Forms (SF5, SF9, SF10).</small>
                             </div>
+                            <div class="col-md-6">
+                                <label class="form-lbl">Guidance Counselor</label>
+                                <input type="text" id="set-guidance_counselor_name" class="form-fld" maxlength="120" placeholder="e.g. Dss. Celia B. Cortez">
+                                <small class="text-muted" style="font-size:11px;">Signs the Certificate of Good Moral Character (the School Head signs as "Noted by").</small>
+                            </div>
                         </div>
                         <div class="stg-section-label">Contact &amp; Location</div>
                         <div class="row g-3">

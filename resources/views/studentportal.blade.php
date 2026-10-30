@@ -331,12 +331,15 @@
         .pay-method-icon.cash  { background: linear-gradient(135deg,#28a74522,#28a74511); color: #28a745; }
         .pay-method-info { flex: 1; text-align: left; }
         /* Amount choices (due now / + months in advance / full balance) — same list as the Cashier Portal */
-        .pay-choices { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+        /* Amount choices: equal cards — a tag (Due now / Overdue / Advance / Full balance), the months covered, the amount */
+        .pay-choices { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-top: 12px; }
         .pay-choices:empty { display: none; }
-        .pay-choice { border: 1.5px solid #bbf7d0; background: #fff; color: #166534; border-radius: 10px; padding: 6px 10px; font-size: 11.5px; font-weight: 700; cursor: pointer; font-family: inherit; text-align: left; line-height: 1.25; }
-        .pay-choice small { display: block; font-weight: 600; opacity: .75; font-size: 10.5px; }
+        .pay-choice { display: flex; flex-direction: column; gap: 2px; border: 1.5px solid #bbf7d0; background: #fff; color: #166534; border-radius: 10px; padding: 9px 12px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; text-align: left; line-height: 1.3; }
+        .pay-choice .pc-tag { font-size: 9.5px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; opacity: .8; }
+        .pay-choice .pc-amt { font-size: 14.5px; font-weight: 800; margin-top: 2px; }
         .pay-choice.active { background: #16a34a; border-color: #16a34a; color: #fff; }
-        .pay-choices-dark .pay-choice { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.35); color: #fff; }
+        .pay-choices-dark .pay-choice { background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.30); color: #fff; }
+        .pay-choices-dark .pay-choice:hover { background: rgba(255,255,255,.18); }
         .pay-choices-dark .pay-choice.active { background: #fff; border-color: #fff; color: #1a3a6c; }
         .pay-method-info strong { display: block; font-size: 14px; font-weight: 700; color: var(--text); }
         .pay-method-info span   { font-size: 12px; color: #777; }
@@ -1039,15 +1042,19 @@
         {{-- ── Required Documents Notice ── --}}
         @if($enrollment)
         @php
-            $_reqDocTypes = ['birth_certificate'=>'Birth Certificate (PSA)','form_137'=>'Form 137','report_card'=>'Report Card / Grades','two_by_two_picture'=>'2x2 ID Picture'];
-            $_allDocs = \App\Models\StudentDocument::where(function($q) use ($enrollment) {
+            // Only the documents this student must bring (a new student: the PSA birth certificate alone)
+            $_reqDocTypes = array_intersect_key(
+                ['birth_certificate'=>'Birth Certificate (PSA)','form_137'=>'Form 137','report_card'=>'Report Card / Grades','two_by_two_picture'=>'2x2 ID Picture'],
+                array_flip(\App\Models\StudentDocument::requiredTypesFor(Auth::id())));
+            $_reqTotal = count($_reqDocTypes);
+            $_allDocs =\App\Models\StudentDocument::where(function($q) use ($enrollment) {
                 $q->where('enrollment_id', $enrollment->id)->orWhere('user_id', Auth::id());
             })->whereIn('document_type', array_keys($_reqDocTypes))->get()->keyBy('document_type');
             $_approvedCount = $_allDocs->filter(fn($d) => $d->status === 'approved')->count();
             $_pendingCount  = $_allDocs->filter(fn($d) => $d->status === 'pending')->count();
             $_missingTypes  = array_keys(array_filter($_reqDocTypes, fn($label, $type) => !$_allDocs->has($type), ARRAY_FILTER_USE_BOTH));
         @endphp
-        @if($_approvedCount < 4)
+        @if($_approvedCount < $_reqTotal)
         <div style="background:{{ $_approvedCount === 0 ? 'linear-gradient(135deg,#fff3e0,#fef9f0)' : 'linear-gradient(135deg,#e8f4ff,#f0f8ff)' }};
                     border:1.5px solid {{ $_approvedCount === 0 ? '#fb923c' : '#60a5fa' }};
                     border-radius:12px;padding:16px 20px;margin-bottom:20px;">
@@ -1062,7 +1069,7 @@
                         @elseif($_pendingCount > 0)
                             Documents Under Review ({{ $_pendingCount }} pending)
                         @else
-                            {{ 4 - $_approvedCount }} Document{{ (4 - $_approvedCount) !== 1 ? 's' : '' }} Still Needed
+                            {{ $_reqTotal - $_approvedCount }} Document{{ ($_reqTotal - $_approvedCount) !== 1 ? 's' : '' }} Still Needed
                         @endif
                     </div>
                     <div style="font-size:12px;color:#666;line-height:1.6;margin-bottom:10px;">
@@ -1072,7 +1079,7 @@
                         @elseif($_pendingCount > 0)
                             Your uploaded documents are being reviewed by the registrar. You will be notified once approved.
                         @else
-                            Please upload the remaining {{ 4 - $_approvedCount }} document(s) to fully complete your enrollment.
+                            Please upload the remaining {{ $_reqTotal - $_approvedCount }} document(s) to fully complete your enrollment.
                         @endif
                     </div>
                     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
@@ -1097,7 +1104,7 @@
                     @endif
                 </div>
                 <div style="text-align:center;flex-shrink:0;">
-                    <div style="font-size:28px;font-weight:700;color:{{ $_approvedCount === 0 ? '#fb923c' : '#3b82f6' }};">{{ $_approvedCount }}/4</div>
+                    <div style="font-size:28px;font-weight:700;color:{{ $_approvedCount === 0 ? '#fb923c' : '#3b82f6' }};">{{ $_approvedCount }}/{{ $_reqTotal }}</div>
                     <div style="font-size:10px;color:#999;text-transform:uppercase;letter-spacing:0.5px;">Approved</div>
                 </div>
             </div>
@@ -2249,7 +2256,11 @@
             $enrollAllDocs = \App\Models\StudentDocument::where(function($q) use ($enrollment) {
                 $q->where('enrollment_id', $enrollment->id)->orWhere('user_id', Auth::id());
             })->whereIn('document_type', array_keys($enrollDocTypes))->get()->keyBy('document_type');
-            $enrollApproved = $enrollAllDocs->filter(fn($d) => $d->status === 'approved')->count();
+            // A new student (first time in school) only needs the PSA birth certificate; the rest are optional
+            $enrollRequired = \App\Models\StudentDocument::requiredTypesFor(Auth::id());
+            $enrollReqTotal = count($enrollRequired);
+            $enrollPsaOnly  = $enrollReqTotal === 1;
+            $enrollApproved = $enrollAllDocs->filter(fn($d) => $d->status === 'approved' && in_array($d->document_type, $enrollRequired, true))->count();
         @endphp
 
         <div class="content-card mb-4" id="doc-upload-card">
@@ -2268,8 +2279,8 @@
                                  background:{{ $dtSt === 'approved' ? '#22c55e' : ($dtSt === 'pending' ? '#3b82f6' : '#d1d5db') }};"></div>
                         @endforeach
                     </div>
-                    <span style="font-size:12px;font-weight:700;color:{{ $enrollApproved === 4 ? '#166534' : 'var(--muted)' }};">
-                        {{ $enrollApproved }}/4 Approved
+                    <span style="font-size:12px;font-weight:700;color:{{ $enrollApproved === $enrollReqTotal ? '#166534' : 'var(--muted)' }};">
+                        {{ $enrollApproved }}/{{ $enrollReqTotal }} Approved
                     </span>
                 </div>
             </div>
@@ -2278,7 +2289,11 @@
             <div style="background:#fffbeb;border-bottom:1px solid #fde68a;padding:10px 18px;display:flex;align-items:center;gap:10px;">
                 <i class="bi bi-info-circle-fill" style="color:#d97706;font-size:15px;flex-shrink:0;"></i>
                 <div style="font-size:11.5px;color:#92400e;line-height:1.5;">
-                    <strong>New enrollees must submit all four documents.</strong>
+                    @if($enrollPsaOnly)
+                        <strong>New students only need the original PSA Birth Certificate.</strong> The other documents are optional.
+                    @else
+                        <strong>Transferees and returning students must submit all four documents.</strong>
+                    @endif
                     Accepted: <strong>JPG, PNG, PDF</strong> (max 5 MB). Drag &amp; drop or click the box to browse.
                     @if($enrollment->status === 'pending')
                         &nbsp;<span style="color:#dc2626;font-weight:700;">⚠ Enrollment pending — submit docs to speed up approval.</span>
@@ -2308,6 +2323,7 @@
                                 <div style="flex:1;min-width:0;">
                                     <div style="font-weight:700;font-size:12.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
                                         {{ $docInfo['label'] }}
+                                        @unless(in_array($docType, $enrollRequired, true))<span style="font-weight:500;font-size:10.5px;color:var(--muted);">(optional)</span>@endunless
                                     </div>
                                     <div style="font-size:10px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
                                         {{ $docInfo['hint'] }}
@@ -2398,7 +2414,7 @@
                 @endif
             </form>
 
-            @if($enrollApproved === 4)
+            @if($enrollApproved === $enrollReqTotal)
                 <div style="margin:0 18px 18px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px;">
                     <i class="bi bi-patch-check-fill" style="font-size:22px;color:#22c55e;flex-shrink:0;"></i>
                     <div>
@@ -2469,14 +2485,13 @@
             $reenrollGlMap  = ['nursery'=>'Nursery','kindergarten'=>'Kindergarten','grade1'=>'Grade 1','grade2'=>'Grade 2','grade3'=>'Grade 3','grade4'=>'Grade 4','grade5'=>'Grade 5','grade6'=>'Grade 6','graduated'=>'Graduated'];
             $suggestedLabel = $reenrollGlMap[$suggestedGrade ?? ''] ?? ucfirst(str_replace('_',' ',$suggestedGrade ?? ''));
             $currentGradeForCheck = $enrollment->student_data['grade_level'] ?? $enrollment->grade_level ?? '';
-            $studentTypeForCheck  = $enrollment->student_data['student_type'] ?? 'returning';
-            $isAutoAdvance  = in_array($currentGradeForCheck, ['nursery','kindergarten']) || $studentTypeForCheck === 'transferee';
-            // Same rules the server enforces: the school year fully paid (no fee set = not paid), 4/4 documents
+            $isAutoAdvance  = in_array($currentGradeForCheck, ['nursery','kindergarten']); // transferees are assessed like everyone
+            // Same rules the server enforces: the school year fully paid (no fee set = not paid), required documents (4, or the PSA for a new student)
             $reenrollBlock   = \App\Services\PaymentService::promotionBlockReason($enrollment);
             $reenrollBalance = \App\Services\PaymentService::balanceDue($enrollment) ?? 0;
             $balanceCleared  = $reenrollBlock === null;
-            $docsVerified    = $enrollApproved === 4;
-            // Grade 1–6 need the school's assessment first (it decides the grade); Nursery/Kinder/transferees don't
+            $docsVerified    = $enrollApproved === $enrollReqTotal;
+            // Grade 1–6 (transferees too) need the school's assessment first (it decides the grade); Nursery/Kinder don't
             $isAssessed      = $promotionRecord !== null;
             $promoResult     = !$isAssessed ? null : ($promotionRecord->to_grade === 'graduated' ? 'Graduated'
                 : ($promotionRecord->from_grade === $promotionRecord->to_grade ? 'Retained in ' . $suggestedLabel : 'Promoted to ' . $suggestedLabel));
@@ -2556,13 +2571,13 @@
                             @if($docsVerified)
                                 All documents verified and approved by the school.
                             @else
-                                {{ $enrollApproved }}/4 approved &mdash; {{ $balanceCleared ? 'upload the missing documents above.' : 'you can already upload the missing documents above.' }}
+                                {{ $enrollApproved }}/{{ $enrollReqTotal }} approved &mdash; {{ $balanceCleared ? 'upload the missing documents above.' : 'you can already upload the missing documents above.' }}
                             @endif
                         </div>
                     </div>
                     <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;
                         background:{{ $docsVerified ? '#dcfce7' : '#fef3c7' }};color:{{ $docsVerified ? '#15803d' : '#b45309' }};">
-                        {{ $docsVerified ? '✓ Verified' : $enrollApproved.'/4' }}
+                        {{ $docsVerified ? '✓ Verified' : $enrollApproved.'/'.$enrollReqTotal }}
                     </span>
                 </div>
 
@@ -2593,7 +2608,13 @@
                 @endif
 
                 {{-- Action: every student re-enrolls themselves; Grade 1–6 once assessed --}}
-                    @if(!($reenrollmentOpen ?? false))
+                    @if($isAssessed && $promotionRecord->to_grade === 'graduated')
+                        {{-- Grade 6 graduate: nothing to re-enroll into --}}
+                        <div style="padding:14px 18px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;text-align:center;color:#166534;font-size:13px;font-weight:600;">
+                            <i class="bi bi-mortarboard-fill me-1"></i>
+                            Congratulations! You have completed Grade 6 at IEMELIF Learning Center — no re-enrollment is needed.
+                        </div>
+                    @elseif(!($reenrollmentOpen ?? false))
                         <div style="padding:14px 18px;background:#f5f5f5;border:1px solid #e0e0e0;border-radius:10px;text-align:center;color:#666;font-size:13px;">
                             <i class="bi bi-lock me-1"></i>
                             Enrollment for S.Y. {{ $currentSchoolYear ?? '' }} is not open yet. Check back soon.
@@ -5146,11 +5167,15 @@
     // ── Amount choices (cash and online) — the same list the cashier accepts ──
     function renderPayChoices(allowed) {
         const fmt = v => Number(v).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const label = (o, k) => k === allowed.length - 1 ? 'Full balance'
-            : (k === 0 ? (o.label === 'Downpayment' ? 'Downpayment' : 'Due now') : o.label); // "Overdue July – August" / "… + 1 month in advance"
+        const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+        // Same options and wording as the Cashier: a tag, then the months it covers ("Downpayment + July – August")
+        const tags = { downpayment: 'Downpayment', due: 'Due now', overdue: 'Overdue', advance: 'Advance', full: 'Full balance' };
+        const tag = (o, k) => tags[o.kind] || (k === allowed.length - 1 ? 'Full balance' : (k === 0 ? 'Due now' : ''));
+        const covers = o => o.months && !/\bMonth\b/.test(o.months) ? o.months : o.label;
         const html = allowed.length > 1
-            ? allowed.map((o, k) => '<button type="button" class="pay-choice' + (k === 0 ? ' active' : '') + '" data-amount="' + o.amount + '" title="' + o.label + '"'
-                + ' onclick="choosePayAmount(' + o.amount + ')">' + label(o, k) + '<small>₱' + fmt(o.amount) + '</small></button>').join('')
+            ? allowed.map((o, k) => '<button type="button" class="pay-choice' + (k === 0 ? ' active' : '') + '" data-amount="' + o.amount + '" title="' + esc(o.label) + '"'
+                + ' onclick="choosePayAmount(' + o.amount + ')"><span class="pc-tag">' + esc(tag(o, k)) + '</span>'
+                + '<span>' + esc(covers(o)) + '</span><span class="pc-amt">₱' + fmt(o.amount) + '</span></button>').join('')
             : '';
         ['xendit-amount-choices', 'cash-amount-choices'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = html; });
     }

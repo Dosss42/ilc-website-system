@@ -17,7 +17,12 @@ class SettingController extends Controller
      */
     public function index()
     {
-        $settings = Setting::all()->groupBy('group');
+        // A setting added later (e.g. guidance_counselor_name) has no row until Settings is saved once —
+        // show its default in the field (not saved here; Save stores it) instead of an empty box
+        $stored = Setting::all();
+        $missing = collect(DefaultSettings::all())->whereNotIn('key', $stored->pluck('key'))
+            ->map(fn ($d) => new Setting($d));
+        $settings = $stored->concat($missing)->groupBy('group');
 
         return response()->json([
             'success' => true,

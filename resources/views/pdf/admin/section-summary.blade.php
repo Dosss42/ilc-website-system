@@ -94,7 +94,7 @@
                     <td>{{ $typeLabels[$s['student_type']] ?? '—' }}</td>
                     <td>{{ $payLabels[$s['payment']] }}{{ $s['payment_plan'] ? ' (Plan ' . $s['payment_plan'] . ')' : '' }}</td>
                     <td class="text-right">{{ $s['balance'] === null ? 'No fee set' : $peso($s['balance']) }}</td>
-                    <td class="text-center">{{ $s['docs_approved'] }}/{{ $req }}</td>
+                    <td class="text-center">{{ $s['docs_approved'] }}/{{ $s['docs_required'] ?? $req }}</td>
                 </tr>
             @empty
                 <tr><td colspan="8" class="text-center">No students in this section yet.</td></tr>

@@ -304,12 +304,8 @@ class SectionController extends Controller
             ->orderBy('users.name')
             ->get();
 
-        $docsByStudent = StudentDocument::whereIn('user_id', $students->pluck('id'))
-            ->whereIn('document_type', self::REQUIRED_DOCS)
-            ->where('status', 'approved')
-            ->get(['user_id', 'document_type'])
-            ->groupBy('user_id')
-            ->map(fn ($rows) => $rows->pluck('document_type')->unique()->count());
+        // [approved, required] per student — four documents, or the PSA birth certificate for a new student
+        $docsByStudent = $students->pluck('id')->mapWithKeys(fn ($id) => [$id => StudentDocument::requiredProgress($id)]);
 
         $rows = $students->map(function ($student) use ($sy, $docsByStudent) {
             // This school year's enrollment (enrolled first); older data may lack a school year
@@ -323,7 +319,7 @@ class SectionController extends Controller
             $fee    = (float) ($enrollment?->total_fee ?? 0);
             $paid   = (float) ($enrollment?->payment_amount ?? 0);
             $due    = $enrollment ? PaymentService::balanceDue($enrollment) : null;
-            $docs   = (int) ($docsByStudent[$student->id] ?? 0);
+            [$docs, $docsRequired] = $docsByStudent[$student->id] ?? [0, count(self::REQUIRED_DOCS)];
 
             return [
                 'id'            => $student->id,
@@ -338,7 +334,8 @@ class SectionController extends Controller
                 // From the amounts, not the stored payment_status
                 'payment'       => ($due !== null && $due <= 0) ? 'paid' : ($paid > 0 ? 'partial' : 'unpaid'),
                 'docs_approved' => $docs,
-                'docs_complete' => $docs >= count(self::REQUIRED_DOCS),
+                'docs_required' => $docsRequired,
+                'docs_complete' => $docs >= $docsRequired,
             ];
         })->values();
 

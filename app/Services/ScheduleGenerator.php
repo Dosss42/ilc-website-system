@@ -243,38 +243,38 @@ class ScheduleGenerator
                     array_splice($todo, $pick, 1);
                     $tid = $assign[$section->id][$sid] ?? null;
 
-                    $notes = [];
+                    $cell = ['slot' => $j, 'start' => $slot['start'], 'end' => $slot['end'], 'subject_id' => $sid,
+                             'subject' => $subjectNames[$sid] ?? '?', 'teacher_id' => $tid, 'notes' => []]; // notes: after all sections
                     if (!$tid) {
-                        $notes[] = 'No teacher yet';
                         $missing[$section->name . '|' . $sid] = ['section' => $section->name, 'subject' => $subjectNames[$sid] ?? '?'];
                     } else {
-                        foreach ($terms as $t) {
-                            if ($c = self::clash($busy[$t], $tid, $d, $slot)) {
-                                $notes[] = 'Teacher also teaches ' . $c['section'] . ' at this time' . (count($terms) > 1 ? " (term {$t})" : '');
-                                break;
-                            }
-                        }
-                        [$dayCount, $run] = self::dayStats($busy[$t0], $tid, $d, $slot);
-                        if ($dayCount + 1 > $limits['day_periods']) { $notes[] = "Teacher's " . ($dayCount + 1) . "th period today (limit {$limits['day_periods']})"; }
-                        if ($run + 1 > $limits['consecutive']) { $notes[] = 'Teacher has ' . ($run + 1) . " periods in a row (limit {$limits['consecutive']})"; }
                         $added[$tid] = ($added[$tid] ?? 0) + $slot['minutes'];
-                        foreach ($terms as $t) {
-                            $busy[$t]->push(['section' => $section->name, 'teacher_id' => $tid, 'day_of_week' => $d,
-                                'start_time' => $slot['start'], 'end_time' => $slot['end']]);
-                        }
+                        self::occupy($busy, $terms, $section, $d, $cell);
                     }
-                    if ($slot['end'] > $dismiss) {
-                        $notes[] = 'After dismissal (' . Carbon::createFromFormat('H:i', $dismiss)->format('g:i A') . ')';
-                    }
-                    $warnings += count($notes);
-                    $row[] = ['slot' => $j, 'start' => $slot['start'], 'end' => $slot['end'], 'subject_id' => $sid,
-                              'subject' => $subjectNames[$sid] ?? '?', 'teacher_id' => $tid, 'notes' => $notes];
+                    $row[] = $cell;
                 }
                 $grid[$d] = $row;
             }
+            self::repair($grid, $section, $terms, $busy,
+                $subjects->mapWithKeys(fn ($s) => [$s['id'] => (int) ceil($s['per_week'] / count($days))])->all());
             $out[] = ['id' => $section->id, 'name' => $section->name, 'room' => $section->room_number, 'skipped' => false,
                       'replacing' => $hasSchedule->contains($section->id), 'grid' => $grid];
         }
+
+        // Warnings, worked out once on the finished timetable (every section placed and repaired), so a
+        // clash shows on both periods involved and a day limit on the periods past it
+        foreach ($out as &$s) {
+            if ($s['skipped']) { continue; }
+            foreach ($s['grid'] as $d => &$rows) {
+                foreach ($rows as &$cell) {
+                    $cell['notes'] = self::notes($cell, $d, $terms, self::except($busy, ["{$s['id']}|{$d}|{$cell['start']}"]), $limits, $dismiss);
+                    $warnings += count($cell['notes']);
+                }
+                unset($cell);
+            }
+            unset($rows);
+        }
+        unset($s);
 
         // Teacher load (hours a week, one term — every term gets the same timetable)
         $loads = collect(self::teacherLoads($sy, $terms[0] ?? 1, $build->pluck('id')->all()))->keyBy('id');
@@ -359,7 +359,10 @@ class ScheduleGenerator
             && $b['start_time'] < $slot['end'] && $b['end_time'] > $slot['start']);
     }
 
-    /** [periods the teacher already has that day, periods in a row ending right at this slot] — all sections. */
+    /**
+     * [periods the teacher already has that day, periods in a row ending right at this slot, how many of the
+     * day's periods come before this one] — all sections.
+     */
     private static function dayStats(Collection $busy, int $teacherId, string $day, array $slot): array
     {
         $mine = $busy->filter(fn ($b) => $b['teacher_id'] === $teacherId && $b['day_of_week'] === $day);
@@ -369,7 +372,96 @@ class ScheduleGenerator
             $run++;
             $edge = $prev['start_time'];
         }
-        return [$mine->count(), $run];
+        return [$mine->count(), $run, $mine->filter(fn ($b) => $b['start_time'] < $slot['start'])->count()];
+    }
+
+    /** Busy periods minus the given periods of the timetable being built (by occupy() key). */
+    private static function except(array $busy, array $keys): array
+    {
+        return array_map(fn ($c) => $c->reject(fn ($b) => in_array($b['key'] ?? null, $keys, true)), $busy);
+    }
+
+    /** The warnings of one period: no teacher, teacher busy elsewhere, over a day limit, after dismissal. */
+    private static function notes(array $cell, string $day, array $terms, array $busy, array $limits, string $dismiss): array
+    {
+        $notes = [];
+        $tid = $cell['teacher_id'];
+        if (!$tid) {
+            $notes[] = 'No teacher yet';
+        } else {
+            foreach ($terms as $t) {
+                if ($c = self::clash($busy[$t], $tid, $day, $cell)) {
+                    $notes[] = 'Teacher also teaches ' . $c['section'] . ' at this time' . (count($terms) > 1 ? " (term {$t})" : '');
+                    break;
+                }
+            }
+            // The day's limit is flagged on the periods past it, in time order (the 7th, 8th … of the day)
+            [, $run, $before] = self::dayStats($busy[$terms[0]], $tid, $day, $cell);
+            if ($before + 1 > $limits['day_periods']) {
+                $n = $before + 1;
+                $th = in_array($n % 100, [11, 12, 13], true) ? 'th' : ([1 => 'st', 2 => 'nd', 3 => 'rd'][$n % 10] ?? 'th');
+                $notes[] = "Teacher's {$n}{$th} period today (limit {$limits['day_periods']})";
+            }
+            if ($run + 1 > $limits['consecutive']) { $notes[] = 'Teacher has ' . ($run + 1) . " periods in a row (limit {$limits['consecutive']})"; }
+        }
+        if ($cell['end'] > $dismiss) {
+            $notes[] = 'After dismissal (' . Carbon::createFromFormat('H:i', $dismiss)->format('g:i A') . ')';
+        }
+        return $notes;
+    }
+
+    /** Marks the period's teacher busy in every chosen term (keyed by section/day/time so a swap can move it). */
+    private static function occupy(array &$busy, array $terms, Section $section, string $day, array $cell): void
+    {
+        foreach ($terms as $t) {
+            $busy[$t]->push(['key' => "{$section->id}|{$day}|{$cell['start']}", 'section' => $section->name, 'teacher_id' => $cell['teacher_id'],
+                             'day_of_week' => $day, 'start_time' => $cell['start'], 'end_time' => $cell['end']]);
+        }
+    }
+
+    /**
+     * Repair pass: filling a day in order can leave its last periods with a teacher who is busy elsewhere
+     * (no other subject was left). Such a period swaps with another period of the same section when both
+     * teachers are free at their new times — and, across days, without a subject meeting more often in a day
+     * than it needs ($cap: subject => most times a day). Anything still clashing stays flagged for the Admin.
+     * The warnings themselves are worked out afterwards, on the finished timetable (build()).
+     */
+    private static function repair(array &$grid, Section $section, array $terms, array &$busy, array $cap): void
+    {
+        $key = fn ($day, $cell) => "{$section->id}|{$day}|{$cell['start']}";
+        $free = function ($tid, $day, $cell, array $keys) use (&$busy, $terms) {
+            if (!$tid) { return true; }
+            $others = self::except($busy, $keys);
+            foreach ($terms as $t) { if (self::clash($others[$t], $tid, $day, $cell)) { return false; } }
+            return true;
+        };
+        $full = function ($day, $sid, $skip) use (&$grid, $cap) { // the subject already meets its most times a day there
+            return collect($grid[$day])->filter(fn ($c, $i) => $i !== $skip && $c['subject_id'] === $sid)->count() >= ($cap[$sid] ?? 1);
+        };
+
+        foreach ($grid as $d => $rows) {
+            foreach (array_keys($rows) as $i) {
+                $x = $grid[$d][$i];
+                if ($free($x['teacher_id'], $d, $x, [$key($d, $x)])) { continue; } // not in a clash
+                foreach ($grid as $e => $rows2) {
+                    foreach (array_keys($rows2) as $k) {
+                        $y = $grid[$e][$k];
+                        if ($y['subject_id'] === $x['subject_id'] || $y['teacher_id'] === $x['teacher_id']) { continue; }
+                        if ($d !== $e && ($full($d, $y['subject_id'], $i) || $full($e, $x['subject_id'], $k))) { continue; }
+                        $keys = [$key($d, $x), $key($e, $y)];
+                        if (!$free($x['teacher_id'], $e, $y, $keys) || !$free($y['teacher_id'], $d, $x, $keys)) { continue; }
+
+                        // Swap what is taught; the times stay with the slots
+                        foreach (['subject_id', 'subject', 'teacher_id'] as $f) { [$grid[$d][$i][$f], $grid[$e][$k][$f]] = [$y[$f], $x[$f]]; }
+                        $busy = self::except($busy, $keys);
+                        foreach ([[$d, $i], [$e, $k]] as [$day, $idx]) {
+                            if ($grid[$day][$idx]['teacher_id']) { self::occupy($busy, $terms, $section, $day, $grid[$day][$idx]); }
+                        }
+                        continue 3;
+                    }
+                }
+            }
+        }
     }
 
     /** Every active teacher's teaching hours a week this school year (one term), leaving out the given sections. */

@@ -436,6 +436,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::post('/{id}/restore', [EnrollmentController::class, 'restoreStudent'])->name('restore');
         Route::delete('/{id}/force', [EnrollmentController::class, 'forceDeleteStudent'])->name('force-delete');
         Route::get('/{user}/sf10', [EnrollmentController::class, 'downloadSF10'])->name('sf10');
+        Route::get('/{user}/good-moral/check', [\App\Http\Controllers\GoodMoralController::class, 'check'])->name('good-moral.check')->whereNumber('user');
+        Route::get('/{user}/good-moral', [\App\Http\Controllers\GoodMoralController::class, 'pdf'])->name('good-moral')->whereNumber('user');
         Route::get('/{user}/transactions', [EnrollmentController::class, 'studentTransactions'])->name('transactions');
         // numbers only, so /students/promotion-history (registered further down) isn't taken for a student id
         Route::get('/{user}', [EnrollmentController::class, 'showStudent'])->name('show')->whereNumber('user');

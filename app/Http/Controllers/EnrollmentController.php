@@ -315,7 +315,7 @@ class EnrollmentController extends Controller
                     ['user_id' => $user->id],
                     [
                         'school_name' => $validated['last_school'],
-                        'last_grade_completed' => $validated['grade_level'],
+                        'last_grade_completed' => self::gradeBefore($validated['grade_level']),
                     ]
                 );
             }
@@ -586,7 +586,7 @@ class EnrollmentController extends Controller
                     ['user_id' => $user->id],
                     [
                         'school_name' => $validated['last_school'],
-                        'last_grade_completed' => $validated['grade_level'],
+                        'last_grade_completed' => self::gradeBefore($validated['grade_level']),
                     ]
                 );
             }
@@ -2226,10 +2226,78 @@ class EnrollmentController extends Controller
             }
 
             $data['student_data'] = $studentData;
+            if ($enrollment->status === 'pending') {
+                $data['returning_check'] = $this->returningCheck($enrollment, $studentData);
+            }
             return response()->json($data);
         }
 
         return view('adminDashboard', compact('enrollment'));
+    }
+
+    /**
+     * The grade finished at the previous school: the one BEFORE the grade applied for here (applying for
+     * Grade 3 → "Grade 2"), in the profile form's wording. Nursery has none (''). It used to store the
+     * grade applied for.
+     */
+    private static function gradeBefore(string $applyingFor): string
+    {
+        $order = ['nursery' => 'Nursery', 'kindergarten' => 'Kindergarten', 'grade1' => 'Grade 1', 'grade2' => 'Grade 2',
+                  'grade3' => 'Grade 3', 'grade4' => 'Grade 4', 'grade5' => 'Grade 5', 'grade6' => 'Grade 6'];
+        $keys = array_keys($order);
+        $pos = array_search($applyingFor, $keys, true);
+        return $pos ? $order[$keys[$pos - 1]] : '';
+    }
+
+    /**
+     * A pending application from someone ILC may already know (school decision, October 30, 2026) — a
+     * warning for the admin, never a block (a different child can share a name and birthday):
+     *  - matches: other student accounts with the same first name, last name and birthdate — e.g. a former
+     *    Kinder pupil coming back for Grade 3 whose family applied with a different Gmail;
+     *  - balances: anything still owed from an earlier school year, on this account or a matching one.
+     */
+    private function returningCheck(Enrollment $enrollment, array $sd): array
+    {
+        $first = mb_strtolower(trim((string) ($sd['first_name'] ?? '')));
+        $last  = mb_strtolower(trim((string) ($sd['last_name'] ?? '')));
+        try {
+            $birth = !empty($sd['birthdate']) ? \Carbon\Carbon::parse($sd['birthdate'])->toDateString() : null;
+        } catch (\Throwable) {
+            $birth = null;
+        }
+
+        $matchIds = ($first !== '' && $last !== '' && $birth)
+            ? StudentProfile::whereRaw('LOWER(TRIM(first_name)) = ?', [$first])
+                ->whereRaw('LOWER(TRIM(last_name)) = ?', [$last])
+                ->whereDate('birthdate', $birth)
+                ->where('user_id', '!=', $enrollment->user_id)
+                ->pluck('user_id')->unique()
+            : collect();
+
+        $grades = ['nursery' => 'Nursery', 'kindergarten' => 'Kindergarten', 'grade1' => 'Grade 1', 'grade2' => 'Grade 2',
+                   'grade3' => 'Grade 3', 'grade4' => 'Grade 4', 'grade5' => 'Grade 5', 'grade6' => 'Grade 6'];
+        $matches = User::withTrashed()->whereIn('id', $matchIds)->where('role', 'student')->get()->map(function ($u) use ($grades) {
+            $lastEnrollment = Enrollment::where('user_id', $u->id)->latest('id')->first();
+            return [
+                'id' => $u->id, 'name' => $u->name, 'email' => $u->email, 'lrn' => $u->lrn, 'archived' => $u->trashed(),
+                'last' => $lastEnrollment
+                    ? ($grades[$lastEnrollment->grade_level] ?? $lastEnrollment->grade_level) . ', S.Y. ' . $lastEnrollment->school_year . ' (' . $lastEnrollment->status . ')'
+                    : null,
+            ];
+        })->values();
+
+        // Earlier school years still owing — this account and the matching ones
+        $balances = Enrollment::with('user:id,name')
+            ->whereIn('user_id', $matches->pluck('id')->push($enrollment->user_id)->filter())
+            ->where('id', '!=', $enrollment->id)
+            ->whereIn('status', ['enrolled', 'approved', 'completed'])
+            ->get()
+            ->map(fn ($e) => ['name' => $e->user->name ?? '?', 'school_year' => $e->school_year,
+                              'grade' => $grades[$e->grade_level] ?? $e->grade_level, 'amount' => (float) (PaymentService::balanceDue($e) ?? 0)])
+            ->filter(fn ($b) => $b['amount'] > 0)
+            ->values();
+
+        return ['matches' => $matches, 'balances' => $balances];
     }
 
     /**
@@ -2454,7 +2522,7 @@ class EnrollmentController extends Controller
                     [
                         'school_name' => $studentData['last_school'],
                         'school_address' => null,
-                        'last_grade_completed' => $studentData['grade_level'] ?? '',
+                        'last_grade_completed' => self::gradeBefore($studentData['grade_level'] ?? ''),
                     ]
                 );
             }
@@ -3437,13 +3505,13 @@ class EnrollmentController extends Controller
                     continue;
                 }
 
-                // Grade 1–6 need all four documents approved too (same rule as assessPromotion)
-                $approvedDocs = \App\Models\StudentDocument::approvedRequiredCount($studentId);
+                // Grade 1–6 need their required documents approved too (same rule as assessPromotion)
+                [$approvedDocs, $requiredDocs] = \App\Models\StudentDocument::requiredProgress($studentId);
                 $alreadyAssessed = Promotion::where('student_id', $studentId)
                     ->where('from_school_year', $validated['from_school_year'])->where('status', 'completed')->exists();
                 $skipReason = $alreadyAssessed ? 'Already assessed for ' . $validated['from_school_year']
-                    : (!in_array($fromGrade, ['nursery', 'kindergarten'], true) && $approvedDocs < count(\App\Models\StudentDocument::REQUIRED_TYPES)
-                        ? "Required documents incomplete ({$approvedDocs}/4 approved)" : null);
+                    : (!in_array($fromGrade, ['nursery', 'kindergarten'], true) && $approvedDocs < $requiredDocs
+                        ? "Required documents incomplete ({$approvedDocs}/{$requiredDocs} approved)" : null);
                 if ($skipReason) {
                     $skippedCount++;
                     Promotion::create([
@@ -3786,9 +3854,9 @@ class EnrollmentController extends Controller
         // Grade 1–6: all four required documents approved too — the same checklist the student sees on
         // the portal's re-enrollment card. Assessing creates the next year's enrollment, so this is where
         // the documents step is actually enforced (Nursery/Kinder advance without document checks).
-        if (!in_array($fromGrade, ['nursery', 'kindergarten'], true)
-            && ($approvedDocs = \App\Models\StudentDocument::approvedRequiredCount($user->id)) < count(\App\Models\StudentDocument::REQUIRED_TYPES)) {
-            return response()->json(['success' => false, 'message' => "Required documents incomplete ({$approvedDocs}/4 approved). Approve the student's documents before moving them to the next school year."], 422);
+        [$approvedDocs, $requiredDocs] = \App\Models\StudentDocument::requiredProgress($user->id);
+        if (!in_array($fromGrade, ['nursery', 'kindergarten'], true) && $approvedDocs < $requiredDocs) {
+            return response()->json(['success' => false, 'message' => "Required documents incomplete ({$approvedDocs}/{$requiredDocs} approved). Approve the student's documents before moving them to the next school year."], 422);
         }
         $toGrade   = $validated['action'] === 'promote'
             ? ($gradeMap[$fromGrade] ?? null)
@@ -3901,7 +3969,9 @@ class EnrollmentController extends Controller
             return true;
         }
 
-        return \App\Models\StudentDocument::where('user_id', $userId)
+        // Same lookup as the portal's 4/4 count (filed under the student or one of their enrollments)
+        return \App\Models\StudentDocument::where(fn ($q) => $q->where('user_id', $userId)
+                ->orWhereIn('enrollment_id', Enrollment::where('user_id', $userId)->select('id')))
             ->where('document_type', 'report_card')
             ->where('status', 'approved')
             ->exists();
@@ -3993,9 +4063,12 @@ class EnrollmentController extends Controller
 
         // Document / payment gates — the actual blockers. Same thresholds as
         // StudentPortalController::getCompletionProgress().
-        // All four approved (this used to pass a student with any ONE approved document)
+        // All of the student's required documents approved (four, or the PSA birth certificate for a new student)
         $studentsWithDocs = collect($studentIds)
-            ->filter(fn ($id) => \App\Models\StudentDocument::approvedRequiredCount($id) >= count(\App\Models\StudentDocument::REQUIRED_TYPES))
+            ->filter(function ($id) {
+                [$approved, $required] = \App\Models\StudentDocument::requiredProgress($id);
+                return $approved >= $required;
+            })
             ->values();
 
         $eligible = collect();

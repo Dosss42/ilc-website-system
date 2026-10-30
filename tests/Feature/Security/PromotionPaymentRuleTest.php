@@ -137,6 +137,37 @@ class PromotionPaymentRuleTest extends TestCase
         $this->assertSame('kindergarten', Enrollment::where('user_id', $paid->user_id)->where('school_year', '2027-2028')->value('grade_level'));
     }
 
+    public function test_a_transferee_is_assessed_like_everyone_before_re_enrolling(): void
+    {
+        $e = Enrollment::factory()->fullyPaid()->withApprovedDocuments()->create(['grade_level' => 'grade3',
+            'student_data' => ['first_name' => 'Ana', 'last_name' => 'Cruz', 'grade_level' => 'grade3', 'student_type' => 'transferee']]);
+
+        // Before the assessment: no Re-enroll button, and a direct request is refused (it used to move them up)
+        $this->actingAs($e->user, 'web')->get('/student/portal')->assertOk()->assertDontSee('id="reenrollForm"', false);
+        $this->actingAs($e->user, 'web')->post('/student/reenroll')
+            ->assertSessionHas('error', fn ($m) => str_contains($m, 'has not assessed you'));
+        $this->assertFalse($this->hasNextYear($e));
+
+        // The school assesses (retain, say) → the student re-enrolls into what the school decided
+        $this->assess($e, 'retain')->assertOk();
+        $this->actingAs($e->user, 'web')->post('/student/reenroll')->assertSessionHas('success');
+        $this->assertSame('grade3', Enrollment::where('user_id', $e->user_id)->where('school_year', '2027-2028')->value('grade_level'));
+    }
+
+    public function test_a_grade_6_graduate_is_congratulated_and_cannot_re_enroll(): void
+    {
+        $e = $this->enrollment('grade6', 'full');
+        $this->assess($e)->assertOk();
+        $this->assertSame('graduated', \App\Models\Promotion::where('student_id', $e->user_id)->value('to_grade'));
+
+        $this->actingAs($e->user, 'web')->get('/student/portal')->assertOk()
+            ->assertSee('You have completed Grade 6 at IEMELIF Learning Center', false)
+            ->assertDontSee('id="reenrollForm"', false);
+        $this->actingAs($e->user, 'web')->post('/student/reenroll')
+            ->assertSessionHas('error', 'You have completed Grade 6 — there is no next grade to re-enroll into.');
+        $this->assertFalse($this->hasNextYear($e));
+    }
+
     /** Fees AND all four documents — the same checklist the student sees — before moving up, on every path. */
     public function test_moving_up_needs_all_four_documents_and_the_student_then_sees_the_result(): void
     {

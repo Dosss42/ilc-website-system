@@ -10,7 +10,9 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
-#[Signature('app:check-payment-due-dates')]
+#[Signature('app:check-payment-due-dates
+    {--enrollment= : Only this enrollment ID (demo/testing) — runs even while the automation switch is OFF}
+    {--to= : Send every email of this run to this address instead of the students (testing)}')]
 #[Description('Email a reminder 3 days before each installment due date, and on the due date itself')]
 class CheckPaymentDueDates extends Command
 {
@@ -30,7 +32,20 @@ class CheckPaymentDueDates extends Command
      */
     public function handle()
     {
-        $this->info('Checking payment due dates...');
+        $enrollmentId = $this->option('enrollment') ? (int) $this->option('enrollment') : null;
+
+        // The switch (Super Admin › System Settings) guards every family; only a one-student test run may pass it
+        if (!$enrollmentId && !\App\Services\PaymentService::automationEnabled()) {
+            $this->warn('Payment automation is OFF (Super Admin › System Settings) — nothing was done. '
+                . 'To test with one student: --enrollment=<id> [--to=you@gmail.com]');
+            return Command::SUCCESS;
+        }
+        if ($to = $this->option('to')) {
+            Mail::alwaysTo($to);
+            $this->line("All emails of this run go to {$to}.");
+        }
+
+        $this->info('Checking payment due dates' . ($enrollmentId ? " (enrollment #{$enrollmentId} only)" : '') . '...');
 
         $today = now()->startOfDay();
         $windowEnd = $today->copy()->addDays(self::REMIND_DAYS_BEFORE);
@@ -41,6 +56,7 @@ class CheckPaymentDueDates extends Command
         $installmentEnrollments = Enrollment::where(fn ($q) => $q->where('payment_type', 'installment')->orWhereIn('payment_option', ['B', 'C', 'D']))
             ->where('payment_status', '!=', 'paid')
             ->whereNotIn('status', ['declined', 'cancelled'])
+            ->when($enrollmentId, fn ($q) => $q->whereKey($enrollmentId))
             ->whereHas('paymentInstallments', fn ($q) => $q->where('status', 'pending')
                 ->whereDate('due_date', '>=', $today)->whereDate('due_date', '<=', $windowEnd))
             ->get();
