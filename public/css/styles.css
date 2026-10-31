@@ -1060,3 +1060,50 @@ html body nav.main-nav.is-stuck { box-shadow: 0 4px 18px rgba(10,22,50,.25); }
 
 /* In-page links (#section) land below the sticky menu bar */
 html { scroll-padding-top: var(--ilc-nav-h, 0px); }
+
+/* ─── PHONES & TABLETS: MENU BAR ─── one row: menu button on the left (the school logo joins it once
+   the white header has scrolled away), search + Log In on the right, all 40px tall. The menu opens as
+   a full-width list below. html body … beats the pages' own inline .main-nav styles. */
+@media (max-width: 991.98px) {
+    html body nav.main-nav { padding: 8px 0; }
+    .main-nav > .container { flex-wrap: wrap; align-items: center; gap: 8px; }
+    .main-nav .navbar-toggler { order: 0; }
+    .main-nav .nav-brand-mini { order: 1; display: none; margin-left: 4px; transform: none; }
+    .main-nav.is-stuck .nav-brand-mini { display: flex; }
+    .main-nav .nav-actions { order: 2; margin-left: auto; }
+    .main-nav .navbar-collapse { order: 3; flex-basis: 100%; }
+
+    html body .main-nav .navbar-toggler,
+    html body .main-nav .nav-search-toggle {
+        width: 40px; height: 40px; padding: 0;
+        display: inline-flex; align-items: center; justify-content: center;
+        border: 1px solid rgba(255,255,255,.35); border-radius: 8px;
+        background: rgba(255,255,255,.08); color: #fff; box-shadow: none;
+    }
+    html body .main-nav .navbar-toggler:focus { box-shadow: 0 0 0 3px rgba(197,160,89,.45); }
+    .main-nav .navbar-toggler-icon { width: 22px; height: 22px; }
+    html body .main-nav .nav-search-toggle i { color: #fff; font-size: 16px; }
+    html body .main-nav .nav-search-toggle.active { background: rgba(255,255,255,.22); }
+    html body .main-nav .nav-login-btn {
+        height: 40px; display: inline-flex; align-items: center; padding: 0 14px;
+        border-radius: 8px; font-size: 13px;
+    }
+
+    /* The opened menu: a tidy list, one link per row */
+    .main-nav .navbar-collapse .navbar-nav { margin: 8px 0 4px; border-top: 1px solid rgba(255,255,255,.15); }
+    html body .main-nav .navbar-collapse .nav-link {
+        padding: 12px 6px !important; font-size: 13px;
+        border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    html body .main-nav .navbar-collapse .nav-link.active { background: transparent; color: var(--ilc-gold, #c5a059) !important; }
+    /* Pages whose Log In sits inside the menu: a full-width button under the links */
+    .main-nav .navbar-collapse > .d-flex { margin: 10px 0 6px; }
+    .main-nav .navbar-collapse > .d-flex .btn { width: 100%; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 8px; }
+}
+
+/* ─── PHONES: NO SIDEWAYS SCROLLING ─── Bootstrap's g-4/g-5 gutters are wider than the container's
+   padding on a narrow screen, so their rows stuck out past the edge and the page could scroll sideways. */
+@media (max-width: 767.98px) {
+    .container > .row.g-4, .container > .row.g-5,
+    .container .row.g-5 { --bs-gutter-x: 1.5rem; }
+}

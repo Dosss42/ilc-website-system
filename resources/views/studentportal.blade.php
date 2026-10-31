@@ -532,6 +532,8 @@
         .dash-form-control:hover { border-color: #cbd5e0; background: #fff; }
         .dash-form-control:focus { border-color: #1a3a6c; box-shadow: 0 0 0 4px rgba(26,58,108,0.1); background: #fff; outline: none; }
     </style>
+    {{-- Phone & tablet layout: slide-out sidebar, tables as cards (public/css/dashboard-mobile.css) --}}
+    <link rel="stylesheet" href="/css/dashboard-mobile.css?v={{ filemtime(public_path('css/dashboard-mobile.css')) }}">
 </head>
 <body>
 
@@ -1908,7 +1910,7 @@
             <div class="content-card" id="scheduleTableCard">
                 <div class="mobile-scroll-hint"><i class="bi bi-arrow-left-right"></i> Swipe to see more columns</div>
                 <div style="overflow-x:auto;">
-                    <table class="dash-table" id="scheduleTable">
+                    <table class="dash-table ilc-stack-timetable" id="scheduleTable">
                         <thead>
                             <tr>
                                 <th style="width:110px;">Day</th>
@@ -4226,7 +4228,8 @@
             loadGrades(currentGradeTerm, document.querySelector('.q-tab.active'));
             loadGWA();
         }
-        if (name === 'schedule') {
+        // loadSchedule() only exists once the student has a section (the timetable is only drawn then)
+        if (name === 'schedule' && typeof loadSchedule === 'function') {
             loadSchedule();
         }
         if (name === 'payment') {
@@ -6374,5 +6377,6 @@ document.getElementById('spDocViewerModal').addEventListener('hidden.bs.modal', 
 })();
 </script>
 @include('partials.idle-logout', ['portal' => 'web'])
+<script src="/js/dashboard-mobile.js?v={{ filemtime(public_path('js/dashboard-mobile.js')) }}"></script>
 </body>
 </html>

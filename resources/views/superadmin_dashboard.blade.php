@@ -678,6 +678,8 @@
     {{-- data-capitalize="words": capital first letter of each word in name boxes --}}
     <script src="/js/name-case.js?v={{ filemtime(public_path('js/name-case.js')) }}"></script>
     @include('partials.password-eye-style')
+    {{-- Phone & tablet layout: slide-out sidebar, tables as cards (public/css/dashboard-mobile.css) --}}
+    <link rel="stylesheet" href="/css/dashboard-mobile.css?v={{ filemtime(public_path('css/dashboard-mobile.css')) }}">
 </head>
 <body>
 
@@ -7621,5 +7623,6 @@
 @include('partials.idle-logout', ['portal' => 'web'])
 {{-- Schedule Management › Subject Teachers / Generate Schedule (shared with Admin) --}}
 @include('admin.schedules.generator')
+<script src="/js/dashboard-mobile.js?v={{ filemtime(public_path('js/dashboard-mobile.js')) }}"></script>
 </body>
 </html>

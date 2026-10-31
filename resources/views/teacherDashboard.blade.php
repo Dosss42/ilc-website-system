@@ -253,7 +253,7 @@
         @media (max-width: 768px) {
             .resp-grid-4 { grid-template-columns: repeat(2, 1fr) !important; }
         }
-        @media (max-width: 480px) {
+        @media (max-width: 360px) {
             .resp-grid-4 { grid-template-columns: 1fr !important; }
         }
 
@@ -518,6 +518,8 @@
         }
         .weight-input:focus { border-color: var(--blue); outline: none; }
     </style>
+    {{-- Phone & tablet layout: slide-out sidebar, tables as cards (public/css/dashboard-mobile.css) --}}
+    <link rel="stylesheet" href="/css/dashboard-mobile.css?v={{ filemtime(public_path('css/dashboard-mobile.css')) }}">
 </head>
 <body>
 
@@ -907,14 +909,15 @@
 
                     <div class="mobile-scroll-hint" style="padding:10px 20px 0;color:var(--muted);"><i class="bi bi-arrow-left-right"></i> Swipe to see more columns</div>
                     <div style="overflow-x:auto;">
-                        <table id="teacherScheduleTable" style="width:100%;border-collapse:collapse;min-width:480px;">
+                        {{-- ilc-stackable: one card per time slot on a phone, days without a class hidden (js/dashboard-mobile.js) --}}
+                        <table id="teacherScheduleTable" class="ilc-stackable ilc-stack-hide-dash" style="width:100%;border-collapse:collapse;min-width:480px;">
                             <thead>
                                 <tr>
                                     <th style="background:#f8fafc;padding:10px 14px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;border-bottom:2px solid var(--border);white-space:nowrap;min-width:110px;">
                                         <i class="bi bi-clock" style="margin-right:4px;"></i> Time
                                     </th>
                                     @foreach($showDays as $day)
-                                        <th style="background:#f8fafc;padding:10px 12px;text-align:center;
+                                        <th data-label="{{ $day }}" style="background:#f8fafc;padding:10px 12px;text-align:center;
                                                    border-bottom:{{ $day === $todayName ? '2px solid var(--blue)' : '2px solid var(--border)' }};
                                                    min-width:120px;">
                                             <div style="font-size:12px;font-weight:700;color:{{ $day === $todayName ? 'var(--blue)' : 'var(--text)' }};">
@@ -3133,5 +3136,6 @@
 </script>
 <script src="{{ asset('js/print-pdf.js') }}?v={{ @filemtime(public_path('js/print-pdf.js')) }}"></script>
 @include('partials.idle-logout', ['portal' => 'web'])
+<script src="/js/dashboard-mobile.js?v={{ filemtime(public_path('js/dashboard-mobile.js')) }}"></script>
 </body>
 </html>

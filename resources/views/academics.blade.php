@@ -10,7 +10,7 @@
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
  
 
-    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1789900001">
+    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1793500000">
     <link rel="stylesheet" href="{{ asset('css/academics.css') }}?v=1780250000">  {{-- academics page only --}}
     <style>
         /* Custom Scrollbar Design */

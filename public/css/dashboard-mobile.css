@@ -1,0 +1,159 @@
+/*
+ * Phone & tablet layout for the portal dashboards — goes with js/dashboard-mobile.js.
+ * Part 1 (html.ilc-mobile-sidebar …) only applies where that script added the ☰ button: Admin and
+ * Super Admin. The Teacher and Student portals already have their own slide-out menu.
+ * Part 2 (tables as cards) applies to every portal that loads this file.
+ */
+
+/* ════════ 1. Slide-out sidebar, top bar, page layout (≤ 900px) ════════ */
+/* Scoped: the Teacher and Student portals style their own ☰ button and backdrop */
+html.ilc-mobile-sidebar .sidebar-toggle-btn { display: none; }
+html.ilc-mobile-sidebar .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 998; }
+html.ilc-mobile-sidebar .sidebar-backdrop.show { display: block; }
+
+@media (max-width: 900px) {
+    /* Every portal: the logo sits on the white top bar (the dark block lines up with the desktop sidebar only) */
+    .dash-topbar .topbar-brand { background: transparent !important; box-shadow: none !important; border-right: none !important; }
+
+    html.ilc-mobile-sidebar .sidebar-toggle-btn {
+        display: flex; align-items: center; justify-content: center;
+        width: 40px; height: 40px; margin-left: 6px; flex-shrink: 0;
+        border: none; background: transparent; color: var(--blue, #1a3a6c); font-size: 24px; cursor: pointer;
+    }
+    html.ilc-mobile-sidebar .dash-sidebar {
+        transform: translateX(-100%); transition: transform .25s ease;
+        z-index: 999; box-shadow: 4px 0 16px rgba(0,0,0,.15);
+    }
+    html.ilc-mobile-sidebar .dash-sidebar.mobile-open { transform: translateX(0); }
+    html.ilc-mobile-sidebar .dash-main { margin-left: 0; }
+
+    /* Top bar: logo only, a shorter search, icons only */
+    html.ilc-mobile-sidebar .topbar-brand { width: auto; padding: 0 6px 0 2px; border-right: none; }
+    html.ilc-mobile-sidebar .brand-info { display: none; }
+    html.ilc-mobile-sidebar .topbar-center { padding: 0 6px; min-width: 0; flex: 1; }
+    html.ilc-mobile-sidebar .dash-search { width: 100%; max-width: 260px; }
+    html.ilc-mobile-sidebar .topbar-right { padding-right: 10px; gap: 6px; }
+    html.ilc-mobile-sidebar .user-chip { padding: 4px; border: none; }
+    html.ilc-mobile-sidebar .user-chip-name,
+    html.ilc-mobile-sidebar .user-chip-role,
+    html.ilc-mobile-sidebar .user-chip-caret { display: none; }
+    html.ilc-mobile-sidebar #maintenance-topbar-label { display: none; }
+    html.ilc-mobile-sidebar #maintenance-topbar-btn { padding: 6px 9px !important; }
+
+    /* Pages: less padding, headers stack, buttons wrap */
+    html.ilc-mobile-sidebar .dash-section { padding: 16px 14px; }
+    html.ilc-mobile-sidebar .section-header { flex-direction: column; align-items: stretch; gap: 12px; }
+    html.ilc-mobile-sidebar .section-header h1 { font-size: 20px; }
+    html.ilc-mobile-sidebar .section-header > div:last-child:not(:first-child) { display: flex; flex-wrap: wrap; gap: 8px; }
+    html.ilc-mobile-sidebar .section-header .btn-dash { flex: 1 1 auto; justify-content: center; }
+    html.ilc-mobile-sidebar .row > [class*="col-"] { min-width: 0; }
+
+    /* Filter rows: the search box takes a full line, dropdowns share the next */
+    html.ilc-mobile-sidebar .module-toolbar { flex-wrap: wrap; gap: 8px; }
+    html.ilc-mobile-sidebar .module-toolbar .toolbar-search { flex: 1 1 100%; min-width: 0; max-width: none; }
+    html.ilc-mobile-sidebar .toolbar-filter { flex-wrap: wrap; gap: 8px; width: 100%; }
+    html.ilc-mobile-sidebar .toolbar-filter > select,
+    html.ilc-mobile-sidebar .toolbar-filter > input { flex: 1 1 140px; min-width: 0; }
+    html.ilc-mobile-sidebar .sched-toolbar { flex-wrap: wrap; gap: 10px; }
+    html.ilc-mobile-sidebar .sched-field-group { flex: 1 1 140px; min-width: 0; }
+    html.ilc-mobile-sidebar .sched-field-group select { width: 100%; min-width: 0; }
+
+    /* Settings: the tab list becomes a row of chips above the form */
+    html.ilc-mobile-sidebar .stg-layout { flex-direction: column; }
+    html.ilc-mobile-sidebar .stg-nav { position: static; width: 100%; flex-direction: row; overflow-x: auto; gap: 8px; padding: 6px; }
+    html.ilc-mobile-sidebar .stg-nav-item { flex: 0 0 auto; width: auto; }
+    html.ilc-mobile-sidebar .stg-nav-desc,
+    html.ilc-mobile-sidebar .stg-nav-caret { display: none; }
+    html.ilc-mobile-sidebar .stg-hero { padding: 18px; }
+
+    /* Cards whose title and switch sit side by side (System Settings, Reports tabs) */
+    html.ilc-mobile-sidebar .content-card-header { flex-wrap: wrap; gap: 8px; }
+    html.ilc-mobile-sidebar .content-card .p-4 > div[style*="justify-content:space-between"] { flex-wrap: wrap; gap: 10px; }
+    html.ilc-mobile-sidebar [id$="-toggle-wrap"] { flex-wrap: wrap; }
+    html.ilc-mobile-sidebar .rpt-tab-btn { flex: 1 1 auto; }
+
+    /* Dialogs use the full width */
+    html.ilc-mobile-sidebar .modal-dialog { margin: 8px; }
+}
+
+/* Stat-card rows written as inline grids (3 or 4 across) — two across on a phone */
+@media (max-width: 600px) {
+    html.ilc-mobile-sidebar .dash-section div[style*="grid-template-columns:repeat(3,1fr)"],
+    html.ilc-mobile-sidebar .dash-section div[style*="grid-template-columns:repeat(4,1fr)"],
+    html.ilc-mobile-sidebar .dash-section div[style*="grid-template-columns: repeat(3, 1fr)"],
+    html.ilc-mobile-sidebar .dash-section div[style*="grid-template-columns: repeat(4, 1fr)"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+}
+
+@media (max-width: 480px) {
+    html.ilc-mobile-sidebar .dash-search { display: none; }
+    html.ilc-mobile-sidebar .stat-card { padding: 14px; gap: 12px; }
+    html.ilc-mobile-sidebar .stat-value { font-size: 22px; }
+}
+
+/* ════════ 2. Tables as cards (phones, ≤ 600px) ════════ */
+@media (max-width: 600px) {
+    table.ilc-stack { min-width: 0 !important; width: 100% !important; border: none; }
+    table.ilc-stack thead { display: none; }
+    table.ilc-stack tbody,
+    table.ilc-stack tr,
+    table.ilc-stack td { display: block; width: 100% !important; }
+
+    table.ilc-stack tbody tr {
+        height: auto !important; /* rows with a fixed desktop height (e.g. the grade sheet's 64px) grow with the card */
+        background: #fff; border: 1px solid var(--border, #e5e7eb) !important; border-radius: 12px;
+        margin: 0 0 10px; padding: 6px 14px; box-shadow: 0 1px 3px rgba(15,23,42,.04);
+    }
+    /* Label floats left, the cell's own content stays together on the right */
+    table.ilc-stack tbody td {
+        min-width: 0 !important; max-width: none !important; white-space: normal !important;
+        padding: 8px 0 !important; border: none !important; border-bottom: 1px dashed #eef1f5 !important;
+        text-align: right !important; font-size: 13px; overflow: hidden;
+    }
+    table.ilc-stack tbody td:last-child { border-bottom: none !important; }
+    table.ilc-stack tbody td::before {
+        content: attr(data-label);
+        float: left; max-width: 45%; margin-right: 12px; text-align: left; line-height: 1.9;
+        font-size: 10.5px; font-weight: 700; letter-spacing: .4px; text-transform: uppercase;
+        color: var(--muted, #6b7280);
+    }
+    table.ilc-stack tbody td[data-label=""]::before,
+    table.ilc-stack tbody td.ilc-full::before { display: none; }
+    table.ilc-stack tbody td.ilc-empty,
+    table.ilc-stack tbody td[data-label="#"] { display: none; } /* row numbers mean little on a card */
+    table.ilc-stack tbody td.ilc-full { display: block; text-align: center !important; border: none !important; }
+    table.ilc-stack tbody tr:has(> td.ilc-full) { border: none !important; box-shadow: none; background: transparent; }
+    /* Values that are a whole block (badges, button rows, inputs) keep their own alignment */
+    table.ilc-stack tbody td > div,
+    table.ilc-stack tbody td > .d-flex { justify-content: flex-end; text-align: right; }
+    table.ilc-stack tbody td > div[style*="display:flex"],
+    table.ilc-stack tbody td > div[style*="display: flex"] { display: inline-flex !important; flex-wrap: wrap; }
+    table.ilc-stack tbody td input,
+    table.ilc-stack tbody td select { max-width: 60%; }
+
+    /* Timetables (class="ilc-stack-timetable"): one compact card per class —
+       time on the left; subject, room and teacher on the right; the day as a header when it changes */
+    table.ilc-stack.ilc-stack-timetable tbody tr {
+        display: grid; grid-template-columns: 92px 1fr; column-gap: 12px; padding: 10px 14px;
+    }
+    table.ilc-stack.ilc-stack-timetable tbody td {
+        border: none !important; padding: 1px 0 !important; text-align: left !important; overflow: visible;
+    }
+    table.ilc-stack.ilc-stack-timetable tbody td::before { display: none; }
+    table.ilc-stack.ilc-stack-timetable tbody td:nth-child(1) { grid-column: 1 / -1; margin-bottom: 6px; }
+    table.ilc-stack.ilc-stack-timetable tbody td:nth-child(2) { grid-column: 1; grid-row: span 3; font-size: 12px; font-weight: 700; color: var(--blue, #1a3a6c); }
+    table.ilc-stack.ilc-stack-timetable tbody td:nth-child(n+3) { grid-column: 2; }
+    table.ilc-stack.ilc-stack-timetable tbody td:nth-child(n+4) { font-size: 12px; color: var(--muted, #6b7280); }
+
+    /* Day-by-time grids (class="ilc-stack-hide-dash", e.g. the teacher's Weekly Timetable): the day name
+       sits above that day's class card instead of beside it */
+    table.ilc-stack.ilc-stack-hide-dash tbody td { text-align: left !important; height: auto !important; }
+    table.ilc-stack.ilc-stack-hide-dash tbody td::before { float: none; display: block; max-width: none; margin: 0 0 4px; line-height: 1.4; }
+    table.ilc-stack.ilc-stack-hide-dash tbody td:first-child { display: flex; align-items: baseline; gap: 8px; border-right: none !important; background: transparent !important; }
+    table.ilc-stack.ilc-stack-hide-dash tbody td:first-child::before { display: none; }
+
+    /* Page-number bars wrap instead of running off the screen */
+    .pagination { flex-wrap: wrap; row-gap: 6px; }
+
+    /* The table scrolls no more, so no "swipe" hint */
+    .mobile-scroll-hint { display: none !important; }
+}
