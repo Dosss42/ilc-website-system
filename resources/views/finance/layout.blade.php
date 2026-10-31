@@ -332,6 +332,8 @@
         .skel-avatar-lg{width:100px;height:100px;border-radius:50%;margin:0 auto 20px;}
     </style>
     @yield('styles')
+    {{-- Phone & tablet layout: slide-out sidebar, tables as cards (public/css/dashboard-mobile.css) --}}
+    <link rel="stylesheet" href="/css/dashboard-mobile.css?v={{ filemtime(public_path('css/dashboard-mobile.css')) }}">
 </head>
 <body>
     <!-- Topbar -->
@@ -727,5 +729,6 @@
         })();
     </script>
     @include('partials.idle-logout', ['portal' => 'finance'])
+<script src="/js/dashboard-mobile.js?v={{ filemtime(public_path('js/dashboard-mobile.js')) }}"></script>
 </body>
 </html>

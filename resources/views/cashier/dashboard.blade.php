@@ -638,6 +638,8 @@
         #payPanel .pp-log-meta { font-size:10px;color:var(--pp-faint);margin-top:1px; }
         #payPanel .pp-log-ref { font-size:9.5px;color:var(--pp-faint); }
     </style>
+    {{-- Phone & tablet layout: slide-out sidebar, tables as cards (public/css/dashboard-mobile.css) --}}
+    <link rel="stylesheet" href="/css/dashboard-mobile.css?v={{ filemtime(public_path('css/dashboard-mobile.css')) }}">
 </head>
 <body>
 
@@ -1126,7 +1128,7 @@
 
         {{-- ── Payment Guide — always visible, so it's the first thing a new
              cashier sees, not something buried after a student is picked ── --}}
-        <div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:14px;padding:12px 18px;margin-bottom:18px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
+        <div class="pay-guide" style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:14px;padding:12px 18px;margin-bottom:18px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;">
             <div style="font-size:11px;font-weight:800;color:#92400e;display:flex;align-items:center;gap:6px;white-space:nowrap;"><i class="bi bi-info-circle-fill"></i> How to process a payment:</div>
             <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;flex:1;">
                 <div style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:#78350f;"><span style="width:19px;height:19px;border-radius:6px;background:#fcd34d;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;flex-shrink:0;">1</span>Search and select a student</div>
@@ -3561,5 +3563,6 @@
 
 </script>
 @include('partials.idle-logout', ['portal' => 'cashier'])
+<script src="/js/dashboard-mobile.js?v={{ filemtime(public_path('js/dashboard-mobile.js')) }}"></script>
 </body>
 </html>

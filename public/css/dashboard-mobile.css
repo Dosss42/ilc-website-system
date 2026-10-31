@@ -15,6 +15,18 @@ html.ilc-mobile-sidebar .sidebar-backdrop.show { display: block; }
     /* Every portal: the logo sits on the white top bar (the dark block lines up with the desktop sidebar only) */
     .dash-topbar .topbar-brand { background: transparent !important; box-shadow: none !important; border-right: none !important; }
 
+    /* Every portal: the user chip keeps the name next to the avatar (the portals hid it, leaving an empty box);
+       a long name ends in "…", the role line and the arrow stay hidden */
+    .dash-topbar .user-chip { display: flex !important; align-items: center; gap: 8px; padding: 4px 10px 4px 4px !important; min-width: 0; max-width: 170px; }
+    .dash-topbar .user-chip > div:not(.user-avatar) { min-width: 0; }
+    .dash-topbar .user-chip-name {
+        display: block !important; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        font-size: 12.5px !important; font-weight: 600;
+    }
+    .dash-topbar .user-chip-role,
+    .dash-topbar .user-chip-caret { display: none !important; }
+    .dash-topbar .topbar-right { min-width: 0; }
+
     html.ilc-mobile-sidebar .sidebar-toggle-btn {
         display: flex; align-items: center; justify-content: center;
         width: 40px; height: 40px; margin-left: 6px; flex-shrink: 0;
@@ -33,10 +45,6 @@ html.ilc-mobile-sidebar .sidebar-backdrop.show { display: block; }
     html.ilc-mobile-sidebar .topbar-center { padding: 0 6px; min-width: 0; flex: 1; }
     html.ilc-mobile-sidebar .dash-search { width: 100%; max-width: 260px; }
     html.ilc-mobile-sidebar .topbar-right { padding-right: 10px; gap: 6px; }
-    html.ilc-mobile-sidebar .user-chip { padding: 4px; border: none; }
-    html.ilc-mobile-sidebar .user-chip-name,
-    html.ilc-mobile-sidebar .user-chip-role,
-    html.ilc-mobile-sidebar .user-chip-caret { display: none; }
     html.ilc-mobile-sidebar #maintenance-topbar-label { display: none; }
     html.ilc-mobile-sidebar #maintenance-topbar-btn { padding: 6px 9px !important; }
 
@@ -74,14 +82,79 @@ html.ilc-mobile-sidebar .sidebar-backdrop.show { display: block; }
 
     /* Dialogs use the full width */
     html.ilc-mobile-sidebar .modal-dialog { margin: 8px; }
+
+    /* ── Cashier & Finance layout (.topbar / .sidebar / .main, .main-content) ── */
+    html.ilc-mobile-sidebar .topbar > .sidebar-toggle-btn { order: -1; }
+    html.ilc-mobile-sidebar aside.sidebar,
+    html.ilc-mobile-sidebar div.sidebar#sidebar {
+        transform: translateX(-100%); transition: transform .25s ease;
+        z-index: 999; box-shadow: 4px 0 16px rgba(0,0,0,.15);
+    }
+    html.ilc-mobile-sidebar aside.sidebar.mobile-open,
+    html.ilc-mobile-sidebar div.sidebar#sidebar.mobile-open { transform: translateX(0); }
+    html.ilc-mobile-sidebar .main,
+    html.ilc-mobile-sidebar .main-content { margin-left: 0 !important; padding: 16px 14px !important; }
+    html.ilc-mobile-sidebar .fin-skeleton-overlay { padding: 16px 14px; }
+    html.ilc-mobile-sidebar .topbar { gap: 4px; }
+    html.ilc-mobile-sidebar .topbar .topbar-brand { width: auto !important; padding: 0 6px 0 2px !important; background: transparent !important; box-shadow: none !important; }
+    html.ilc-mobile-sidebar .topbar .brand-logo-circle { border-color: #e2e8f0; background: #fff; }
+
+    /* Forms and button rows in a page header wrap (Finance › Payments: dates + Download Transaction Report) */
+    html.ilc-mobile-sidebar .section-header > form,
+    html.ilc-mobile-sidebar .section-header > div:last-child:not(:first-child) { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+    html.ilc-mobile-sidebar .section-header > form input { flex: 1 1 120px; min-width: 0; }
+    html.ilc-mobile-sidebar .section-header > form .btn-dash { flex: 1 1 100%; justify-content: center; }
+
+    /* Cashier card headers (title + filters): title on top, the filters below at full width */
+    html.ilc-mobile-sidebar .card-box-header { flex-direction: column; align-items: stretch !important; gap: 10px; }
+    html.ilc-mobile-sidebar .card-box-header > div:last-child:not(:first-child) { justify-content: flex-start !important; width: 100%; }
+    html.ilc-mobile-sidebar .card-box-header select,
+    html.ilc-mobile-sidebar .card-box-header > div:last-child > div { flex: 1 1 140px; min-width: 0 !important; }
+
+    /* Cashier › Process Payment guide: title on top, the four steps as a list */
+    html.ilc-mobile-sidebar .pay-guide { flex-direction: column; align-items: flex-start !important; gap: 10px !important; }
+    html.ilc-mobile-sidebar .pay-guide > div:last-child { flex-direction: column; align-items: flex-start !important; gap: 8px !important; }
+    html.ilc-mobile-sidebar .pay-guide .bi-chevron-right { display: none; }
+    html.ilc-mobile-sidebar .topbar .brand-info { display: none; }
+    html.ilc-mobile-sidebar .topbar-left { padding: 0 4px; min-width: 0; }
+    html.ilc-mobile-sidebar .topbar-center { padding: 0 4px; min-width: 0; }
+    html.ilc-mobile-sidebar .topbar-right { padding-right: 10px !important; gap: 6px; min-width: 0; }
+    /* Cashier's chip uses .user-name / .user-role */
+    html.ilc-mobile-sidebar .topbar .user-chip { display: flex !important; gap: 8px; padding: 4px 10px 4px 4px !important; max-width: 170px; min-width: 0; }
+    html.ilc-mobile-sidebar .topbar .user-chip > div:not(.user-avatar) { min-width: 0; }
+    html.ilc-mobile-sidebar .topbar .user-chip .user-name,
+    html.ilc-mobile-sidebar .topbar .user-chip .user-chip-name {
+        display: block !important; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px !important;
+    }
+    html.ilc-mobile-sidebar .topbar .user-chip .user-role,
+    html.ilc-mobile-sidebar .topbar .user-chip .user-chip-role,
+    html.ilc-mobile-sidebar .topbar .user-chip > .bi-chevron-down { display: none !important; }
+
+    /* Page headers and filter forms stack; wide rows wrap */
+    html.ilc-mobile-sidebar .page-header { flex-direction: column; align-items: stretch !important; gap: 12px; }
+    html.ilc-mobile-sidebar .page-header > div:last-child:not(:first-child) { display: flex; flex-wrap: wrap; gap: 8px; }
+    html.ilc-mobile-sidebar .page-title { font-size: 20px !important; }
+    html.ilc-mobile-sidebar .main .row > [class*="col-"],
+    html.ilc-mobile-sidebar .main-content .row > [class*="col-"] { min-width: 0; }
 }
 
-/* Stat-card rows written as inline grids (3 or 4 across) — two across on a phone */
+/* Grids written inline in the pages: stat-card rows (3–5 across) → two across on a phone;
+   side-by-side panels (2fr 1fr, 5fr 6fr, 1fr 1fr) → one column */
 @media (max-width: 600px) {
-    html.ilc-mobile-sidebar .dash-section div[style*="grid-template-columns:repeat(3,1fr)"],
-    html.ilc-mobile-sidebar .dash-section div[style*="grid-template-columns:repeat(4,1fr)"],
-    html.ilc-mobile-sidebar .dash-section div[style*="grid-template-columns: repeat(3, 1fr)"],
-    html.ilc-mobile-sidebar .dash-section div[style*="grid-template-columns: repeat(4, 1fr)"] { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+    html.ilc-mobile-sidebar :is(.dash-section, .main, .main-content) div:is(
+        [style*="grid-template-columns:repeat(3,1fr)"], [style*="grid-template-columns: repeat(3, 1fr)"],
+        [style*="grid-template-columns:repeat(4,1fr)"], [style*="grid-template-columns: repeat(4, 1fr)"],
+        [style*="grid-template-columns:repeat(5,1fr)"], [style*="grid-template-columns: repeat(5, 1fr)"]
+    ) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+    html.ilc-mobile-sidebar :is(.main, .main-content) div:is(
+        [style*="grid-template-columns:2fr 1fr"], [style*="grid-template-columns: 2fr 1fr"],
+        [style*="grid-template-columns:5fr 6fr"], [style*="grid-template-columns: 5fr 6fr"],
+        [style*="grid-template-columns:1fr 1fr"], [style*="grid-template-columns: 1fr 1fr"]
+    ) { grid-template-columns: minmax(0, 1fr) !important; }
+    /* Same for the Cashier/Finance stylesheet grids (stats rows, quick actions) */
+    html.ilc-mobile-sidebar :is(.main, .main-content) :is(.stats-grid, .quick-grid) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+    html.ilc-mobile-sidebar :is(.main, .main-content) .stat-card { min-width: 0; padding: 14px !important; gap: 10px !important; }
+    html.ilc-mobile-sidebar :is(.main, .main-content) .stat-card .stat-value { font-size: 20px !important; }
 }
 
 @media (max-width: 480px) {
@@ -143,6 +216,9 @@ html.ilc-mobile-sidebar .sidebar-backdrop.show { display: block; }
     table.ilc-stack.ilc-stack-timetable tbody td:nth-child(2) { grid-column: 1; grid-row: span 3; font-size: 12px; font-weight: 700; color: var(--blue, #1a3a6c); }
     table.ilc-stack.ilc-stack-timetable tbody td:nth-child(n+3) { grid-column: 2; }
     table.ilc-stack.ilc-stack-timetable tbody td:nth-child(n+4) { font-size: 12px; color: var(--muted, #6b7280); }
+    /* …and everything inside the card lines up on the left (the general card rule pushes blocks right) */
+    table.ilc-stack.ilc-stack-timetable tbody td > *,
+    table.ilc-stack.ilc-stack-timetable tbody td > div[style] { text-align: left !important; justify-content: flex-start !important; margin-left: 0 !important; }
 
     /* Day-by-time grids (class="ilc-stack-hide-dash", e.g. the teacher's Weekly Timetable): the day name
        sits above that day's class card instead of beside it */

@@ -1,8 +1,8 @@
 /*
- * Phone & tablet layout for the portal dashboards (Admin, Super Admin, Teacher, Student).
+ * Phone & tablet layout for the portal dashboards (Admin, Super Admin, Teacher, Student, Cashier, Finance).
  * Loaded together with css/dashboard-mobile.css.
  *
- *  1. Slide-out sidebar — pages that don't have their own (Admin, Super Admin) get a ☰ button in the
+ *  1. Slide-out sidebar — pages that don't have their own (Admin, Super Admin, Cashier, Finance) get a ☰ button in the
  *     top bar and a dark backdrop, the same pattern as the Teacher and Student portals
  *     (toggleMobileSidebar / closeMobileSidebar). Choosing a menu item closes it.
  *  2. Tables as cards — on a phone every .dash-table row is shown as a small card (see the CSS).
@@ -16,9 +16,10 @@
     window.__ilcDashboardMobile = true;
 
     // ── 1. Slide-out sidebar ──
+    // .dash-* = Admin/Super Admin/Teacher/Student layout; .sidebar/.topbar = Cashier and Finance layout
     function setUpSidebar() {
-        var sidebar = document.querySelector('.dash-sidebar');
-        var topbar  = document.querySelector('.dash-topbar');
+        var sidebar = document.querySelector('.dash-sidebar, aside.sidebar, div.sidebar#sidebar');
+        var topbar  = document.querySelector('.dash-topbar, .topbar');
         if (!sidebar || !topbar || document.querySelector('.sidebar-toggle-btn')) return; // the page has its own
 
         document.documentElement.classList.add('ilc-mobile-sidebar'); // turns on the sidebar/top bar rules in the CSS
@@ -49,7 +50,7 @@
         backdrop.addEventListener('click', function () { window.closeMobileSidebar(); });
         // Choosing a page closes the menu (the dashboards' showSection() doesn't know about it)
         sidebar.addEventListener('click', function (e) {
-            if (e.target.closest('.sidebar-link')) window.closeMobileSidebar();
+            if (e.target.closest('.sidebar-link, .menu-item')) window.closeMobileSidebar();
         });
     }
 
@@ -94,7 +95,7 @@
     }
 
     function labelAll() {
-        document.querySelectorAll('table.dash-table, table.ilc-stackable').forEach(labelTable);
+        document.querySelectorAll('table.dash-table, table.data-table, table.ilc-stackable').forEach(labelTable);
     }
 
     var pending = null;
@@ -109,7 +110,7 @@
         new MutationObserver(function (records) {
             for (var i = 0; i < records.length; i++) {
                 var t = records[i].target;
-                if (t.nodeType === 1 && (t.tagName === 'TBODY' || t.tagName === 'TABLE' || t.tagName === 'TR' || t.querySelector && t.querySelector('table.dash-table'))) {
+                if (t.nodeType === 1 && (t.tagName === 'TBODY' || t.tagName === 'TABLE' || t.tagName === 'TR' || t.querySelector && t.querySelector('table.dash-table, table.data-table'))) {
                     scheduleLabel();
                     return;
                 }
