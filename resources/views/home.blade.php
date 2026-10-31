@@ -27,7 +27,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
 
     <link rel="icon" type="image/png" href="/images/favicon.jpg">
-    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1793500000">
+    <link rel="stylesheet" href="{{ asset('css/styles.css') }}?v=1793700000">
     <link rel="stylesheet" href="{{ asset('css/home.css') }}?v=1780380004">
     <style>
         /* Custom Scrollbar Design */
@@ -1744,7 +1744,7 @@ document.addEventListener('keydown', function(e) {
     }
 })();
 </script>
-<script src="{{ asset('js/sticky-nav.js') }}?v=1"></script>
+<script src="{{ asset('js/sticky-nav.js') }}?v=2"></script>
 </body>
 </html>
 </script>

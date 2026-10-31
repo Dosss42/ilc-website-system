@@ -1089,16 +1089,60 @@ html { scroll-padding-top: var(--ilc-nav-h, 0px); }
         border-radius: 8px; font-size: 13px;
     }
 
-    /* The opened menu: a tidy list, one link per row */
-    .main-nav .navbar-collapse .navbar-nav { margin: 8px 0 4px; border-top: 1px solid rgba(255,255,255,.15); }
-    html body .main-nav .navbar-collapse .nav-link {
-        padding: 12px 6px !important; font-size: 13px;
-        border-bottom: 1px solid rgba(255,255,255,.08);
+    /* ── SIDE MENU ── the ☰ button slides the links in from the left (js/sticky-nav.js toggles .side-open) */
+    html body .main-nav .navbar-collapse {
+        display: flex !important; flex-direction: column; flex-basis: auto;
+        position: fixed; top: 0; left: 0; bottom: 0; height: 100vh !important;
+        width: min(300px, 84vw); padding: 0 18px 20px; margin: 0;
+        background: linear-gradient(180deg, #162f5c 0%, #1a3a6c 60%, #1c3f78 100%);
+        box-shadow: 6px 0 24px rgba(0,0,0,.25); overflow-y: auto;
+        transform: translateX(-105%); visibility: hidden;
+        transition: transform .28s ease, visibility .28s;
+        z-index: 1060;
     }
-    html body .main-nav .navbar-collapse .nav-link.active { background: transparent; color: var(--ilc-gold, #c5a059) !important; }
-    /* Pages whose Log In sits inside the menu: a full-width button under the links */
-    .main-nav .navbar-collapse > .d-flex { margin: 10px 0 6px; }
-    .main-nav .navbar-collapse > .d-flex .btn { width: 100%; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 8px; }
+    html body .main-nav.side-open .navbar-collapse { transform: translateX(0); visibility: visible; }
+
+    /* Bootstrap centres .navbar-collapse's children — the panel's rows use its full width */
+    html body .main-nav .navbar-collapse > * { align-self: stretch; width: 100%; }
+    .nav-side-head {
+        display: flex; align-items: center; justify-content: space-between; gap: 10px;
+        padding: 16px 0 14px; margin-bottom: 6px; border-bottom: 1px solid rgba(255,255,255,.15);
+    }
+    .nav-side-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-side-brand img { width: 40px; height: 40px; border-radius: 50%; background: #fff; object-fit: cover; }
+    /* !important: the pages' own "span, a { … }" font/colour rules would turn these dark */
+    html body .nav-side-brand span { color: #fff !important; font-size: 12px; font-weight: 800; letter-spacing: .6px; text-transform: uppercase; line-height: 1.25; }
+    html body .nav-side-brand span small { display: block; color: var(--ilc-gold, #c5a059) !important; font-size: 10px; font-weight: 700; }
+    html body .nav-side-close {
+        width: 38px; height: 38px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+        border: 1px solid rgba(255,255,255,.3); border-radius: 8px; background: rgba(255,255,255,.08); color: #fff !important; font-size: 15px;
+    }
+    html body .nav-side-close i { color: #fff !important; }
+
+    .main-nav .navbar-collapse .navbar-nav { margin: 4px 0 8px !important; width: 100%; }
+    html body .main-nav .navbar-collapse .nav-link {
+        padding: 13px 10px !important; font-size: 13px; border-radius: 8px;
+        border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    html body .main-nav .navbar-collapse .nav-link.active {
+        background: rgba(197,160,89,.14); color: var(--ilc-gold, #c5a059) !important;
+        box-shadow: inset 3px 0 0 var(--ilc-gold, #c5a059);
+    }
+    /* Pages whose Log In sits inside the menu: a full-width button at the bottom of the panel */
+    .main-nav .navbar-collapse > .d-flex { margin-top: auto; padding-top: 12px; display: flex; }
+    .main-nav .navbar-collapse > .d-flex > * { flex: 1; }
+    .main-nav .navbar-collapse > .d-flex .btn { width: 100%; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 8px; }
+
+    .nav-side-backdrop {
+        position: fixed; inset: 0; background: rgba(10,22,50,.55); z-index: 1055;
+        opacity: 0; visibility: hidden; transition: opacity .28s, visibility .28s;
+    }
+    .nav-side-backdrop.show { opacity: 1; visibility: visible; }
+    body.nav-side-lock { overflow: hidden; }
+}
+/* Desktop: the side-panel extras are not used */
+@media (min-width: 992px) {
+    .nav-side-head, .nav-side-backdrop { display: none !important; }
 }
 
 /* ─── PHONES: NO SIDEWAYS SCROLLING ─── Bootstrap's g-4/g-5 gutters are wider than the container's
